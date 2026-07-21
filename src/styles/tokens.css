@@ -1,0 +1,114 @@
+/*
+ * Design tokens (specification section 37).
+ *
+ * The brief is a professional educational interface: neutral background,
+ * university typography, high contrast, one restrained accent. Explicitly not
+ * wanted: cryptocurrency imagery, gold coins, neon, decorative chains, mining
+ * animations, or a dark terminal aesthetic.
+ *
+ * Colour is used to mean something. Navy carries structure and the primary
+ * action. Green, amber and red are reserved for pass, warning and fail, and are
+ * never the only signal -- every status also carries a text label and an icon
+ * glyph, per section 26.
+ */
+
+:root {
+  /* Structure */
+  --colour-navy: #1f2251;
+  --colour-navy-strong: #161837;
+  --colour-navy-soft: #eceef6;
+  --colour-navy-border: #c9cee4;
+
+  /* Surfaces */
+  --colour-page: #f7f8fb;
+  --colour-surface: #ffffff;
+  --colour-surface-sunken: #f2f4f9;
+
+  /* Text -- all combinations below meet WCAG 2.2 AA on their surfaces */
+  --colour-text: #1a1c2e;
+  --colour-text-muted: #545871;
+  --colour-text-inverse: #ffffff;
+
+  /* Status. Never the only carrier of meaning. */
+  --colour-pass: #00664f;
+  --colour-pass-soft: #e4f2ee;
+  --colour-warn: #8a5200;
+  --colour-warn-soft: #fdf0dd;
+  --colour-fail: #b3261e;
+  --colour-fail-soft: #fbe9e7;
+
+  /* Borders and lines */
+  --colour-border: #d9dce8;
+  --colour-border-strong: #a8adc4;
+
+  /* Physical supply chain versus blockchain processing: the two halves of the
+     simulation are visually distinguished so learners do not conflate a
+     physical event with its ledger record. */
+  --colour-physical: #34506b;
+  --colour-physical-soft: #e8eef4;
+
+  /* Typography. A system stack renders Vietnamese diacritics correctly on every
+     target platform and costs no bundle weight or network request. */
+  --font-body: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --size-body: 1rem;
+  --size-small: 0.875rem;
+  --size-caption: 0.8125rem;
+  --size-heading-1: 1.75rem;
+  --size-heading-2: 1.375rem;
+  --size-heading-3: 1.125rem;
+
+  /*
+   * Vietnamese stacks a tone mark above a vowel mark (ế, ộ, ữ, ẫ). A tight
+   * line-height clips the upper diacritic, which is the single most common
+   * Vietnamese typography defect. 1.6 minimum on body text, and no fixed-height
+   * rows anywhere text can wrap.
+   */
+  --line-height-body: 1.6;
+  --line-height-heading: 1.3;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-small: 4px;
+  --radius-medium: 8px;
+  --radius-large: 12px;
+
+  --shadow-card: 0 1px 2px rgb(31 34 81 / 8%), 0 4px 12px rgb(31 34 81 / 6%);
+  --shadow-raised: 0 2px 4px rgb(31 34 81 / 10%), 0 8px 24px rgb(31 34 81 / 8%);
+
+  --focus-ring: 3px solid #1f2251;
+  --focus-offset: 2px;
+
+  --duration-step: 240ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --layout-max-width: 1180px;
+}
+
+/*
+ * Reduced motion is a hard requirement (section 26). Animations are decorative
+ * here; the pipeline still reaches its final state and the learner is never
+ * blocked waiting for one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-step: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

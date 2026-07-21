@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-scorm/
+*.zip
+*.tsbuildinfo
+.DS_Store
+coverage/
+*.local
+.vite/
+test-results/
+playwright-report/

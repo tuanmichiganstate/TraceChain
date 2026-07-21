@@ -1,0 +1,272 @@
+/* Base element styles and shared layout primitives. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--colour-page);
+  color: var(--colour-text);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  line-height: var(--line-height-body);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-3);
+  line-height: var(--line-height-heading);
+  color: var(--colour-navy-strong);
+  font-weight: 650;
+}
+
+h1 { font-size: var(--size-heading-1); }
+h2 { font-size: var(--size-heading-2); }
+h3 { font-size: var(--size-heading-3); }
+
+p {
+  margin: 0 0 var(--space-4);
+  max-width: 68ch;
+}
+
+ul, ol {
+  margin: 0 0 var(--space-4);
+  padding-inline-start: var(--space-5);
+}
+
+li { margin-bottom: var(--space-2); }
+
+/* A visible focus indicator on every interactive element (section 26). */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-small);
+}
+
+/* ---- Buttons ---- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--duration-step) var(--easing-standard);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button--primary {
+  background: var(--colour-navy);
+  color: var(--colour-text-inverse);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--colour-navy-strong);
+}
+
+.button--secondary {
+  background: var(--colour-surface);
+  border-color: var(--colour-border-strong);
+  color: var(--colour-navy);
+}
+
+.button--secondary:hover:not(:disabled) {
+  background: var(--colour-navy-soft);
+}
+
+.button--quiet {
+  background: transparent;
+  color: var(--colour-navy);
+  padding-inline: var(--space-3);
+}
+
+.button--quiet:hover:not(:disabled) {
+  background: var(--colour-navy-soft);
+}
+
+/* ---- Surfaces ---- */
+
+.card {
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5);
+}
+
+.card + .card { margin-top: var(--space-4); }
+
+.notice {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-medium);
+  border-inline-start: 4px solid var(--colour-navy);
+  background: var(--colour-navy-soft);
+  font-size: var(--size-small);
+}
+
+.notice p:last-child { margin-bottom: 0; }
+
+.notice--standalone {
+  border-inline-start-color: var(--colour-warn);
+  background: var(--colour-warn-soft);
+}
+
+/* ---- Forms ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.field__label {
+  font-weight: 600;
+  font-size: var(--size-small);
+  color: var(--colour-text);
+}
+
+.field__control {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border-strong);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface);
+  font: inherit;
+  color: var(--colour-text);
+}
+
+.field__control:disabled {
+  background: var(--colour-surface-sunken);
+  color: var(--colour-text-muted);
+}
+
+.field__hint {
+  font-size: var(--size-caption);
+  color: var(--colour-text-muted);
+}
+
+.field--invalid .field__control {
+  border-color: var(--colour-fail);
+  border-width: 2px;
+}
+
+.field__error {
+  font-size: var(--size-caption);
+  color: var(--colour-fail);
+  font-weight: 600;
+}
+
+/* ---- Tables ---- */
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--size-small);
+}
+
+.data-table th,
+.data-table td {
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--colour-border);
+  vertical-align: top;
+}
+
+.data-table th {
+  background: var(--colour-surface-sunken);
+  font-weight: 650;
+  color: var(--colour-navy-strong);
+}
+
+/* ---- Hashes ---- */
+
+.hash {
+  font-family: var(--font-mono);
+  font-size: var(--size-caption);
+  /* Long digests must wrap rather than force the page to scroll sideways. */
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: var(--colour-text-muted);
+}
+
+/* ---- Status pills. Icon glyph plus text, never colour alone. ---- */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-small);
+  font-size: var(--size-caption);
+  font-weight: 650;
+  border: 1px solid transparent;
+}
+
+.status--pass {
+  background: var(--colour-pass-soft);
+  color: var(--colour-pass);
+  border-color: var(--colour-pass);
+}
+
+.status--warn {
+  background: var(--colour-warn-soft);
+  color: var(--colour-warn);
+  border-color: var(--colour-warn);
+}
+
+.status--fail {
+  background: var(--colour-fail-soft);
+  color: var(--colour-fail);
+  border-color: var(--colour-fail);
+}
+
+.status--neutral {
+  background: var(--colour-surface-sunken);
+  color: var(--colour-text-muted);
+  border-color: var(--colour-border-strong);
+}
+
+/* ---- Utilities ---- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stack > * + * { margin-top: var(--space-4); }
+
+.muted {
+  color: var(--colour-text-muted);
+  font-size: var(--size-small);
+}
