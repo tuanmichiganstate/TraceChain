@@ -427,7 +427,7 @@ describe("integrity verification", () => {
     expect(result.findings.join(" ")).toMatch(/altered since it was committed/);
   });
 
-  it("invalidates every block after the tampered one", () => {
+  it("flags a forged block digest and the successor link it breaks", () => {
     const state = cloneForTamperDemonstration(buildChain());
     const block = state.blocksById["BLK_000001"];
     if (block !== undefined) {
@@ -440,7 +440,7 @@ describe("integrity verification", () => {
     // Block 1's digest no longer matches, and block 2 no longer links to it.
     expect(result.invalidBlockIds).toContain("BLK_000001");
     expect(result.invalidBlockIds).toContain("BLK_000002");
-    expect(result.findings.join(" ")).toMatch(/breaks every link that follows/);
+    expect(result.findings.join(" ")).toMatch(/does not link to the previous block/);
   });
 
   it("detects a transaction claimed by two blocks", () => {
@@ -500,6 +500,46 @@ describe("integrity verification", () => {
     expect(
       (real.transactionsById["TX_000001"] as LedgerTransaction).commandPayload,
     ).toHaveProperty("quantity", originalQuantity);
+  });
+
+  /**
+   * WHY BLOCKS LINK BY THEIR STORED DIGEST RATHER THAN A RECOMPUTED ONE.
+   *
+   * Each block is checked twice and independently: its recorded digest must
+   * match a recomputation of its contents, and the next block's recorded link
+   * must match its digest. Those two together leave nothing uncovered, which is
+   * what makes the choice of linking value a question of how *many* blocks get
+   * flagged rather than whether tampering is caught at all.
+   *
+   * The two tests below are the cases that decide it. Linking against the
+   * recomputed digest would flag strictly fewer blocks in the second one and
+   * nothing extra in the first, so the stored digest stays.
+   */
+  it("catches a block whose contents and digest were both forged", () => {
+    // The forger repairs the block so it verifies against itself. All that is
+    // left to catch them is the successor's recorded link.
+    const real = buildChain();
+    const demonstration = demonstrateTamper(real, sha256Hex, {
+      transactionId: "TX_000001",
+      quantity: 999,
+    });
+
+    expect(demonstration.afterForgingBlock.invalidBlockIds).not.toContain("BLK_000001");
+    expect(demonstration.afterForgingBlock.invalidBlockIds).toContain("BLK_000002");
+    expect(demonstration.afterForgingBlock.isValid).toBe(false);
+  });
+
+  it("catches a forged block digest, and the link it breaks, in one pass", () => {
+    // Contents untouched, digest replaced. The block fails its own check, and
+    // its successor fails the link -- two findings from one edit. Linking
+    // against the recomputed digest would report only the first.
+    const state = cloneForTamperDemonstration(buildChain());
+    (state.blocksById["BLK_000001"] as { blockHash: string }).blockHash = "0".repeat(64);
+
+    const result = verifyIntegrity(state, sha256Hex);
+
+    expect(result.invalidBlockIds).toContain("BLK_000001");
+    expect(result.invalidBlockIds).toContain("BLK_000002");
   });
 
   /**

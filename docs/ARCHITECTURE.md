@@ -167,6 +167,29 @@ ledger*, is unchanged and is asserted by a test.
 
 ---
 
+### 8. Blocks link by their stored digest, not a recomputed one
+
+`verifyIntegrity` checks each block twice and independently: its recorded digest
+must match a recomputation of its contents, and the next block's recorded link
+must match its digest. Because the two together leave nothing uncovered, the
+linking value decides only *how many* blocks a single edit flags — never whether
+tampering is caught.
+
+Linking against the recomputed digest is the more obvious reading of "never
+trust stored data", and it was left open through Milestone 5 as a decision to
+take deliberately. Taken: **keep the stored digest.** It flags strictly more.
+A forged block digest with untouched contents currently produces two findings —
+the block fails its own check and its successor fails the link — where
+recomputed linking would report only the first, because recomputation would
+quietly "repair" the value the successor is compared against.
+
+It also keeps the stage 8 escalation legible, with each step failing a
+different layer: edit the quantity and the transaction fails its digest; forge
+that digest and the block fails its own; forge the block digest and the next
+block's link fails. Under recomputed linking the second and third steps
+collapse into one, and the demonstration stops being able to show that there is
+nowhere for the forgery to stop.
+
 ## Accessibility
 
 Section 26's requirements are asserted in `src/app/accessibility.test.tsx`

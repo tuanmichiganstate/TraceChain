@@ -2,9 +2,16 @@
  * Chain integrity verification (specification section 15.7).
  *
  * This is what makes the tamper demonstration in stage 8 mean something. A
- * learner alters a historical quantity in a cloned ledger; recomputing the
- * hashes shows the altered block and every block after it failing, because each
- * block commits to its predecessor's digest.
+ * learner alters a historical quantity in a cloned ledger and each layer in
+ * turn refuses to agree: the transaction stops matching its own digest, forging
+ * that digest stops the block matching its own, and forging the block's digest
+ * breaks the link its successor recorded.
+ *
+ * Note what does *not* happen, because the obvious description is wrong: a
+ * single edit does not fail "every block after it". Each block commits to its
+ * transactions' digests rather than their contents, so an edited payload is
+ * caught by that transaction alone while every block still links correctly.
+ * The cascade is what the forger has to repair, not what the verifier reports.
  *
  * What it demonstrates is tamper *evidence*, not tamper prevention. Nothing
  * here stops someone editing a record -- it only makes the edit impossible to
@@ -59,7 +66,8 @@ export function verifyIntegrity(state: DomainState, hash: HashFunction): Integri
       blockIsValid = false;
       findings.push(
         `Block ${blockId} does not link to the previous block's digest. ` +
-          "Editing an earlier record breaks every link that follows it.",
+          "The predecessor's digest is not the one this block recorded, so " +
+          "either it was edited or this link was.",
       );
     }
 
@@ -114,6 +122,13 @@ export function verifyIntegrity(state: DomainState, hash: HashFunction): Integri
       invalidBlockIds.push(blockId);
     }
 
+    // Deliberately the *stored* digest, not the recomputed one. Each block is
+    // already checked independently against a recomputation of its own
+    // contents, so the two checks together leave nothing uncovered and this
+    // choice only decides how many blocks a single edit flags. Linking against
+    // the recomputed value would report strictly fewer: a forged block digest
+    // would flag that block alone instead of that block and the link it breaks.
+    // Both cases are pinned by tests in ledger-engine.test.ts.
     expectedPreviousHash = block.blockHash;
     expectedBlockNumber += 1;
   }
