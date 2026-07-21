@@ -20,6 +20,7 @@ import type { LedgerTransaction } from "../types/models";
 import {
   chainFingerprint,
   cloneForTamperDemonstration,
+  demonstrateTamper,
   verifyIntegrity,
 } from "./integrity";
 import { SimulatedLedger, type LedgerConfiguration } from "./ledger-engine";
@@ -451,6 +452,54 @@ describe("integrity verification", () => {
     const result = verifyIntegrity(state, sha256Hex);
     expect(result.isValid).toBe(false);
     expect(result.findings.join(" ")).toMatch(/more than one block/);
+  });
+
+  /**
+   * Stage 8 needs this as one operation: the tests above tamper by hand, but a
+   * learner presses a button, and the interface must not be the thing that
+   * decides what "tampering" means.
+   */
+  it("packages a tamper demonstration, leaving the real ledger untouched", () => {
+    const real = buildChain();
+    const fingerprintBefore = chainFingerprint(real, sha256Hex);
+    const original = (real.transactionsById["TX_000001"] as LedgerTransaction)
+      .commandPayload as { quantity: number };
+    const originalQuantity = original.quantity;
+
+    const demonstration = demonstrateTamper(real, sha256Hex, {
+      transactionId: "TX_000001",
+      quantity: 999,
+    });
+
+    expect(demonstration.before.isValid).toBe(true);
+    expect(demonstration.originalQuantity).toBe(originalQuantity);
+    expect(demonstration.tamperedQuantity).toBe(999);
+
+    // Step one: the edited record fails its own digest, but the chain still
+    // links -- a block commits to transaction digests, not their contents.
+    expect(demonstration.afterEdit.isValid).toBe(false);
+    expect(demonstration.afterEdit.invalidTransactionIds).toContain("TX_000001");
+    expect(demonstration.afterEdit.invalidBlockIds).not.toContain("BLK_000002");
+
+    // Step two: forging that digest clears the record but breaks its block,
+    // because a block commits to the digests of the transactions in it.
+    expect(demonstration.afterForgingTransaction.isValid).toBe(false);
+    expect(demonstration.afterForgingTransaction.invalidTransactionIds).not.toContain("TX_000001");
+    expect(demonstration.afterForgingTransaction.invalidBlockIds).toContain("BLK_000001");
+    expect(demonstration.editedBlockId).toBe("BLK_000001");
+
+    // Step three: forging the block digest is what finally breaks the links,
+    // because the next block recorded the digest this one used to have.
+    expect(demonstration.afterForgingBlock.isValid).toBe(false);
+    expect(demonstration.afterForgingBlock.invalidBlockIds).toContain("BLK_000002");
+    expect(demonstration.cascadingBlockIds).toContain("BLK_000002");
+
+    // The learner carries on with an intact attempt.
+    expect(verifyIntegrity(real, sha256Hex).isValid).toBe(true);
+    expect(chainFingerprint(real, sha256Hex)).toBe(fingerprintBefore);
+    expect(
+      (real.transactionsById["TX_000001"] as LedgerTransaction).commandPayload,
+    ).toHaveProperty("quantity", originalQuantity);
   });
 
   /**

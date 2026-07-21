@@ -363,7 +363,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     knowledgeChecks: [tamperIntegrityCheck, dataGovernanceCheck],
     scoredActions: [],
     unlocksStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {

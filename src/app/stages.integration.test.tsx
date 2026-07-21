@@ -9,11 +9,12 @@ import { SimulationProvider } from "./providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
 
 /**
- * THE MILESTONE 4 EXIT CONDITION.
+ * THE MILESTONE 4 EXIT CONDITION, EXTENDED THROUGH STAGE 8.
  *
- * A learner completes stages 1 to 7 in the browser: answering checks, composing
- * transactions, watching them validate, sealing blocks, and moving on. The
- * domain was already proven headless; this proves the interface reaches it.
+ * A learner completes stages 1 to 8 in the browser: answering checks, composing
+ * transactions, watching them validate, sealing blocks, moving on, and finally
+ * trying to edit history and watching it fail. The domain was already proven
+ * headless; this proves the interface reaches it.
  */
 function AppUnderTest(): React.ReactElement {
   return (
@@ -58,7 +59,7 @@ async function advance(user: User): Promise<void> {
   await user.click(buttons[buttons.length - 1] as HTMLElement);
 }
 
-describe("stages 1 to 7 in the browser", () => {
+describe("stages 1 to 8 in the browser", () => {
   let api: MockScorm12Api;
   let uninstall: () => void;
 
@@ -70,7 +71,7 @@ describe("stages 1 to 7 in the browser", () => {
 
   afterEach(() => uninstall());
 
-  it("carries a learner from orientation to a packaged lot on a retail shelf", async () => {
+  it("carries a learner from orientation through the tamper demonstration", async () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);
 
@@ -133,7 +134,23 @@ describe("stages 1 to 7 in the browser", () => {
     const packaged = cards[cards.length - 1] as HTMLElement;
     expect(within(packaged).getAllByText("Siêu thị Việt Market")).toHaveLength(2);
     expect(within(packaged).getByText("820 gói")).toBeInTheDocument();
-  }, 60_000);
+
+    // ---- Stage 8: what the public sees, and what editing history costs ----
+    await advance(user);
+    await screen.findByRole("heading", { name: /Bước 8/ });
+    await user.click(screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }));
+
+    // The escalation is the lesson: each forgery repairs one layer and exposes
+    // the next, and none of the three is prevented.
+    expect(await screen.findByRole("heading", { name: /Bước 1 — Sửa khối lượng/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Bước 2 — Làm lại hàm băm của giao dịch/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Bước 3 — Làm lại hàm băm của khối/ })).toBeInTheDocument();
+
+    // And the learner's own attempt survives it.
+    expect(
+      screen.getByText(/Sổ cái thật của bạn vẫn nguyên vẹn/),
+    ).toBeInTheDocument();
+  }, 90_000);
 
   it("rejects a custody transfer that also moves ownership, and explains why", async () => {
     const user = userEvent.setup();
