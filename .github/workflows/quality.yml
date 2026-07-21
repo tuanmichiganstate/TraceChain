@@ -40,6 +40,12 @@ jobs:
       # Chromium, Firefox, WebKit and the iPhone SE profile. Browsers are a
       # large download, so this is a separate job rather than serialised behind
       # the gate above.
+      # The e2e suite runs against dist/ -- the artefact that actually ships --
+      # and `vite preview` serves exactly that directory. Without this the web
+      # server has nothing to serve and Playwright times out waiting for it.
+      # It passed locally only because dist/ was left over from earlier builds.
+      - run: npm run build
+
       - run: npx playwright install --with-deps
 
       - name: End-to-end
