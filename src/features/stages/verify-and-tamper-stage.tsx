@@ -104,13 +104,16 @@ export function VerifyAndTamperStage(): ReactNode {
               label={t("stage.verifyAndTamper.blocksBroken")}
               count={demonstration.afterForgingTransaction.invalidBlockIds.length}
             />
+            {/* Counted as broken links rather than broken blocks: repairing the
+                block digest makes that block verify again, and what fails is
+                the next block's link to the digest it recorded. */}
             <TamperStep
               headingKey="stage.verifyAndTamper.step3Heading"
               detail={t("stage.verifyAndTamper.step3Detail", {
-                count: String(demonstration.afterForgingBlock.invalidBlockIds.length),
+                block: demonstration.editedBlockId ?? "",
               })}
-              label={t("stage.verifyAndTamper.blocksBroken")}
-              count={demonstration.afterForgingBlock.invalidBlockIds.length}
+              label={t("stage.verifyAndTamper.linksBroken")}
+              count={demonstration.cascadingBlockIds.length}
             />
           </ol>
         )}
