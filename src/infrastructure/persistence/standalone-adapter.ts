@@ -46,6 +46,8 @@ export class StandalonePersistenceAdapter implements LearningPlatformAdapter {
     return {
       mode: PlatformMode.STANDALONE,
       isConnected: this.storage !== null,
+      // Nothing to protect: standalone has no LMS grade to overwrite.
+      isReadOnly: false,
       diagnostics: [...this.diagnostics],
     };
   }

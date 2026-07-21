@@ -31,6 +31,7 @@
   "status.saved": "Progress saved",
   "status.saveFailed": "Progress could not be saved",
   "status.standalone": "Standalone mode: progress is being saved in this browser and has not been sent to Moodle.",
+  "status.readOnly": "Review only: this attempt is finished. You can look through all of it, but nothing you do is saved and the grade you already earned will not change.",
 
   "workspace.currentRole": "Current role",
   "workspace.currentRoleValue": "{role} at {organization}",

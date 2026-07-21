@@ -101,6 +101,10 @@ export function FinalReport(): ReactNode {
         <p>
           <StatusPill tone="pass">{t("report.submitted")}</StatusPill>
         </p>
+      ) : state.isReadOnly ? (
+        // Nothing to send: the grade this attempt earned is already recorded,
+        // and offering the button would promise a write that cannot happen.
+        null
       ) : (
         <button
           type="button"

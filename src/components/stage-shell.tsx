@@ -131,6 +131,7 @@ function HintPanel({ hintId, textKey }: { hintId: string; textKey: string }): Re
             type="button"
             className="button button--secondary"
             onClick={() => revealHint(hintId)}
+            disabled={state.isReadOnly}
           >
             {t("hint.reveal")}
           </button>

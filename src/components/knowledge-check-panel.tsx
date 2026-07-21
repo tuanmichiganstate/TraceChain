@@ -49,7 +49,7 @@ export function KnowledgeCheckPanel({
 
   return (
     <section className="card knowledge-check">
-      <fieldset className="fieldset" disabled={hasAnswered}>
+      <fieldset className="fieldset" disabled={hasAnswered || state.isReadOnly}>
         <legend>
           <h3>{t(check.questionKey)}</h3>
         </legend>
@@ -70,7 +70,7 @@ export function KnowledgeCheckPanel({
           type="button"
           className="button button--primary"
           onClick={submit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || state.isReadOnly}
         >
           {t("check.submit")}
         </button>

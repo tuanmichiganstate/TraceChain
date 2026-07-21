@@ -50,6 +50,14 @@ export interface SessionState {
   readonly interactions: readonly LearnerInteraction[];
   readonly saveStatus: SaveStatus;
   readonly platformMode: PlatformMode;
+  /**
+   * The LMS opened this attempt for review or without credit.
+   *
+   * Everything stays visible and nothing is writable, so a learner revisiting a
+   * finished attempt cannot overwrite the grade they already earned -- and is
+   * told that is what is happening rather than working for an hour into a void.
+   */
+  readonly isReadOnly: boolean;
   readonly hasSavedAttempt: boolean;
   /** Set when stored progress could not be restored (section 21.11). */
   readonly recoveryMessageKey: string | null;
@@ -69,6 +77,7 @@ export function createInitialSessionState(): SessionState {
     interactions: [],
     saveStatus: "IDLE",
     platformMode: PlatformMode.STANDALONE,
+    isReadOnly: false,
     hasSavedAttempt: false,
     recoveryMessageKey: null,
     lastTransactionId: null,
@@ -76,7 +85,12 @@ export function createInitialSessionState(): SessionState {
 }
 
 export type SessionAction =
-  | { type: "INITIALIZED"; platformMode: PlatformMode; hasSavedAttempt: boolean }
+  | {
+      type: "INITIALIZED";
+      platformMode: PlatformMode;
+      isReadOnly: boolean;
+      hasSavedAttempt: boolean;
+    }
   | { type: "RECOVERY_FAILED"; messageKey: string }
   | { type: "START_NEW"; domain: DomainState }
   | { type: "RESUME"; snapshot: AttemptSnapshot; domain: DomainState }
@@ -101,8 +115,11 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case "INITIALIZED":
       return {
         ...state,
-        phase: "START",
+        // A read-only launch has nothing to start: it goes straight to the
+        // attempt so the learner can look at it.
+        phase: action.isReadOnly ? "RUNNING" : "START",
         platformMode: action.platformMode,
+        isReadOnly: action.isReadOnly,
         hasSavedAttempt: action.hasSavedAttempt,
       };
 
@@ -115,6 +132,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         ...createInitialSessionState(),
         phase: "RUNNING",
         platformMode: state.platformMode,
+        isReadOnly: state.isReadOnly,
         domain: action.domain,
       };
 

@@ -40,6 +40,15 @@ export enum PlatformMode {
 export interface PlatformInitializationResult {
   readonly mode: PlatformMode;
   readonly isConnected: boolean;
+  /**
+   * The LMS launched this attempt for review or without credit, so nothing may
+   * be written back.
+   *
+   * Carried here rather than left in `diagnostics`, which are developer-facing
+   * and never rendered: suppressing the writes protects the learner's grade,
+   * but only telling them stops an hour's work being discarded in silence.
+   */
+  readonly isReadOnly: boolean;
   /** Developer-facing only. Never rendered to a learner. */
   readonly diagnostics: readonly string[];
 }

@@ -92,7 +92,12 @@ export function TransactionAction({
       )}
 
       {transaction === undefined ? (
-        <button type="button" className="button button--primary" onClick={submit}>
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={submit}
+          disabled={state.isReadOnly}
+        >
           {t("transaction.submit")}
         </button>
       ) : null}
@@ -126,7 +131,12 @@ export function TransactionAction({
           ) : null}
 
           {isOrdered ? (
-            <button type="button" className="button button--primary" onClick={seal}>
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={seal}
+              disabled={state.isReadOnly}
+            >
               {t("stage.createBatch.sealBlock")}
             </button>
           ) : null}

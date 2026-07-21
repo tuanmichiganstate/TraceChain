@@ -77,14 +77,19 @@ export function TopBar(): ReactNode {
             </dd>
           </div>
 
-          <div className="top-bar__item">
-            <dt>{t("status.saved")}</dt>
-            <dd>
-              <StatusPill tone={state.saveStatus === "FAILED" ? "fail" : "pass"}>
-                {t(SAVE_STATUS_KEY[state.saveStatus])}
-              </StatusPill>
-            </dd>
-          </div>
+          {/* A read-only attempt saves nothing, and the adapter reports success
+              precisely because it wrote nothing. Showing "saved" here would be
+              the one claim a learner in review mode must not be given. */}
+          {state.isReadOnly ? null : (
+            <div className="top-bar__item">
+              <dt>{t("status.saved")}</dt>
+              <dd>
+                <StatusPill tone={state.saveStatus === "FAILED" ? "fail" : "pass"}>
+                  {t(SAVE_STATUS_KEY[state.saveStatus])}
+                </StatusPill>
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
 

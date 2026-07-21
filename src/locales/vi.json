@@ -31,6 +31,7 @@
   "status.saved": "Đã lưu tiến độ",
   "status.saveFailed": "Chưa lưu được tiến độ",
   "status.standalone": "Chế độ chạy độc lập: tiến độ đang được lưu trên trình duyệt này và chưa được gửi đến Moodle.",
+  "status.readOnly": "Chế độ chỉ xem lại: đây là bài làm đã kết thúc. Bạn có thể xem lại toàn bộ nội dung, nhưng mọi thao tác sẽ không được lưu và điểm đã có sẽ không thay đổi.",
 
   "workspace.currentRole": "Vai trò hiện tại",
   "workspace.currentRoleValue": "{role} của {organization}",

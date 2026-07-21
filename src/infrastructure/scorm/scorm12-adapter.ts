@@ -76,6 +76,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
       return {
         mode: PlatformMode.STANDALONE,
         isConnected: false,
+        isReadOnly: false,
         diagnostics: [...this.diagnostics],
       };
     }
@@ -89,6 +90,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
       return {
         mode: PlatformMode.STANDALONE,
         isConnected: false,
+        isReadOnly: false,
         diagnostics: [...this.diagnostics],
       };
     }
@@ -119,6 +121,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     return {
       mode: PlatformMode.SCORM_1_2,
       isConnected: true,
+      isReadOnly: isReadOnlyAttempt(this.context),
       diagnostics: [...this.diagnostics],
     };
   }

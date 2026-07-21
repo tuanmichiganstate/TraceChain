@@ -141,6 +141,21 @@ ledger*, is unchanged and is asserted by a test.
 - **Review-mode guard.** `cmi.core.lesson_mode` and `cmi.core.credit` are read
   at initialization; all writes are suppressed in review or no-credit mode.
   Without this, relaunching a completed activity overwrites a good grade.
+
+  Suppressing the writes is only half of it. `PlatformInitializationResult`
+  carries `isReadOnly` into session state, so the interface knows too: the
+  learner is told the attempt is read-only, the answer, hint, transaction and
+  submit controls are disabled, and the save indicator is hidden — it reports
+  success precisely because nothing was written, which is the one claim a
+  learner in review mode must not be given. A guard the learner cannot see
+  protects the grade and wastes their hour.
+
+- **SCORM interactions are reporting, never state.** Answering a knowledge
+  check writes `cmi.interactions.n` for the instructor's benefit. SCORM 1.2
+  makes interactions **write-only** — they cannot be read back — so the attempt
+  is always rebuilt from `cmi.suspend_data` alone. Responses are recorded as
+  identifiers rather than translated labels, so a report means the same thing
+  in either language.
 - **Mock SCORM API** (`test/scorm-mock/`) enforcing the real 4096-character
   `suspend_data` ceiling, the 255-character `lesson_location` limit, the
   `lesson_status` vocabulary, and the session-time format. A suspend-data

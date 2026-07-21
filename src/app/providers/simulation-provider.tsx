@@ -27,7 +27,7 @@ import { SimulatedLedger } from "../../domain/ledger/ledger-engine";
 import type { DomainState } from "../../domain/ledger/domain-state";
 import type { CommandContext, SupplyChainCommand } from "../../domain/commands/commands";
 import type { TransactionResult } from "../../domain/ledger/ledger-engine";
-import type { KnowledgeCheckDefinition } from "../../domain/types/scenario";
+import { KnowledgeCheckType, type KnowledgeCheckDefinition } from "../../domain/types/scenario";
 import { LearnerInteractionType } from "../../domain/types/scoring";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
@@ -40,6 +40,7 @@ import {
   CompletionStatus,
   PlatformMode,
   type LearningPlatformAdapter,
+  type PlatformInteraction,
 } from "../../infrastructure/scorm/learning-platform-adapter";
 import { applyScenarioSeed } from "../../domain/scenario/seed-replay";
 import {
@@ -86,6 +87,35 @@ interface SimulationContextValue {
   viewStage(stageId: ScenarioStageId): void;
   save(): Promise<void>;
   finish(): Promise<void>;
+}
+
+/**
+ * The SCORM 1.2 interaction type for a check.
+ *
+ * `matching` is the closest fit for the classification exercise: the learner
+ * pairs each item with a category, which is what matching means in the data
+ * model even though the interface is a set of labelled selects.
+ */
+function scormInteractionType(
+  checkType: KnowledgeCheckType,
+): PlatformInteraction["type"] {
+  return checkType === KnowledgeCheckType.CLASSIFICATION ? "matching" : "choice";
+}
+
+/**
+ * The learner's answer in SCORM's response vocabulary.
+ *
+ * Identifiers, never translated labels: a report read in either language has to
+ * mean the same thing, and CMIString255 has no room for prose.
+ */
+function describeResponse(check: KnowledgeCheckDefinition, answer: Answer): string {
+  const response =
+    check.checkType === KnowledgeCheckType.CLASSIFICATION
+      ? Object.entries(answer.categoryByItem)
+          .map(([item, category]) => `${item}.${category}`)
+          .join(",")
+      : answer.selectedOptionIds.join(",");
+  return response.slice(0, 255);
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -188,6 +218,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       let adapter: LearningPlatformAdapter = scormAdapter;
       let mode = PlatformMode.SCORM_1_2;
+      let isReadOnly = scormResult.isReadOnly;
       const collected = [...scormResult.diagnostics];
 
       if (!scormResult.isConnected) {
@@ -198,6 +229,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         const standaloneResult = await standalone.initialize();
         adapter = standalone;
         mode = PlatformMode.STANDALONE;
+        isReadOnly = standaloneResult.isReadOnly;
         collected.push(...standaloneResult.diagnostics);
       }
 
@@ -209,13 +241,13 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       const stored = await adapter.loadAttemptState();
       if (stored === null) {
-        dispatch({ type: "INITIALIZED", platformMode: mode, hasSavedAttempt: false });
+        dispatch({ type: "INITIALIZED", platformMode: mode, isReadOnly, hasSavedAttempt: false });
         return;
       }
 
       try {
         decodeAttemptState(stored, codecSchema);
-        dispatch({ type: "INITIALIZED", platformMode: mode, hasSavedAttempt: true });
+        dispatch({ type: "INITIALIZED", platformMode: mode, isReadOnly, hasSavedAttempt: true });
       } catch (error) {
         addDiagnostic(
           `Stored attempt could not be decoded: ${
@@ -234,6 +266,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   const save = useCallback(async (): Promise<void> => {
     const adapter = adapterRef.current;
     if (adapter === null) return;
+
+    // A read-only launch has nothing to save. Running the cycle anyway would
+    // report "saved" on every tick for writes the adapter is suppressing.
+    if (stateRef.current.isReadOnly) return;
 
     dispatch({ type: "SAVE_STATUS", status: "SAVING" });
     try {
@@ -351,6 +387,17 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             scenarioTimestamp: scenario.timeline["batchCreated"] as string,
           },
         });
+        // Section 21.7. Reported to the LMS for the instructor's benefit only:
+        // SCORM 1.2 interactions are write-only, so nothing here can ever be
+        // read back, and the attempt is rebuilt from suspend_data alone.
+        void adapterRef.current?.recordInteraction({
+          interactionId: check.knowledgeCheckId,
+          type: scormInteractionType(check.checkType),
+          learnerResponse: describeResponse(check, answer),
+          isCorrect,
+          scenarioTimestamp: scenario.timeline["batchCreated"] as string,
+        });
+
         void save();
         return isCorrect;
       },

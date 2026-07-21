@@ -37,7 +37,13 @@ export function App(): ReactNode {
       </a>
       <TopBar />
 
-      {state.platformMode === PlatformMode.STANDALONE ? (
+      {state.isReadOnly ? (
+        <div className="workspace__notice">
+          <div className="notice notice--standalone" role="note">
+            <p>{t("status.readOnly")}</p>
+          </div>
+        </div>
+      ) : state.platformMode === PlatformMode.STANDALONE ? (
         <div className="workspace__notice">
           <div className="notice notice--standalone" role="note">
             <p>{t("status.standalone")}</p>
