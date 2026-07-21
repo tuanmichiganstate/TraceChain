@@ -35,7 +35,8 @@ import type {
 import type { Actor, Location, Organization } from "./models";
 import type { SupplyChainCommand } from "../commands/commands";
 import type { LedgerConfiguration } from "../ledger/ledger-engine";
-import type { ScoreComponent, ScoringConfiguration } from "./scoring";
+import { ScoreComponent } from "./scoring";
+import type { ScoringConfiguration } from "./scoring";
 
 /** A pre-existing asset, present before the learner acts. */
 export interface SupplyChainAssetSeed {
@@ -139,18 +140,47 @@ export interface RequiredScenarioAction {
 }
 
 /**
+ * A procedural action that carries marks: composing and committing a
+ * transaction correctly, as opposed to answering a question about it.
+ *
+ * Scored separately from knowledge checks because the deduction ladder treats
+ * them differently. Section 19.4 floors a required procedural action at 60% once
+ * the learner eventually completes it -- you cannot finish the activity without
+ * doing it, so grinding a learner down to zero for taking three attempts at a
+ * form would punish exactly the exploration the simulation is for.
+ */
+export interface ScoredAction {
+  /** Must appear in `decisionIds`; the codec stores the outcome positionally. */
+  readonly decisionId: string;
+  readonly descriptionKey: string;
+  readonly transactionType: TransactionType;
+  readonly scoreComponent: ScoreComponent;
+  readonly points: number;
+}
+
+/**
  * Evaluated against world state and the learner's decisions, so stage
  * completion is data rather than a hand-written check per screen.
+ *
+ * EVERY CONDITION HERE IS MONOTONIC: once true it stays true. That is a hard
+ * requirement, not a coincidence.
+ *
+ * An earlier version included an `ASSET_LIFECYCLE_STATUS` condition, and it was
+ * a real defect. Stage 7 required the packaged lot to be AVAILABLE_FOR_SALE and
+ * stage 6 required the green batch to be CONSUMED_IN_TRANSFORMATION -- both
+ * true at the time, both overwritten when the stage 9 recall set those assets
+ * to RECALLED. Three completed stages silently un-completed themselves at the
+ * end of the activity, and the learner could never finish.
+ *
+ * So conditions read history and existence, never mutable status:
+ * transactions are never unmade, answers are never unanswered, and assets are
+ * never deleted. If you need to express "the batch reached this state", assert
+ * the transaction that put it there.
  */
 export type StageCompletionCondition =
   | { readonly conditionType: "TRANSACTION_COMMITTED"; readonly transactionType: TransactionType }
   | { readonly conditionType: "KNOWLEDGE_CHECK_ANSWERED"; readonly knowledgeCheckId: string }
   | { readonly conditionType: "ASSET_EXISTS"; readonly assetId: string }
-  | {
-      readonly conditionType: "ASSET_LIFECYCLE_STATUS";
-      readonly assetId: string;
-      readonly status: AssetLifecycleStatus;
-    }
   | { readonly conditionType: "DECISION_RECORDED"; readonly decisionId: string };
 
 export interface ScenarioStageDefinition {
@@ -169,6 +199,7 @@ export interface ScenarioStageDefinition {
   readonly completionConditions: readonly StageCompletionCondition[];
   readonly availableHints: readonly ScenarioHint[];
   readonly knowledgeChecks: readonly KnowledgeCheckDefinition[];
+  readonly scoredActions: readonly ScoredAction[];
   /**
    * Assets this stage brings into existence. Declaring them lets the validator
    * confirm that every asset a completion condition names is actually created
@@ -229,4 +260,39 @@ export function allKnowledgeChecks(
 
 export function allHints(scenario: ScenarioDefinition): readonly ScenarioHint[] {
   return scenario.stages.flatMap((stage) => stage.availableHints);
+}
+
+export function allScoredActions(scenario: ScenarioDefinition): readonly ScoredAction[] {
+  return scenario.stages.flatMap((stage) => stage.scoredActions);
+}
+
+/** Every scorable thing, whichever kind it is, in one shape. */
+export interface ScorableItem {
+  readonly decisionId: string;
+  readonly scoreComponent: ScoreComponent;
+  readonly points: number;
+  /** Procedural items get the minimum-credit floor; questions do not. */
+  readonly isProcedural: boolean;
+  readonly stageId: ScenarioStageId;
+}
+
+export function allScorableItems(scenario: ScenarioDefinition): readonly ScorableItem[] {
+  return scenario.stages.flatMap((stage) => [
+    ...stage.knowledgeChecks
+      .filter((check) => check.isScored)
+      .map((check) => ({
+        decisionId: check.knowledgeCheckId,
+        scoreComponent: check.scoreComponent,
+        points: check.points,
+        isProcedural: false,
+        stageId: stage.stageId,
+      })),
+    ...stage.scoredActions.map((action) => ({
+      decisionId: action.decisionId,
+      scoreComponent: action.scoreComponent,
+      points: action.points,
+      isProcedural: true,
+      stageId: stage.stageId,
+    })),
+  ]);
 }

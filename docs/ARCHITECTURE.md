@@ -49,6 +49,14 @@ actually submitted the transaction. With one actor it was invisible; with seven
 it made authorization meaningless. Splitting the types makes the mistake
 unrepresentable.
 
+**Stage completion conditions are monotonic: once true, true forever.** They
+read history and existence -- transactions committed, questions answered, assets
+created -- never mutable status. An earlier `ASSET_LIFECYCLE_STATUS` condition
+broke this and the failure was severe: stages 5, 6 and 7 required assets to be
+in states that the stage 9 recall then overwrote with RECALLED, so three
+completed stages silently un-completed themselves and the learner could never
+finish. The condition shape no longer exists.
+
 **Seeded assets and seeded transactions are different things.** Seed assets are
 genesis state -- the world the learner walks into -- and carry no transaction,
 so the learner's own first transaction is genuinely in the first block. Seed

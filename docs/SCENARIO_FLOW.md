@@ -120,17 +120,35 @@ followed the graph.
 ## Stage completion
 
 Stages complete when their `completionConditions` are satisfied — data, not
-code. Condition shapes: `TRANSACTION_COMMITTED`, `KNOWLEDGE_CHECK_ANSWERED`,
-`ASSET_EXISTS`, `ASSET_LIFECYCLE_STATUS`, `DECISION_RECORDED`.
+code. Four shapes: `TRANSACTION_COMMITTED`, `KNOWLEDGE_CHECK_ANSWERED`,
+`ASSET_EXISTS`, `DECISION_RECORDED`.
 
-The scenario validator confirms that every asset a condition names is either
-seeded or declared by some stage's `producesAssetIds`. Without that check, a
-typo produces a stage that can never report itself complete, and the cause is
-three layers away.
+**All four are monotonic — once true, true forever.** That is a requirement,
+not a coincidence. A fifth shape, `ASSET_LIFECYCLE_STATUS`, was removed after a
+headless test caught it un-completing three finished stages: stages 5, 6 and 7
+asserted asset states that the stage 9 recall then overwrote with `RECALLED`,
+leaving the learner unable to finish an activity they had already done. If you
+need "the batch reached this state", assert the transaction that put it there.
+
+The validator confirms every asset a condition names is either seeded or
+declared by some stage's `producesAssetIds`. Without that, a typo produces a
+stage that can never report itself complete, and the cause is three layers away.
+
+## Knowledge checks
+
+One per required concept (§20.1), each placed in the stage where the learner has
+just *done* the thing it asks about, so it tests understanding of an experience
+rather than recall of an instruction panel. Each carries a scenario connection
+tying the answer back to what just happened.
+
+The stage 4 check is unusual: the learner's answer *drives the transaction*.
+Choosing "both ownership and custody" is not a wrong tick on a quiz — it
+produces a transaction the rule engine rejects, with a teaching message. The
+mark and the mechanic agree.
 
 ## Implementation status
 
-Stages 1 and 2 are playable. Stages 3–9 have their metadata, roles, completion
-conditions and save-format slots declared, but no interface yet — the router
-shows a placeholder and progress still saves. Their content arrives with
-Milestone 3, alongside the domain rules that give it meaning.
+Stages 1 and 2 are playable in the browser. Stages 3–9 have complete content —
+knowledge checks, hints, completion conditions, point allocation — and run
+headless in tests; their interfaces arrive with Milestone 4. The router shows a
+placeholder and progress still saves.

@@ -18,6 +18,7 @@ import { ScoreComponent } from "../types/scoring";
 import {
   allHints,
   allKnowledgeChecks,
+  allScorableItems,
   KnowledgeCheckType,
   type ScenarioDefinition,
 } from "../types/scenario";
@@ -239,14 +240,15 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     if (command.assetId !== undefined) knownAssetIds.add(command.assetId);
     if (command.outputAssetId !== undefined) knownAssetIds.add(command.outputAssetId);
   }
-  // Assets a learner creates during play are legitimate condition targets too,
-  // provided some stage declares that it produces them.
+  /*
+   * Assets a learner creates during play are legitimate condition targets, but
+   * only where some stage declares that it produces them. A condition's own
+   * target is deliberately NOT treated as evidence the asset exists -- that
+   * would make the check vacuous, which is exactly what it did before.
+   */
   for (const stage of scenario.stages) {
     for (const assetId of stage.producesAssetIds ?? []) {
       knownAssetIds.add(assetId);
-    }
-    for (const condition of stage.completionConditions) {
-      if (condition.conditionType === "ASSET_EXISTS") knownAssetIds.add(condition.assetId);
     }
   }
 
@@ -270,7 +272,7 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
 
     for (const condition of stage.completionConditions) {
       if (
-        condition.conditionType === "ASSET_LIFECYCLE_STATUS" &&
+        condition.conditionType === "ASSET_EXISTS" &&
         !knownAssetIds.has(condition.assetId)
       ) {
         error(path, `Completion condition references unknown asset "${condition.assetId}"`);
@@ -432,6 +434,26 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     "scoringConfiguration",
     "Passing score must be within 1..maxScore",
   );
+
+  /*
+   * Every component's declared budget must be exactly allocated across the
+   * scorable items. Without this, a stage could quietly be worth more or less
+   * than the scoring configuration says, and the total would still reach 100 --
+   * so nothing else would notice.
+   */
+  const allocated = new Map<ScoreComponent, number>();
+  for (const item of allScorableItems(scenario)) {
+    allocated.set(item.scoreComponent, (allocated.get(item.scoreComponent) ?? 0) + item.points);
+  }
+  for (const component of Object.values(ScoreComponent)) {
+    const budget = scoring.componentPoints[component] ?? 0;
+    const assigned = allocated.get(component) ?? 0;
+    check(
+      assigned === budget,
+      "scoringConfiguration",
+      `${component} allocates ${assigned} points across its items but its budget is ${budget}`,
+    );
+  }
 
   const ladder = [
     scoring.firstAttemptCredit,

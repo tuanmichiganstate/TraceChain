@@ -2,6 +2,55 @@
 
 ## [Unreleased]
 
+### Milestone 3 — Scenario engine
+
+The activity is now complete as a *thing a learner does*, independently of any
+interface. `full-attempt.test.ts` plays all nine stages, answers every knowledge
+check, reaches 100 points, and completes.
+
+**Added**
+
+- Score engine: the deduction ladder, the procedural floor, the repeated-attempt
+  cap, and recall precision scored strictly. The score is a pure function of
+  decisions and hints, never a running total, so it is recalculated identically
+  on resume.
+- Stage completion evaluator. Stages advance because their declared conditions
+  hold against real state, not because a component called `completeStage`.
+- Learner interaction record, and its compression into the persisted decision
+  form. The chain is interactions -> decisions -> score.
+- Knowledge checks for all required concepts in section 20.1, each placed in the
+  stage where the learner has just done the thing it asks about, and each
+  carrying a connection back to what just happened.
+- The section 25 data-governance classification, trimmed from eleven items to
+  six while keeping all four categories.
+- `ScoredAction` on stages, so procedural marks are declared as data alongside
+  the questions.
+- `docs/SCORING_MODEL.md`.
+
+**Fixed**
+
+- **Three completed stages un-completed themselves at the end of the activity.**
+  Stages 5, 6 and 7 used `ASSET_LIFECYCLE_STATUS` completion conditions, which
+  read *mutable* state; the stage 9 recall then set those assets to RECALLED and
+  the conditions stopped holding. A learner would finish the recall and find
+  three stages had reverted, with no way to complete. Completion conditions are
+  now required to be monotonic, and the offending condition shape was removed
+  from the union entirely rather than worked around.
+- The scenario validator's asset check was vacuous: it added each condition's
+  own target to the set of known assets before checking membership, so it could
+  never fail. Targets must now be justified by a seed or a `producesAssetIds`
+  declaration.
+- `npm run validate:scenario` now checks that each score component's items sum
+  to its declared budget. Without it a stage could be worth more or less than
+  the configuration said while the total still reached 100.
+
+**Noted**
+
+- The repeated-attempt cap never binds under the shipped configuration: the 0.6
+  credit floor already limits retry loss to exactly 40, which is exactly
+  `maxInvalidAttemptPenalty`. It is kept as a guard against a harsher ladder,
+  and a test covers both the fact that it does not fire and that it would.
+
 ### Milestone 2 — Domain and ledger engine
 
 The whole scenario now runs headless. `scenario-walkthrough.test.ts` creates,

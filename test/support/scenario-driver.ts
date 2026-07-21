@@ -308,7 +308,13 @@ export async function runUpTo(
       await ledger.submitCommand(commands.receiveBatch(), contextFor(ActorId.PROCESSING_MANAGER));
       // Booking goods in and buying them are separate events, proposed by
       // different organizations. Custody moved on receipt; title moves here.
-      return ledger.submitCommand(commands.purchaseOnReceipt(), contextFor(ActorId.PRODUCER_MANAGER));
+      await ledger.submitCommand(commands.purchaseOnReceipt(), contextFor(ActorId.PRODUCER_MANAGER));
+      // The dispatch manifest said 1000 kg; the scales say 100. The committed
+      // record cannot be edited, so a correction is added alongside it.
+      return ledger.submitCommand(
+        commands.recordCorrection({ correctionOfTransactionId: "TX_000001" }),
+        contextFor(ActorId.PROCESSING_MANAGER),
+      );
     }],
     ["roasted", () => ledger.submitCommand(commands.transformBatch(), contextFor(ActorId.PROCESSING_MANAGER))],
     ["packaged", () => ledger.submitCommand(commands.packageBatch(), contextFor(ActorId.PROCESSING_MANAGER))],

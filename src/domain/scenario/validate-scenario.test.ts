@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { STAGE_COMPONENTS } from "../../features/stage-registry";
-import {
-  AssetLifecycleStatus,
-  SCENARIO_STAGE_ORDER,
-  ScenarioStageId,
-  TransactionType,
-} from "../types/enums";
+import { SCENARIO_STAGE_ORDER, ScenarioStageId, TransactionType } from "../types/enums";
 import { ScoreComponent } from "../types/scoring";
 import { KnowledgeCheckType, type ScenarioDefinition } from "../types/scenario";
 import { assertValidScenario, validateScenario } from "./validate-scenario";
@@ -139,12 +134,9 @@ describe("scenario validation catches authoring mistakes", () => {
         stage.stageId === ScenarioStageId.TRANSFORM_BATCH
           ? {
               ...stage,
+              producesAssetIds: [],
               completionConditions: [
-                {
-                  conditionType: "ASSET_LIFECYCLE_STATUS" as const,
-                  assetId: "BAT_TYPO_001",
-                  status: AssetLifecycleStatus.PROCESSED,
-                },
+                { conditionType: "ASSET_EXISTS" as const, assetId: "BAT_TYPO_001" },
               ],
             }
           : stage,
@@ -153,28 +145,27 @@ describe("scenario validation catches authoring mistakes", () => {
     expect(errorMessages(broken)).toMatch(/unknown asset "BAT_TYPO_001"/);
   });
 
-  it("accepts a condition naming an asset a stage declares it produces", () => {
-    // The same condition shape is fine once some stage claims to create it.
-    const fixed = withScenario((draft) => ({
-      ...draft,
-      stages: draft.stages.map((stage) =>
-        stage.stageId === ScenarioStageId.TRANSFORM_BATCH
-          ? {
-              ...stage,
-              producesAssetIds: [...(stage.producesAssetIds ?? []), "BAT_EXTRA_001"],
-              completionConditions: [
-                ...stage.completionConditions,
-                {
-                  conditionType: "ASSET_LIFECYCLE_STATUS" as const,
-                  assetId: "BAT_EXTRA_001",
-                  status: AssetLifecycleStatus.PROCESSED,
-                },
-              ],
-            }
-          : stage,
+  /**
+   * Every completion condition must be monotonic: once true, true forever.
+   * An earlier `ASSET_LIFECYCLE_STATUS` condition was not, and the stage 9
+   * recall retroactively un-completed three finished stages by flipping their
+   * assets to RECALLED. The condition union no longer offers that shape.
+   */
+  it("offers no condition that reads mutable asset state", () => {
+    const conditionTypes = new Set(
+      coffeeScenario.stages.flatMap((stage) =>
+        stage.completionConditions.map((condition) => condition.conditionType),
       ),
-    }));
-    expect(errorMessages(fixed)).not.toMatch(/BAT_EXTRA_001/);
+    );
+    expect(conditionTypes).not.toContain("ASSET_LIFECYCLE_STATUS");
+    for (const conditionType of conditionTypes) {
+      expect([
+        "TRANSACTION_COMMITTED",
+        "KNOWLEDGE_CHECK_ANSWERED",
+        "ASSET_EXISTS",
+        "DECISION_RECORDED",
+      ]).toContain(conditionType);
+    }
   });
 
   it("rejects an actor belonging to an undefined organization", () => {

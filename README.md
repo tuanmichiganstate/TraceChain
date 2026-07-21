@@ -19,14 +19,15 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Milestones 0, 1 and 2 complete: the SCORM vertical slice, the scenario
-foundation, and the domain and ledger engine.
+Milestones 0 through 3 complete: the SCORM vertical slice, the scenario
+foundation, the domain and ledger engine, and the scenario engine.
 
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types, all 25 validation rules |
-| Stages playable | 1–2 of 9 (all nine declared as data) |
-| Tests | 266 passing |
+| Scenario | complete — 9 stages, 10 knowledge checks, scoring, completion |
+| Stages playable | 1–2 of 9 in the browser; all nine run headless |
+| Tests | 308 passing |
 | SCORM package | builds and verifies (18/18 checks) |
 | Scenario | validated at build time and startup (192 checks) |
 | Moodle staging | **not yet tested — this is the next step** |
@@ -40,10 +41,12 @@ knowledge checks, hints, seeds and scoring all live in a `ScenarioDefinition`;
 routing reads from it rather than from a switch statement. A second scenario is
 a new data file and one changed prop — see `docs/CONTENT_AUTHORING.md`.
 
-Milestone 2 completed the domain. The whole scenario — create, certify, ship,
-monitor, receive, correct, transform, package, distribute, recall — runs
-headless with no interface at all, and `scenario-walkthrough.test.ts` is that
-script.
+Milestone 2 completed the domain. Milestone 3 completed the activity on top of
+it: a learner can now play the entire scenario end to end, answer every
+knowledge check, reach 100 points and complete — all headless, with no interface
+involved. `full-attempt.test.ts` is that script.
+
+What remains is the interface for stages 3–9.
 
 See `docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
 
@@ -86,7 +89,8 @@ src/
 │   ├── ledger/        reducer, engine, integrity verification
 │   ├── provenance/    forward and backward tracing, recall scope
 │   ├── rules/         one file per concern + registry
-│   ├── scenario/      validation and seed replay
+│   ├── scenario/      validation, seed replay, completion, interactions
+│   ├── scoring/       score engine
 │   ├── units/         gram normalization
 │   └── types/         enums, models, rule ids, scenario schema, scoring
 ├── infrastructure/
@@ -126,7 +130,8 @@ scripts/               locale + scenario validators, SCORM build + verify
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
-- `docs/SCENARIO_FLOW.md` — the nine stages and the two non-obvious design calls
+- `docs/SCENARIO_FLOW.md` — the nine stages and the non-obvious design calls
+- `docs/SCORING_MODEL.md` — allocation, the deduction ladder, recall precision
 - `docs/CONTENT_AUTHORING.md` — changing the activity, or writing a new one
 - `docs/LOCALIZATION_GUIDE.md` — Vietnamese conventions and the audit rules
 - `docs/FUTURE_LEDGER_ADAPTERS.md` — what Tier 2 and Tier 3 would take
