@@ -25,6 +25,25 @@ An earlier draft of this pack claimed completeness while containing 204/509
 strings. That is why the count is recorded here and why it must be re-verified
 whenever the pack is regenerated.
 
+## Known limitation of the current check
+
+`npm run verify:content-review` proves that every locale string appears in the
+committed pack and that this manifest's digest and count are current. It does
+**not** regenerate the pack, so it cannot detect a stale HTML export whose
+manifest was refreshed without re-rendering.
+
+Closing that needs the generator committed as `scripts/generate-content-review.mjs`
+and the verifier extended to:
+
+```bash
+npm run generate:content-review
+git diff --exit-code -- docs/content-review/
+```
+
+The generator currently exists only as the ad-hoc scripts used to produce this
+pack. Until it is committed, treat regeneration as a manual step and re-run
+`verify:content-review` afterwards.
+
 ## Adjudicated comments
 
 None yet. Record decisions here against the pack's reference codes

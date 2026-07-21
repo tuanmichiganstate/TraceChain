@@ -24,7 +24,14 @@ for _ in $(seq 1 60); do
   sleep 2
 done
 
-"${compose[@]}" cp "$here/acceptance.php" moodle:/tmp/acceptance.php
+# Reproducible failure injection, so the cleanup trap is a regression test
+# rather than a one-off manual experiment. Set to any non-empty value.
+if [ -n "${TRACECHAIN_ACCEPTANCE_FORCE_FAILURE:-}" ]; then
+  echo "--- forcing acceptance failure (TRACECHAIN_ACCEPTANCE_FORCE_FAILURE set) ---"
+  "${compose[@]}" cp "$here/acceptance-force-failure.php" moodle:/tmp/acceptance.php
+else
+  "${compose[@]}" cp "$here/acceptance.php" moodle:/tmp/acceptance.php
+fi
 "${compose[@]}" cp "$here/acceptance-cleanup.php" moodle:/tmp/acceptance-cleanup.php
 "${compose[@]}" exec -T --user root moodle chmod 644 /tmp/acceptance.php /tmp/acceptance-cleanup.php
 
