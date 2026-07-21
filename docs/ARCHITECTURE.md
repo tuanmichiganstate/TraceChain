@@ -204,6 +204,41 @@ Colour never carries meaning alone: every `StatusPill` tone pairs its colour
 with a distinct glyph and a text label, so status survives greyscale, colour
 blindness and a screen reader.
 
+## End-to-end testing
+
+`npm run test:e2e` runs the Playwright suite in **Chromium, Firefox, WebKit and
+an iPhone SE profile** — 14 scenarios each. They run against `dist/`, the
+artefact that actually ships, not the dev server.
+
+The unit and component suites already drive all nine stages in jsdom, so these
+deliberately do not re-assert domain behaviour. They cover what only a real
+browser can answer: layout, focus, real event ordering, a genuine page reload,
+and whether four engines agree.
+
+Everything is located by accessible role and visible Vietnamese text, never by
+CSS class or test id. If a locator stops resolving, either an accessible name
+changed — which a screen-reader user would also notice — or the interface moved.
+A test id would hide both.
+
+`e2e/scorm-harness.ts` installs a SCORM 1.2 API via `addInitScript`, which has
+to run before the bundle loads: the adapter looks for `window.API` in its first
+effect, so anything injected later arrives after the application has already
+fallen back to standalone. The harness enforces the same two constraints real
+Moodle does — `suspend_data` refused past 4096 characters with error 405, and
+every call refused after `LMSFinish` — and logs writes, so a test can assert
+review mode wrote *nothing at all* rather than merely wrote nothing harmful.
+
+**Two scenarios are skipped on WebKit, and it is not a defect here.** Safari
+ships with "Press Tab to highlight each item on a webpage" turned off, so Tab
+moves focus nowhere: a probe against this build found focus still on `BODY`
+after six presses, while Chromium reached the start button on the first. Users
+who rely on the keyboard turn full keyboard access on. Keyboard *operability* is
+covered on every engine; only Tab *traversal* is platform-dependent.
+
+`test:e2e` is deliberately not part of `npm run quality`: it needs browser
+binaries that a fresh clone does not have. Run `npx playwright install` once,
+then it takes about 25 seconds for all four engines.
+
 ## Dependencies
 
 Zero runtime dependencies beyond `react` and `react-dom`. Each omission is

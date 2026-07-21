@@ -43,7 +43,7 @@ export default tseslint.config(
 
   {
     /* Tests deliberately reach into internals to simulate tampering. */
-    files: ["**/*.test.{ts,tsx}", "test/**/*.{ts,tsx}"],
+    files: ["**/*.test.{ts,tsx}", "test/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },
