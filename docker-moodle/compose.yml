@@ -1,0 +1,66 @@
+# A clean local Moodle for demoing TraceChain and verifying the SCORM
+# integration, independent of the MAMP install.
+#
+# The MAMP Moodle at localhost:8888 has a broken SCORM player: its own
+# theme/yui_combo.php returns HTTP 500 with correct content, which stops
+# Moodle's player JS initialising. A bare 12-line control package fails there
+# too, so it is environmental. This stack sidesteps it entirely.
+#
+#   up:    docker compose up -d
+#   down:  docker compose down          (keeps data)
+#   wipe:  docker compose down -v       (deletes data)
+#
+# The credentials below are throwaway values for a container that listens on
+# localhost only. They are not secrets and must not be reused anywhere real --
+# in particular not on the VLU server, which needs its own.
+
+services:
+  mariadb:
+    image: bitnamilegacy/mariadb:latest
+    environment:
+      MARIADB_ROOT_USER: root
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: bitnami_moodle
+      MARIADB_USER: bn_moodle
+      MARIADB_PASSWORD: moodlepass
+      MARIADB_CHARACTER_SET: utf8mb4
+      MARIADB_COLLATE: utf8mb4_unicode_ci
+    volumes:
+      - mariadb_data:/bitnami/mariadb
+    healthcheck:
+      # Bitnami images do not ship the official image's healthcheck.sh, so
+      # ping the server directly instead.
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -prootpass --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  moodle:
+    image: bitnamilegacy/moodle:latest
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      # 8080 on the host; MAMP keeps 8888, host MySQL keeps 3306.
+      - "8080:8080"
+    environment:
+      MOODLE_DATABASE_HOST: mariadb
+      MOODLE_DATABASE_PORT_NUMBER: "3306"
+      MOODLE_DATABASE_NAME: bitnami_moodle
+      MOODLE_DATABASE_USER: bn_moodle
+      MOODLE_DATABASE_PASSWORD: moodlepass
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: TraceChainDemo1!
+      MOODLE_EMAIL: admin@example.com
+      MOODLE_SITE_NAME: TraceChain demo
+      # Bitnami rewrites wwwroot from this on first boot.
+      MOODLE_HOST: localhost:8080
+      ALLOW_EMPTY_PASSWORD: "no"
+    volumes:
+      - moodle_data:/bitnami/moodle
+      - moodledata_data:/bitnami/moodledata
+
+volumes:
+  mariadb_data:
+  moodle_data:
+  moodledata_data:
