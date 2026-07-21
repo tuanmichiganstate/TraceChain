@@ -44,11 +44,13 @@ there is currently no authoritative gate — the honest control hierarchy is:
 |---|---|
 | Pre-commit hook | present, local, opt-in via `npm run setup:hooks` |
 | Pre-push hook | not implemented |
-| CI required check | **not implemented — the real gap** |
+| CI required check | workflow committed, **inert until the repo has a remote** |
 
-Until CI exists, a green tip depends on discipline plus this hook, which is
-weaker than it sounds. Adding CI that runs `npm run quality` and
-`npx playwright test` on every push is the durable fix.
+`.github/workflows/quality.yml` runs `npm run quality` and `npx playwright test`
+on every push and pull request. It is the only control here that cannot be
+skipped by forgetting to run something — but this repository has **no git
+remote**, so nothing executes it yet. Adding a remote, pushing, and marking both
+jobs as required status checks is what turns it from a file into a gate.
 
 ## Artefacts
 
