@@ -298,6 +298,22 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
         error(path, `Required action references unknown knowledge check "${action.knowledgeCheckId}"`);
       }
 
+      // The panel reports whether each listed step is done, which it can only
+      // do by asking either "has this transaction been submitted" or "has this
+      // check been answered". An action naming neither can never be shown as
+      // done; an action naming both would have two answers.
+      checkedCount += 1;
+      const discriminators =
+        (action.transactionType !== undefined ? 1 : 0) +
+        (action.knowledgeCheckId !== undefined ? 1 : 0);
+      if (discriminators !== 1) {
+        error(
+          path,
+          `Required action "${action.actionId}" must name exactly one of ` +
+            `transactionType or knowledgeCheckId (names ${discriminators})`,
+        );
+      }
+
       // The outstanding-work panel prints one line per required action, so a
       // description that repeats the stage instruction -- or another action --
       // gives the learner a count of what is left with no way to tell the

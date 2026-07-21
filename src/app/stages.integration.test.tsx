@@ -202,6 +202,31 @@ describe("the reference panels", () => {
     expect(await screen.findByText(/Quyền lưu giữ \(Custody\)/)).toBeInTheDocument();
   });
 
+  it("never claims more outstanding work than it lists", async () => {
+    // The panel listed one step for stage 2 while announcing "2 items
+    // remaining": the list came from the stage's required actions and the count
+    // from its completion conditions, and the two are not the same set. A
+    // learner cannot act on a count whose items are invisible.
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
+    await answer(user, /Không\. Blockchain giúp xác định/);
+    await advance(user);
+    await screen.findByRole("heading", { name: /Bước 2/ });
+
+    const panel = (
+      await screen.findByRole("heading", { name: "Việc cần hoàn thành ở bước này" })
+    ).closest("section") as HTMLElement;
+    const items = within(panel).getAllByRole("listitem");
+
+    const summary = panel.querySelector(".status") as HTMLElement;
+    const claimed = (summary.textContent ?? "").match(/\d+/g)?.map(Number) ?? [];
+    expect(
+      claimed.filter((n) => n > items.length),
+      `panel lists ${items.length} step(s) but its summary says "${summary.textContent}"`,
+    ).toEqual([]);
+  }, 30_000);
+
   it("shows seeded background lots before the learner has done anything", async () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);

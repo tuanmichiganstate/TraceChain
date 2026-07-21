@@ -11,6 +11,7 @@
 import { TransactionStatus } from "../types/enums";
 import type { DomainState } from "../ledger/domain-state";
 import type {
+  RequiredScenarioAction,
   ScenarioDefinition,
   ScenarioStageDefinition,
   StageCompletionCondition,
@@ -117,6 +118,40 @@ export function evaluateStageCompletion(
     outcomes,
     unsatisfiedCount,
   };
+}
+
+export interface RequiredActionOutcome {
+  readonly action: RequiredScenarioAction;
+  readonly isSatisfied: boolean;
+}
+
+/**
+ * Whether each of a stage's listed steps has been done.
+ *
+ * The outstanding-work panel lists required actions, but completion is governed
+ * by the stage's conditions, and the two are not the same set: stage 2 lists one
+ * action against two conditions, so summarising the conditions produced "2 items
+ * remaining" above a single line. A learner cannot act on a count whose items
+ * are invisible, so the panel reports the state of each step it actually shows
+ * and leaves overall completion to `evaluateStageCompletion`.
+ *
+ * Every required action names either the transaction that discharges it or the
+ * knowledge check that does, and the scenario validator holds it to exactly one
+ * of the two -- so this is total, never a guess.
+ */
+export function evaluateRequiredActions(
+  stage: ScenarioStageDefinition,
+  context: CompletionContext,
+): readonly RequiredActionOutcome[] {
+  return stage.requiredActions.map((action) => ({
+    action,
+    isSatisfied:
+      action.transactionType !== undefined
+        ? hasCommittedTransactionOfType(context.state, action.transactionType)
+        : action.knowledgeCheckId !== undefined
+          ? (context.decisions[action.knowledgeCheckId]?.attemptCount ?? 0) > 0
+          : false,
+  }));
 }
 
 /**

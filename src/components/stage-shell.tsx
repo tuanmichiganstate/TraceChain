@@ -3,7 +3,10 @@ import type { ScenarioStageId } from "../domain/types/enums";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
 import { useSimulation } from "../app/providers/simulation-provider";
-import { evaluateStageCompletion } from "../domain/scenario/stage-completion";
+import {
+  evaluateRequiredActions,
+  evaluateStageCompletion,
+} from "../domain/scenario/stage-completion";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -30,10 +33,9 @@ export function StageShell({
 
   if (definition === undefined) return null;
 
-  const completion = evaluateStageCompletion(definition, {
-    state: state.domain,
-    decisions: state.decisions,
-  });
+  const completionContext = { state: state.domain, decisions: state.decisions };
+  const completion = evaluateStageCompletion(definition, completionContext);
+  const actionOutcomes = evaluateRequiredActions(definition, completionContext);
 
   return (
     <div className="stage stack">
@@ -46,15 +48,18 @@ export function StageShell({
         <section className="card required-actions">
           <h3>{t("stage.requiredActions")}</h3>
           <ul className="required-actions__list">
-            {definition.requiredActions.map((action) => (
-              <li key={action.actionId}>{t(action.descriptionKey)}</li>
+            {actionOutcomes.map(({ action, isSatisfied }) => (
+              <li key={action.actionId}>
+                <StatusPill tone={isSatisfied ? "pass" : "neutral"}>
+                  {isSatisfied ? t("stage.actionDone") : t("stage.actionTodo")}
+                </StatusPill>{" "}
+                {t(action.descriptionKey)}
+              </li>
             ))}
           </ul>
           <p>
             <StatusPill tone={completion.isComplete ? "pass" : "neutral"}>
-              {completion.isComplete
-                ? t("stage.complete")
-                : t("stage.remaining", { count: completion.unsatisfiedCount })}
+              {completion.isComplete ? t("stage.complete") : t("stage.incomplete")}
             </StatusPill>
           </p>
         </section>
