@@ -31,6 +31,33 @@ describe("the coffee scenario", () => {
     expect(validateScenario(coffeeScenario).checkedCount).toBeGreaterThan(100);
   });
 
+  it("names each outstanding step separately from the stage instruction", () => {
+    // The "what still needs doing" panel renders one line per required action.
+    // Pointing those lines at the stage's own instruction makes the panel
+    // repeat a paragraph the learner has already read -- and when a stage has
+    // two required actions it prints that paragraph twice, so "2 items
+    // remaining" sits under two identical bullets with nothing to distinguish
+    // them. Every action must carry its own description.
+    const offenders = coffeeScenario.stages.flatMap((stage) =>
+      stage.requiredActions
+        .filter((action) => action.descriptionKey === stage.instructionKey)
+        .map((action) => `${stage.stageId}/${action.actionId}`),
+    );
+    expect(offenders, offenders.join(", ")).toEqual([]);
+  });
+
+  it("gives the outstanding steps of a stage distinct descriptions", () => {
+    // Stage 7 shipped two required actions pointing at one key, so the panel
+    // said "2 items remaining" above the same sentence printed twice.
+    const duplicated = coffeeScenario.stages.flatMap((stage) => {
+      const keys = stage.requiredActions.map((action) => action.descriptionKey);
+      return keys
+        .filter((key, index) => keys.indexOf(key) !== index)
+        .map((key) => `${stage.stageId}: ${key}`);
+    });
+    expect(duplicated, duplicated.join(", ")).toEqual([]);
+  });
+
   it("declares nine stages in the codec's positional order", () => {
     expect(coffeeScenario.stages).toHaveLength(9);
     expect(coffeeScenario.stages.map((stage) => stage.stageId)).toEqual([...SCENARIO_STAGE_ORDER]);

@@ -289,6 +289,7 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
       }
     }
 
+    const seenActionDescriptions = new Set<string>();
     for (const action of stage.requiredActions) {
       if (
         action.knowledgeCheckId !== undefined &&
@@ -296,6 +297,27 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
       ) {
         error(path, `Required action references unknown knowledge check "${action.knowledgeCheckId}"`);
       }
+
+      // The outstanding-work panel prints one line per required action, so a
+      // description that repeats the stage instruction -- or another action --
+      // gives the learner a count of what is left with no way to tell the
+      // items apart.
+      checkedCount += 2;
+      if (action.descriptionKey === stage.instructionKey) {
+        error(
+          path,
+          `Required action "${action.actionId}" describes itself with the stage instruction ` +
+            "instead of naming its own step",
+        );
+      }
+      if (seenActionDescriptions.has(action.descriptionKey)) {
+        error(
+          path,
+          `Required action "${action.actionId}" repeats the description of an earlier action ` +
+            `("${action.descriptionKey}")`,
+        );
+      }
+      seenActionDescriptions.add(action.descriptionKey);
     }
 
     for (const assetId of stage.producesAssetIds ?? []) {

@@ -82,7 +82,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     requiredActions: [
       {
         actionId: "ACTION_CREATE_BATCH",
-        descriptionKey: "stage.createBatch.instruction",
+        descriptionKey: "stage.createBatch.action.create",
         transactionType: TransactionType.CREATE_BATCH,
       },
     ],
@@ -196,12 +196,12 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     requiredActions: [
       {
         actionId: "ACTION_RECEIVE",
-        descriptionKey: "stage.receiveAndCorrect.instruction",
+        descriptionKey: "stage.receiveAndCorrect.action.receive",
         transactionType: TransactionType.RECEIVE_BATCH,
       },
       {
         actionId: "ACTION_CORRECT",
-        descriptionKey: "message.correction",
+        descriptionKey: "stage.receiveAndCorrect.action.correct",
         transactionType: TransactionType.RECORD_CORRECTION,
       },
     ],
@@ -247,7 +247,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     requiredActions: [
       {
         actionId: "ACTION_TRANSFORM",
-        descriptionKey: "stage.transformBatch.instruction",
+        descriptionKey: "stage.transformBatch.action.transform",
         transactionType: TransactionType.TRANSFORM_BATCH,
       },
     ],
@@ -285,12 +285,12 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     requiredActions: [
       {
         actionId: "ACTION_PACKAGE",
-        descriptionKey: "stage.packageAndDistribute.instruction",
+        descriptionKey: "stage.packageAndDistribute.action.package",
         transactionType: TransactionType.PACKAGE_BATCH,
       },
       {
         actionId: "ACTION_DISPATCH",
-        descriptionKey: "stage.packageAndDistribute.instruction",
+        descriptionKey: "stage.packageAndDistribute.action.dispatch",
         transactionType: TransactionType.DISPATCH_BATCH,
       },
     ],
@@ -379,7 +379,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
       {
         actionId: "ACTION_RECALL",
-        descriptionKey: "stage.recallAndDebrief.instruction",
+        descriptionKey: "stage.recallAndDebrief.action.recall",
         transactionType: TransactionType.RECALL_BATCH,
       },
       {
