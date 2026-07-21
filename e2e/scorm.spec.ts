@@ -3,7 +3,6 @@ import { Activity } from "./support/activity";
 import { installScormApi, peek, writes } from "./scorm-harness";
 
 test.describe("saving and resuming", () => {
-  test.slow();
 
   /**
    * The scenario that matters most in production and is hardest to fake: a

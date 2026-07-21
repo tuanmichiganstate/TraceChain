@@ -8,7 +8,6 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("the whole activity in a real browser", () => {
   // Nine stages of real rendering, in four engines. Generous, and it earns it.
-  test.slow();
 
   test("carries a learner from orientation to a graded result", async ({ page }) => {
     await page.goto("/");
@@ -50,7 +49,6 @@ test.describe("rules the learner can feel", () => {
   test("refuses a custody transfer that also moves ownership, and explains why", async ({
     page,
   }) => {
-    test.slow();
     await page.goto("/");
     const activity = new Activity(page);
 
@@ -81,7 +79,6 @@ test.describe("rules the learner can feel", () => {
   });
 
   test("shows the tamper escalation without touching the learner's ledger", async ({ page }) => {
-    test.slow();
     await page.goto("/");
     const activity = new Activity(page);
 
@@ -102,7 +99,6 @@ test.describe("rules the learner can feel", () => {
   });
 
   test("scores a recall that sweeps up the lookalike lot as over-broad", async ({ page }) => {
-    test.slow();
     await page.goto("/");
     const activity = new Activity(page);
 

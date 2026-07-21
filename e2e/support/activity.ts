@@ -12,7 +12,27 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class Activity {
   constructor(private readonly page: Page) {}
 
+  /**
+   * Per-stage timing, printed only when TRACECHAIN_E2E_TIMING is set.
+   *
+   * Off by default so the suite stays quiet and deterministic; on, it turns the
+   * walkthrough into a profile that says which stage consumed the budget rather
+   * than only that the test timed out. It reads the clock, never sleeps, so it
+   * changes no behaviour.
+   */
+  private readonly timingEnabled = Boolean(process.env["TRACECHAIN_E2E_TIMING"]);
+  private lastMark = Date.now();
+
+  private mark(label: string): void {
+    if (!this.timingEnabled) return;
+    const now = Date.now();
+    // eslint-disable-next-line no-console
+    console.log(`[timing] ${label}: +${now - this.lastMark}ms`);
+    this.lastMark = now;
+  }
+
   async start(): Promise<void> {
+    this.lastMark = Date.now();
     await this.page.getByRole("button", { name: "Bắt đầu mô phỏng" }).click();
   }
 
@@ -29,6 +49,7 @@ export class Activity {
     await expect(
       this.page.getByRole("heading", { level: 2, name: new RegExp(`^Bước ${number}\\b`) }),
     ).toBeVisible();
+    this.mark(`reached stage ${number}`);
   }
 
   /** Answer a single- or multi-choice check by matching its option text. */

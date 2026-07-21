@@ -25,6 +25,38 @@ scenario-contract coverage. It passed throughout while stage 5's manifest did
 not exist. Cross-layer contract tests are unimplemented — see
 [STAGE5_REPAIR.md](STAGE5_REPAIR.md).
 
+## WebKit e2e on CI
+
+The first CI run failed two WebKit tests -- the full nine-stage walkthrough and
+the recall, both `activity.spec.ts` -- with `locator.click` timing out at 90s.
+Diagnosed in the pinned Playwright Linux container (`v1.61.1-noble`), evidence
+first, no blind timeout bumps:
+
+| Environment | 9-stage walkthrough |
+|---|---|
+| macOS WebKit (local) | ~4s |
+| Chromium / Firefox | ~10s |
+| Linux WebKit, container, isolated | ~48s |
+| Linux WebKit, container, CPU-time throttled to 2 | ~180s |
+
+Per-stage timing (`TRACECHAIN_E2E_TIMING=1`) showed every action succeeding and
+the cost spread across all nine stages, heaviest at the transaction-heavy ones
+(4, 6) -- cumulative execution time, not a stall, product defect, or animation
+wait. Reduced-motion was tested and made no difference, ruling animation out.
+
+The cause is WebKit's Linux port being far slower than macOS for this suite's
+accessibility-tree locators (`getByRole` with name regexes), which recompute as
+the workspace DOM grows. On the real GitHub runner the 7-stage tamper test
+passed at 90s while only the two full-9-stage tests failed, so the real need is
+~100-130s; the container is pessimistic because `docker --cpus` throttles CPU
+*time* rather than giving dedicated cores, so it cannot faithfully reproduce a
+2-core runner.
+
+**Fix:** per-project test timeouts, set explicitly rather than via `test.slow()`
+(which tripled an implicit default and made a per-project override ambiguous).
+Blink/Gecko keep 90s; the WebKit family gets 240s (measured 180s plus margin).
+Raising Chromium/Firefox would hide a real regression behind a WebKit allowance.
+
 ## Commit gating — what it is and is not
 
 `scripts/hooks/pre-commit` refuses a commit whose `npm run quality` is red. It
