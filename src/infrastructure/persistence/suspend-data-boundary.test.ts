@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MockScorm12Api } from "../../../test/scorm-mock/mock-scorm-api";
 import { StandalonePersistenceAdapter } from "./standalone-adapter";
-import { encodeAttemptState } from "./state-codec";
+import { decodeAttemptState, encodeAttemptState, MAX_ATTEMPT_COUNT } from "./state-codec";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { SCENARIO_STAGE_ORDER } from "../../domain/types/enums";
 import type { DecisionRecord } from "./state-codec";
@@ -135,7 +135,14 @@ describe("the encoded payload keeps the budget claim true", () => {
         schemaLocal,
       );
     };
-    expect(build(3).length).toBe(build(9_999).length);
+    // Against the exported limit, not a hardcoded guess at it.
+    expect(build(MAX_ATTEMPT_COUNT).length).toBe(build(MAX_ATTEMPT_COUNT + 1).length);
+
+    // Semantic saturation, not merely equal encoded length: the decoded value
+    // is clamped, so an over-limit count cannot round-trip back out.
+    const decoded = decodeAttemptState(build(MAX_ATTEMPT_COUNT + 100), schema);
+    const firstDecision = coffeeScenario.decisionIds[0] as string;
+    expect(decoded.decisions[firstDecision]?.attemptCount).toBe(MAX_ATTEMPT_COUNT);
   });
 
   /**

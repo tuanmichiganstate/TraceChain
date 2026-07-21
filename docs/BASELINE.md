@@ -25,6 +25,31 @@ scenario-contract coverage. It passed throughout while stage 5's manifest did
 not exist. Cross-layer contract tests are unimplemented — see
 [STAGE5_REPAIR.md](STAGE5_REPAIR.md).
 
+## Commit gating — what it is and is not
+
+`scripts/hooks/pre-commit` refuses a commit whose `npm run quality` is red. It
+is versioned, and verified to refuse: staging a deliberate type error produces
+`QUALITY GATE FAILED — commit refused`, exit 1, HEAD unmoved.
+
+**It is a local early warning, not a repository-wide control.** Activation lives
+in local git config, which a clone does not carry:
+
+    npm run setup:hooks     # git config core.hooksPath scripts/hooks
+
+A fresh clone gets the hook file and does not run it until that is done, and
+`git commit --no-verify` bypasses it regardless. **This project has no CI**, so
+there is currently no authoritative gate — the honest control hierarchy is:
+
+| Layer | Status |
+|---|---|
+| Pre-commit hook | present, local, opt-in via `npm run setup:hooks` |
+| Pre-push hook | not implemented |
+| CI required check | **not implemented — the real gap** |
+
+Until CI exists, a green tip depends on discipline plus this hook, which is
+weaker than it sounds. Adding CI that runs `npm run quality` and
+`npx playwright test` on every push is the durable fix.
+
 ## Artefacts
 
 | | |

@@ -19,7 +19,8 @@
     "quality": "npm run lint && npm run typecheck && npm run test && npm run validate:locales && npm run validate:scenario && npm run verify:content-review && npm run build && npm run build:scorm && npm run verify:scorm",
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=chromium",
-    "verify:content-review": "node scripts/verify-content-review.mjs"
+    "verify:content-review": "node scripts/verify-content-review.mjs",
+    "setup:hooks": "git config core.hooksPath scripts/hooks"
   },
   "dependencies": {
     "react": "^19.2.0",
