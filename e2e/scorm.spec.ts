@@ -110,3 +110,31 @@ test.describe("a launch with no LMS at all", () => {
     await expect(page.getByText(/Chế độ chạy độc lập/)).toBeVisible();
   });
 });
+
+test.describe("the suspend_data boundary in a real browser", () => {
+  /**
+   * The harness's limit is deliberately not imported from production code, so a
+   * unit test comparing constants cannot prove it behaves correctly. This
+   * exercises it through the API surface the application actually calls.
+   */
+  test("accepts 4096 characters and refuses 4097 with error 405", async ({ page }) => {
+    await installScormApi(page);
+    await page.goto("/");
+
+    const result = await page.evaluate(() => {
+      const api = (window as unknown as { API: Record<string, (...a: string[]) => string> }).API;
+      const set = (n: number) => {
+        const ok = api["LMSSetValue"]!("cmi.suspend_data", "x".repeat(n));
+        return { ok, error: api["LMSGetLastError"]!() };
+      };
+      return { at4095: set(4095), at4096: set(4096), at4097: set(4097) };
+    });
+
+    expect(result.at4095.ok).toBe("true");
+    expect(result.at4096.ok).toBe("true");
+    expect(result.at4097.ok).toBe("false");
+    expect(result.at4097.error).toBe("405");
+    // A refused write must not truncate what was already stored.
+    expect(await peek(page, "cmi.suspend_data")).toHaveLength(4096);
+  });
+});
