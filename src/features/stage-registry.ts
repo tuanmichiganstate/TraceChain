@@ -21,6 +21,7 @@ import { ReceiveAndCorrectStage } from "./stages/receive-and-correct-stage";
 import { TransformBatchStage } from "./stages/transform-batch-stage";
 import { PackageAndDistributeStage } from "./stages/package-and-distribute-stage";
 import { VerifyAndTamperStage } from "./stages/verify-and-tamper-stage";
+import { RecallAndDebriefStage } from "./stages/recall-and-debrief-stage";
 
 export const STAGE_COMPONENTS: Partial<Record<ScenarioStageId, ComponentType>> = {
   [ScenarioStageId.ORIENTATION]: OrientationStage,
@@ -31,4 +32,5 @@ export const STAGE_COMPONENTS: Partial<Record<ScenarioStageId, ComponentType>> =
   [ScenarioStageId.TRANSFORM_BATCH]: TransformBatchStage,
   [ScenarioStageId.PACKAGE_AND_DISTRIBUTE]: PackageAndDistributeStage,
   [ScenarioStageId.VERIFY_AND_TAMPER]: VerifyAndTamperStage,
+  [ScenarioStageId.RECALL_AND_DEBRIEF]: RecallAndDebriefStage,
 };

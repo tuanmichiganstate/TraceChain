@@ -19,6 +19,7 @@ import type {
   DispatchBatchCommand,
   IssueCertificateCommand,
   PackageBatchCommand,
+  RecallBatchCommand,
   RecordCorrectionCommand,
   RecordTransportConditionCommand,
   ReceiveBatchCommand,
@@ -213,6 +214,27 @@ export const dispatchToRetailerCommand = (): DispatchBatchCommand => ({
   scenarioTimestamp: SCENARIO_TIMELINE.batchDispatched,
 });
 
+/**
+ * The recall the learner actually files.
+ *
+ * `selectedAssetIds` comes from the learner's own scope answer rather than from
+ * the correct set, so the recall they submit is the recall they reasoned their
+ * way to. Getting the scope wrong is not a wrong tick on a quiz -- it files a
+ * recall that misses contaminated stock or destroys good stock, and the
+ * precision score reads the transaction.
+ */
+export const recallBatchCommand = (
+  selectedAssetIds: readonly string[],
+): RecallBatchCommand => ({
+  commandType: TransactionType.RECALL_BATCH,
+  sourceAssetId: GREEN_COFFEE_BATCH_ID,
+  selectedAssetIds,
+  reason: "Phong thi nghiem phat hien du luong thuoc bao ve thuc vat vuot nguong",
+  externalEvidenceReference: "LAB_REPORT_2026_0705",
+  initiatedByActorId: ActorId.REGULATORY_AUDITOR,
+  scenarioTimestamp: SCENARIO_TIMELINE.laboratoryResult,
+});
+
 /** Who acts for each transaction, so a stage names only the actor. */
 export const contextFor = (actorId: string, organizationId: string) => ({
   actorId,
@@ -238,4 +260,8 @@ export const PROCESSOR_CONTEXT = contextFor(
 export const DISTRIBUTOR_CONTEXT = contextFor(
   ActorId.DISTRIBUTION_MANAGER,
   OrganizationId.DISTRIBUTOR,
+);
+export const REGULATOR_CONTEXT = contextFor(
+  ActorId.REGULATORY_AUDITOR,
+  OrganizationId.REGULATOR,
 );

@@ -9,12 +9,13 @@ import { SimulationProvider } from "./providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
 
 /**
- * THE MILESTONE 4 EXIT CONDITION, EXTENDED THROUGH STAGE 8.
+ * THE MILESTONE 5 EXIT CONDITION.
  *
- * A learner completes stages 1 to 8 in the browser: answering checks, composing
- * transactions, watching them validate, sealing blocks, moving on, and finally
- * trying to edit history and watching it fail. The domain was already proven
- * headless; this proves the interface reaches it.
+ * A learner completes all nine stages in the browser: answering checks,
+ * composing transactions, watching them validate, sealing blocks, trying to
+ * edit history and watching it fail, tracing the contamination forward, filing
+ * the recall, and submitting a result to the LMS. The domain was already proven
+ * headless; this proves the interface reaches all of it.
  */
 function AppUnderTest(): React.ReactElement {
   return (
@@ -54,12 +55,35 @@ async function answer(user: User, optionPattern: RegExp): Promise<void> {
   await user.click(submit);
 }
 
+/** Place every item of the data-governance classification correctly. */
+async function answerClassification(user: User): Promise<void> {
+  const placements: Readonly<Record<string, string>> = {
+    ITEM_BATCH_ID: "CAT_ON_CHAIN",
+    ITEM_RECALL_STATUS: "CAT_ON_CHAIN",
+    ITEM_CERTIFICATE_PDF: "CAT_OFF_CHAIN_HASH",
+    ITEM_SENSOR_DATASET: "CAT_OFF_CHAIN_HASH",
+    ITEM_WHOLESALE_PRICE: "CAT_AUTHORIZED_ONLY",
+    ITEM_CUSTOMER_ADDRESS: "CAT_DO_NOT_COLLECT",
+  };
+  for (const [itemId, categoryId] of Object.entries(placements)) {
+    const select = document.getElementById(
+      `INT_DATA_GOVERNANCE_CLASSIFICATION-${itemId}`,
+    ) as HTMLSelectElement;
+    await user.selectOptions(select, categoryId);
+  }
+  const submit = screen
+    .getAllByRole("button", { name: "Trả lời" })
+    .find((button) => !(button as HTMLButtonElement).disabled);
+  if (submit === undefined) throw new Error("No enabled answer button");
+  await user.click(submit);
+}
+
 async function advance(user: User): Promise<void> {
   const buttons = await screen.findAllByRole("button", { name: "Tiếp tục" });
   await user.click(buttons[buttons.length - 1] as HTMLElement);
 }
 
-describe("stages 1 to 8 in the browser", () => {
+describe("the whole activity in the browser", () => {
   let api: MockScorm12Api;
   let uninstall: () => void;
 
@@ -71,7 +95,7 @@ describe("stages 1 to 8 in the browser", () => {
 
   afterEach(() => uninstall());
 
-  it("carries a learner from orientation through the tamper demonstration", async () => {
+  it("carries a learner from orientation to a submitted result", async () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);
 
@@ -150,7 +174,44 @@ describe("stages 1 to 8 in the browser", () => {
     expect(
       screen.getByText(/Sổ cái thật của bạn vẫn nguyên vẹn/),
     ).toBeInTheDocument();
-  }, 90_000);
+
+    await answer(user, /Blockchain không ngăn được việc sửa/);
+    await answerClassification(user);
+    await advance(user);
+
+    // ---- Stage 9: trace forward, recall, and account for it -----------
+    await screen.findByRole("heading", { name: /Bước 9/ });
+
+    // The near-miss lot shares co-op, region, product name and roasting day
+    // with the contaminated one. Only the provenance edge separates them.
+    await user.click(await screen.findByRole("checkbox", { name: /BAT_PACKAGED_COFFEE_001/ }));
+    await user.click(screen.getByRole("checkbox", { name: /BAT_ROASTED_COFFEE_001/ }));
+    await user.click(
+      screen.getAllByRole("button", { name: "Trả lời" }).find((b) => !(b as HTMLButtonElement).disabled) as HTMLElement,
+    );
+
+    expect(
+      await screen.findByText(/Phạm vi thu hồi chính xác/),
+    ).toBeInTheDocument();
+
+    // The recall filed is the scope the learner reasoned to, not the right one.
+    await submitAndSeal(user, "Gửi lệnh thu hồi");
+    await answer(user, /Khi nhiều tổ chức độc lập cần dùng chung bản ghi/);
+
+    // ---- The activity is finished, and says so ------------------------
+    const report = (
+      await screen.findByRole("heading", { name: "Kết quả hoạt động" })
+    ).closest("section") as HTMLElement;
+    expect(within(report).getByText(/Tổng điểm/)).toBeInTheDocument();
+    expect(within(report).getByText(/Hiệu quả thu hồi/)).toBeInTheDocument();
+
+    // Nothing reaches the LMS until the learner has seen the result.
+    expect(api.peek("cmi.core.lesson_status")).not.toBe("passed");
+    await user.click(within(report).getByRole("button", { name: "Kết thúc và gửi kết quả" }));
+    expect(await within(report).findByText(/Đã gửi kết quả/)).toBeInTheDocument();
+    expect(api.peek("cmi.core.lesson_status")).toBe("passed");
+    expect(Number(api.peek("cmi.core.score.raw"))).toBeGreaterThanOrEqual(70);
+  }, 120_000);
 
   it("rejects a custody transfer that also moves ownership, and explains why", async () => {
     const user = userEvent.setup();

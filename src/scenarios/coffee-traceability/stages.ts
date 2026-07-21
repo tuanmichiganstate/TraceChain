@@ -414,6 +414,6 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
         points: 5,
       },
     ],
-    isImplemented: false,
+    isImplemented: true,
   },
 ];
