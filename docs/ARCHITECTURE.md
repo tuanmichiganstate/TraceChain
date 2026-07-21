@@ -167,6 +167,43 @@ ledger*, is unchanged and is asserted by a test.
 
 ---
 
+## Accessibility
+
+Section 26's requirements are asserted in `src/app/accessibility.test.tsx`
+rather than audited once and left to rot. A refactor that breaks the document
+outline now fails CI.
+
+What is tested:
+
+- **One `h1`, in both the start screen and the running workspace.** The running
+  workspace used to open at `h2` because the application title sat in a `span`,
+  so navigating by heading landed inside the first stage with nothing above it
+  naming what you were in.
+- **No skipped heading level** anywhere in the workspace.
+- **Every control has an accessible name**, and **no duplicate element ids** —
+  a duplicate silently breaks every `aria-labelledby`, `aria-describedby` and
+  `label for` pointing at it, because the reference resolves to whichever
+  element comes first.
+- **Exactly one `main` landmark**, and the skip link targets it.
+
+What was verified in a real browser rather than jsdom, which has no layout:
+
+- **Contrast.** Zero failures against WCAG AA (4.5:1 body, 3:1 large) across
+  the workspace and all five reference panels.
+- **Reflow at 320 px.** No horizontal scroll and no overflowing element in any
+  panel. Measured inside a 320 px iframe, because an iframe has its own
+  viewport and media queries therefore evaluate as they would on a phone — a
+  probe `div` at 320 px inside a desktop window does not work, it keeps the
+  desktop breakpoints and under-reports.
+- **Focus.** `:focus-visible` carries a 3 px navy outline at 2 px offset,
+  applied globally in `base.css`.
+- **Reduced motion.** `prefers-reduced-motion: reduce` collapses the pipeline
+  step duration to zero and neutralises animation and transition durations.
+
+Colour never carries meaning alone: every `StatusPill` tone pairs its colour
+with a distinct glyph and a text label, so status survives greyscale, colour
+blindness and a screen reader.
+
 ## Dependencies
 
 Zero runtime dependencies beyond `react` and `react-dom`. Each omission is

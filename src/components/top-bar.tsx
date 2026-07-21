@@ -42,7 +42,10 @@ export function TopBar(): ReactNode {
     <header className="top-bar">
       <div className="top-bar__inner">
         <div className="top-bar__brand">
-          <span className="top-bar__title">{t("app.shortTitle")}</span>
+          {/* The workspace's h1. Without it the running activity opened at
+              h2, so navigating by heading landed inside a stage with nothing
+              above it naming what you were in. */}
+          <h1 className="top-bar__title">{t("app.shortTitle")}</h1>
           <span className="top-bar__simulation-flag">{t("app.simulationNotice")}</span>
         </div>
 

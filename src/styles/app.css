@@ -91,8 +91,12 @@
 }
 
 .top-bar__title {
+  /* An h1 for the document outline, sized as a bar title rather than a
+     page heading: margin and font-size come from here, not the user agent. */
+  margin: 0;
   font-weight: 700;
   font-size: var(--size-heading-3);
+  line-height: 1.3;
   color: var(--colour-navy-strong);
 }
 
