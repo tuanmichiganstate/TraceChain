@@ -2,6 +2,61 @@
 
 ## [Unreleased]
 
+### Milestone 1 — Scenario foundation
+
+The activity becomes data. Specification section 41 step 4 asks that the
+scenario be implemented "as data, not as hard-coded page logic"; after Milestone
+0 the stages were a `switch` statement in a React component, which is the
+opposite. This milestone closes that, and fills in the thirteen specification
+types that had no implementation.
+
+**Added**
+
+- `ScenarioDefinition` and `ScenarioStageDefinition` (sections 17.1, 17.2), with
+  knowledge checks, hints, required actions, and evaluable completion
+  conditions.
+- Scoring types (section 19): `ScoreState`, `ScoringConfiguration`,
+  `CompletionState`, `LearnerInteraction`, `DiagnosticLogEntry`, and the
+  six-component allocation summing to 100.
+- Deterministic scenario clock (section 17.3), refusing backwards movement and
+  normalizing instants so two spellings of the same time cannot hash
+  differently. Display formatting is pinned to `vi-VN` / `Asia/Ho_Chi_Minh`
+  rather than the browser's timezone.
+- `validateScenario`, run at build time *and* at startup (section 27), reporting
+  every problem at once. 192 checks against the coffee scenario.
+- `ScenarioProvider` and a stage component registry. Routing, the progress
+  indicator, the role banner, the codec key and the ledger configuration all
+  read from the scenario.
+- The coffee scenario assembled: nine stages declared, the near-miss distractor
+  chain seeded with real provenance, the full decision and hint key.
+- `docs/DOMAIN_MODEL.md`, `docs/SCENARIO_FLOW.md`, `docs/CONTENT_AUTHORING.md`,
+  `docs/LOCALIZATION_GUIDE.md`.
+
+**Changed**
+
+- Stage 2 no longer seals its block automatically. The ledger runs in
+  `STAGE_BOUNDARY` mode and the learner presses "Ghi giao dịch vào khối" — which
+  makes the ORDERED/COMMITTED distinction visible instead of theoretical. The
+  integration test asserts no ledger exists until the block is sealed.
+- `seedTransactions` and `seedProvenanceEdges` added to the scenario schema.
+  Section 17.1 offered only `seedAssets`, which cannot express committed
+  history — needed both for the pre-committed dispatch error and for distractor
+  provenance chains.
+- `producesAssetIds` added to stages, so the validator can confirm every asset a
+  completion condition names is actually created by something. It caught a real
+  case while being written: stage 7's target asset was created mid-stage and
+  declared nowhere.
+- `activeActorIds` is a list rather than the specification's single
+  `activeActorId`. Stages 4 and 7 hand over to a second role partway through,
+  and that handoff is the lesson.
+
+**Fixed**
+
+- The role banner was hidden during orientation, violating section 31.4's
+  "current role is always visible". It now always renders, saying explicitly
+  that the learner has not yet been given a role rather than inventing one.
+- `pagehide` listener was registered but never removed on cleanup.
+
 ### Milestone 0 — SCORM vertical slice
 
 The riskiest, least controllable part of the project is SCORM integration:

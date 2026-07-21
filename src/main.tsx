@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/app";
 import { LocaleProvider } from "./app/providers/locale-provider";
+import { ScenarioProvider } from "./app/providers/scenario-provider";
 import { SimulationProvider } from "./app/providers/simulation-provider";
 import "./styles/tokens.css";
 import "./styles/base.css";
@@ -15,9 +16,11 @@ if (container === null) {
 createRoot(container).render(
   <StrictMode>
     <LocaleProvider>
-      <SimulationProvider>
-        <App />
-      </SimulationProvider>
+      <ScenarioProvider>
+        <SimulationProvider>
+          <App />
+        </SimulationProvider>
+      </ScenarioProvider>
     </LocaleProvider>
   </StrictMode>,
 );

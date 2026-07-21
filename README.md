@@ -19,19 +19,27 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Milestone 0 complete: the SCORM vertical slice.
+Milestones 0 and 1 complete: the SCORM vertical slice, and the scenario
+foundation.
 
 | | |
 |---|---|
-| Stages playable | 1–2 of 9 |
-| Tests | 154 passing |
+| Stages playable | 1–2 of 9 (all nine declared as data) |
+| Tests | 200 passing |
 | SCORM package | builds and verifies (18/18 checks) |
+| Scenario | validated at build time and startup (192 checks) |
 | Moodle staging | **not yet tested — this is the next step** |
 
-Milestone 0 exists to retire the deployment unknowns before the expensive build
-starts: the `suspend_data` budget, the API discovery paths, the status
-vocabulary, and the review-mode score-clobbering risk. See
-`docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
+Milestone 0 retired the deployment unknowns before the expensive build started:
+the `suspend_data` budget, the API discovery paths, the status vocabulary, and
+the review-mode score-clobbering risk.
+
+Milestone 1 made the activity data. Stage order, roles, completion conditions,
+knowledge checks, hints, seeds and scoring all live in a `ScenarioDefinition`;
+routing reads from it rather than from a switch statement. A second scenario is
+a new data file and one changed prop — see `docs/CONTENT_AUTHORING.md`.
+
+See `docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
 
 ---
 
@@ -71,14 +79,16 @@ src/
 │   ├── events/        committed outcomes
 │   ├── ledger/        reducer, engine, integrity verification
 │   ├── rules/         one file per rule + registry
+│   ├── scenario/      scenario validation
 │   ├── units/         gram normalization
-│   └── types/         enums, models, rule identifiers
+│   └── types/         enums, models, rule ids, scenario schema, scoring
 ├── infrastructure/
 │   ├── hashing/       vendored SHA-256, canonical serialization
 │   ├── persistence/   compact state codec, standalone adapter
-│   └── scorm/         API discovery, SCORM 1.2 adapter
+│   ├── scorm/         API discovery, SCORM 1.2 adapter
+│   └── time/          deterministic scenario clock
 ├── scenarios/coffee-traceability/
-├── features/          one folder per stage
+├── features/          one folder per stage + the stage registry
 ├── components/        shared UI
 ├── locales/           vi.json (production), en.json (scaffold)
 └── styles/
@@ -108,6 +118,10 @@ scripts/               locale + scenario validators, SCORM build + verify
 
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
+- `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
+- `docs/SCENARIO_FLOW.md` — the nine stages and the two non-obvious design calls
+- `docs/CONTENT_AUTHORING.md` — changing the activity, or writing a new one
+- `docs/LOCALIZATION_GUIDE.md` — Vietnamese conventions and the audit rules
 - `docs/MOODLE_TESTING.md` — the Moodle acceptance checklist
 - `CHANGELOG.md`
 
@@ -117,6 +131,8 @@ scripts/               locale + scenario validators, SCORM build + verify
   stores decisions by index, not by name. Reordering silently reinterprets every
   learner's saved progress.
 - **`SCENARIO_STAGE_ORDER` is append-only** for the same reason.
+- **Every knowledge check must appear in `DECISION_IDS`**, or its answer is
+  collected, scored, and then silently lost on resume.
 - **No learner-facing string may live outside `src/locales/`.**
   `validate:locales` fails the build otherwise.
 - **No student identity may reach the ledger** — not an asset, transaction,

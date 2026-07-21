@@ -1,13 +1,12 @@
-import type { ReactNode } from "react";
-import { ScenarioStageId } from "../domain/types/enums";
+import { createElement, type ReactNode } from "react";
+import type { ScenarioStageId } from "../domain/types/enums";
 import { useTranslator } from "./providers/locale-provider";
+import { useScenario } from "./providers/scenario-provider";
 import { useSimulation } from "./providers/simulation-provider";
 import { isDeveloperMode } from "./configuration";
 import { TopBar } from "../components/top-bar";
 import { StartScreen } from "../features/start/start-screen";
-import { OrientationStage } from "../features/orientation/orientation-stage";
-import { CreateBatchStage } from "../features/transactions/create-batch-stage";
-import { IMPLEMENTED_STAGES } from "../scenarios/coffee-traceability/stages";
+import { STAGE_COMPONENTS } from "../features/stage-registry";
 import { PlatformMode } from "../infrastructure/scorm/learning-platform-adapter";
 
 export function App(): ReactNode {
@@ -54,19 +53,28 @@ export function App(): ReactNode {
   );
 }
 
+/**
+ * Routing is driven by the scenario definition, not by a switch statement
+ * (specification section 41 step 4). The scenario decides which stages exist
+ * and in what order; the registry only says which component draws each one.
+ */
 function StageRouter({ stageId }: { stageId: ScenarioStageId }): ReactNode {
-  if (!IMPLEMENTED_STAGES.has(stageId)) {
+  const { stage } = useScenario();
+  const definition = stage(stageId);
+
+  if (definition === undefined || !definition.isImplemented) {
     return <NotYetAvailable />;
   }
 
-  switch (stageId) {
-    case ScenarioStageId.ORIENTATION:
-      return <OrientationStage />;
-    case ScenarioStageId.CREATE_BATCH:
-      return <CreateBatchStage />;
-    default:
-      return <NotYetAvailable />;
+  const component = STAGE_COMPONENTS[stageId];
+  if (component === undefined) {
+    // The scenario claims this stage is built but nothing is registered to draw
+    // it. A test catches this, so reaching it in production means the registry
+    // and the scenario drifted apart.
+    return <NotYetAvailable />;
   }
+
+  return createElement(component);
 }
 
 function NotYetAvailable(): ReactNode {
@@ -86,14 +94,18 @@ function NotYetAvailable(): ReactNode {
  */
 function DeveloperPanel(): ReactNode {
   const { state, diagnostics } = useSimulation();
+  const { scenario } = useScenario();
+
   return (
     <aside className="developer-panel">
       <h2>Developer diagnostics</h2>
       <p>
+        Scenario: <code>{scenario.scenarioId}</code> v<code>{scenario.scenarioVersion}</code> ·
         Platform: <code>{state.platformMode}</code> · Stage:{" "}
         <code>{state.currentStageId}</code> · Blocks:{" "}
         <code>{state.domain.blockOrder.length}</code> · Pending:{" "}
-        <code>{state.domain.pendingTransactionIds.length}</code>
+        <code>{state.domain.pendingTransactionIds.length}</code> · Seeded assets:{" "}
+        <code>{scenario.seedAssets.length}</code>
       </p>
       <ul>
         {diagnostics.map((entry, index) => (

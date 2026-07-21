@@ -70,6 +70,15 @@
   "stage.notYetAvailable.heading": "Bước này sẽ có trong bản cập nhật tiếp theo",
   "stage.notYetAvailable.body": "Bạn đã hoàn thành các bước hiện có. Tiến độ của bạn đã được lưu và sẽ được khôi phục khi bạn quay lại.",
 
+  "stage.anchorCertificate.instruction": "Bạn là cán bộ chứng nhận. Hãy quyết định cách ghi nhận giấy chứng nhận chất lượng lên sổ cái, sau đó xem xét một chứng nhận do tổ chức chưa được công nhận cấp.",
+  "stage.shipAndMonitor.instruction": "Hợp tác xã bàn giao lô hàng cho đơn vị vận chuyển. Hãy xác định giao dịch này chuyển quyền gì, rồi ghi nhận điều kiện vận chuyển do cảm biến báo về.",
+  "stage.receiveAndCorrect.instruction": "Nhà máy tiếp nhận lô hàng và cân lại. Số lượng thực tế không khớp với vận đơn đã được ghi lên sổ cái. Bản ghi cũ không thể sửa hoặc xóa, vì vậy bạn cần bổ sung một giao dịch điều chỉnh.",
+  "stage.transformBatch.instruction": "Hãy rang 100 kg cà phê nhân thành 82 kg cà phê rang. Lô đầu vào sẽ được đánh dấu là đã sử dụng, và một quan hệ nguồn gốc được tạo giữa hai lô.",
+  "stage.packageAndDistribute.instruction": "Đóng gói 82 kg cà phê rang thành 820 gói 100 g, chuyển quyền sở hữu cho nhà phân phối trong khi hàng vẫn ở nhà máy, rồi giao hàng đến nhà bán lẻ.",
+  "stage.verifyAndTamper.instruction": "Xem thông tin công khai mà người tiêu dùng quét được từ mã QR, sau đó thử sửa một bản ghi cũ trên bản sao của sổ cái để quan sát điều gì xảy ra.",
+  "stage.recallAndDebrief.instruction": "Phòng thí nghiệm phát hiện dư lượng thuốc bảo vệ thực vật vượt ngưỡng ở lô cà phê nhân ban đầu. Hãy truy xuất xuôi để xác định đúng những lô bị ảnh hưởng, và chỉ những lô đó.",
+  "hint.createBatchFields": "Mã lô phải là duy nhất trên toàn mạng, và lô hàng phải được tạo bởi chính tổ chức đang gửi giao dịch.",
+
   "field.assetId": "Mã lô",
   "field.productName": "Tên sản phẩm",
   "field.originLocation": "Vùng nguyên liệu",

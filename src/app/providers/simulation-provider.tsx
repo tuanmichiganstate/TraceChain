@@ -34,9 +34,8 @@ import {
   PlatformMode,
   type LearningPlatformAdapter,
 } from "../../infrastructure/scorm/learning-platform-adapter";
-import { actorsById, organizationsById } from "../../scenarios/coffee-traceability/organizations";
-import { CODEC_SCHEMA } from "../../scenarios/coffee-traceability/decisions";
-import { APP_VERSION, SCENARIO_ID } from "../configuration";
+import { useScenario } from "./scenario-provider";
+import { APP_VERSION } from "../configuration";
 import {
   createInitialSessionState,
   sessionReducer,
@@ -62,17 +61,30 @@ interface SimulationContextValue {
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
-const ledger = new SimulatedLedger(sha256Hex, {
-  maxTransactionsPerBlock: 2,
-  // Stage 2's whole purpose is watching a block form, so it seals immediately.
-  // Later stages switch to STAGE_BOUNDARY, which is why this is configuration
-  // rather than a constant.
-  blockCommitMode: "IMMEDIATE",
-  orderingServiceId: "ORDERER_SIMULATED_001",
-});
-
 export function SimulationProvider({ children }: { children: ReactNode }): ReactNode {
+  const { scenario } = useScenario();
   const [state, dispatch] = useReducer(sessionReducer, undefined, createInitialSessionState);
+
+  // Ledger behaviour, the codec key, and the actor and organization registries
+  // all come from the scenario, so a different scenario needs no change here.
+  const ledger = useMemo(
+    () => new SimulatedLedger(sha256Hex, scenario.ledgerConfiguration),
+    [scenario],
+  );
+  const codecSchema = useMemo(
+    () => ({ decisionIds: scenario.decisionIds, hintIds: scenario.hintIds }),
+    [scenario],
+  );
+  const registries = useMemo(
+    () => ({
+      organizationsById: Object.fromEntries(
+        scenario.organizations.map((organization) => [organization.organizationId, organization]),
+      ),
+      actorsById: Object.fromEntries(scenario.actors.map((actor) => [actor.actorId, actor])),
+    }),
+    [scenario],
+  );
+
   const adapterRef = useRef<LearningPlatformAdapter | null>(null);
   const diagnosticsRef = useRef<string[]>([]);
   // Diagnostics are rendered by the developer panel, so they are state rather
@@ -106,7 +118,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       if (!scormResult.isConnected) {
         const standalone = new StandalonePersistenceAdapter({
           appVersion: APP_VERSION,
-          scenarioId: SCENARIO_ID,
+          scenarioId: scenario.scenarioId,
         });
         const standaloneResult = await standalone.initialize();
         adapter = standalone;
@@ -128,7 +140,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       // Verify stored state before trusting it (sections 21.11 and 27).
       try {
-        decodeAttemptState(stored, CODEC_SCHEMA);
+        decodeAttemptState(stored, codecSchema);
         dispatch({ type: "INITIALIZED", platformMode: mode, hasSavedAttempt: true });
       } catch (error) {
         addDiagnostic(
@@ -143,7 +155,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     return () => {
       cancelled = true;
     };
-  }, [addDiagnostic]);
+  }, [addDiagnostic, codecSchema, scenario.scenarioId]);
 
   const save = useCallback(async (): Promise<void> => {
     const adapter = adapterRef.current;
@@ -152,7 +164,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     dispatch({ type: "SAVE_STATUS", status: "SAVING" });
     try {
       const current = stateRef.current;
-      const encoded = encodeAttemptState(toAttemptSnapshot(current), CODEC_SCHEMA);
+      const encoded = encodeAttemptState(toAttemptSnapshot(current), codecSchema);
       await adapter.saveAttemptState(encoded);
       await adapter.setLocation(current.currentStageId);
       await adapter.commit();
@@ -161,7 +173,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       addDiagnostic(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
       dispatch({ type: "SAVE_STATUS", status: "FAILED" });
     }
-  }, [addDiagnostic]);
+  }, [addDiagnostic, codecSchema]);
 
   // Periodic save, plus a save when the page is hidden. `visibilitychange` and
   // `pagehide` are used rather than `beforeunload`, which is unreliable on
@@ -202,7 +214,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             return;
           }
           try {
-            const snapshot = decodeAttemptState(stored, CODEC_SCHEMA);
+            const snapshot = decodeAttemptState(stored, codecSchema);
             // Milestone 0 restores position and decisions. Milestone 2 adds
             // full ledger replay from the decision record, which is why nothing
             // about the ledger is persisted.
@@ -231,8 +243,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       submitCommand: (command, context) => {
         const result = ledger.submitCommand(stateRef.current.domain, command, context, {
-          organizationsById,
-          actorsById,
+          ...registries,
           actorId: context.actorId,
           organizationId: context.organizationId,
         });
@@ -261,7 +272,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       save,
     }),
-    [state, save, diagnostics],
+    [state, save, diagnostics, ledger, codecSchema, registries],
   );
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;

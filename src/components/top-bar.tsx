@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import { SCENARIO_STAGE_ORDER } from "../domain/types/enums";
 import { useTranslator } from "../app/providers/locale-provider";
+import { useScenario } from "../app/providers/scenario-provider";
 import { useSimulation } from "../app/providers/simulation-provider";
-import { stageNumber } from "../app/session/session-state";
-import { actorsById, organizationsById } from "../scenarios/coffee-traceability/organizations";
-import { STAGE_ACTOR } from "../scenarios/coffee-traceability/stages";
 import { StatusPill } from "./status-pill";
 
 const SAVE_STATUS_KEY = {
@@ -16,17 +13,30 @@ const SAVE_STATUS_KEY = {
 
 /**
  * Always-visible context: which role the learner currently holds, how far
- * through they are, and whether their work is saved (specification section
+ * through they are, and whether their work is saved (specification sections
  * 18.2 and 31.4).
+ *
+ * Everything shown here is read from the scenario definition, so a new scenario
+ * with different stages and roles needs no change to this component.
  */
 export function TopBar(): ReactNode {
   const t = useTranslator();
   const { state } = useSimulation();
+  const { scenario, stage } = useScenario();
 
-  const actorId = STAGE_ACTOR[state.currentStageId];
-  const actor = actorId === undefined ? undefined : actorsById[actorId];
-  const organization =
-    actor === undefined ? undefined : organizationsById[actor.organizationId];
+  const definition = stage(state.currentStageId);
+  const stageNumber = scenario.stages.findIndex((s) => s.stageId === state.currentStageId) + 1;
+
+  // The first entry is the role the learner starts the stage in. Stages 4 and 7
+  // hand over to a second role partway through.
+  const activeActorId = definition?.activeActorIds[0];
+  const actor = scenario.actors.find((candidate) => candidate.actorId === activeActorId);
+  const organization = scenario.organizations.find(
+    (candidate) => candidate.organizationId === actor?.organizationId,
+  );
+
+  // Orientation genuinely has no role: the learner is observing, not acting.
+  const isObserving = definition?.stageId === scenario.stages[0]?.stageId;
 
   return (
     <header className="top-bar">
@@ -41,22 +51,17 @@ export function TopBar(): ReactNode {
             <dt>{t("workspace.progress")}</dt>
             <dd>
               {t("workspace.progressValue", {
-                current: stageNumber(state.currentStageId),
-                total: SCENARIO_STAGE_ORDER.length,
+                current: stageNumber,
+                total: scenario.stages.length,
               })}
             </dd>
           </div>
 
-          {/*
-            The role row is always present, per specification section 31.4.
-            Orientation genuinely has no role yet -- the learner is observing,
-            not acting -- so it says so explicitly rather than either hiding the
-            row or inventing a role the learner has not been given.
-          */}
+          {/* Always present, per specification section 31.4. */}
           <div className="top-bar__item">
             <dt>{t("workspace.currentRole")}</dt>
             <dd>
-              {actor !== undefined && organization !== undefined
+              {!isObserving && actor !== undefined && organization !== undefined
                 ? t("workspace.currentRoleValue", {
                     role: t(actor.displayNameKey),
                     organization: t(organization.displayNameKey),
@@ -78,10 +83,10 @@ export function TopBar(): ReactNode {
 
       <progress
         className="top-bar__progress"
-        max={SCENARIO_STAGE_ORDER.length}
+        max={scenario.stages.length}
         value={state.completedStageIds.length}
       >
-        {state.completedStageIds.length} / {SCENARIO_STAGE_ORDER.length}
+        {state.completedStageIds.length} / {scenario.stages.length}
       </progress>
     </header>
   );

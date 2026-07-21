@@ -3,7 +3,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./app";
 import { LocaleProvider } from "./providers/locale-provider";
+import { ScenarioProvider } from "./providers/scenario-provider";
 import { SimulationProvider } from "./providers/simulation-provider";
+import type React from "react";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
 
 /**
@@ -17,14 +19,39 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
  * regression that overflows the budget fails this test rather than surfacing in
  * front of a class.
  */
-function renderApp(): void {
-  render(
+function AppUnderTest(): React.ReactElement {
+  return (
     <LocaleProvider>
-      <SimulationProvider>
-        <App />
-      </SimulationProvider>
-    </LocaleProvider>,
+      <ScenarioProvider>
+        <SimulationProvider>
+          <App />
+        </SimulationProvider>
+      </ScenarioProvider>
+    </LocaleProvider>
   );
+}
+
+function renderApp(): void {
+  render(<AppUnderTest />);
+}
+
+/**
+ * Stage 2 in full: submit the batch, then seal the block. The ledger runs in
+ * STAGE_BOUNDARY mode, so the transaction sits ORDERED in the pending queue
+ * until the learner presses the seal button -- which is the moment the stage
+ * exists to show.
+ */
+async function completeStageTwo(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(await screen.findByRole("button", { name: "Gửi giao dịch lên mạng" }));
+  await screen.findByText("Tất cả quy tắc đều được thỏa mãn.");
+  await user.click(await screen.findByRole("button", { name: "Ghi giao dịch vào khối" }));
+}
+
+async function completeStageOne(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
+  await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
+  await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+  await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 }
 
 describe("TraceChain end to end, stages 1 to 2", () => {
@@ -78,8 +105,13 @@ describe("TraceChain end to end, stages 1 to 2", () => {
 
     await user.click(screen.getByRole("button", { name: "Gửi giao dịch lên mạng" }));
 
-    // Every rule passed, so the transaction reaches the ledger.
+    // Every rule passed, so the transaction is accepted and ordered.
     expect(await screen.findByText("Tất cả quy tắc đều được thỏa mãn.")).toBeInTheDocument();
+
+    // Ordered is not yet committed: the block has to be sealed, and until it is
+    // there is no ledger to inspect.
+    expect(screen.queryByRole("region", { name: "Sổ cái blockchain mô phỏng" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Ghi giao dịch vào khối" }));
 
     // ---- The first block exists and is the genesis block --------------
     const ledger = await screen.findByRole("region", { name: "Sổ cái blockchain mô phỏng" });
@@ -102,12 +134,8 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
-    await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await user.click(await screen.findByRole("button", { name: "Gửi giao dịch lên mạng" }));
-    await screen.findByText("Tất cả quy tắc đều được thỏa mãn.");
+    await completeStageOne(user);
+    await completeStageTwo(user);
 
     // Initialization marked the attempt in progress and declared the range.
     expect(api.peek("cmi.core.lesson_status")).toBe("incomplete");
@@ -137,10 +165,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
 
     // First session: get as far as stage 2 and let it save.
     renderApp();
-    await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
-    await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
+    await completeStageOne(user);
     const savedState = api.peek("cmi.suspend_data");
     expect(savedState).not.toBe("");
 
@@ -151,13 +176,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     const relaunched = new MockScorm12Api({ initialValues: api.snapshot() });
     uninstall = installMockScormApi(relaunched);
 
-    const { unmount } = render(
-      <LocaleProvider>
-        <SimulationProvider>
-          <App />
-        </SimulationProvider>
-      </LocaleProvider>,
-    );
+    const { unmount } = render(<AppUnderTest />);
 
     const resumeButtons = await screen.findAllByRole("button", {
       name: "Tiếp tục lần học trước",

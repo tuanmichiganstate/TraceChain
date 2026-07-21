@@ -1,34 +1,40 @@
 #!/usr/bin/env node
 /**
- * Validate the scenario definition before the application ever boots
- * (specification section 27: "Validate all imported scenario data at startup").
+ * Validate the scenario at build time (specification section 27).
  *
- * Catching these at build time matters because most of them are silent at
- * runtime. A timeline whose receipt precedes its dispatch does not crash -- it
- * produces a stage the learner simply cannot complete, and the cause is three
- * layers away in a validation rule.
+ * This runs the same `validateScenario` the application runs at startup, so the
+ * build cannot pass a scenario the application would reject. It adds three
+ * checks that only make sense outside the browser: the timeline ordering
+ * constraints, the locale keys the scenario references, and agreement between
+ * the scenario and the stage component registry.
  *
  * The scenario modules are TypeScript with enums, which Node's type stripping
  * cannot execute, so they are bundled with esbuild first. esbuild is already
  * present as a Vite dependency.
  */
 
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const errors = [];
-const checks = [];
+const warnings = [];
+let checkedCount = 0;
 
 function check(description, condition, detail = "") {
-  checks.push({ description, passed: Boolean(condition) });
+  checkedCount += 1;
   if (!condition) errors.push(`${description}${detail ? ` -- ${detail}` : ""}`);
 }
 
-const temporaryDirectory = mkdtempSync(join(tmpdir(), "tracechain-scenario-"));
+/*
+ * The bundle must live inside the project so Node can resolve the externalized
+ * `react` import from node_modules. A system temp directory cannot.
+ */
+const cacheRoot = join(projectRoot, "node_modules", ".cache");
+mkdirSync(cacheRoot, { recursive: true });
+const temporaryDirectory = mkdtempSync(join(cacheRoot, "tracechain-scenario-"));
 const bundlePath = join(temporaryDirectory, "scenario.mjs");
 
 try {
@@ -40,25 +46,33 @@ try {
     platform: "node",
     target: "node20",
     logLevel: "silent",
+    // The stage registry pulls in React components; they are never rendered
+    // here, only their keys are read.
+    external: ["react", "react-dom", "react/jsx-runtime"],
+    loader: { ".css": "empty" },
   });
 
-  const scenario = await import(pathToFileURL(bundlePath).href);
-  const locale = JSON.parse(readFileSync(join(projectRoot, "src", "locales", "vi.json"), "utf8"));
-
+  const module = await import(pathToFileURL(bundlePath).href);
   const {
+    coffeeScenario,
+    validateScenario,
     SCENARIO_TIMELINE,
     TIMELINE_ORDERING_CONSTRAINTS,
-    organizations,
-    actors,
-    locations,
-    DECISION_IDS,
-    HINT_IDS,
-    SCENARIO_STAGE_ORDER,
-    STAGE_ACTOR,
-    STAGE_TITLE_KEY,
+    STAGE_COMPONENTS,
     TRANSACTION_TO_EVENT,
     TransactionType,
-  } = scenario;
+  } = module;
+
+  // ---- The shared validator -------------------------------------------
+
+  const result = validateScenario(coffeeScenario);
+  checkedCount += result.checkedCount;
+
+  for (const issue of result.issues) {
+    const line = `${issue.path}: ${issue.message}`;
+    if (issue.severity === "ERROR") errors.push(line);
+    else warnings.push(line);
+  }
 
   // ---- Timeline ordering ----------------------------------------------
 
@@ -72,101 +86,65 @@ try {
     );
   }
 
-  for (const [key, value] of Object.entries(SCENARIO_TIMELINE)) {
-    check(
-      `Timeline entry "${key}" is a valid ISO 8601 UTC instant`,
-      typeof value === "string" && value.endsWith("Z") && Number.isFinite(Date.parse(value)),
-      value,
-    );
-  }
+  // ---- Locale keys ------------------------------------------------------
 
-  // ---- Localization keys referenced by scenario data -------------------
+  const locale = JSON.parse(readFileSync(join(projectRoot, "src", "locales", "vi.json"), "utf8"));
 
-  const referencedKeys = [
-    ...organizations.map((organization) => organization.displayNameKey),
-    ...actors.map((actor) => actor.displayNameKey),
-    ...locations.map((location) => location.displayNameKey),
-    ...Object.values(STAGE_TITLE_KEY),
-  ];
+  const referencedKeys = new Set([
+    coffeeScenario.titleKey,
+    coffeeScenario.descriptionKey,
+    ...coffeeScenario.organizations.map((o) => o.displayNameKey),
+    ...coffeeScenario.actors.map((a) => a.displayNameKey),
+    ...coffeeScenario.locations.map((l) => l.displayNameKey),
+    ...coffeeScenario.stages.flatMap((stage) => [
+      stage.titleKey,
+      stage.instructionKey,
+      ...stage.requiredActions.map((action) => action.descriptionKey),
+      ...stage.availableHints.map((hint) => hint.textKey),
+      ...stage.knowledgeChecks.flatMap((knowledgeCheck) => [
+        knowledgeCheck.questionKey,
+        knowledgeCheck.feedbackKey,
+        knowledgeCheck.scenarioConnectionKey,
+        ...(knowledgeCheck.glossaryTermKey ? [knowledgeCheck.glossaryTermKey] : []),
+        ...knowledgeCheck.options.map((option) => option.labelKey),
+        ...(knowledgeCheck.categories ?? []).map((category) => category.labelKey),
+      ]),
+    ]),
+  ]);
 
-  const missingKeys = referencedKeys.filter((key) => !(key in locale));
+  const missingKeys = [...referencedKeys].filter((key) => !(key in locale));
   check(
-    "Every scenario display key exists in vi.json",
+    "Every localization key the scenario references exists in vi.json",
     missingKeys.length === 0,
     missingKeys.join(", "),
   );
 
-  // ---- Referential integrity ------------------------------------------
+  // ---- Scenario and registry agreement ---------------------------------
 
-  const organizationIds = new Set(organizations.map((o) => o.organizationId));
-
-  const actorsWithUnknownOrganization = actors.filter(
-    (actor) => !organizationIds.has(actor.organizationId),
+  const implementedStages = coffeeScenario.stages.filter((stage) => stage.isImplemented);
+  const unregistered = implementedStages.filter(
+    (stage) => STAGE_COMPONENTS[stage.stageId] === undefined,
   );
   check(
-    "Every actor belongs to a defined organization",
-    actorsWithUnknownOrganization.length === 0,
-    actorsWithUnknownOrganization.map((a) => a.actorId).join(", "),
+    "Every stage marked implemented has a registered component",
+    unregistered.length === 0,
+    unregistered.map((stage) => stage.stageId).join(", "),
   );
 
-  const locationsWithUnknownOperator = locations.filter(
-    (location) => !organizationIds.has(location.operatedByOrganizationId),
-  );
-  check(
-    "Every location is operated by a defined organization",
-    locationsWithUnknownOperator.length === 0,
-    locationsWithUnknownOperator.map((l) => l.locationId).join(", "),
-  );
-
-  const actorIds = new Set(actors.map((actor) => actor.actorId));
-  const stagesWithUnknownActor = Object.entries(STAGE_ACTOR).filter(
-    ([, actorId]) => actorId !== undefined && !actorIds.has(actorId),
+  const orphanComponents = Object.keys(STAGE_COMPONENTS).filter(
+    (stageId) => !implementedStages.some((stage) => stage.stageId === stageId),
   );
   check(
-    "Every stage's active actor is defined",
-    stagesWithUnknownActor.length === 0,
-    stagesWithUnknownActor.map(([stage]) => stage).join(", "),
-  );
-
-  // ---- Identifier conventions (specification section 5.3) --------------
-
-  const badOrganizationIds = organizations.filter((o) => !o.organizationId.startsWith("ORG_"));
-  check("Organization identifiers use the ORG_ prefix", badOrganizationIds.length === 0);
-
-  const badActorIds = actors.filter((a) => !a.actorId.startsWith("ACT_"));
-  check("Actor identifiers use the ACT_ prefix", badActorIds.length === 0);
-
-  const badLocationIds = locations.filter((l) => !l.locationId.startsWith("LOC_"));
-  check("Location identifiers use the LOC_ prefix", badLocationIds.length === 0);
-
-  // ---- Compact state codec key ----------------------------------------
-
-  check(
-    "Decision identifiers are unique",
-    new Set(DECISION_IDS).size === DECISION_IDS.length,
-    "The codec stores decisions positionally; a duplicate corrupts saved state",
-  );
-  check("Hint identifiers are unique", new Set(HINT_IDS).size === HINT_IDS.length);
-  check(
-    "Every stage appears exactly once in the stage order",
-    new Set(SCENARIO_STAGE_ORDER).size === SCENARIO_STAGE_ORDER.length,
-  );
-  check(
-    "Every stage in the order has a title key",
-    SCENARIO_STAGE_ORDER.every((stageId) => STAGE_TITLE_KEY[stageId] !== undefined),
+    "Every registered component belongs to a stage marked implemented",
+    orphanComponents.length === 0,
+    orphanComponents.join(", "),
   );
 
   // ---- Transaction and event symmetry ----------------------------------
 
   const transactionTypes = Object.values(TransactionType);
-  const unmappedTransactions = transactionTypes.filter(
-    (type) => TRANSACTION_TO_EVENT[type] === undefined,
-  );
-  check(
-    "Every transaction type maps to a past-tense event",
-    unmappedTransactions.length === 0,
-    unmappedTransactions.join(", "),
-  );
+  const unmapped = transactionTypes.filter((type) => TRANSACTION_TO_EVENT[type] === undefined);
+  check("Every transaction type maps to a past-tense event", unmapped.length === 0, unmapped.join(", "));
 
   const mappedEvents = Object.values(TRANSACTION_TO_EVENT);
   check(
@@ -177,13 +155,15 @@ try {
   rmSync(temporaryDirectory, { recursive: true, force: true });
 }
 
-const passed = checks.filter((entry) => entry.passed).length;
+for (const warning of warnings) {
+  console.warn(`  warning  ${warning}`);
+}
 
 if (errors.length > 0) {
-  console.error(`\nScenario validation FAILED (${passed}/${checks.length} checks passed):\n`);
+  console.error(`\nScenario validation FAILED with ${errors.length} problem(s):\n`);
   for (const error of errors) console.error(`  error  ${error}`);
   console.error("");
   process.exit(1);
 }
 
-console.log(`Scenario validation passed: ${passed}/${checks.length} checks.`);
+console.log(`Scenario validation passed: ${checkedCount} checks, ${warnings.length} warning(s).`);

@@ -7,8 +7,8 @@ import {
   TransactionType,
 } from "../../domain/types/enums";
 import type { CreateBatchCommand } from "../../domain/commands/commands";
-import type { LedgerTransaction } from "../../domain/types/models";
 import { useTranslator } from "../../app/providers/locale-provider";
+import { useScenario } from "../../app/providers/scenario-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
 import { TransactionPipeline } from "../../components/transaction-pipeline";
 import { ValidationResults } from "../../components/validation-results";
@@ -18,42 +18,55 @@ import {
   ActorId,
   LocationId,
   OrganizationId,
-  organizationsById,
 } from "../../scenarios/coffee-traceability/organizations";
-import { SCENARIO_TIMELINE } from "../../scenarios/coffee-traceability/timeline";
+import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
 
 const DECISION_ID = "INT_CREATE_BATCH";
-const ASSET_ID = "BAT_GREEN_COFFEE_001";
 
 /**
  * Stage 2. The learner records the harvested batch, watches it move through the
- * transaction lifecycle, and sees the first block form.
+ * transaction lifecycle, and seals the first block.
  *
  * Most fields are fixed scenario facts rather than free input. The learning
  * objective here is the *lifecycle* -- propose, validate, endorse, order,
- * commit -- not data entry, and an eight-field form repeated across fifteen
+ * commit -- not data entry, and an eight-section form repeated across fifteen
  * transactions is where the session time budget disappears.
+ *
+ * The block is sealed by an explicit action rather than automatically. The
+ * ledger runs in STAGE_BOUNDARY mode, so a transaction sits ORDERED in the
+ * pending queue until something seals it. Making that a button the learner
+ * presses is the point of this stage: ordering and commitment are separate
+ * steps, and here you can watch the second one happen.
  */
 export function CreateBatchStage(): ReactNode {
   const t = useTranslator();
-  const { state, submitCommand, recordDecision, completeStage } = useSimulation();
+  const { scenario } = useScenario();
+  const { state, submitCommand, sealPendingBlock, recordDecision, completeStage } =
+    useSimulation();
   const [quantity, setQuantity] = useState("100");
-  const [result, setResult] = useState<{
-    transaction: LedgerTransaction;
-    isValid: boolean;
-  } | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
 
-  const asset = state.domain.assetsById[ASSET_ID];
-  const producer = organizationsById[OrganizationId.PRODUCER_COOP];
+  // Derived from live state rather than captured at submit time, so the
+  // pipeline reflects the transaction's real status after sealing.
+  const transaction =
+    transactionId === null ? undefined : state.domain.transactionsById[transactionId];
+  const asset = state.domain.assetsById[GREEN_COFFEE_BATCH_ID];
+  const producer = scenario.organizations.find(
+    (organization) => organization.organizationId === OrganizationId.PRODUCER_COOP,
+  );
+
+  const isOrdered = transaction?.transactionStatus === TransactionStatus.ORDERED;
+  const isCommitted = transaction?.transactionStatus === TransactionStatus.COMMITTED;
+  const isRejected = transaction?.transactionStatus === TransactionStatus.REJECTED;
 
   const handleSubmit = (): void => {
     const command: CreateBatchCommand = {
       commandType: TransactionType.CREATE_BATCH,
-      assetId: ASSET_ID,
+      assetId: GREEN_COFFEE_BATCH_ID,
       assetType: AssetType.GREEN_COFFEE_BATCH,
       productName: "Arabica green coffee",
       originLocation: "Lam Dong",
-      productionDate: SCENARIO_TIMELINE.batchCreated,
+      productionDate: scenario.timeline["batchCreated"] as string,
       quantity: Number(quantity),
       quantityUnit: QuantityUnit.KG,
       packageSizeGrams: null,
@@ -62,7 +75,7 @@ export function CreateBatchStage(): ReactNode {
       initiatedByActorId: ActorId.PRODUCER_MANAGER,
       // From the scenario clock, never the learner's system clock, so the
       // resulting hashes are identical on every machine.
-      scenarioTimestamp: SCENARIO_TIMELINE.batchCreated,
+      scenarioTimestamp: scenario.timeline["batchCreated"] as string,
     };
 
     const outcome = submitCommand(command, {
@@ -71,10 +84,8 @@ export function CreateBatchStage(): ReactNode {
     });
 
     recordDecision(DECISION_ID, outcome.isAccepted ? 1 : 0);
-    setResult({ transaction: outcome.transaction, isValid: outcome.isAccepted });
+    setTransactionId(outcome.transaction.transactionId);
   };
-
-  const isCommitted = result?.transaction.transactionStatus === TransactionStatus.COMMITTED;
 
   return (
     <div className="stage stack">
@@ -90,7 +101,7 @@ export function CreateBatchStage(): ReactNode {
           <div className="asset-card__row">
             <dt>{t("field.assetId")}</dt>
             <dd>
-              <code>{ASSET_ID}</code>
+              <code>{GREEN_COFFEE_BATCH_ID}</code>
             </dd>
           </div>
           <div className="asset-card__row">
@@ -118,38 +129,43 @@ export function CreateBatchStage(): ReactNode {
             inputMode="decimal"
             min="0"
             value={quantity}
-            disabled={result !== null}
+            disabled={transaction !== undefined && !isRejected}
             onChange={(event) => setQuantity(event.target.value)}
           />
         </div>
 
         <p className="muted">{t("transaction.signatureNotice")}</p>
 
-        {result === null ? (
+        {transaction === undefined ? (
           <button type="button" className="button button--primary" onClick={handleSubmit}>
             {t("transaction.submit")}
           </button>
         ) : null}
       </section>
 
-      {result !== null ? (
+      {transaction !== undefined ? (
         <section className="card">
           <TransactionPipeline
-            status={result.transaction.transactionStatus}
-            blockId={result.transaction.blockId}
-            failureCount={result.transaction.validationResults.filter((r) => r.status === "FAILED").length}
+            status={transaction.transactionStatus}
+            blockId={transaction.blockId}
+            failureCount={
+              transaction.validationResults.filter((result) => result.status === "FAILED").length
+            }
           />
           <ValidationResults
-            results={result.transaction.validationResults}
-            isValid={result.isValid}
+            results={transaction.validationResults}
+            isValid={!isRejected}
           />
 
-          {result.transaction.endorsementResults.length > 0 ? (
+          {transaction.endorsementResults.length > 0 ? (
             <section className="endorsements">
               <h3>{t("endorsement.heading")}</h3>
               <ul>
-                {result.transaction.endorsementResults.map((endorsement) => {
-                  const organization = organizationsById[endorsement.endorsingOrganizationId];
+                {transaction.endorsementResults.map((endorsement) => {
+                  const organization = scenario.organizations.find(
+                    (candidate) =>
+                      candidate.organizationId === endorsement.endorsingOrganizationId,
+                  );
                   const name =
                     organization === undefined
                       ? endorsement.endorsingOrganizationId
@@ -170,11 +186,11 @@ export function CreateBatchStage(): ReactNode {
             </section>
           ) : null}
 
-          {!result.isValid ? (
+          {isRejected ? (
             <button
               type="button"
               className="button button--secondary"
-              onClick={() => setResult(null)}
+              onClick={() => setTransactionId(null)}
             >
               {t("transaction.edit")}
             </button>
@@ -189,12 +205,29 @@ export function CreateBatchStage(): ReactNode {
         </section>
       ) : null}
 
-      {isCommitted ? (
-        <>
-          <LedgerExplorer state={state.domain} />
+      {/*
+        The transaction is ordered but not yet in a block. This is the moment
+        the stage exists to show, so it is an explicit action rather than
+        something that happens invisibly.
+      */}
+      {isOrdered ? (
+        <section className="card">
           <div className="notice">
             <p>{t("stage.createBatch.sealBlockHelp")}</p>
           </div>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => sealPendingBlock(scenario.timeline["batchCreated"] as string)}
+          >
+            {t("stage.createBatch.sealBlock")}
+          </button>
+        </section>
+      ) : null}
+
+      {isCommitted ? (
+        <>
+          <LedgerExplorer state={state.domain} />
           <button
             type="button"
             className="button button--primary"

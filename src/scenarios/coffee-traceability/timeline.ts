@@ -50,6 +50,19 @@ export const SCENARIO_TIMELINE = {
 
   /** Stage 9 -- the laboratory result that triggers the recall. */
   laboratoryResult: "2026-07-05T04:00:00.000Z",
+
+  /*
+   * The near-miss distractor chain (see seed-assets.ts). Every date here is
+   * deliberately adjacent to the learner's own batch: harvested one day later,
+   * roasted the *same* day, packaged the same day. A learner filtering by date
+   * rather than following provenance sweeps this lot up by mistake.
+   */
+  distractorBatchHarvested: "2025-12-11T02:00:00.000Z",
+  distractorBatchRoasted: "2026-06-18T05:00:00.000Z",
+  distractorBatchPackaged: "2026-06-19T06:00:00.000Z",
+
+  /** The unrelated control lot: different variety, different region. */
+  unrelatedLotPackaged: "2026-05-02T03:00:00.000Z",
 } as const;
 
 export type ScenarioTimelineKey = keyof typeof SCENARIO_TIMELINE;
@@ -89,5 +102,23 @@ export const TIMELINE_ORDERING_CONSTRAINTS: ReadonlyArray<
     "batchCreated",
     "certificateExpires",
     "The certificate must not expire before the batch exists",
+  ],
+
+  // The distractor chain must itself be internally coherent, or the recall
+  // exercise rests on data that could not have happened.
+  [
+    "distractorBatchHarvested",
+    "distractorBatchRoasted",
+    "The distractor batch must be harvested before it is roasted",
+  ],
+  [
+    "distractorBatchRoasted",
+    "distractorBatchPackaged",
+    "The distractor batch must be roasted before it is packaged",
+  ],
+  [
+    "distractorBatchPackaged",
+    "laboratoryResult",
+    "The distractor lot must be on the shelf before the recall is investigated",
   ],
 ];

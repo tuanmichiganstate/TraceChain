@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
-import { defaultAppConfiguration } from "../../app/configuration";
+import { useScenario } from "../../app/providers/scenario-provider";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
 
 const OBJECTIVE_KEYS = [
@@ -16,6 +16,7 @@ const OBJECTIVE_KEYS = [
 export function StartScreen(): ReactNode {
   const t = useTranslator();
   const { state, startNew, resume, restart } = useSimulation();
+  const { scenario } = useScenario();
   const [isConfirmingRestart, setConfirmingRestart] = useState(false);
   const restartButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -41,7 +42,7 @@ export function StartScreen(): ReactNode {
         <section className="card">
           <h2>{t("start.heading")}</h2>
           <p className="muted">
-            {t("start.estimatedTime", { minutes: defaultAppConfiguration.estimatedMinutes })}
+            {t("start.estimatedTime", { minutes: scenario.estimatedMinutes })}
           </p>
 
           <h3>{t("start.objectivesHeading")}</h3>
