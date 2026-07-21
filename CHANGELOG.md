@@ -2,6 +2,59 @@
 
 ## [Unreleased]
 
+### Milestone 2 — Domain and ledger engine
+
+The whole scenario now runs headless. `scenario-walkthrough.test.ts` creates,
+certifies, ships, monitors, receives, corrects, transforms, packages,
+distributes and recalls a batch with no interface involved at all.
+
+**Added**
+
+- All twelve event handlers in the reducer, and all twelve command-to-event
+  translations. The reducer switch is exhaustive, so an unhandled event type is
+  a compile error rather than a silent no-op.
+- All twenty-five validation rules, grouped by concern across eight files. A
+  registry test asserts every declared rule identifier is actually registered --
+  an unregistered rule would simply never run, protecting nothing, silently.
+- Provenance traversal with cycle protection, and recall scope with separate
+  over-selection and under-selection reporting.
+- `LedgerAdapter` and `SimulatedLedgerAdapter` (section 16), the seam Tier 2 and
+  Tier 3 would replace.
+- Endorsement policies that add the counterparty to a transfer, so both sides of
+  a handover must approve it.
+- Seed replay: genesis assets and provenance, plus seeded transactions that go
+  through the real pipeline.
+- `docs/FUTURE_LEDGER_ADAPTERS.md`.
+
+**Fixed**
+
+- **The engine validated the wrong actor's permissions.** `submitCommand` spread
+  a stored validation context whose `actorId` and `organizationId` were fixed at
+  construction, so every rule evaluated as though the same organization had
+  submitted every transaction. With one actor this was invisible; with seven it
+  made authorization meaningless -- a retail manager could have issued
+  certificates. Registries and acting identity are now separate types, so the
+  mistake is unrepresentable.
+- `RULE_RECEIVER_AUTHORIZED` rejected every `RECEIVE_BATCH`, because it treated
+  "receiver is the acting organization" as an error. On a receipt that is the
+  entire point; the check now applies only to outgoing transfers.
+- **The processor never acquired ownership.** Stage 7 has it selling the
+  packaged lot, but nothing in the scenario transferred title to it -- the
+  co-operative still owned the coffee through roasting. Stage 5 now separates
+  booking goods in (custody) from buying them (ownership), which is also a third
+  application of the lesson.
+- `DISPATCH_BATCH` required custody rather than ownership. In stage 7 the
+  distributor owns the packages while they are still at the plant, and directing
+  a shipment is an ownership right.
+
+**Changed**
+
+- `configuration.ts` no longer duplicates `passingScore`, `estimatedMinutes`,
+  `blockCommitMode` or `maxTransactionsPerBlock`. The scenario owns them and is
+  what the application reads; the copies were silently ignored.
+- `ANCHOR_DOCUMENT` carries its document metadata. Referencing an anchor that
+  had to exist beforehand was circular -- anchoring is the act that creates it.
+
 ### Milestone 1 — Scenario foundation
 
 The activity becomes data. Specification section 41 step 4 asks that the

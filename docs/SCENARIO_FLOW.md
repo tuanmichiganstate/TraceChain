@@ -24,7 +24,7 @@ Hợp tác xã sản xuất → Đơn vị chứng nhận → Đơn vị vận c
 | 2 | Create batch | Producer | `CREATE_BATCH`, then seal block 1 | Physical goods → digital asset; ordering ≠ commitment |
 | 3 | Anchor certificate | Certifier | Store off-chain, hash on-chain; reject an unauthorized issuer | On-chain vs off-chain; issuer authority |
 | 4 | Ship and monitor | Producer → Carrier | Custody moves, ownership stays; humidity 72% vs 70% limit | **Ownership ≠ custody**; oracles |
-| 5 | Receive and correct | Processor | Weigh 100 kg against a manifest saying 1000 kg | **Correction, not deletion** |
+| 5 | Receive and correct | Processor | Weigh 100 kg against a manifest saying 1000 kg; book in and buy | **Correction, not deletion**; receipt ≠ purchase |
 | 6 | Transform | Processor | 100 kg green → 82 kg roasted | Provenance; transformation yield |
 | 7 | Package and distribute | Processor → Distributor | 82 kg → 820 × 100 g; ownership moves while custody stays | Ownership ≠ custody, mirrored |
 | 8 | Verify and tamper | Retail | Public QR view; alter an old record on a clone | Hash-chain integrity |
@@ -62,6 +62,21 @@ All UTC. `TIMELINE_ORDERING_CONSTRAINTS` in `timeline.ts` encodes the required
 orderings, and `npm run validate:scenario` enforces them.
 
 ---
+
+## Receipt and purchase are separate events
+
+Stage 5 emits three transactions, not two. Booking goods in moves **custody** to
+the processor; buying them moves **ownership**. They are proposed by different
+organizations — the processor books in, the co-operative sells.
+
+This was found by a test rather than by design. Stage 7 has the processor
+selling the packaged lot to the distributor, and it failed with
+`currentOwnerRequired`: the processor had never acquired ownership, because
+nothing in the scenario transferred it. The batch was still owned by the
+co-operative all the way through roasting.
+
+The fix is also better teaching. It applies the ownership/custody distinction a
+third time, in the one place learners most expect the two to be the same event.
 
 ## Two design decisions worth understanding
 

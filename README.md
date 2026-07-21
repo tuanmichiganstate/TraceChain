@@ -19,13 +19,14 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Milestones 0 and 1 complete: the SCORM vertical slice, and the scenario
-foundation.
+Milestones 0, 1 and 2 complete: the SCORM vertical slice, the scenario
+foundation, and the domain and ledger engine.
 
 | | |
 |---|---|
+| Domain | complete — all 12 transaction types, all 25 validation rules |
 | Stages playable | 1–2 of 9 (all nine declared as data) |
-| Tests | 200 passing |
+| Tests | 266 passing |
 | SCORM package | builds and verifies (18/18 checks) |
 | Scenario | validated at build time and startup (192 checks) |
 | Moodle staging | **not yet tested — this is the next step** |
@@ -38,6 +39,11 @@ Milestone 1 made the activity data. Stage order, roles, completion conditions,
 knowledge checks, hints, seeds and scoring all live in a `ScenarioDefinition`;
 routing reads from it rather than from a switch statement. A second scenario is
 a new data file and one changed prop — see `docs/CONTENT_AUTHORING.md`.
+
+Milestone 2 completed the domain. The whole scenario — create, certify, ship,
+monitor, receive, correct, transform, package, distribute, recall — runs
+headless with no interface at all, and `scenario-walkthrough.test.ts` is that
+script.
 
 See `docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
 
@@ -78,8 +84,9 @@ src/
 │   ├── commands/      learner intent
 │   ├── events/        committed outcomes
 │   ├── ledger/        reducer, engine, integrity verification
-│   ├── rules/         one file per rule + registry
-│   ├── scenario/      scenario validation
+│   ├── provenance/    forward and backward tracing, recall scope
+│   ├── rules/         one file per concern + registry
+│   ├── scenario/      validation and seed replay
 │   ├── units/         gram normalization
 │   └── types/         enums, models, rule ids, scenario schema, scoring
 ├── infrastructure/
@@ -122,6 +129,7 @@ scripts/               locale + scenario validators, SCORM build + verify
 - `docs/SCENARIO_FLOW.md` — the nine stages and the two non-obvious design calls
 - `docs/CONTENT_AUTHORING.md` — changing the activity, or writing a new one
 - `docs/LOCALIZATION_GUIDE.md` — Vietnamese conventions and the audit rules
+- `docs/FUTURE_LEDGER_ADAPTERS.md` — what Tier 2 and Tier 3 would take
 - `docs/MOODLE_TESTING.md` — the Moodle acceptance checklist
 - `CHANGELOG.md`
 

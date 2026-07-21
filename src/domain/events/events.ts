@@ -8,6 +8,7 @@
 import type {
   AssetType,
   ComplianceStatus,
+  DocumentType,
   LedgerEventType,
   ProvenanceRelationshipType,
   QuantityUnit,
@@ -52,6 +53,12 @@ export interface DocumentAnchoredEvent extends EventBase {
   readonly eventType: LedgerEventType.DOCUMENT_ANCHORED;
   readonly assetId: string;
   readonly documentAnchorId: string;
+  readonly documentType: DocumentType;
+  readonly fileName: string;
+  readonly contentHash: string;
+  readonly issuerOrganizationId: string;
+  readonly issuedAt: string;
+  readonly expiresAt?: string;
 }
 
 export interface CertificateIssuedEvent extends EventBase {

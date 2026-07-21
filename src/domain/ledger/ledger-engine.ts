@@ -24,7 +24,7 @@
  * teaching device that shows ordering and commitment are separate steps.
  */
 
-import { LedgerEventType, TransactionStatus, TransactionType } from "../types/enums";
+import { TransactionStatus } from "../types/enums";
 import type {
   EndorsementResult,
   LedgerBlock,
@@ -33,8 +33,10 @@ import type {
   SupplyChainAsset,
 } from "../types/models";
 import type { CommandContext, SupplyChainCommand } from "../commands/commands";
-import type { LedgerDomainEvent } from "../events/events";
 import { canonicalize } from "../../infrastructure/hashing/canonicalize";
+import { commandToEvent } from "./command-to-event";
+import { requiredEndorsers } from "./endorsement-policies";
+import { producedAssetId, subjectAssetId } from "../commands/command-targets";
 import {
   calculateAssetStateHash,
   calculateBlockHash,
@@ -42,7 +44,7 @@ import {
 } from "../../infrastructure/hashing/hash-payloads";
 import type { HashFunction } from "../../infrastructure/hashing/sha256";
 import { evaluateRules, type RuleEvaluation } from "../rules/registry";
-import type { ValidationContext } from "../rules/types";
+import type { ValidationRegistries } from "../rules/types";
 import {
   type DomainState,
   formatBlockId,
@@ -71,56 +73,6 @@ export interface TransactionResult {
   readonly isAccepted: boolean;
 }
 
-/** Which organizations must endorse each transaction type (section 14.2). */
-type EndorsementPolicy = (
-  command: SupplyChainCommand,
-  context: CommandContext,
-  state: DomainState,
-) => readonly string[];
-
-const endorsementPolicies: Partial<Record<TransactionType, EndorsementPolicy>> = {
-  [TransactionType.CREATE_BATCH]: (_command, context) => [context.organizationId],
-};
-
-/**
- * Translate a validated command into the event that records its outcome.
- * Milestone 2 extends this as each stage's command is implemented.
- */
-function commandToEvent(
-  command: SupplyChainCommand,
-  transactionId: string,
-): LedgerDomainEvent | null {
-  switch (command.commandType) {
-    case TransactionType.CREATE_BATCH:
-      return {
-        eventType: LedgerEventType.BATCH_CREATED,
-        transactionId,
-        committedAt: command.scenarioTimestamp,
-        assetId: command.assetId,
-        assetType: command.assetType,
-        productName: command.productName,
-        originLocation: command.originLocation,
-        productionDate: command.productionDate,
-        quantity: command.quantity,
-        quantityUnit: command.quantityUnit,
-        packageSizeGrams: command.packageSizeGrams,
-        ownerOrganizationId: command.producerOrganizationId,
-        custodianOrganizationId: command.producerOrganizationId,
-        locationId: command.locationId,
-      };
-    default:
-      return null;
-  }
-}
-
-/** The asset a transaction is primarily about, for before/after state hashing. */
-function primaryAssetId(command: SupplyChainCommand): string | null {
-  if ("assetId" in command) return command.assetId;
-  if ("outputAssetId" in command) return command.outputAssetId;
-  if ("sourceAssetId" in command) return command.sourceAssetId;
-  return null;
-}
-
 export class SimulatedLedger {
   constructor(
     private readonly hash: HashFunction,
@@ -136,7 +88,7 @@ export class SimulatedLedger {
     state: DomainState,
     command: SupplyChainCommand,
     context: CommandContext,
-    validationContext: Omit<ValidationContext, "state">,
+    registries: ValidationRegistries,
   ): TransactionResult {
     const transactionId = formatTransactionId(state.nextTransactionSequence);
     const timestamp = command.scenarioTimestamp;
@@ -150,7 +102,13 @@ export class SimulatedLedger {
       signatureType: "EDUCATIONAL_SIMULATION",
     };
 
-    const validation = evaluateRules(command, { ...validationContext, state });
+    // The acting identity comes from this call, never from a stored default.
+    const validation = evaluateRules(command, {
+      ...registries,
+      state,
+      actorId: context.actorId,
+      organizationId: context.organizationId,
+    });
 
     const baseTransaction: LedgerTransaction = {
       transactionId,
@@ -182,10 +140,7 @@ export class SimulatedLedger {
       };
     }
 
-    const endorsingOrganizations =
-      endorsementPolicies[command.commandType]?.(command, context, state) ?? [
-        context.organizationId,
-      ];
+    const endorsingOrganizations = requiredEndorsers(command, context, state);
 
     const endorsements: EndorsementResult[] = endorsingOrganizations.map((organizationId) => ({
       endorsingOrganizationId: organizationId,
@@ -196,12 +151,14 @@ export class SimulatedLedger {
       isSimulatedCounterparty: organizationId !== context.organizationId,
     }));
 
-    const event = commandToEvent(command, transactionId);
-    if (event === null) {
-      throw new Error(`No event mapping for command type ${command.commandType}`);
-    }
+    const event = commandToEvent(command, transactionId, state);
 
-    const affectedAssetId = primaryAssetId(command);
+    /*
+     * The asset whose before/after digests anchor the transaction hash. For a
+     * transformation that is the *output* -- the thing this transaction brought
+     * into existence -- otherwise it is the asset acted upon.
+     */
+    const affectedAssetId = producedAssetId(command) ?? subjectAssetId(command);
     const previousAsset =
       affectedAssetId === null ? undefined : state.assetsById[affectedAssetId];
     const previousAssetStateHash =

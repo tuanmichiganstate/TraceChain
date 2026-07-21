@@ -12,11 +12,23 @@ import type { Actor, Organization, ValidationResult } from "../types/models";
 import type { SupplyChainCommand } from "../commands/commands";
 import type { DomainState } from "../ledger/domain-state";
 
-export interface ValidationContext {
-  readonly state: DomainState;
+/**
+ * The static registries a rule needs: who exists on this network.
+ *
+ * Deliberately separate from the acting identity. When the two were one
+ * object, a caller could pass a context whose `actorId` disagreed with the
+ * command being submitted -- and every rule would then validate the wrong
+ * actor's permissions, silently. Keeping them apart makes that unrepresentable:
+ * the acting identity can only come from the CommandContext of the actual call.
+ */
+export interface ValidationRegistries {
   readonly organizationsById: Readonly<Record<string, Organization>>;
   readonly actorsById: Readonly<Record<string, Actor>>;
-  /** The actor proposing the transaction. */
+}
+
+export interface ValidationContext extends ValidationRegistries {
+  readonly state: DomainState;
+  /** The actor proposing this specific transaction. */
   readonly actorId: string;
   readonly organizationId: string;
 }

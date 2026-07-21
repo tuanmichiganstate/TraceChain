@@ -150,6 +150,9 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     completionConditions: [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECEIVE_BATCH },
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECORD_CORRECTION },
+      // Booking goods in moves custody; buying them moves title. The processor
+      // must acquire ownership here, or it cannot later sell what it produced.
+      { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.TRANSFER_OWNERSHIP },
     ],
     availableHints: [],
     knowledgeChecks: [],

@@ -5,18 +5,34 @@
  * see all three at once, not discover them one submission at a time.
  */
 
-import type { ValidationStatus } from "../types/enums";
+import { ValidationStatus } from "../types/enums";
 import type { ValidationResult } from "../types/models";
+import type { ValidationRuleId } from "../types/rule-ids";
 import type { SupplyChainCommand } from "../commands/commands";
-import { createBatchRules } from "./create-batch-rules";
+import { authorizationRules } from "./authorization-rules";
+import { assetRules } from "./asset-rules";
+import { correctionRules } from "./correction-rules";
+import { documentRules } from "./document-rules";
+import { ownershipCustodyRules } from "./ownership-custody-rules";
+import { quantityRules } from "./quantity-rules";
+import { sequenceRules } from "./sequence-rules";
+import { transformationRules } from "./transformation-rules";
 import type { ValidationContext, ValidationRule } from "./types";
 
 /**
- * Every rule in the application. Milestone 2 extends this list; nothing else
- * needs to change, because evaluation filters by `appliesTo`.
+ * Every rule in the application, grouped by concern. A test asserts this
+ * covers all twenty-five identifiers in `ValidationRuleId`, so a rule that is
+ * declared but never registered cannot slip through.
  */
-const ALL_RULES: readonly ValidationRule<never>[] = [
-  ...(createBatchRules as readonly ValidationRule<never>[]),
+const ALL_RULES: readonly ValidationRule<SupplyChainCommand>[] = [
+  ...authorizationRules,
+  ...assetRules,
+  ...ownershipCustodyRules,
+  ...quantityRules,
+  ...transformationRules,
+  ...documentRules,
+  ...sequenceRules,
+  ...correctionRules,
 ];
 
 export interface RuleEvaluation {
@@ -29,25 +45,32 @@ export interface RuleEvaluation {
 /**
  * Run every rule that applies to this command type.
  *
- * A failure blocks endorsement and commitment; a warning does not.
+ * A failure blocks endorsement and commitment; a warning does not. Results that
+ * are NOT_APPLICABLE are dropped, so the learner sees only rules that had
+ * something to say about their transaction.
  */
 export function evaluateRules(
   command: SupplyChainCommand,
   context: ValidationContext,
-  rules: readonly ValidationRule<never>[] = ALL_RULES,
+  rules: readonly ValidationRule<SupplyChainCommand>[] = ALL_RULES,
 ): RuleEvaluation {
   const applicable = rules.filter((rule) => rule.appliesTo.includes(command.commandType));
 
-  const results = applicable.map((rule) =>
-    (rule as ValidationRule<SupplyChainCommand>).evaluate(command, context),
-  );
+  const results = applicable
+    .map((rule) => rule.evaluate(command, context))
+    .filter((result) => result.status !== ValidationStatus.NOT_APPLICABLE);
 
-  const failures = results.filter((result) => result.status === ("FAILED" as ValidationStatus));
-  const warnings = results.filter((result) => result.status === ("WARNING" as ValidationStatus));
+  const failures = results.filter((result) => result.status === ValidationStatus.FAILED);
+  const warnings = results.filter((result) => result.status === ValidationStatus.WARNING);
 
   return { results, isValid: failures.length === 0, failures, warnings };
 }
 
-export function getAllRules(): readonly ValidationRule<never>[] {
+export function getAllRules(): readonly ValidationRule<SupplyChainCommand>[] {
   return ALL_RULES;
+}
+
+/** Which rule identifiers are actually registered. Used by a coverage test. */
+export function getRegisteredRuleIds(): readonly ValidationRuleId[] {
+  return ALL_RULES.map((rule) => rule.ruleId);
 }

@@ -10,7 +10,12 @@
  * grow by addition rather than by rewrite.
  */
 
-import type { AssetType, QuantityUnit, TransactionType } from "../types/enums";
+import type {
+  AssetType,
+  DocumentType,
+  QuantityUnit,
+  TransactionType,
+} from "../types/enums";
 
 /** Fields every command carries. */
 interface CommandBase {
@@ -59,11 +64,25 @@ export interface TransferOwnershipCommand extends CommandBase {
   readonly alsoTransfersCustody: boolean;
 }
 
+/**
+ * Anchoring carries the document's metadata, rather than referencing an anchor
+ * that already exists. Anchoring is the act that *creates* the on-chain record;
+ * requiring the anchor beforehand would be circular.
+ *
+ * The file itself is never uploaded. `contentHash` is computed from bundled
+ * scenario content -- what goes on chain is the digest and the metadata, which
+ * is the entire point of stage 3.
+ */
 export interface AnchorDocumentCommand extends CommandBase {
   readonly commandType: TransactionType.ANCHOR_DOCUMENT;
   readonly assetId: string;
   readonly documentAnchorId: string;
+  readonly documentType: DocumentType;
+  readonly fileName: string;
+  readonly contentHash: string;
   readonly issuerOrganizationId: string;
+  readonly issuedAt: string;
+  readonly expiresAt?: string;
 }
 
 export interface IssueCertificateCommand extends CommandBase {

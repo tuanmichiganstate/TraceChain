@@ -242,11 +242,12 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       useHint: (hintId) => dispatch({ type: "USE_HINT", hintId }),
 
       submitCommand: (command, context) => {
-        const result = ledger.submitCommand(stateRef.current.domain, command, context, {
-          ...registries,
-          actorId: context.actorId,
-          organizationId: context.organizationId,
-        });
+        const result = ledger.submitCommand(
+          stateRef.current.domain,
+          command,
+          context,
+          registries,
+        );
         dispatch({
           type: "LEDGER_UPDATED",
           domain: result.state,

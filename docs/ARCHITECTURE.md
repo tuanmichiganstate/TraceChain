@@ -37,7 +37,24 @@ SCORM session time and elapsed-time analytics.
 transaction bodies, no hashes, no blocks. Only the learner's decisions.
 
 **Components depend on the adapter interface, not on arrays.** That is what
-lets `ServerLedgerAdapter` and `FabricLedgerAdapter` drop in later.
+lets `ServerLedgerAdapter` and `FabricLedgerAdapter` drop in later. See
+`docs/FUTURE_LEDGER_ADAPTERS.md`.
+
+**The acting identity comes from the call, never from a stored default.** Rules
+receive `ValidationRegistries` (who exists on the network) separately from the
+`CommandContext` (who is acting now). These were one object until Milestone 2,
+and the consequence was severe and silent: the engine spread a static context,
+so every rule validated the *same* organization's permissions regardless of who
+actually submitted the transaction. With one actor it was invisible; with seven
+it made authorization meaningless. Splitting the types makes the mistake
+unrepresentable.
+
+**Seeded assets and seeded transactions are different things.** Seed assets are
+genesis state -- the world the learner walks into -- and carry no transaction,
+so the learner's own first transaction is genuinely in the first block. Seed
+transactions replay through the real pipeline and are indistinguishable from
+learner history, which is what makes the pre-committed dispatch error
+uneditable.
 
 ---
 
