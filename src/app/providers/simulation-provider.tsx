@@ -4,6 +4,11 @@
  * This is the only place that knows whether the application is running inside
  * Moodle or standalone. Everything below it -- stages, components, the domain --
  * sees one interface.
+ *
+ * It also owns the three derivations that must never disagree with each other:
+ * stage progression, the score, and what gets reported to the LMS. All three
+ * are computed from the same decisions, so a resumed attempt cannot drift from
+ * the one that was saved.
  */
 
 import {
@@ -20,9 +25,10 @@ import {
 import { SCENARIO_STAGE_ORDER, type ScenarioStageId } from "../../domain/types/enums";
 import { SimulatedLedger } from "../../domain/ledger/ledger-engine";
 import type { DomainState } from "../../domain/ledger/domain-state";
-import { createEmptyDomainState } from "../../domain/ledger/domain-state";
 import type { CommandContext, SupplyChainCommand } from "../../domain/commands/commands";
 import type { TransactionResult } from "../../domain/ledger/ledger-engine";
+import type { KnowledgeCheckDefinition } from "../../domain/types/scenario";
+import { LearnerInteractionType } from "../../domain/types/scoring";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   decodeAttemptState,
@@ -31,11 +37,27 @@ import {
 import { StandalonePersistenceAdapter } from "../../infrastructure/persistence/standalone-adapter";
 import { Scorm12Adapter } from "../../infrastructure/scorm/scorm12-adapter";
 import {
+  CompletionStatus,
   PlatformMode,
   type LearningPlatformAdapter,
 } from "../../infrastructure/scorm/learning-platform-adapter";
+import { applyScenarioSeed } from "../../domain/scenario/seed-replay";
+import {
+  ACTION_ACCEPTED,
+  ACTION_REJECTED,
+  deriveCorrectnessFromDecisions,
+  encodeAnswer,
+  isAnswerCorrect,
+  type Answer,
+} from "../../domain/scenario/answer-codec";
+import { completedStages, currentStage } from "../../domain/scenario/stage-completion";
+import {
+  calculateScore,
+  isPassing,
+  type ScoreBreakdown,
+} from "../../domain/scoring/score-engine";
 import { useScenario } from "./scenario-provider";
-import { APP_VERSION } from "../configuration";
+import { APP_VERSION, defaultAppConfiguration } from "../configuration";
 import {
   createInitialSessionState,
   sessionReducer,
@@ -43,20 +65,27 @@ import {
   type SessionState,
 } from "../session/session-state";
 
-const AUTO_SAVE_INTERVAL_MS = 30_000;
-
 interface SimulationContextValue {
   readonly state: SessionState;
   readonly diagnostics: readonly string[];
+  readonly scoreBreakdown: ScoreBreakdown;
+  readonly isPassed: boolean;
+  readonly isCompleted: boolean;
   startNew(): void;
   resume(): void;
   restart(): void;
-  recordDecision(decisionId: string, encodedValue: number): void;
-  useHint(hintId: string): void;
+  /** Record a knowledge check answer. Correctness is derived, not passed in. */
+  answerCheck(check: KnowledgeCheckDefinition, answer: Answer): boolean;
+  /** Named `revealHint` rather than `useHint`: a `use` prefix would read
+   *  as a React hook to both the linter and the next person. */
+  revealHint(hintId: string): void;
   submitCommand(command: SupplyChainCommand, context: CommandContext): TransactionResult;
+  /** Record the outcome of a scored procedural action. */
+  recordActionOutcome(decisionId: string, wasAccepted: boolean): void;
   sealPendingBlock(createdAt: string): void;
-  completeStage(stageId: ScenarioStageId): void;
+  viewStage(stageId: ScenarioStageId): void;
   save(): Promise<void>;
+  finish(): Promise<void>;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -65,8 +94,6 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   const { scenario } = useScenario();
   const [state, dispatch] = useReducer(sessionReducer, undefined, createInitialSessionState);
 
-  // Ledger behaviour, the codec key, and the actor and organization registries
-  // all come from the scenario, so a different scenario needs no change here.
   const ledger = useMemo(
     () => new SimulatedLedger(sha256Hex, scenario.ledgerConfiguration),
     [scenario],
@@ -85,14 +112,16 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     [scenario],
   );
 
+  /** The starting world: seeded background lots and their provenance. */
+  const seededState = useMemo(
+    () => applyScenarioSeed(scenario, sha256Hex, registries).state,
+    [scenario, registries],
+  );
+
   const adapterRef = useRef<LearningPlatformAdapter | null>(null);
   const diagnosticsRef = useRef<string[]>([]);
-  // Diagnostics are rendered by the developer panel, so they are state rather
-  // than a bare ref; the ref is only the accumulation buffer for async writers.
   const [diagnostics, setDiagnostics] = useState<readonly string[]>([]);
 
-  // Read by the save routine, which must never capture a stale render. Written
-  // in an effect rather than during render, so nothing reads a ref mid-render.
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
@@ -103,17 +132,63 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     setDiagnostics(diagnosticsRef.current);
   }, []);
 
+  // ---- Derivations, all from the same decisions ------------------------
+
+  const scoreBreakdown = useMemo(
+    () =>
+      calculateScore(
+        {
+          decisions: state.decisions,
+          hintsUsed: state.hintsUsed,
+          correctness: deriveCorrectnessFromDecisions(state.decisions, scenario),
+        },
+        scenario,
+      ),
+    [state.decisions, state.hintsUsed, scenario],
+  );
+
+  const isPassed = isPassing(scoreBreakdown.score, scenario.scoringConfiguration);
+  const isCompleted = state.completedStageIds.length === SCENARIO_STAGE_ORDER.length;
+
+  /**
+   * Stage progression is recomputed whenever the ledger or the decisions move,
+   * rather than being advanced by a component. That is what lets a resumed
+   * attempt rebuild its own progress from replayed state.
+   */
+  useEffect(() => {
+    if (state.phase !== "RUNNING") return;
+    const context = { state: state.domain, decisions: state.decisions };
+    const completed = completedStages(scenario, context);
+    const current = currentStage(scenario, context);
+
+    const sameCompleted =
+      completed.length === state.completedStageIds.length &&
+      completed.every((stageId, index) => stageId === state.completedStageIds[index]);
+
+    if (!sameCompleted || current !== state.currentStageId) {
+      dispatch({ type: "STAGE_PROGRESS", completedStageIds: completed, currentStageId: current });
+    }
+  }, [
+    state.phase,
+    state.domain,
+    state.decisions,
+    state.completedStageIds,
+    state.currentStageId,
+    scenario,
+  ]);
+
+  // ---- Platform ---------------------------------------------------------
+
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      // Try SCORM first; fall back to local storage when no API is reachable.
       const scormAdapter = new Scorm12Adapter();
       const scormResult = await scormAdapter.initialize();
 
       let adapter: LearningPlatformAdapter = scormAdapter;
       let mode = PlatformMode.SCORM_1_2;
-      const diagnostics = [...scormResult.diagnostics];
+      const collected = [...scormResult.diagnostics];
 
       if (!scormResult.isConnected) {
         const standalone = new StandalonePersistenceAdapter({
@@ -123,14 +198,14 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         const standaloneResult = await standalone.initialize();
         adapter = standalone;
         mode = PlatformMode.STANDALONE;
-        diagnostics.push(...standaloneResult.diagnostics);
+        collected.push(...standaloneResult.diagnostics);
       }
 
       if (cancelled) return;
 
       adapterRef.current = adapter;
-      diagnosticsRef.current = diagnostics;
-      setDiagnostics(diagnostics);
+      diagnosticsRef.current = collected;
+      setDiagnostics(collected);
 
       const stored = await adapter.loadAttemptState();
       if (stored === null) {
@@ -138,7 +213,6 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         return;
       }
 
-      // Verify stored state before trusting it (sections 21.11 and 27).
       try {
         decodeAttemptState(stored, codecSchema);
         dispatch({ type: "INITIALIZED", platformMode: mode, hasSavedAttempt: true });
@@ -164,24 +238,42 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     dispatch({ type: "SAVE_STATUS", status: "SAVING" });
     try {
       const current = stateRef.current;
-      const encoded = encodeAttemptState(toAttemptSnapshot(current), codecSchema);
-      await adapter.saveAttemptState(encoded);
+      const correctness = deriveCorrectnessFromDecisions(current.decisions, scenario);
+      const breakdown = calculateScore(
+        { decisions: current.decisions, hintsUsed: current.hintsUsed, correctness },
+        scenario,
+      );
+      const passed = isPassing(breakdown.score, scenario.scoringConfiguration);
+
+      await adapter.saveAttemptState(
+        encodeAttemptState(toAttemptSnapshot(current, passed), codecSchema),
+      );
       await adapter.setLocation(current.currentStageId);
+      await adapter.setScore(breakdown.score.totalScore);
+
+      // A learner may complete without passing; the LMS status distinguishes
+      // them, and neither is written before the activity is actually finished.
+      if (current.completedStageIds.length === SCENARIO_STAGE_ORDER.length) {
+        await adapter.setCompletion(
+          passed ? CompletionStatus.PASSED : CompletionStatus.COMPLETED,
+        );
+      }
+
       await adapter.commit();
       dispatch({ type: "SAVE_STATUS", status: "SAVED" });
     } catch (error) {
       addDiagnostic(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
       dispatch({ type: "SAVE_STATUS", status: "FAILED" });
     }
-  }, [addDiagnostic, codecSchema]);
+  }, [addDiagnostic, codecSchema, scenario]);
 
-  // Periodic save, plus a save when the page is hidden. `visibilitychange` and
-  // `pagehide` are used rather than `beforeunload`, which is unreliable on
-  // mobile Safari and is not fired at all in some backgrounding paths.
   useEffect(() => {
     if (state.phase !== "RUNNING") return undefined;
 
-    const interval = window.setInterval(() => void save(), AUTO_SAVE_INTERVAL_MS);
+    const interval = window.setInterval(
+      () => void save(),
+      defaultAppConfiguration.autoSaveIntervalMs,
+    );
     const handleVisibilityChange = (): void => {
       if (document.visibilityState === "hidden") void save();
     };
@@ -201,8 +293,11 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     () => ({
       state,
       diagnostics,
+      scoreBreakdown,
+      isPassed,
+      isCompleted,
 
-      startNew: () => dispatch({ type: "START_NEW" }),
+      startNew: () => dispatch({ type: "START_NEW", domain: seededState }),
 
       resume: () => {
         void (async () => {
@@ -210,15 +305,18 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           if (adapter === null) return;
           const stored = await adapter.loadAttemptState();
           if (stored === null) {
-            dispatch({ type: "START_NEW" });
+            dispatch({ type: "START_NEW", domain: seededState });
             return;
           }
           try {
             const snapshot = decodeAttemptState(stored, codecSchema);
-            // Milestone 0 restores position and decisions. Milestone 2 adds
-            // full ledger replay from the decision record, which is why nothing
-            // about the ledger is persisted.
-            dispatch({ type: "RESUME", snapshot, domain: createEmptyDomainState() });
+            /*
+             * Milestone 4 restores position, decisions and the seeded world.
+             * Full ledger replay from the decision record lands with the report
+             * milestone; until then a resumed learner keeps their answers and
+             * their score but re-does the current stage's transactions.
+             */
+            dispatch({ type: "RESUME", snapshot, domain: seededState });
           } catch {
             dispatch({ type: "RECOVERY_FAILED", messageKey: "errors.persistence" });
           }
@@ -230,16 +328,57 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         if (adapter instanceof StandalonePersistenceAdapter) {
           adapter.clear();
         }
-        dispatch({ type: "START_NEW" });
+        dispatch({ type: "START_NEW", domain: seededState });
         void save();
       },
 
-      recordDecision: (decisionId, encodedValue) => {
-        dispatch({ type: "RECORD_DECISION", decisionId, encodedValue });
+      answerCheck: (check, answer) => {
+        const encodedValue = encodeAnswer(check, answer);
+        const isCorrect = isAnswerCorrect(check, answer);
+        dispatch({
+          type: "RECORD_DECISION",
+          decisionId: check.knowledgeCheckId,
+          encodedValue,
+          interaction: {
+            interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
+            stageId: stateRef.current.currentStageId,
+            interactionType: LearnerInteractionType.KNOWLEDGE_CHECK_ANSWERED,
+            targetId: check.knowledgeCheckId,
+            selectedValue: String(encodedValue),
+            isCorrect,
+            attemptNumber:
+              (stateRef.current.decisions[check.knowledgeCheckId]?.attemptCount ?? 0) + 1,
+            scenarioTimestamp: scenario.timeline["batchCreated"] as string,
+          },
+        });
+        void save();
+        return isCorrect;
+      },
+
+      recordActionOutcome: (decisionId, wasAccepted) => {
+        dispatch({
+          type: "RECORD_DECISION",
+          decisionId,
+          encodedValue: wasAccepted ? ACTION_ACCEPTED : ACTION_REJECTED,
+          interaction: {
+            interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
+            stageId: stateRef.current.currentStageId,
+            interactionType: wasAccepted
+              ? LearnerInteractionType.TRANSACTION_SUBMITTED
+              : LearnerInteractionType.TRANSACTION_REJECTED,
+            targetId: decisionId,
+            isCorrect: wasAccepted,
+            attemptNumber: (stateRef.current.decisions[decisionId]?.attemptCount ?? 0) + 1,
+            scenarioTimestamp: scenario.timeline["batchCreated"] as string,
+          },
+        });
         void save();
       },
 
-      useHint: (hintId) => dispatch({ type: "USE_HINT", hintId }),
+      revealHint: (hintId) => {
+        dispatch({ type: "USE_HINT", hintId });
+        void save();
+      },
 
       submitCommand: (command, context) => {
         const result = ledger.submitCommand(
@@ -266,14 +405,28 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         });
       },
 
-      completeStage: (stageId) => {
-        dispatch({ type: "COMPLETE_STAGE", stageId });
-        void save();
-      },
+      viewStage: (stageId) => dispatch({ type: "VIEW_STAGE", stageId }),
 
       save,
+
+      finish: async () => {
+        await save();
+        await adapterRef.current?.finish();
+      },
     }),
-    [state, save, diagnostics, ledger, codecSchema, registries],
+    [
+      state,
+      save,
+      diagnostics,
+      scoreBreakdown,
+      isPassed,
+      isCompleted,
+      ledger,
+      codecSchema,
+      registries,
+      seededState,
+      scenario,
+    ],
   );
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
@@ -288,4 +441,4 @@ export function useSimulation(): SimulationContextValue {
 }
 
 export { SCENARIO_STAGE_ORDER };
-export type { DomainState };
+export type { DomainState, ScenarioStageId };

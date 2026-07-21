@@ -4,6 +4,10 @@
  * Pure and synchronous, like the domain reducer, so the transitions can be
  * tested without React or a platform adapter. The provider owns everything
  * asynchronous -- adapter initialization, saving, and the clock.
+ *
+ * Decisions are the source of truth for scoring, not the interaction log. The
+ * log is richer and is kept for the final report, but only decisions survive a
+ * save, and the score must be identical either way.
  */
 
 import { SCENARIO_STAGE_ORDER, ScenarioStageId } from "../../domain/types/enums";
@@ -14,6 +18,7 @@ import type {
   AttemptSnapshot,
   DecisionRecord,
 } from "../../infrastructure/persistence/state-codec";
+import type { LearnerInteraction } from "../../domain/types/scoring";
 
 export type SessionPhase = "LOADING" | "START" | "RUNNING" | "RECOVERY";
 
@@ -21,11 +26,28 @@ export type SaveStatus = "IDLE" | "SAVING" | "SAVED" | "FAILED";
 
 export interface SessionState {
   readonly phase: SessionPhase;
+  /**
+   * The furthest stage the learner has unlocked, derived from completion
+   * conditions.
+   */
   readonly currentStageId: ScenarioStageId;
+  /**
+   * The stage actually on screen.
+   *
+   * Deliberately separate from `currentStageId`. Progression is derived, so the
+   * moment a learner answers the last outstanding condition the derived stage
+   * jumps forward -- and if the router followed it directly, the screen would
+   * change out from under them before they had read the feedback explaining
+   * their answer. Advancing is therefore a learner action, bounded by what they
+   * have unlocked.
+   */
+  readonly viewedStageId: ScenarioStageId;
   readonly completedStageIds: readonly ScenarioStageId[];
   readonly domain: DomainState;
   readonly decisions: Readonly<Record<string, DecisionRecord>>;
   readonly hintsUsed: readonly string[];
+  /** Full record for the final report. Not persisted; not used for scoring. */
+  readonly interactions: readonly LearnerInteraction[];
   readonly saveStatus: SaveStatus;
   readonly platformMode: PlatformMode;
   readonly hasSavedAttempt: boolean;
@@ -39,10 +61,12 @@ export function createInitialSessionState(): SessionState {
   return {
     phase: "LOADING",
     currentStageId: ScenarioStageId.ORIENTATION,
+    viewedStageId: ScenarioStageId.ORIENTATION,
     completedStageIds: [],
     domain: createEmptyDomainState(),
     decisions: {},
     hintsUsed: [],
+    interactions: [],
     saveStatus: "IDLE",
     platformMode: PlatformMode.STANDALONE,
     hasSavedAttempt: false,
@@ -54,12 +78,22 @@ export function createInitialSessionState(): SessionState {
 export type SessionAction =
   | { type: "INITIALIZED"; platformMode: PlatformMode; hasSavedAttempt: boolean }
   | { type: "RECOVERY_FAILED"; messageKey: string }
-  | { type: "START_NEW" }
+  | { type: "START_NEW"; domain: DomainState }
   | { type: "RESUME"; snapshot: AttemptSnapshot; domain: DomainState }
-  | { type: "RECORD_DECISION"; decisionId: string; encodedValue: number }
+  | {
+      type: "RECORD_DECISION";
+      decisionId: string;
+      encodedValue: number;
+      interaction: LearnerInteraction | null;
+    }
   | { type: "USE_HINT"; hintId: string }
   | { type: "LEDGER_UPDATED"; domain: DomainState; transactionId: string | null }
-  | { type: "COMPLETE_STAGE"; stageId: ScenarioStageId }
+  | {
+      type: "STAGE_PROGRESS";
+      completedStageIds: readonly ScenarioStageId[];
+      currentStageId: ScenarioStageId;
+    }
+  | { type: "VIEW_STAGE"; stageId: ScenarioStageId }
   | { type: "SAVE_STATUS"; status: SaveStatus };
 
 export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
@@ -81,6 +115,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         ...createInitialSessionState(),
         phase: "RUNNING",
         platformMode: state.platformMode,
+        domain: action.domain,
       };
 
     case "RESUME":
@@ -88,6 +123,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         ...state,
         phase: "RUNNING",
         currentStageId: action.snapshot.currentStageId,
+        viewedStageId: action.snapshot.currentStageId,
         completedStageIds: action.snapshot.completedStageIds,
         decisions: action.snapshot.decisions,
         hintsUsed: action.snapshot.hintsUsed,
@@ -108,6 +144,10 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
             attemptCount: (previous?.attemptCount ?? 0) + 1,
           },
         },
+        interactions:
+          action.interaction === null
+            ? state.interactions
+            : [...state.interactions, action.interaction],
       };
     }
 
@@ -119,15 +159,21 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case "LEDGER_UPDATED":
       return { ...state, domain: action.domain, lastTransactionId: action.transactionId };
 
-    case "COMPLETE_STAGE": {
-      const completed = state.completedStageIds.includes(action.stageId)
-        ? state.completedStageIds
-        : [...state.completedStageIds, action.stageId];
+    case "STAGE_PROGRESS":
       return {
         ...state,
-        completedStageIds: completed,
-        currentStageId: nextStageAfter(action.stageId) ?? state.currentStageId,
+        completedStageIds: action.completedStageIds,
+        currentStageId: action.currentStageId,
       };
+
+    case "VIEW_STAGE": {
+      // A learner may look back at a finished stage, but never skip ahead of
+      // what they have unlocked.
+      const furthest = SCENARIO_STAGE_ORDER.indexOf(state.currentStageId);
+      const target = SCENARIO_STAGE_ORDER.indexOf(action.stageId);
+      return target < 0 || target > furthest
+        ? state
+        : { ...state, viewedStageId: action.stageId };
     }
 
     case "SAVE_STATUS":
@@ -149,13 +195,13 @@ export function stageNumber(stageId: ScenarioStageId): number {
   return SCENARIO_STAGE_ORDER.indexOf(stageId) + 1;
 }
 
-export function toAttemptSnapshot(state: SessionState): AttemptSnapshot {
+export function toAttemptSnapshot(state: SessionState, isPassed: boolean): AttemptSnapshot {
   return {
     currentStageId: state.currentStageId,
     completedStageIds: state.completedStageIds,
     decisions: state.decisions,
     hintsUsed: state.hintsUsed,
     isCompleted: state.completedStageIds.length === SCENARIO_STAGE_ORDER.length,
-    isPassed: false,
+    isPassed,
   };
 }

@@ -19,15 +19,16 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Milestones 0 through 3 complete: the SCORM vertical slice, the scenario
-foundation, the domain and ledger engine, and the scenario engine.
+Milestones 0 through 4 complete: the SCORM vertical slice, the scenario
+foundation, the domain and ledger engine, the scenario engine, and the learner
+interface.
 
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types, all 25 validation rules |
 | Scenario | complete — 9 stages, 10 knowledge checks, scoring, completion |
-| Stages playable | 1–2 of 9 in the browser; all nine run headless |
-| Tests | 308 passing |
+| Stages playable | 1–7 of 9 in the browser; all nine run headless |
+| Tests | 312 passing |
 | SCORM package | builds and verifies (18/18 checks) |
 | Scenario | validated at build time and startup (192 checks) |
 | Moodle staging | **not yet tested — this is the next step** |
@@ -46,7 +47,13 @@ it: a learner can now play the entire scenario end to end, answer every
 knowledge check, reach 100 points and complete — all headless, with no interface
 involved. `full-attempt.test.ts` is that script.
 
-What remains is the interface for stages 3–9.
+Milestone 4 built the interface for stages 1–7: knowledge checks of all three
+shapes, transaction panels with progressive disclosure, hints, the provenance
+viewer, transaction history, ledger explorer and glossary. Verified at a real
+320 px viewport with no horizontal scroll.
+
+What remains is stages 8–9 — the tamper demonstration, the recall interface and
+the final report.
 
 See `docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
 

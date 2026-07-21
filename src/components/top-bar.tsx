@@ -21,7 +21,7 @@ const SAVE_STATUS_KEY = {
  */
 export function TopBar(): ReactNode {
   const t = useTranslator();
-  const { state } = useSimulation();
+  const { state, scoreBreakdown } = useSimulation();
   const { scenario, stage } = useScenario();
 
   const definition = stage(state.currentStageId);
@@ -67,6 +67,13 @@ export function TopBar(): ReactNode {
                     organization: t(organization.displayNameKey),
                   })
                 : t("workspace.currentRoleObserver")}
+            </dd>
+          </div>
+
+          <div className="top-bar__item">
+            <dt>{t("workspace.score")}</dt>
+            <dd>
+              {scoreBreakdown.score.totalScore} / {scoreBreakdown.score.maxScore}
             </dd>
           </div>
 

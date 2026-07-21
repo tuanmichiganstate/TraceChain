@@ -7,6 +7,7 @@ import { isDeveloperMode } from "./configuration";
 import { TopBar } from "../components/top-bar";
 import { StartScreen } from "../features/start/start-screen";
 import { STAGE_COMPONENTS } from "../features/stage-registry";
+import { WorkspaceTabs } from "../components/workspace-tabs";
 import { PlatformMode } from "../infrastructure/scorm/learning-platform-adapter";
 
 export function App(): ReactNode {
@@ -45,7 +46,8 @@ export function App(): ReactNode {
       ) : null}
 
       <main className="workspace" id="main-content">
-        <StageRouter stageId={state.currentStageId} />
+        <StageRouter stageId={state.viewedStageId} />
+        <WorkspaceTabs />
       </main>
 
       {isDeveloperMode() ? <DeveloperPanel /> : null}

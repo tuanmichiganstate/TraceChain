@@ -50,7 +50,9 @@ async function completeStageTwo(user: ReturnType<typeof userEvent.setup>): Promi
 async function completeStageOne(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
   await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
-  await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+  await user.click(screen.getByRole("button", { name: "Trả lời" }));
+  // The next stage unlocks automatically, but the screen only moves when the
+  // learner says so -- otherwise the feedback would vanish before it is read.
   await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 }
 
@@ -91,14 +93,15 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     // The diagnostic question, whose correct answer is that blockchain does not
     // prove input truth.
     await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Trả lời" }));
 
+    // The explanation stays on screen: the stage unlocks but does not jump.
     expect(
       await screen.findByText(/không tự động chứng minh rằng thông tin về thế giới thực là đúng/),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     // ---- Stage 2: create the batch -----------------------------------
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
     expect(
       await screen.findByRole("heading", { name: /Bước 2 - Tạo lô cà phê trên sổ cái/ }),
     ).toBeInTheDocument();
@@ -122,7 +125,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     // ---- World state reflects the committed transaction ---------------
     // Owner and custodian appear as separate rows: the distinction between them
     // is the simulation's central idea and must never be collapsed into one.
-    const assetCard = screen.getByRole("article");
+    const assetCard = screen.getAllByRole("article")[0] as HTMLElement;
     expect(within(assetCard).getByText("Chủ sở hữu hiện tại")).toBeInTheDocument();
     expect(within(assetCard).getByText("Bên đang lưu giữ")).toBeInTheDocument();
     expect(within(assetCard).getAllByText("Hợp tác xã Cà phê Cao nguyên")).toHaveLength(2);

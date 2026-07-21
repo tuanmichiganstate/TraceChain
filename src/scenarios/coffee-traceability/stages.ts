@@ -142,7 +142,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     knowledgeChecks: [certificateStorageCheck, certificateIssuerCheck],
     scoredActions: [],
     unlocksStageId: ScenarioStageId.SHIP_AND_MONITOR,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {
@@ -185,7 +185,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     knowledgeChecks: [custodyTransferScopeCheck, transportConditionCheck],
     scoredActions: [],
     unlocksStageId: ScenarioStageId.RECEIVE_AND_CORRECT,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {
@@ -236,7 +236,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
     ],
     unlocksStageId: ScenarioStageId.TRANSFORM_BATCH,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {
@@ -274,7 +274,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     ],
     producesAssetIds: [ROASTED_COFFEE_BATCH_ID],
     unlocksStageId: ScenarioStageId.PACKAGE_AND_DISTRIBUTE,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {
@@ -327,7 +327,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     ],
     producesAssetIds: [PACKAGED_COFFEE_LOT_ID],
     unlocksStageId: ScenarioStageId.VERIFY_AND_TAMPER,
-    isImplemented: false,
+    isImplemented: true,
   },
 
   {

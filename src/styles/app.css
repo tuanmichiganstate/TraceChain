@@ -338,10 +338,15 @@
   margin: 0 0 var(--space-3);
 }
 
+/*
+ * Label above value by default. The two-column form needs about 9rem for the
+ * label alone, which leaves too little for an identifier like
+ * BAT_GREEN_COFFEE_002 at 320 px and forces the page to scroll sideways.
+ */
 .asset-card__row {
   display: grid;
-  grid-template-columns: minmax(9rem, 40%) 1fr;
-  gap: var(--space-3);
+  grid-template-columns: 1fr;
+  gap: var(--space-1);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--colour-border);
 }
@@ -354,6 +359,13 @@
 
 .asset-card__row dd {
   margin: 0;
+  /* Identifiers and digests are long and unbreakable at word boundaries. */
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.asset-card__row code,
+.provenance__asset code {
   overflow-wrap: anywhere;
 }
 
@@ -441,6 +453,13 @@
 
 /* ---- Wider viewports ---- */
 
+@media (min-width: 30rem) {
+  .asset-card__row {
+    grid-template-columns: minmax(8rem, 38%) 1fr;
+    gap: var(--space-3);
+  }
+}
+
 @media (min-width: 48rem) {
   .asset-card__grid {
     grid-template-columns: repeat(2, 1fr);
@@ -451,5 +470,167 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     column-gap: var(--space-5);
+  }
+}
+
+/* ---- Stage scaffolding ---- */
+
+.required-actions__list {
+  list-style: none;
+  padding: 0;
+}
+
+.required-actions__list li {
+  padding: var(--space-2) 0 var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--colour-border);
+  position: relative;
+}
+
+.required-actions__list li::before {
+  content: "•";
+  position: absolute;
+  inset-inline-start: var(--space-2);
+  color: var(--colour-navy);
+  font-weight: 700;
+}
+
+.hint {
+  padding: var(--space-4);
+  border: 1px dashed var(--colour-border-strong);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface);
+}
+
+.hint h3 { margin-bottom: var(--space-2); }
+.hint p:last-child { margin-bottom: 0; }
+
+/* ---- Knowledge checks ---- */
+
+.knowledge-check .fieldset:disabled .choice { opacity: 0.75; }
+
+.feedback--incorrect {
+  border-inline-start-color: var(--colour-fail);
+  background: var(--colour-fail-soft);
+}
+
+.classification__row {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.discrepancy { border-inline-start: 4px solid var(--colour-warn); }
+
+/* ---- Workspace tabs ---- */
+
+.workspace-tabs { margin-top: var(--space-6); }
+
+.workspace-tabs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-bottom: 2px solid var(--colour-border);
+}
+
+.workspace-tabs__tab {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  cursor: pointer;
+}
+
+.workspace-tabs__tab:hover { background: var(--colour-navy-soft); }
+
+.workspace-tabs__tab--active {
+  background: var(--colour-surface);
+  border-color: var(--colour-border);
+  color: var(--colour-navy-strong);
+  /* Cover the list's bottom border so the active tab joins its panel. */
+  margin-bottom: -2px;
+  border-bottom: 2px solid var(--colour-surface);
+}
+
+.workspace-tabs__panel {
+  padding: var(--space-5) 0;
+}
+
+.workspace-tabs__panel:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ---- Provenance ---- */
+
+.provenance__group { margin-bottom: var(--space-5); }
+
+.provenance__group--current .provenance__node {
+  border-color: var(--colour-navy);
+  border-width: 2px;
+  background: var(--colour-navy-soft);
+}
+
+.provenance__chain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.provenance__node {
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface);
+  margin-bottom: var(--space-3);
+}
+
+.provenance__edge {
+  display: block;
+  font-size: var(--size-caption);
+  color: var(--colour-text-muted);
+  font-style: italic;
+  margin-bottom: var(--space-1);
+}
+
+.provenance__asset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.provenance__name { font-weight: 600; }
+.provenance__quantity { color: var(--colour-text-muted); font-size: var(--size-small); }
+
+/* ---- Glossary ---- */
+
+.glossary__entry {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.glossary__entry dt {
+  font-weight: 650;
+  color: var(--colour-navy-strong);
+  margin-bottom: var(--space-1);
+}
+
+.glossary__entry dd { margin: 0; max-width: 68ch; }
+
+/* ---- Transaction action ---- */
+
+.transaction-action + .transaction-action { margin-top: var(--space-4); }
+
+@media (min-width: 48rem) {
+  .classification__row {
+    grid-template-columns: 1fr 18rem;
+    align-items: center;
+    gap: var(--space-4);
   }
 }

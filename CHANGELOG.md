@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+### Milestone 4 — Learner interface
+
+Stages 1 to 7 are playable in the browser. An integration test walks a learner
+from orientation to a packaged lot on a retail shelf, through every check and
+every transaction.
+
+**Added**
+
+- One knowledge check component for all three question shapes, driven entirely
+  by the scenario definition. Classification uses labelled selects rather than
+  drag and drop, which section 26 forbids.
+- A transaction panel with progressive disclosure: the full ceremony the first
+  time a learner meets a transaction type, collapsed thereafter. The
+  specification's eight-section composer repeated fifteen times is where the
+  session budget disappears.
+- Stage shell providing instructions, the outstanding-work list and hints,
+  derived from the same completion conditions that govern progression.
+- Hints as an explicit two-step reveal, since taking one costs credit.
+- Provenance viewer as a nested list rather than an SVG graph: keyboard
+  reachable, reflows at 320 px, and needs no separate text alternative because
+  the accessible version is the visible one.
+- Transaction history, including rejected transactions, with per-transaction
+  validation detail.
+- Glossary pairing each Vietnamese term with its English.
+- Workspace tabs implementing the ARIA tab pattern, with arrow, Home and End
+  keys.
+- `answer-codec.ts`: answers encode to a single integer and decode back, so
+  correctness is a pure function of the stored answer and the scenario.
+
+**Fixed**
+
+- **The feedback vanished before a learner could read it.** Progression is
+  derived from completion conditions, so answering the last outstanding
+  question advanced the stage instantly and replaced the explanation of that
+  very answer. Session state now separates the furthest stage unlocked from the
+  stage on screen; unlocking stays automatic, moving on is the learner's choice.
+- Correctness was derived from the in-memory interaction log, so a resumed
+  attempt could not reproduce its own score. It is now derived from the stored
+  answers, closing the gap Milestone 3's reproducibility test had papered over.
+- `.asset-card__row` used a two-column grid at every width, which combined with
+  unbreakable identifiers to overflow at narrow widths. Verified at a real
+  320 px viewport, in an iframe so media queries evaluate correctly: zero
+  overflowing elements, no horizontal scroll.
+- The context method `useHint` read as a React hook to the linter and to the
+  next person; renamed `revealHint`.
+
 ### Milestone 3 — Scenario engine
 
 The activity is now complete as a *thing a learner does*, independently of any
