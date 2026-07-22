@@ -19,6 +19,19 @@ export default defineConfig({
   forbidOnly: Boolean(process.env["CI"]),
   retries: process.env["CI"] ? 2 : 0,
   timeout: 90_000,
+  /*
+   * EXPERIMENT, to be kept only if it earns its place.
+   *
+   * The GitHub-hosted runner is 2-core / 7 GB -- printed by the `Runner size`
+   * step -- and Playwright's default worker count is ceil(cores / 2), which is
+   * one. The whole suite therefore runs serially there: 535s, 665s and 729s
+   * across three measured runs, against 36s locally on eight cores.
+   *
+   * Two workers is one per core. Whether that helps is not obvious: browsers
+   * are memory-hungry, and contention would show up as retries, which cost more
+   * time than they save.
+   */
+  ...(process.env["CI"] ? { workers: 2 } : {}),
   // On CI, an HTML report so a failure is inspectable after the fact. The first
   // attempt failed to upload anything because "line" writes no report directory
   // -- a red job with no evidence is barely better than no job.
