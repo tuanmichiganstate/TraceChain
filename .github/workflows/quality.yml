@@ -54,7 +54,36 @@ jobs:
       - name: Quality gate
         run: npm run quality
 
-  e2e:
+  # One runner per browser project, one Playwright worker on each.
+  #
+  # The runner is 2-core/7GB, so Playwright's ceil(cores/2) default gives a
+  # single worker and the whole suite runs serially. Two workers on one runner
+  # was measured and was worse on both counts -- slower and flaky, browsers
+  # starving each other. Parallelism therefore has to come from more runners
+  # rather than more workers per runner, which is what this matrix does: each
+  # job keeps the one-worker behaviour that is stable, and the four projects run
+  # side by side instead of end to end.
+  #
+  # `mobile-safari` is an iPhone SE profile, which Playwright drives with
+  # WebKit -- hence the separate `browser` column. Only the engine a job needs
+  # is installed, so no runner downloads browsers it will not launch.
+  browser:
+    strategy:
+      # Every browser reports its own verdict. Stopping the others on the first
+      # failure would hide whether a break is engine-specific, which is most of
+      # what this suite exists to answer.
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: mobile-safari
+            browser: webkit
+    name: browser (${{ matrix.project }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,30 +101,45 @@ jobs:
       - name: Runner size
         run: echo "cores=$(nproc) memory=$(free -g | awk '/^Mem:/{print $2}')GB"
 
-      # Chromium, Firefox, WebKit and the iPhone SE profile. Browsers are a
-      # large download, so this is a separate job rather than serialised behind
-      # the gate above.
       # The e2e suite runs against dist/ -- the artefact that actually ships --
       # and `vite preview` serves exactly that directory. Without this the web
       # server has nothing to serve and Playwright times out waiting for it.
-      # It passed locally only because dist/ was left over from earlier builds.
       - run: npm run build
 
-      # Deliberately not cached. Of the ~75s this takes, ~56s is apt installing
-      # system libraries, which a browser cache cannot hold; the downloads
-      # themselves are ~19s, or 3% of this job. That 3% is not worth a cache key
-      # that can go stale against the installed Playwright version.
-      - run: npx playwright install --with-deps
+      # Browsers are deliberately not cached. Most of this step is apt
+      # installing system libraries, which a browser cache cannot hold, and the
+      # downloads are a small fraction of a job dominated by test execution.
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: End-to-end
-        run: npx playwright test
+        run: npx playwright test --project=${{ matrix.project }}
 
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          # Unique per project: four jobs uploading one name would collide.
+          name: playwright-report-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
           if-no-files-found: error
+
+  # A single stable verdict for the whole browser matrix.
+  #
+  # Matrix jobs are named per project, so anything that wants one name to depend
+  # on -- a required check, a reviewer skimming the list -- would otherwise have
+  # to track four that change whenever a project is added. This runs no tests;
+  # it only reports whether every browser job passed. `needs.browser.result` is
+  # the aggregate across the matrix, so it is success only when all four are.
+  e2e:
+    needs: browser
+    # Runs whether the matrix passed or failed, but not when the whole run was
+    # cancelled -- a superseded run should stay cancelled rather than turn red.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every browser project to have passed
+        run: |
+          echo "browser matrix result: ${{ needs.browser.result }}"
+          test "${{ needs.browser.result }}" = "success"
