@@ -1,10 +1,10 @@
 # Moodle acceptance testing
 
-The checklist to run against a Moodle staging course. Everything here is
-behaviour the automated tests **cannot** cover, because it depends on Moodle's
-own SCORM player, its gradebook, and the browser's window arrangement.
+The checklist to run against a Moodle staging course. The automated Docker
+acceptance covers Moodle storage and gradebook APIs; this list retains the
+player, visual, and window-arrangement checks that still require a browser.
 
-Run the whole list at Milestone 0 (now) and again at Milestone 6.
+Run the whole list for every release that changes learner-package inputs.
 
 ---
 
@@ -14,7 +14,7 @@ Run the whole list at Milestone 0 (now) and again at Milestone 6.
 npm run quality        # must pass end to end
 ```
 
-Produces `tracechain-scorm-v1.0.0.zip` in the project root.
+Produces `tracechain-scorm-v2.0.0.zip` in the project root.
 
 **Moodle activity settings to use:**
 

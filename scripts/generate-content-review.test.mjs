@@ -41,8 +41,12 @@ test("two generations from the same sources are byte-identical", async () => {
     const document = new JSDOM(
       readFileSync(join(first, "tracechain-content-review.html"), "utf8"),
     ).window.document;
+    const expectedLocaleCount = parseFlatStringCatalog(
+      readFileSync(join(projectRoot, "src/locales/vi.json"), "utf8"),
+      "src/locales/vi.json",
+    ).size;
     assert.equal(document.querySelectorAll("h1").length, 1);
-    assert.equal(document.querySelectorAll("[data-locale-key]").length, 530);
+    assert.equal(document.querySelectorAll("[data-locale-key]").length, expectedLocaleCount);
     for (const link of document.querySelectorAll('nav a[href^="#"]')) {
       assert.notEqual(document.getElementById(link.getAttribute("href").slice(1)), null);
     }

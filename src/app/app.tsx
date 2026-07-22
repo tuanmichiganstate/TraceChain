@@ -71,7 +71,7 @@ function StageRouter({ stageId }: { stageId: ScenarioStageId }): ReactNode {
   const definition = stage(stageId);
 
   if (definition === undefined || !definition.isImplemented) {
-    return <NotYetAvailable />;
+    throw new Error(`No implemented scenario stage is defined for ${stageId}`);
   }
 
   const component = STAGE_COMPONENTS[stageId];
@@ -79,20 +79,10 @@ function StageRouter({ stageId }: { stageId: ScenarioStageId }): ReactNode {
     // The scenario claims this stage is built but nothing is registered to draw
     // it. A test catches this, so reaching it in production means the registry
     // and the scenario drifted apart.
-    return <NotYetAvailable />;
+    throw new Error(`No stage component is registered for ${stageId}`);
   }
 
   return createElement(component);
-}
-
-function NotYetAvailable(): ReactNode {
-  const t = useTranslator();
-  return (
-    <section className="card">
-      <h2>{t("stage.notYetAvailable.heading")}</h2>
-      <p>{t("stage.notYetAvailable.body")}</p>
-    </section>
-  );
 }
 
 /**

@@ -134,7 +134,7 @@ ledger*, is unchanged and is asserted by a test.
 | §8.4 required rejecting a custody transfer that also moves ownership, but no rule existed to do it | `RULE_OWNERSHIP_UNCHANGED_ON_CUSTODY_TRANSFER` added (implemented in Milestone 2) |
 | No `Location` entity despite `currentLocationId` and `RecallLocation` | `Location` model + `LOC_` prefix + five seeded locations |
 | No scenario timeline, though three rules depend on ordered times | `src/scenarios/coffee-traceability/timeline.ts`, checked by `npm run validate:scenario` |
-| `ScenarioDefinition` had only `seedAssets`, insufficient for the pre-committed dispatch error and for distractor provenance chains | `seedTransactions` planned for Milestone 3; seeds replay through the real pipeline |
+| `ScenarioDefinition` had only `seedAssets`, insufficient for committed authored history and distractor provenance chains | Added `seedTransactions` and `seedProvenanceEdges`; learner-dependent authored history uses deterministic `scriptedTransactions`, all through the real pipeline |
 
 ### 7. Additions the specification did not require
 

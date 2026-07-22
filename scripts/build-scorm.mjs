@@ -27,6 +27,9 @@ const locale = JSON.parse(readFileSync(join(projectRoot, "src", "locales", "vi.j
 const VERSION = packageJson.version;
 const PACKAGE_NAME = `tracechain-scorm-v${VERSION}.zip`;
 const MASTERY_SCORE = 70;
+// ZIP stores local DOS timestamps. A fixed local value keeps byte output stable
+// across rebuilds and across runner timezones.
+const ZIP_ENTRY_TIME = new Date(2000, 0, 1, 0, 0, 0);
 
 if (!existsSync(distDirectory)) {
   console.error("dist/ not found. Run `npm run build` first.");
@@ -125,7 +128,8 @@ writeFileSync(
       version: VERSION,
       scenarioId: "SCN_COFFEE_001",
       scormVersion: "1.2",
-      builtAt: new Date().toISOString(),
+      packageFormatVersion: 1,
+      reproducibleBuild: true,
       masteryScore: MASTERY_SCORE,
     },
     null,
@@ -170,6 +174,11 @@ const zip = new AdmZip();
 for (const file of listFilesRecursively(packageDirectory)) {
   const directory = posix.dirname(file);
   zip.addLocalFile(join(packageDirectory, file), directory === "." ? "" : directory);
+  const entry = zip.getEntry(file);
+  if (entry === null || entry === undefined) {
+    throw new Error(`Failed to add ${file} to the SCORM archive`);
+  }
+  entry.header.time = ZIP_ENTRY_TIME;
 }
 
 const zipPath = join(projectRoot, PACKAGE_NAME);

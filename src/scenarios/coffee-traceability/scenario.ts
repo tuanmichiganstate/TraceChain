@@ -19,7 +19,7 @@ import { coffeeScriptedTransactions } from "./scripted-transactions";
 
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
-  scenarioVersion: "1.0.0",
+  scenarioVersion: "2.0.0",
   titleKey: "app.title",
   descriptionKey: "app.subtitle",
   // Nine stages rather than ten, to protect this budget (section 2.4).

@@ -12,8 +12,19 @@ run_as_daemon() {
 }
 
 cleanup() {
+  local original_status=$?
+  local cleanup_status
+  trap - EXIT
   echo "--- cleanup ---"
-  run_as_daemon /tmp/acceptance-cleanup.php || echo "cleanup failed; check the gradebook by hand"
+  set +e
+  run_as_daemon /tmp/acceptance-cleanup.php
+  cleanup_status=$?
+  set -e
+  if [ "$cleanup_status" -ne 0 ]; then
+    echo "cleanup failed; check the gradebook by hand" >&2
+    exit "$cleanup_status"
+  fi
+  exit "$original_status"
 }
 
 "${compose[@]}" up -d
@@ -23,6 +34,7 @@ for _ in $(seq 1 60); do
   if curl -fsS -o /dev/null http://localhost:8080/login/index.php; then break; fi
   sleep 2
 done
+curl -fsS -o /dev/null http://localhost:8080/login/index.php
 
 # Reproducible failure injection, so the cleanup trap is a regression test
 # rather than a one-off manual experiment. Set to any non-empty value.

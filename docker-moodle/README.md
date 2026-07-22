@@ -1,15 +1,17 @@
 
 ## Moodle acceptance pass
 
-Exercises Moodle's own storage and gradebook with real encoded payloads —
-suspend_data round trip, gradebook write, and relaunch-without-clobbering.
+Exercises Moodle's own storage and gradebook with current TC2 payloads —
+suspend_data round trip, gradebook write, relaunch-without-clobbering, the
+4096-character boundary, and verified cleanup.
 
-    docker compose cp acceptance.php moodle:/tmp/acceptance.php
-    docker compose exec -T --user root moodle chmod 644 /tmp/acceptance.php
-    docker compose exec -T --user daemon moodle /opt/bitnami/php/bin/php /tmp/acceptance.php
+    ./docker-moodle/run-acceptance.sh
 
-Run `acceptance-cleanup.php` the same way afterwards; it removes the synthetic
-attempts so the demo instance starts clean.
+The cleanup trap removes synthetic attempts and verifies that both the attempt
+table and gradebook are clean. Its forced-failure regression path must exit
+nonzero while still passing cleanup:
+
+    TRACECHAIN_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh
 
 Always `--user daemon`. Running as root leaves root-owned files in moodledata
 that Apache cannot write, and Moodle then fails with "Invalid permissions

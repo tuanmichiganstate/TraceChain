@@ -6,10 +6,15 @@ test.beforeEach(async ({ page }) => {
   await installScormApi(page);
 });
 
+function allowMeasuredWebKitWalkthrough(browserName: string): void {
+  if (browserName === "webkit") test.setTimeout(240_000);
+}
+
 test.describe("the whole activity in a real browser", () => {
   // Nine stages of real rendering, in four engines. Generous, and it earns it.
 
-  test("carries a learner from orientation to a graded result", async ({ page }) => {
+  test("carries a learner from orientation to a graded result", async ({ page, browserName }) => {
+    allowMeasuredWebKitWalkthrough(browserName);
     await page.goto("/");
     const activity = new Activity(page);
 
@@ -117,7 +122,11 @@ test.describe("rules the learner can feel", () => {
     await expect(page.getByText(/Sổ cái thật của bạn vẫn nguyên vẹn/)).toBeVisible();
   });
 
-  test("scores a recall that sweeps up the lookalike lot as over-broad", async ({ page }) => {
+  test("scores a recall that sweeps up the lookalike lot as over-broad", async ({
+    page,
+    browserName,
+  }) => {
+    allowMeasuredWebKitWalkthrough(browserName);
     await page.goto("/");
     const activity = new Activity(page);
 

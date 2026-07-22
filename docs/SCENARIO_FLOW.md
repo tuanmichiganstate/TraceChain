@@ -150,7 +150,7 @@ mark and the mechanic agree.
 
 ## Implementation status
 
-Stages 1 and 2 are playable in the browser. Stages 3–9 have complete content —
-knowledge checks, hints, completion conditions, point allocation — and run
-headless in tests; their interfaces arrive with Milestone 4. The router shows a
-placeholder and progress still saves.
+All nine stages have learner interfaces and run through the same domain pipeline
+in headless, component, and real-browser tests. Cross-layer scenario contracts
+also reconstruct the canonical attempt from persisted evidence and verify that
+the ledger, replay, display, scoring, and completion agree.

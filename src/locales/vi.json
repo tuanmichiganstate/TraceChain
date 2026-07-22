@@ -62,8 +62,6 @@
   "stage.packageAndDistribute.title": "Bước 7 - Đóng gói và phân phối thành phẩm",
   "stage.verifyAndTamper.title": "Bước 8 - Kiểm tra nguồn gốc và thử phát hiện sửa đổi",
   "stage.recallAndDebrief.title": "Bước 9 - Truy xuất và thu hồi sản phẩm",
-  "stage.notYetAvailable.heading": "Bước này sẽ có trong bản cập nhật tiếp theo",
-  "stage.notYetAvailable.body": "Bạn đã hoàn thành các bước hiện có. Tiến độ của bạn đã được lưu và sẽ được khôi phục khi bạn quay lại.",
   "stage.anchorCertificate.instruction": "Bạn là cán bộ chứng nhận. Hãy quyết định cách ghi nhận giấy chứng nhận chất lượng lên sổ cái, sau đó xem xét một chứng nhận do tổ chức chưa được công nhận cấp.",
   "stage.shipAndMonitor.instruction": "Hợp tác xã bàn giao lô hàng cho đơn vị vận chuyển. Hãy xác định giao dịch này chuyển quyền gì, rồi ghi nhận điều kiện vận chuyển do cảm biến báo về.",
   "stage.receiveAndCorrect.instruction": "Nhà máy tiếp nhận lô hàng và cân lại. Vận đơn đã cam kết khai 1000 kg, trong khi khối lượng thực tế là 100 kg. Bản ghi gốc được giữ nguyên; bạn cần bổ sung một giao dịch điều chỉnh để giá trị khai báo có hiệu lực trở thành 100 kg.",

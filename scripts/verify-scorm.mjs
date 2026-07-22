@@ -47,6 +47,30 @@ check(
 check("index.html is at the archive root", entryNames.includes("index.html"));
 check("version.json is present", entryNames.includes("version.json"));
 check("README.txt is present", entryNames.includes("README.txt"));
+check(
+  "Archive entries are deterministically ordered",
+  JSON.stringify(entryNames) ===
+    JSON.stringify(
+      [...entryNames].sort((left, right) => {
+        const folded = left.toLowerCase().localeCompare(right.toLowerCase(), "en");
+        return folded === 0 ? left.localeCompare(right, "en") : folded;
+      }),
+    ),
+);
+check(
+  "Archive entries use the reproducible timestamp",
+  entries.every((entry) => {
+    const time = entry.header.time;
+    return (
+      time.getFullYear() === 2000 &&
+      time.getMonth() === 0 &&
+      time.getDate() === 1 &&
+      time.getHours() === 0 &&
+      time.getMinutes() === 0 &&
+      time.getSeconds() === 0
+    );
+  }),
+);
 
 if (!entryNames.includes("imsmanifest.xml")) {
   report();
@@ -63,6 +87,22 @@ check('Manifest declares adlcp:scormtype="sco"', /adlcp:scormtype="sco"/.test(ma
 check('Resource href points at index.html', /href="index\.html"/.test(manifest));
 check("Manifest declares a mastery score", /<adlcp:masteryscore>\d+<\/adlcp:masteryscore>/.test(manifest));
 check("Manifest has exactly one organization default", /organizations\s+default="/.test(manifest));
+
+// ---- Release metadata -------------------------------------------------
+
+let versionMetadata = null;
+try {
+  versionMetadata = JSON.parse(zip.readAsText("version.json"));
+} catch {
+  // The checks below report the malformed metadata without hiding the rest of
+  // the package findings behind an exception.
+}
+check("version.json is valid JSON", versionMetadata !== null);
+check("version.json matches the package version", versionMetadata?.version === packageJson.version);
+check(
+  "version.json declares a reproducible build",
+  versionMetadata?.reproducibleBuild === true && versionMetadata?.builtAt === undefined,
+);
 
 // Tags must be balanced, or Moodle's parser rejects the package outright.
 const openTags = [...manifest.matchAll(/<(?!\?|!|\/)([a-zA-Z:][\w:.-]*)/g)].map((m) => m[1]);

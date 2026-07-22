@@ -19,43 +19,23 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Milestones 0 through 4 complete: the SCORM vertical slice, the scenario
-foundation, the domain and ledger engine, the scenario engine, and the learner
-interface.
+Version 2 implements the complete nine-stage activity, including the committed
+shipping-manifest error and its append-only typed correction. Exact release
+evidence and the M3 acceptance decision are recorded in `docs/BASELINE.md`.
 
 | | |
 |---|---|
-| Domain | complete — all 12 transaction types, all 25 validation rules |
+| Domain | complete — all 12 transaction types and the full rule registry |
 | Scenario | complete — 9 stages, 10 knowledge checks, scoring, completion |
-| Stages playable | 1–7 of 9 in the browser; all nine run headless |
-| Tests | 312 passing |
-| SCORM package | builds and verifies (18/18 checks) |
-| Scenario | validated at build time and startup (192 checks) |
-| Moodle staging | **not yet tested — this is the next step** |
+| Stages playable | all 9 in the browser and in deterministic replay |
+| Contract audit | schema validation plus executable cross-layer contracts |
+| Content review | deterministic 528-key bilingual pack; human Vietnamese review remains open |
+| SCORM package | builds reproducibly and verifies (23/23 checks) |
+| Moodle | Docker acceptance covers storage, grading, forced failure, and cleanup |
 
-Milestone 0 retired the deployment unknowns before the expensive build started:
-the `suspend_data` budget, the API discovery paths, the status vocabulary, and
-the review-mode score-clobbering risk.
-
-Milestone 1 made the activity data. Stage order, roles, completion conditions,
-knowledge checks, hints, seeds and scoring all live in a `ScenarioDefinition`;
-routing reads from it rather than from a switch statement. A second scenario is
-a new data file and one changed prop — see `docs/CONTENT_AUTHORING.md`.
-
-Milestone 2 completed the domain. Milestone 3 completed the activity on top of
-it: a learner can now play the entire scenario end to end, answer every
-knowledge check, reach 100 points and complete — all headless, with no interface
-involved. `full-attempt.test.ts` is that script.
-
-Milestone 4 built the interface for stages 1–7: knowledge checks of all three
-shapes, transaction panels with progressive disclosure, hints, the provenance
-viewer, transaction history, ledger explorer and glossary. Verified at a real
-320 px viewport with no horizontal scroll.
-
-What remains is stages 8–9 — the tamper demonstration, the recall interface and
-the final report.
-
-See `docs/MOODLE_TESTING.md` for the acceptance checklist to run now.
+Stage order, roles, completion conditions, knowledge checks, hints, scripted
+history, seeds, and scoring live in a `ScenarioDefinition`. A second scenario is
+a new data module and one changed provider prop; see `docs/CONTENT_AUTHORING.md`.
 
 ---
 
@@ -75,7 +55,7 @@ npm run quality      # lint, typecheck, test, validators, build, package, verify
 npm run build && npm run build:scorm && npm run verify:scorm
 ```
 
-Produces `tracechain-scorm-v1.0.0.zip`. Upload it to Moodle as a SCORM package
+Produces `tracechain-scorm-v2.0.0.zip`. Upload it to Moodle as a SCORM package
 activity — see `docs/MOODLE_TESTING.md` for the recommended settings.
 
 ## Developer mode
@@ -127,9 +107,11 @@ scripts/               locale + scenario validators, SCORM build + verify
 | `npm test` | Unit, component and integration tests |
 | `npm run lint` / `typecheck` | ESLint / TypeScript |
 | `npm run validate:locales` | Key parity, placeholders, no stray Vietnamese in source |
-| `npm run validate:scenario` | Timeline ordering, referential integrity, ID conventions |
+| `npm run validate:scenario` | Schema consistency plus executable cross-layer contracts |
+| `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
+| `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run build:scorm` | Assemble and zip the package |
-| `npm run verify:scorm` | 18 checks on the built package |
+| `npm run verify:scorm` | 23 checks on the built package |
 | `npm run quality` | All of the above, in order |
 
 ## Documentation

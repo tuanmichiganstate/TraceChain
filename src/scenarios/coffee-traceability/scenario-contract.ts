@@ -642,6 +642,6 @@ export function validateCoffeeScenarioContracts(): ScenarioContractValidationRes
 
 export const scenarioContractSourceFiles: readonly string[] = [
   "src",
-  "docs/CONTENT_AUTHORING.md",
-  "docs/SCENARIO_FLOW.md",
+  "README.md",
+  "docs",
 ];

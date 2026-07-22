@@ -22,4 +22,11 @@ scorm_update_grades($scorm, $user->id);
 $grades = grade_get_grades($course->id, 'mod', 'scorm', $scorm->id, $user->id);
 $g = $grades->items[0]->grades[$user->id] ?? null;
 printf("gradebook now: %s\n", $g && $g->grade !== null ? $g->grade : '(none)');
-printf("remaining attempts on this activity: %d\n", $DB->count_records('scorm_attempt', ['scormid' => $scorm->id]));
+$remaining = $DB->count_records('scorm_attempt', [
+    'scormid' => $scorm->id,
+    'userid' => $user->id,
+]);
+printf("remaining synthetic attempts for acceptance user: %d\n", $remaining);
+if ($g && $g->grade !== null) { throw new RuntimeException('synthetic gradebook value remains after cleanup'); }
+if ($remaining !== 0) { throw new RuntimeException('synthetic SCORM attempts remain for acceptance user after cleanup'); }
+echo "MOODLE CLEANUP VERIFIED\n";

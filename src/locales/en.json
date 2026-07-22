@@ -62,8 +62,6 @@
   "stage.packageAndDistribute.title": "Step 7 - Package and distribute the finished product",
   "stage.verifyAndTamper.title": "Step 8 - Verify provenance and attempt tampering",
   "stage.recallAndDebrief.title": "Step 9 - Trace and recall the product",
-  "stage.notYetAvailable.heading": "This step arrives in the next update",
-  "stage.notYetAvailable.body": "You have completed the steps available so far. Your progress has been saved and will be restored when you return.",
   "stage.anchorCertificate.instruction": "You are the certification officer. Decide how the quality certificate should be recorded on the ledger, then examine a certificate issued by an organization that is not recognized.",
   "stage.shipAndMonitor.instruction": "The co-operative hands the batch to the carrier. Decide what this transaction actually transfers, then record the transport conditions the sensor reports.",
   "stage.receiveAndCorrect.instruction": "The plant receives and reweighs the batch. The committed manifest declares 1000 kg while the measured quantity is 100 kg. The original record remains unchanged; append a correction so the effective declared quantity becomes 100 kg.",

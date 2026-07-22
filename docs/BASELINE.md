@@ -1,182 +1,94 @@
-# Verified baseline
+# TraceChain Version 2 release baseline
 
-Reproducible from a clean checkout. Every claim below has a command beside it.
+This record is reproducible from a clean checkout. Commands and results are
+recorded only after their output has been inspected. The exact release commit
+and final GitHub run are reported after the immutable commit is created and
+pushed; neither identifier can be embedded in the commit that creates it.
 
-**Commit** `fd1bb13d161d3807dbf19fca210e707acbad09bf` · working tree clean
+## Implementation boundaries
 
-| Check | Command | Result |
+| Phase | Commit | Result |
+|---|---|---|
+| Typed correction domain | `2373e163c38d22fd9bad4acda4305ef62500af16` | accepted |
+| Stage 5 shipping-manifest repair | `d06df6ffa6d18cbcb2b0310606085deca5e67000` | accepted |
+| Cross-layer scenario contracts | `6ad1e7148ec2e0766f3300004fce92b1379b9bb8` | accepted |
+| Deterministic content-review generator | `4408452578ade427a993f6dc6faf009407fb33d0` | accepted |
+| Version 2 release verification | release source commit | local gate accepted; exact-HEAD CI follows the release commit |
+
+The Phase 3 clean-checkout boundary was verified by GitHub Actions run
+`29889480310` at `6ad1e7148ec2e0766f3300004fce92b1379b9bb8`:
+
+- quality job `88826862555`: success;
+- e2e job `88826862522`: success.
+
+## Release verification
+
+| Check | Command | Inspected result |
 |---|---|---|
 | Aggregate gate | `npm run quality` | exit 0 |
-| Unit/component | `npm run test` | 333 passed, 17 files |
-| End-to-end | `npx playwright test` | 14 scenarios × 4 projects → 54 passed, 2 skipped |
-| Locale parity | `npm run validate:locales` | 509 keys, vi/en in sync |
-| Scenario schema | `npm run validate:scenario` | 348 checks |
-| Review pack | `npm run verify:content-review` | 509/509 |
-| SCORM package | `npm run verify:scorm` | 18/18, 6 files, 129.6 kB |
-| Moodle acceptance | `./docker-moodle/run-acceptance.sh` | success path |
-| Moodle cleanup trap | `TRACECHAIN_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh` | exit 1, cleanup ran |
+| Unit/component | `npm run test` | 371 passed, 21 files |
+| Locale parity | `npm run validate:locales` | 528 Vietnamese and 528 English strings |
+| Scenario schema | `npm run validate:scenario-schema` | 351 checks |
+| Scenario contracts | `npm run validate:scenario-contract` | 233 checks |
+| Content review | `npm run verify:content-review` | 528/528, deterministic comparison, exit 0 |
+| End-to-end | `npx playwright test` | 58 passed, 2 documented skips, exit 0 |
+| SCORM | `npm run verify:scorm` | 23/23 checks, 6 files, 134.4 kB |
+| Moodle success | `./docker-moodle/run-acceptance.sh` | exit 0; storage, gradebook, highest-attempt grading, 4096-byte boundary, and cleanup passed |
+| Moodle forced failure | `TRACECHAIN_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh` | expected exit 1; cleanup passed and no synthetic grade or attempt remained |
 
-The two e2e skips are WebKit tab traversal: Safari ships with "Press Tab to
-highlight each item" off, so Tab reaches nothing. Keyboard *operability* is
-tested on all four projects; only *traversal* is skipped.
+The two expected Playwright skips are Safari/WebKit keyboard traversal. Safari
+does not move focus with Tab under its default system preference. Keyboard
+operability is exercised in every project; only the preference-dependent
+traversal assertion is skipped.
 
-`validate:scenario` is the scenario **schema and consistency** baseline, not
-scenario-contract coverage. It passed throughout while stage 5's manifest did
-not exist. Cross-layer contract tests are unimplemented — see
-[STAGE5_REPAIR.md](STAGE5_REPAIR.md).
+The WebKit timeout allowance is limited to the two measured long walkthroughs
+in `e2e/activity.spec.ts`; every other test and project retains the 90-second
+default. This closes the former broad project-level timeout debt.
 
-## WebKit e2e on CI
+## Release artifacts
 
-The first CI run failed two WebKit tests -- the full nine-stage walkthrough and
-the recall, both `activity.spec.ts` -- with `locator.click` timing out at 90s.
-Diagnosed in the pinned Playwright Linux container (`v1.61.1-noble`), evidence
-first, no blind timeout bumps:
-
-| Environment | 9-stage walkthrough |
+| Artifact | Provenance |
 |---|---|
-| macOS WebKit (local) | ~4s |
-| Chromium / Firefox | ~10s |
-| Linux WebKit, container, isolated | ~48s |
-| Linux WebKit, container, CPU-time throttled to 2 | ~180s |
+| SCORM package | `tracechain-scorm-v2.0.0.zip` |
+| SCORM SHA-256 | `23d2642811e3a4fd9533bf3fdb4ef99162fe6f22fff95d940842218e2ca9cda3` |
+| SCORM contents | 6 files, 137,644 bytes (134.4 kB), verifier 23/23 |
+| Content-review artifact | `docs/content-review/tracechain-content-review.html` |
+| Content-review SHA-256 | `da1929ac790ea1973b9e10c0bef977edff13c15116277ff84168c19bc800bb75` (226,632 bytes) |
+| Content-review parity | 528/528 |
+| Content-review status | not reviewed; Vietnamese subject-expert adjudication remains open |
 
-**No CI trace was inspected** -- the first failing run uploaded nothing (see
-below), so the diagnosis came from reproducing the failure in the pinned Linux
-container and reading per-stage timing, not from a Playwright trace. Timing
-(`TRACECHAIN_E2E_TIMING=1`) showed every action succeeding and the cost spread
-across all nine stages, heaviest at the transaction-heavy ones (4, 6) --
-cumulative execution time, not a stall, product defect, or animation wait.
-Reduced-motion was tested and made no difference, ruling animation out.
+The Version 1 package checksum
+`5f2e0225708eefb45d2e6a041980ab6aa6fb3a0f564fa958dc6fb7841447b2bf`
+is historical and is not the current package checksum.
 
-**Hypothesis for the slowness** (not proven): WebKit's Linux port is far slower
-than macOS, and this suite's accessibility-tree locators (`getByRole` with name
-regexes) recompute as the workspace DOM grows, so the heaviest stages are the
-ones with the most accumulated DOM. This was not isolated to a specific cause --
-it is the most likely explanation for the measured curve, no more. What *is*
-established is the shape: every action succeeds, and the total exceeds the
-budget on WebKit-Linux alone.
+## Stage 5 and M3 evidence
 
-On the real GitHub runner the 7-stage tamper test passed at 90s while only the
-two full-9-stage tests failed, so the real need is ~100-130s; the container is
-pessimistic because `docker --cpus` throttles CPU *time* rather than giving
-dedicated cores, so it cannot faithfully reproduce a 2-core runner.
+The committed ledger contains the scripted shipping manifest after custody
+transfer and before the Stage 5 sensor event. Its typed metadata declares
+`1000 KG`; the learner correction targets the manifest's `declaredQuantity`
+and appends `100 KG` without mutating the manifest transaction. Live execution,
+replay, learner display, and scoring share the effective-value resolver.
 
-**Fix:** per-project test timeouts, set explicitly rather than via `test.slow()`
-(which tripled an implicit default and made a per-project override ambiguous).
-Blink/Gecko keep 90s; the WebKit family gets 240s (measured 180s plus margin).
-Raising Chromium/Firefox would hide a real regression behind a WebKit allowance.
+Stage 5 completion requires a committed `RECORD_CORRECTION` transaction for the
+specific manifest target. Rejected and unrelated attempts do not complete it,
+and a later valid correction cannot reverse completion. The cross-layer
+contract suite audits those properties and all `DECISION_RECORDED` completion
+conditions for rejected-attempt vulnerability.
 
-**Technical debt.** The 240s timeout is set at the *project* level, so it
-applies to every WebKit test, not only the two long walkthroughs that need it.
-That is broad: a genuinely hung short WebKit test now takes 240s to fail instead
-of 90s. It should later be scoped to the two long walkthroughs specifically
-(a per-test `test.setTimeout(240_000)` on them, WebKit-family only), or those
-walkthroughs split into shorter tests that fit the default budget. Left broad
-for now because the immediate goal was a trustworthy green baseline, and
-narrowing it is a refinement, not a correctness fix.
+M3 is re-evaluated only after the final local matrix and exact-HEAD GitHub jobs
+are green.
 
-**Trace and report capture** was the reason the first failure gave no evidence:
-the `line` reporter writes no report directory, so `upload-artifact` found
-nothing. Now `use.trace` is `on-first-retry`, CI adds an `html` reporter, and
-the workflow uploads both `playwright-report/` and `test-results/` with
-`if-no-files-found: error`. Verified locally in CI mode: a deliberately failing
-fixture produces `test-results/.../retry1/trace.zip` and a ~516K
-`playwright-report/index.html`, openable with `npx playwright show-trace`. The
-`upload-artifact` action itself is exercised only on a real red run.
+## Controls and remaining human decisions
 
-**Verified on the real GitHub runner** at commit `72c7241`, green twice:
-run `29878612762` (initial) and its rerun, both `quality` + `e2e` success. The
-e2e job took about 738s. This is the authoritative result; the container was
-diagnostic only. Later docs-only commits carry the same source and stayed green.
+GitHub Actions reports `quality` and `e2e` on pushes and pull requests. Required
+check enforcement remains unavailable for this private repository on the
+current plan. Repository visibility and billing were not changed.
 
-## Commit gating — what it is and is not
+Vietnamese subject-expert adjudication is a separate open human-review item;
+this release does not claim it. The terminology question around “quyền lưu giữ”
+is recorded in the content-review manifest.
 
-`scripts/hooks/pre-commit` refuses a commit whose `npm run quality` is red. It
-is versioned, and verified to refuse: staging a deliberate type error produces
-`QUALITY GATE FAILED — commit refused`, exit 1, HEAD unmoved.
-
-**It is a local early warning, not a repository-wide control.** Activation lives
-in local git config, which a clone does not carry:
-
-    npm run setup:hooks     # git config core.hooksPath scripts/hooks
-
-A fresh clone gets the hook file and does not run it until that is done, and
-`git commit --no-verify` bypasses it regardless. **This project has no CI**, so
-there is currently no authoritative gate — the honest control hierarchy is:
-
-| Layer | Status |
-|---|---|
-| Pre-commit hook | present, local, opt-in via `npm run setup:hooks` |
-| Pre-push hook | not implemented |
-| CI (runs) | **live** — `quality` + `e2e` on every push/PR, green at `72c7241` |
-| CI (enforced as required) | **blocked by plan tier** — see below |
-
-`.github/workflows/quality.yml` runs `npm run quality` and `npx playwright test`
-on every push and pull request against `github.com/tuanmichiganstate/TraceChain`
-(private). Both jobs are green.
-
-Making those checks *required* -- so a red run blocks a merge -- needs classic
-branch protection or a repository ruleset. **Both require GitHub Pro for a
-private repository** (HTTP 403: "Upgrade to GitHub Pro or make this repository
-public"). So CI reports on every push but cannot yet block one. Closing that is a
-decision only the owner can make: upgrade the plan, or make the repo public
-(declined here -- the content is unreviewed and stage 5 is a known defect). On a
-solo direct-push repo the practical gap is small, since required checks mainly
-gate PR merges.
-
-## Artefacts
-
-| | |
-|---|---|
-| SCORM package | `tracechain-scorm-v1.0.0.zip` |
-| Package SHA-256 | `5f2e0225708eefb45d2e6a041980ab6aa6fb3a0f564fa958dc6fb7841447b2bf` |
-| Package source commit | `07274457d769af099803a4b2555d3f06ea79ce7b` |
-| Review pack | `docs/content-review/tracechain-content-review-2026-07-21.html` |
-| Review pack SHA-256 | `3ec8c56f7b2d7f20ea21728320285e32bb6eecc6ae18d3a9ab4000981070dfda` |
-
-### Package provenance
-
-The package was built at `0727445`, not at the baseline commit. Every path
-changed between them, in full:
-
-```
-docker-moodle/README.md
-docker-moodle/acceptance-cleanup.php
-docker-moodle/acceptance-force-failure.php
-docker-moodle/acceptance.php
-docker-moodle/run-acceptance.sh
-docs/STAGE5_REPAIR.md
-docs/content-review/MANIFEST.md
-docs/content-review/tracechain-content-review-2026-07-21.html
-package.json
-scripts/verify-content-review.mjs
-```
-
-None is an input to the learner package: no runtime source, localization,
-scenario definition, or packaging script. `package.json` changed only to add
-`verify:content-review` to the script list. The list is recorded in full rather
-than filtered, so the claim can be re-checked rather than trusted:
-
-    git diff --name-only 07274457d769af099803a4b2555d3f06ea79ce7b HEAD
-
-The stage 5 repair changes runtime source and will require a rebuild and a new
-checksum.
-
-## Environments
-
-- **Moodle 5.0.1** (Docker, `docker-moodle/compose.yml`) — package install,
-  player render, API discovery at parent depth 1, stage 1→2 walkthrough, and the
-  CLI acceptance pass over storage and grading.
-- **Moodle 5.2.1** (MAMP) — runtime boundaries only, driven through `window.API`
-  because the player never rendered on that install: `suspend_data` refused
-  above 4096 with error 405, resume with `entry=resume` and a byte-identical
-  payload, score reaching the gradebook. No learner flow and no package
-  verifier ran there.
-
-## Status
-
-Six milestones accepted. **M3 reopened**: its exit condition asserted the
-scenario ran headless, which it did — over a ledger artifact the scenario claims
-exists and never did.
-
-Open: stage 5 domain-and-content repair (blocking); scenario-contract coverage;
-deterministic review-pack generator; Vietnamese subject-expert adjudication.
+The abandoned `wip/stage5-failed-dispatch-approach` branch and any stash are not
+release inputs. Version 2 uses no `DISPATCH_BATCH`, positional stash reference,
+rejected-attempt completion shortcut, `DECISION_RECORDED` Stage 5 evidence, or
+asset `quantity` shortcut for manifest metadata.

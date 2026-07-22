@@ -35,7 +35,8 @@ function sourceFilesAt(sourcePath) {
 
 const deferredPromisePatterns = [
   ["stage declared before implementation", /\bstages? not yet built\b/i],
-  ["interface deferred to a milestone", /\binterface (?:arrives|lands) with Milestone\b/i],
+  ["interface deferred to a milestone", /\binterfaces? (?:arrive|arrives|land|lands) with Milestone\b/i],
+  ["implementation planned for a milestone", /\bplanned for Milestone\b/i],
   [
     "implementation promised by a milestone",
     /\bMilestone\s+\d+\s+(?:will|adds|implements|introduces|provides|completes)\b/i,
@@ -44,6 +45,9 @@ const deferredPromisePatterns = [
     "work deferred to a future milestone",
     /\b(?:will be|to be) (?:added|implemented) in (?:a )?(?:future|later) milestone\b/i,
   ],
+  ["unfinished stage promise", /\bwhat remains is stages?\b/i],
+  ["untested next-step promise", /\bnot yet tested\b.*\bnext step\b/i],
+  ["unimplemented contract promise", /\b(?:cross-layer|scenario-contract).{0,50}\bunimplemented\b/i],
   ["explicit deferred scenario work", /\b(?:TODO|FIXME)\b.*\b(?:stage|milestone|scenario|learner)\b/i],
 ];
 
