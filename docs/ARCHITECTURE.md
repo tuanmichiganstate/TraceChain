@@ -361,12 +361,27 @@ compares identities rather than counts, because a count written into a workflow
 goes stale the first time somebody adds a test.
 
 **When to reconsider a third WebKit shard.** Two shards were enough, and the
-imbalance between them (the slower carries the long walkthroughs) is tolerated
-rather than fixed: Playwright shards by test count, not duration. Revisit only
-if the median complete workflow exceeds **eight minutes across five comparable
-successful runs**, or the slower WebKit shard consistently exceeds **six
-minutes**. Neither holds today. A third shard costs another runner and another
-setup, and shard imbalance on its own is not a reason to add one.
+imbalance between them — the slower carries the long walkthroughs — is tolerated
+rather than fixed, because Playwright shards by test count and not by duration.
+
+The trigger is the complete workflow, not the shard: **revisit only if the median
+complete workflow exceeds eight minutes across five comparable successful runs,
+or the slower WebKit shard exceeds eight minutes in at least three of five.**
+"Consistently" is spelled out because one slow sample is weather, not climate.
+
+Both thresholds are deliberately set above the measured steady state rather than
+inside it. Across the four comparable runs available when the matrix landed, the
+workflow ran 6.42–8.13 minutes (median 6.89) and the slow shard 6.27–7.95
+(median 6.72). An earlier draft of this note put the shard threshold at six
+minutes, which every one of those runs already exceeded — a trigger that fires
+on the day it is written measures nothing. The slow shard is also the workflow's
+critical path by construction, finishing within seconds of it, so a shard
+threshold below the workflow threshold could never mean anything separate.
+
+Neither criterion is met: the workflow median is 6.89 minutes against a budget
+of eight. **No third shard is justified today.** One would cost another runner
+and another full setup, and shard imbalance on its own has never been the
+question — total elapsed time is.
 
 ## Dependencies
 

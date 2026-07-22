@@ -117,7 +117,9 @@ about was live in the build.
   single browser does. `npm run quality` now also holds the matrix to the
   Playwright configuration, so a project or shard that stops running in CI fails
   the gate instead of passing quietly. No test, browser or skip was changed: 67
-  passed and 5 skipped, before and after.
+  passed and 5 skipped, before and after. A third WebKit shard was considered and
+  rejected: the criterion for revisiting it is in `docs/ARCHITECTURE.md`, keyed
+  to the complete workflow rather than to shard imbalance.
 - **CI runs once per commit instead of twice.** Both workflow events were
   unfiltered, so every push to a branch with an open pull request started two
   identical runs of the same SHA — confirmed from run metadata across four
