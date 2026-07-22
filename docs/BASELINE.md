@@ -57,6 +57,11 @@ passed at 90s while only the two full-9-stage tests failed, so the real need is
 Blink/Gecko keep 90s; the WebKit family gets 240s (measured 180s plus margin).
 Raising Chromium/Firefox would hide a real regression behind a WebKit allowance.
 
+**Verified on the real GitHub runner** at commit `72c7241`, green twice:
+run `29878612762` (initial) and its rerun, both `quality` + `e2e` success. The
+e2e job took about 738s. This is the authoritative result; the container was
+diagnostic only.
+
 ## Commit gating — what it is and is not
 
 `scripts/hooks/pre-commit` refuses a commit whose `npm run quality` is red. It
