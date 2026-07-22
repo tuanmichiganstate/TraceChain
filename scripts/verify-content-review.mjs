@@ -1,54 +1,97 @@
-/**
- * Verifies the committed content-review pack against the live locale file.
- *
- * The pack's whole value is its completeness claim, and an earlier draft made
- * that claim while containing 204 of 509 strings. This turns the claim into
- * something CI can fail on.
- */
-import { readFileSync, existsSync } from "node:fs";
+#!/usr/bin/env node
+/** Verify the committed review pack by deterministic temporary regeneration. */
+
 import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  ARTIFACT_FILENAME,
+  MANIFEST_FILENAME,
+  generateContentReview,
+} from "./generate-content-review.mjs";
 
-const PACK = "docs/content-review/tracechain-content-review-2026-07-21.html";
-const MANIFEST = "docs/content-review/MANIFEST.md";
-const escape = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-if (!existsSync(PACK)) {
-  console.error(`Content review pack missing: ${PACK}`);
-  process.exit(1);
-}
-
-const vi = JSON.parse(readFileSync("src/locales/vi.json", "utf8"));
-const raw = readFileSync(PACK);
-const html = raw.toString("utf8");
+const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+const committedDirectory = join(projectRoot, "docs", "content-review");
+const committedManifestPath = join(committedDirectory, MANIFEST_FILENAME);
 const problems = [];
 
-const keys = Object.keys(vi);
-const missing = keys.filter((k) => !html.includes(escape(vi[k])));
-if (missing.length > 0) {
-  problems.push(`${missing.length} locale string(s) absent from the pack, e.g. ${missing.slice(0, 3).join(", ")}`);
-}
-
-// Duplicate *values* are legitimate; duplicate keys would mean a malformed file.
-const seen = new Set();
-for (const k of keys) {
-  if (seen.has(k)) problems.push(`Duplicate locale key: ${k}`);
-  seen.add(k);
-}
-
-const digest = createHash("sha256").update(raw).digest("hex");
-const manifest = readFileSync(MANIFEST, "utf8");
-if (!manifest.includes(digest)) {
-  problems.push(`MANIFEST.md records a stale SHA-256; the pack is now ${digest}`);
-}
-if (!manifest.includes(`${keys.length - missing.length}/${keys.length}`)) {
-  problems.push(`MANIFEST.md records a stale parity count; it is now ${keys.length - missing.length}/${keys.length}`);
-}
-
-if (problems.length > 0) {
-  console.error("Content review pack is out of date:");
-  for (const p of problems) console.error(`  - ${p}`);
-  console.error("Regenerate the pack and update docs/content-review/MANIFEST.md.");
+if (!existsSync(committedManifestPath)) {
+  console.error(`Content review manifest missing: ${committedManifestPath}`);
   process.exit(1);
 }
 
-console.log(`Content review pack verified: ${keys.length}/${keys.length} strings, sha256 ${digest.slice(0, 16)}…`);
+const committedManifest = readFileSync(committedManifestPath, "utf8");
+const sourceCommitMatch = committedManifest.match(
+  /\| Source commit \| `([0-9a-f]{40})` \|/u,
+);
+if (sourceCommitMatch === null) {
+  console.error("Content review manifest has no valid full Source commit field.");
+  process.exit(1);
+}
+
+const temporaryRoot = mkdtempSync(join(tmpdir(), "tracechain-content-review-"));
+try {
+  const result = await generateContentReview({
+    projectRoot,
+    outputDirectory: temporaryRoot,
+    sourceCommit: sourceCommitMatch[1],
+  });
+
+  const committedFiles = readdirSync(committedDirectory).sort();
+  const expectedFiles = readdirSync(temporaryRoot).sort();
+  if (JSON.stringify(committedFiles) !== JSON.stringify(expectedFiles)) {
+    problems.push(
+      `file set differs: committed [${committedFiles.join(", ")}], ` +
+        `generated [${expectedFiles.join(", ")}]`,
+    );
+  }
+
+  for (const fileName of expectedFiles) {
+    const committedPath = join(committedDirectory, fileName);
+    if (!existsSync(committedPath)) continue;
+    const committed = readFileSync(committedPath);
+    const regenerated = readFileSync(join(temporaryRoot, fileName));
+    if (!committed.equals(regenerated)) {
+      problems.push(`${fileName} is stale; run npm run generate:content-review`);
+    }
+  }
+
+  const artifactPath = join(committedDirectory, ARTIFACT_FILENAME);
+  if (existsSync(artifactPath)) {
+    const artifact = readFileSync(artifactPath);
+    const digest = createHash("sha256").update(artifact).digest("hex");
+    if (!committedManifest.includes(`| Artifact SHA-256 | \`${digest}\` |`)) {
+      problems.push(`MANIFEST.md records a stale artifact SHA-256; current value is ${digest}`);
+    }
+    if (
+      !committedManifest.includes(
+        `| Locale parity | **${result.localeCount}/${result.localeCount}** strings present, 0 missing |`,
+      )
+    ) {
+      problems.push(`MANIFEST.md records a stale locale parity count`);
+    }
+  } else {
+    problems.push(`${ARTIFACT_FILENAME} is missing`);
+  }
+
+  if (problems.length > 0) {
+    console.error("Content review verification FAILED:");
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `Content review verified: ${result.localeCount}/${result.localeCount} strings, ` +
+        `sha256 ${result.artifactDigest}, source ${result.sourceDigest}`,
+    );
+  }
+} finally {
+  rmSync(temporaryRoot, { recursive: true, force: true });
+}

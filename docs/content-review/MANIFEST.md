@@ -2,50 +2,44 @@
 
 | | |
 |---|---|
-| Artifact | `tracechain-content-review-2026-07-21.html` |
-| Generated | 2026-07-21 |
-| Source state | Phase 2 Stage 5 locale update; deterministic commit provenance lands with the Phase 4 generator |
+| Artifact | `tracechain-content-review.html` |
+| Generation command | `npm run generate:content-review` |
+| Generator version | `1.0.0` |
+| Format version | `1` |
+| Source commit | `6ad1e7148ec2e0766f3300004fce92b1379b9bb8` |
+| Source SHA-256 | `f190e322bc266551d1538e5e4d27c638a13051f62edebac7f0cb118b8e7b4226` |
 | Locale parity | **530/530** strings present, 0 missing |
-| SHA-256 | `b7ab921ae5a6eeedd66fd4d371b40724753ff3fd059fb0aab933f47106e6614f` |
-| Review status | **Not yet reviewed** — awaiting Vietnamese subject expert |
+| Artifact SHA-256 | `6ea8fd61a13b299049cd8d41b7adef6eb5713c58ff8e5568a98051426648d302` |
+| Review status | **Not yet reviewed** — awaiting Vietnamese subject-expert adjudication |
 
-Generated from `src/scenarios/coffee-traceability/` and `src/locales/vi.json`,
-not transcribed, so the completeness claim is mechanical rather than asserted.
+The source commit records the clean committed base used for generation. The
+source SHA-256 covers the exact sorted locale catalogs, scenario review model,
+format version, and exclusions, including any working-tree source changes.
 
-## Reproducing the parity check
+## Authoritative sources
 
-```python
-vi = json.load(open('src/locales/vi.json'))
-html = open('docs/content-review/tracechain-content-review-2026-07-21.html', encoding='utf-8').read()
-missing = [k for k in vi if escape(vi[k]) not in html]
-assert not missing
-```
+- `src/locales/vi.json`
+- `src/locales/en.json`
+- `src/scenarios/coffee-traceability/`
+- `src/domain/types/scenario.ts`
+- `src/domain/types/enums.ts`
+- `src/domain/types/scoring.ts`
 
-An earlier draft of this pack claimed completeness while containing only part
-of the locale catalog. The current count is recorded mechanically rather than
-assumed, and must be re-verified whenever the pack is regenerated.
+## Verification
 
-## Known limitation of the current check
+`npm run verify:content-review` regenerates into a temporary directory and
+compares both files byte-for-byte. It does not rewrite this directory. It fails
+for stale HTML, digest or parity metadata, duplicate or missing locale keys,
+source changes, or exclusion drift.
 
-`npm run verify:content-review` proves that every locale string appears in the
-committed pack and that this manifest's digest and count are current. It does
-**not** regenerate the pack, so it cannot detect a stale HTML export whose
-manifest was refreshed without re-rendering.
+## Explicit exclusions
 
-Closing that needs the generator committed as `scripts/generate-content-review.mjs`
-and the verifier extended to:
+- Không loại trừ khóa ngôn ngữ nào: mọi khóa trong vi.json và en.json đều có đúng một mục rà soát.
+- Giá trị sổ cái phát sinh lúc chạy (mã giao dịch, hàm băm, thời gian và trạng thái tài sản) không phải chuỗi trong danh mục ngôn ngữ.
+- Dữ liệu mẫu không dịch nằm trong lệnh hoặc seed (ví dụ productName và originLocation) được giữ nguyên để hàm băm không phụ thuộc ngôn ngữ.
 
-```bash
-npm run generate:content-review
-git diff --exit-code -- docs/content-review/
-```
+## Human review
 
-The generator currently exists only as the ad-hoc scripts used to produce this
-pack. Until it is committed, treat regeneration as a manual step and re-run
-`verify:content-review` afterwards.
-
-## Adjudicated comments
-
-None yet. Record decisions here against the pack's reference codes
-(`S3·Q1·b`), including items deferred rather than accepted — notably the
-"quyền lưu giữ" terminology question, which is open pending a native speaker.
+No Vietnamese subject-expert adjudication has been supplied. Record future
+decisions here against locale keys. The terminology question around “quyền lưu
+giữ” remains open until a native-speaking subject expert decides it.
