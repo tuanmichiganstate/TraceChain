@@ -21,7 +21,9 @@ test.describe("the whole activity in a real browser", () => {
     await activity.playThroughStageSeven();
 
     // Both immutable lineage records are learner-visible. The manifest still
-    // says 1000 KG; the appended correction resolves the effective value to 100 KG.
+    // says 1000 kg; the appended correction resolves the effective value to
+    // 100 kg. Lower case because these are learner-facing: the canonical `KG`
+    // stays in the payload and never reaches the screen.
     await page.getByRole("button", { name: "Bảng tra cứu" }).click();
     await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
     const manifestRow = page
@@ -31,12 +33,12 @@ test.describe("the whole activity in a real browser", () => {
     await expect(manifestRow).toHaveCount(1);
     await manifestRow.getByRole("button").click();
     await expect(page.getByText("Vận đơn", { exact: true })).toBeVisible();
-    await expect(page.getByText("1000 KG", { exact: true })).toBeVisible();
+    await expect(page.getByText("1000 kg", { exact: true })).toBeVisible();
 
     const correctionRow = page.getByRole("row").filter({ hasText: "Giao dịch điều chỉnh" });
     await correctionRow.getByRole("button").click();
     await expect(page.getByText("DOC_SHIPPING_MANIFEST_001.declaredQuantity")).toBeVisible();
-    await expect(page.getByText("100 KG", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("100 kg", { exact: true }).last()).toBeVisible();
 
     // The packaged lot reached the retailer holding both rights.
     const packagedCard = page.getByRole("article").filter({

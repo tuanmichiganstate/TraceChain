@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { DomainState } from "../domain/ledger/domain-state";
 import type { CorrectionTarget } from "../domain/types/correction";
-import { formatCorrectionValue } from "../domain/types/correction";
+import { formatCorrectionValueLabel } from "../localization/format-correction-value";
 import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
 import { useTranslator } from "../app/providers/locale-provider";
 
@@ -46,7 +46,7 @@ export function CorrectionLineage({
       <ol className="lineage__chain">
         <li className="lineage__step lineage__step--original">
           <p className="lineage__label">{t("lineage.originalLabel")}</p>
-          <p className="lineage__value">{formatCorrectionValue(view.originalValue)}</p>
+          <p className="lineage__value">{formatCorrectionValueLabel(view.originalValue, t)}</p>
           <p className="muted">{t("lineage.originalNote")}</p>
           <p className="lineage__source">
             {t("lineage.recordedIn")} <code>{view.originalTransactionId}</code>
@@ -64,7 +64,7 @@ export function CorrectionLineage({
               ↓
             </span>
             <p className="lineage__label">{t("lineage.correctionLabel")}</p>
-            <p className="lineage__value">{formatCorrectionValue(correction.value)}</p>
+            <p className="lineage__value">{formatCorrectionValueLabel(correction.value, t)}</p>
             <p className="muted">{t("lineage.correctionNote")}</p>
             <p className="lineage__source">
               {t("lineage.recordedIn")} <code>{correction.transactionId}</code>
@@ -78,7 +78,7 @@ export function CorrectionLineage({
           </span>
           <p className="lineage__label">{t("lineage.effectiveLabel")}</p>
           <p className="lineage__value lineage__value--effective">
-            <strong>{formatCorrectionValue(view.effectiveValue)}</strong>
+            <strong>{formatCorrectionValueLabel(view.effectiveValue, t)}</strong>
           </p>
           <p className="muted">
             {t(hasCorrection ? "lineage.effectiveNote" : "lineage.uncorrectedNote")}

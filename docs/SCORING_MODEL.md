@@ -59,8 +59,30 @@ same stage costs nothing further, because the cap is already in force. Items
 already down to `multipleAttemptCredit`, and items never answered correctly, are
 unaffected — the cap can only lower credit that exists.
 
-The learner is told this before choosing: the hint control states the ceiling
-and the points it puts at risk, both derived from this configuration.
+The learner is told all of this before choosing: the hint control states the
+ceiling, that it covers answers already given, and the points it puts at risk,
+all derived from this configuration.
+
+### Open decision for the product owner
+
+The behaviour above is what the code does, verified against the score engine
+rather than inferred, and it is not being changed on anyone's preference. But it
+was never written down as a choice, and two of its properties surprise people:
+a hint bought for one question is charged against every question in the stage,
+and buying it after finishing the stage still costs the full amount.
+
+> **Decision required.** Retain the current stage-wide, retroactive hint cap, or
+> redesign it so a hint affects only the item it belongs to, or only work
+> completed after it is opened.
+
+No authoritative specification is held in this repository, so nothing here
+contradicts a higher authority — the only conflict was internal, between the
+per-item table above and the stage-wide implementation, and that is now
+reconciled in favour of describing what the code does. Whichever way this is
+settled, three tests pin the current behaviour and would need to move with it:
+`score-engine.test.ts` "reduces credit for items in the stage the hint belongs
+to" and "leaves other stages untouched", and the derived figure the hint control
+shows.
 
 ## Two provisions that keep exploration safe
 

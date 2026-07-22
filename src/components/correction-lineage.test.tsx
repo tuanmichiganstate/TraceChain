@@ -127,6 +127,21 @@ function stateWithCorrections(...corrections: ReadonlyArray<readonly [number, nu
   return state;
 }
 
+/** A correction the rules refuse: it misstates the value it claims to replace. */
+function stateWithRejectedCorrection(): DomainState {
+  const ledger = new SimulatedLedger(sha256Hex, immediate);
+  let state = submit(ledger, createEmptyDomainState(), makeCreateBatchCommand());
+  state = submit(ledger, state, manifestCommand());
+  const rejected = ledger.submitCommand(
+    state,
+    correctionCommand(q(999), q(100), "2026-06-17T03:00:00.000Z"),
+    producer,
+    registries,
+  );
+  expect(rejected.isAccepted).toBe(false);
+  return rejected.state;
+}
+
 function renderLineage(state: DomainState, lineageTarget: CorrectionTarget = target): void {
   const element: React.ReactElement = (
     <LocaleProvider>
@@ -146,7 +161,7 @@ describe("the correction lineage panel", () => {
   it("shows the original value, the correction, and the effective value", () => {
     renderLineage(stateWithCorrections([1000, 100]));
 
-    expect(stepValues()).toEqual(["1000 KG", "100 KG", "100 KG"]);
+    expect(stepValues()).toEqual(["1000 kg", "100 kg", "100 kg"]);
     expect(screen.getByText(/Vận đơn gốc không bị sửa/)).toBeInTheDocument();
   });
 
@@ -155,7 +170,7 @@ describe("the correction lineage panel", () => {
     // gets wrong, by rendering the final effective value against every step.
     renderLineage(stateWithCorrections([1000, 100], [100, 105]));
 
-    expect(stepValues()).toEqual(["1000 KG", "100 KG", "105 KG", "105 KG"]);
+    expect(stepValues()).toEqual(["1000 kg", "100 kg", "105 kg", "105 kg"]);
   });
 
   it("names the transaction each value was recorded in", () => {
@@ -172,11 +187,21 @@ describe("the correction lineage panel", () => {
   it("says the original figure is still in use when nothing has corrected it", () => {
     renderLineage(stateWithCorrections());
 
-    expect(stepValues()).toEqual(["1000 KG", "1000 KG"]);
+    expect(stepValues()).toEqual(["1000 kg", "1000 kg"]);
     expect(screen.getByText(/Chưa có giao dịch điều chỉnh nào/)).toBeInTheDocument();
     // The conclusion is about a correction having been appended; with none, it
     // would be describing something that did not happen.
     expect(screen.queryByText(/Vận đơn gốc không bị sửa/)).not.toBeInTheDocument();
+  });
+
+  it("ignores a correction the rules rejected", () => {
+    // The rejected attempt is on the ledger -- the learner must be able to see
+    // why it failed -- but it changed nothing, so the lineage must not present
+    // it as a step in the chain.
+    renderLineage(stateWithRejectedCorrection());
+
+    expect(stepValues()).toEqual(["1000 kg", "1000 kg"]);
+    expect(screen.getByText(/Chưa có giao dịch điều chỉnh nào/)).toBeInTheDocument();
   });
 
   it("renders nothing when the target resolves to no committed value", () => {
@@ -201,7 +226,7 @@ describe("the correction lineage panel", () => {
     renderLineage(stateWithCorrections([1000, 100]));
 
     const original = screen.getAllByRole("listitem")[0] as HTMLElement;
-    expect(within(original).queryByText("1000 KG")).toBeInTheDocument();
+    expect(within(original).queryByText("1000 kg")).toBeInTheDocument();
     expect(original.querySelector("del, s, strike")).toBeNull();
   });
 });

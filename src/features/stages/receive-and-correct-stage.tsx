@@ -24,6 +24,7 @@ import {
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
 import type { AnchorDocumentCommand } from "../../domain/commands/commands";
 import { buildEffectiveValueView } from "../../domain/scenario/effective-value-view";
+import { formatCorrectionValueLabel } from "../../localization/format-correction-value";
 import manifestDiscrepancyImage from "../../assets/illustrations/manifest-discrepancy.webp";
 
 const MINIMUM_REASON_LENGTH = 10;
@@ -68,10 +69,12 @@ export function ReceiveAndCorrectStage(): ReactNode {
     state.domain,
     manifestTarget,
   )?.effectiveValue;
+  // Through the display formatter, not the raw enum: this label sits inches
+  // from the manifest and scale figures, which are written `1000 kg`.
   const effectiveQuantityLabel =
-    effectiveManifestValue?.kind === "QUANTITY"
-      ? `${effectiveManifestValue.amount} ${effectiveManifestValue.unit}`
-      : `${MANIFEST_QUANTITY_KG} kg`;
+    effectiveManifestValue === undefined
+      ? `${MANIFEST_QUANTITY_KG} kg`
+      : formatCorrectionValueLabel(effectiveManifestValue, t);
 
   return (
     <StageShell

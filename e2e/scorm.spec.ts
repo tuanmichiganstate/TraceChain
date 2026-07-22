@@ -40,7 +40,7 @@ test.describe("saving and resuming", () => {
     await expect(correctionRow).toHaveCount(1);
     await correctionRow.getByRole("button").click();
     await expect(page.getByText("DOC_SHIPPING_MANIFEST_001.declaredQuantity")).toBeVisible();
-    await expect(page.getByText("100 KG", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("100 kg", { exact: true }).last()).toBeVisible();
   });
 
   test("keeps suspend data inside the 4096-character ceiling", async ({ page }) => {

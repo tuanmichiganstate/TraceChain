@@ -238,9 +238,38 @@ What was verified in a real browser rather than jsdom, which has no layout:
 - **Reduced motion.** `prefers-reduced-motion: reduce` collapses the pipeline
   step duration to zero and neutralises animation and transition durations.
 
-Colour never carries meaning alone: every `StatusPill` tone pairs its colour
-with a distinct glyph and a text label, so status survives greyscale, colour
-blindness and a screen reader.
+Colour never carries meaning alone: every pill pairs its colour with a distinct
+glyph and a text label, so status survives greyscale, colour blindness and a
+screen reader. The glyph is `aria-hidden`, so what is announced is the label.
+
+**Verdicts and classifications are different components on purpose.**
+`StatusPill` carries `pass`, `warn`, `fail` and `neutral` — answers to "was this
+right". `ClassificationPill` carries `affected` and `unaffected` — an answer to
+"did the contamination reach this lot", which is a fact about the goods. Stage 9
+first used the verdict tones for it, so a learner who correctly identified
+contaminated stock was handed a rejection cross for getting it right. Two types
+rather than one widened union, because `validation-results.tsx` and
+`transaction-history.tsx` both map a status enum onto `StatusTone`, and those
+maps only mean anything while every member of it is a judgement.
+
+### Three levels of accessibility evidence, not one
+
+These are not interchangeable, and the difference is worth keeping visible:
+
+1. **Automated assertions** (`src/app/accessibility.test.tsx`, `e2e/accessibility.spec.ts`)
+   — the document outline, accessible names, unique ids, keyboard operability
+   and 320 px reflow, on every commit. Stage 1 *and* stage 5, because stage 1
+   renders one of everything and therefore could not catch a duplicate id.
+2. **Accessibility-tree inspection** — ARIA snapshots taken during review to
+   confirm reading order, that decorative glyphs are absent from the tree, and
+   that live regions announce once. Useful, and still only a model of what
+   assistive technology would do.
+3. **A real screen reader** — VoiceOver, NVDA or equivalent, driven by a person.
+
+**Open release QA item: run one complete stage 5 and stage 9 flow with a real
+screen reader before the next formal release.** Levels 1 and 2 have been done
+for the current work; level 3 has not, and nothing in levels 1 or 2 substitutes
+for it.
 
 ## End-to-end testing
 

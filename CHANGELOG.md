@@ -23,8 +23,11 @@ about was live in the build.
   `afterHintCredit`, which in stage 9 is 7.5 points across three items —
   measured against the score engine, not inferred. The notice now states the
   cap and the points it puts at risk, both derived from the scoring
-  configuration, and is phrased as a ceiling rather than as an automatic
-  deduction.
+  configuration, phrased as a ceiling rather than as an automatic deduction, and
+  saying that it covers answers already given — the cap is retroactive, which
+  was the one material consequence the wording still left out.
+  `docs/SCORING_MODEL.md` now records the policy and an open decision for the
+  product owner; nothing about the scoring itself changed.
 - **Two 320 px overflows that had shipped.** Validation rule identifiers, and
   the recall question's `fieldset`, each forced a horizontal scroll on every
   stage that renders them. The reflow test only ever visited stage 1, which is
@@ -45,9 +48,19 @@ about was live in the build.
 
 - **Recall lots are classified, not judged.** An affected lot first rendered
   with the validation `fail` tone, handing a learner who correctly identified
-  contaminated stock a rejection cross for getting it right. `StatusPill` gained
-  `affected` and `unaffected` tones, distinguished by fill as well as colour, and
-  kept apart from the four verdict tones on purpose.
+  contaminated stock a rejection cross for getting it right. Classification is
+  now a separate `ClassificationPill` with `affected` and `unaffected`,
+  distinguished by fill as well as colour. Two components rather than one
+  widened union because `validation-results.tsx` and `transaction-history.tsx`
+  both map a status enum onto `StatusTone`, and adding classifications to it
+  made `{ FAILED: "affected" }` type-check.
+- **One spelling of a unit on a screen.** `formatCorrectionValue` writes the
+  canonical `1000 KG`, which stage 5 showed beside the manifest panel's
+  `1000 kg` and the asset card's `100 kg`. Learner-facing renders go through
+  `formatCorrectionValueLabel`, which maps the enum to the translated label --
+  `kg`, and `gói`/`packages` for UNIT, which is a word rather than a symbol.
+  Commands, payloads, hashes, suspend data and the scenario contracts are
+  untouched, and a test asserts it.
 - **The correction lineage no longer borrows validation iconography.** The
   superseded manifest figure is a committed historical fact, not a failed rule;
   marking it with the rejection glyph said the opposite of the stage's lesson.

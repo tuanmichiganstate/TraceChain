@@ -7,7 +7,7 @@ import { TransactionStatus } from "../domain/types/enums";
 import { StatusPill } from "./status-pill";
 import { allScoredActions } from "../domain/types/scenario";
 import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
-import { formatCorrectionValue } from "../domain/types/correction";
+import { formatCorrectionValueLabel } from "../localization/format-correction-value";
 
 const COMPONENT_LABELS: Readonly<Record<ScoreComponent, string>> = {
   [ScoreComponent.TRANSACTION_ACCURACY]: "score.transactionAccuracy",
@@ -101,11 +101,11 @@ export function FinalReport(): ReactNode {
             </div>
             <div className="asset-card__row">
               <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-              <dd>{formatCorrectionValue(correctionResolution.originalValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correctionResolution.originalValue, t)}</dd>
             </div>
             <div className="asset-card__row">
               <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
-              <dd>{formatCorrectionValue(correctionResolution.effectiveValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correctionResolution.effectiveValue, t)}</dd>
             </div>
           </dl>
         </section>

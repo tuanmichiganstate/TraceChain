@@ -7,7 +7,7 @@ import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { TransactionAction } from "../../components/transaction-action";
 import { FinalReport } from "../../components/final-report";
-import { StatusPill } from "../../components/status-pill";
+import { ClassificationPill, StatusPill } from "../../components/status-pill";
 import { decodeAnswer } from "../../domain/scenario/answer-codec";
 import {
   assessRecallSelection,
@@ -160,13 +160,13 @@ function RecallJustificationItem({ assetId }: { assetId: string }): ReactNode {
             the learner was right is the accuracy summary's job, stated
             separately -- an affected lot they correctly identified must not be
             handed a rejection cross for getting it right. */}
-        <StatusPill tone={justification.isAffected ? "affected" : "unaffected"}>
+        <ClassificationPill tone={justification.isAffected ? "affected" : "unaffected"}>
           {t(
             justification.isAffected
               ? "stage.recallAndDebrief.affected"
               : "stage.recallAndDebrief.notAffected",
           )}
-        </StatusPill>{" "}
+        </ClassificationPill>{" "}
         <strong>{nameOf(assetId)}</strong> <code>{assetId}</code>
       </p>
 

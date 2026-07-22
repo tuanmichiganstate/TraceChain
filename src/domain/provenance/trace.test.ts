@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ProvenanceRelationshipType } from "../types/enums";
 import type { ProvenanceEdge } from "../types/models";
 import { traceBackward, traceForward, traceFullLineage } from "./trace";
-import { justifyRecallSelection } from "./recall-scope";
+import { calculateRecallScope, justifyRecallSelection } from "./recall-scope";
 import { createEmptyDomainState, type DomainState } from "../ledger/domain-state";
 
 let sequence = 0;
@@ -145,6 +145,69 @@ describe("recall justification paths", () => {
       "B",
       "C",
     ]);
+  });
+
+  /**
+   * The invariant that makes the path trustworthy at all: every step is a real
+   * edge someone recorded. Without it a plausible-looking list of assets can
+   * assert a chain of custody that never happened, which is exactly the failure
+   * an earlier ancestor-list implementation produced.
+   */
+  it("returns only adjacent pairs that are real provenance edges", () => {
+    const branching = [
+      edge("A", "C"),
+      edge("C", "D"),
+      edge("E", "D"),
+      edge("D", "F"),
+      edge("A", "G"),
+      edge("G", "F"),
+    ];
+    const state = stateWith(branching);
+    const edgeKeys = new Set(branching.map((e) => `${e.sourceAssetId}->${e.targetAssetId}`));
+
+    for (const assetId of ["C", "D", "F", "G"]) {
+      const { pathAssetIds } = justifyRecallSelection(assetId, "A", state);
+      expect(pathAssetIds[0], assetId).toBe("A");
+      expect(pathAssetIds[pathAssetIds.length - 1], assetId).toBe(assetId);
+      for (let i = 1; i < pathAssetIds.length; i += 1) {
+        const step = `${pathAssetIds[i - 1]}->${pathAssetIds[i]}`;
+        expect(edgeKeys.has(step), `${assetId}: ${step} is not a provenance edge`).toBe(true);
+      }
+    }
+  });
+
+  it("never disagrees with the recall scope about what is affected", () => {
+    const branching = [edge("A", "C"), edge("C", "D"), edge("E", "D"), edge("X", "Y")];
+    // Both functions only mean anything about assets the ledger actually holds,
+    // so the world here holds every endpoint.
+    const assetsById = Object.fromEntries(
+      ["A", "C", "D", "E", "X", "Y"].map((assetId) => [
+        assetId,
+        { assetId, currentLocationId: "LOC_1", currentOwnerId: "ORG_1", currentCustodianId: "ORG_1" },
+      ]),
+    ) as unknown as DomainState["assetsById"];
+    const state = { ...stateWith(branching), assetsById };
+
+    const affected = new Set(calculateRecallScope("A", state).affectedAssetIds);
+    for (const assetId of Object.keys(assetsById)) {
+      expect(justifyRecallSelection(assetId, "A", state).isAffected, assetId).toBe(
+        affected.has(assetId),
+      );
+    }
+  });
+
+  /**
+   * The one place the two can differ, pinned rather than left to be discovered:
+   * a source that is not in `assetsById` has nothing to recall, so the scope
+   * omits it, while the justification still reports the trivial one-node path.
+   * Unreachable from the interface -- the contaminated batch is always a
+   * committed asset -- and recorded so a future caller is not surprised.
+   */
+  it("reports the source as reached even when the ledger holds no such asset", () => {
+    const state = stateWith(linear);
+    expect(state.assetsById["A"]).toBeUndefined();
+    expect(justifyRecallSelection("A", "A", state).isAffected).toBe(true);
+    expect(calculateRecallScope("A", state).affectedAssetIds).not.toContain("A");
   });
 
   it("treats the source as reaching itself", () => {
