@@ -32,14 +32,20 @@ function acceptsHtml(request) {
   return request.headers.get("accept")?.includes("text/html") ?? false;
 }
 
+function shouldServeAppShell(request) {
+  if (request.method !== "GET") return false;
+
+  const pathname = new URL(request.url).pathname;
+  return pathname === "/" || acceptsHtml(request);
+}
+
 const worker = {
   async fetch(request, env) {
     const assetResponse = await env.ASSETS.fetch(request);
 
     if (
       assetResponse.status !== 404 ||
-      request.method !== "GET" ||
-      !acceptsHtml(request)
+      !shouldServeAppShell(request)
     ) {
       return withSecurityHeaders(assetResponse);
     }
