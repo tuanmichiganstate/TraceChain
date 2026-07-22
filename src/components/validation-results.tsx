@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import type { ValidationResult } from "../domain/types/models";
 import { useTranslator } from "../app/providers/locale-provider";
 import { StatusPill, type StatusTone } from "./status-pill";
@@ -32,6 +32,10 @@ export function ValidationResults({
   isValid: boolean;
 }): ReactNode {
   const t = useTranslator();
+  // A stage can show three transaction panels at once, so a fixed id would be
+  // issued three times and every aria-labelledby would resolve to whichever
+  // heading came first -- silently mislabelling two of the three regions.
+  const headingId = useId();
   if (results.length === 0) return null;
 
   // Failures first: they are what the learner must act on.
@@ -42,8 +46,8 @@ export function ValidationResults({
   });
 
   return (
-    <section className="validation" aria-labelledby="validation-heading">
-      <h3 id="validation-heading">{t("validation.heading")}</h3>
+    <section className="validation" aria-labelledby={headingId}>
+      <h3 id={headingId}>{t("validation.heading")}</h3>
 
       <p className={isValid ? "validation__summary" : "validation__summary validation__summary--failed"}>
         {t(isValid ? "validation.allPassed" : "validation.someFailed")}

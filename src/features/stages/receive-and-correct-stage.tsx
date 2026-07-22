@@ -9,6 +9,7 @@ import { useSimulation } from "../../app/providers/simulation-provider";
 import { StageShell } from "../../components/stage-shell";
 import { TransactionAction } from "../../components/transaction-action";
 import { AssetCard } from "../../components/asset-card";
+import { CorrectionLineage } from "../../components/correction-lineage";
 import { StatusPill } from "../../components/status-pill";
 import {
   MANIFEST_QUANTITY_KG,
@@ -113,12 +114,23 @@ export function ReceiveAndCorrectStage(): ReactNode {
         <CorrectionPanel correctionOfTransactionId={manifestTransaction.transactionId} />
       ) : null}
 
-      {asset !== undefined ? (
-        <section>
-          <h3>{t("state.title")}</h3>
-          <AssetCard asset={asset} />
-        </section>
-      ) : null}
+      {/* Ledger history beside current state. Stage 5 is the one place the two
+          genuinely disagree -- the manifest says 1000 kg forever while the
+          effective quantity is 100 -- so this is where the activity's third
+          objective, distinguishing them, can actually be seen rather than
+          reconstructed from two tabs of the reference workspace. */}
+      <div className="state-versus-history">
+        {manifestTransaction !== undefined ? (
+          <CorrectionLineage state={state.domain} target={manifestTarget} />
+        ) : null}
+
+        {asset !== undefined ? (
+          <section className="card">
+            <h3>{t("state.title")}</h3>
+            <AssetCard asset={asset} />
+          </section>
+        ) : null}
+      </div>
     </StageShell>
   );
 }

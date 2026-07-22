@@ -48,6 +48,20 @@ round trip through the state codec.
 A hint is treated as no worse than a second attempt: a learner who asks for help
 before guessing should not do worse than one who guesses twice.
 
+**A hint caps the whole stage, not the one item it was about.** The table above
+reads per item, and the implementation is deliberately wider: `hintsForStage`
+applies `afterHintCredit` as a ceiling on *every* scorable item in the stage the
+hint belongs to, and leaves other stages untouched. In stage 9 that is one hint
+against 25 points. Two consequences are worth stating because neither is
+obvious: the ceiling applies retroactively, so opening a hint after answering
+everything correctly still lowers those answers to 70%; and a second hint in the
+same stage costs nothing further, because the cap is already in force. Items
+already down to `multipleAttemptCredit`, and items never answered correctly, are
+unaffected — the cap can only lower credit that exists.
+
+The learner is told this before choosing: the hint control states the ceiling
+and the points it puts at risk, both derived from this configuration.
+
 ## Two provisions that keep exploration safe
 
 **The procedural floor.** A required action — creating the batch, recording the

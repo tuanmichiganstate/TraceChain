@@ -407,7 +407,18 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           encodedValue,
           interaction: {
             interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
-            stageId: stateRef.current.currentStageId,
+            /*
+             * The stage on screen, which is where the interaction happened.
+             *
+             * In the current scenario this matches the furthest-unlocked stage
+             * everywhere it can be reached -- every stage's last interaction is
+             * also the one that completes it -- so this is not a fix for an
+             * observable defect. It removes the possibility of one: the two
+             * fields diverge as soon as a stage offers work after its
+             * conditions are met, or once anything navigates backwards, and
+             * "where was the learner" has exactly one right answer.
+             */
+            stageId: stateRef.current.viewedStageId,
             interactionType: LearnerInteractionType.KNOWLEDGE_CHECK_ANSWERED,
             targetId: check.knowledgeCheckId,
             selectedValue: String(encodedValue),
@@ -439,7 +450,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           encodedValue: wasAccepted ? ACTION_ACCEPTED : ACTION_REJECTED,
           interaction: {
             interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
-            stageId: stateRef.current.currentStageId,
+            stageId: stateRef.current.viewedStageId,
             interactionType: wasAccepted
               ? LearnerInteractionType.TRANSACTION_SUBMITTED
               : LearnerInteractionType.TRANSACTION_REJECTED,

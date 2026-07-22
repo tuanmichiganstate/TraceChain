@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
 import { App } from "./app";
@@ -59,6 +59,57 @@ function unnamedControls(): string[] {
   return [...document.querySelectorAll("button, a[href], select, textarea")]
     .filter((el) => accessibleName(el) === "")
     .map((el) => `${el.tagName}.${el.className.split(" ")[0] ?? ""}`);
+}
+
+type User = ReturnType<typeof userEvent.setup>;
+
+/** Stages 1 to 5, ending with three transaction panels on one screen. */
+async function playThroughStageFive(user: User): Promise<void> {
+  const submitAndSeal = async (name: string): Promise<void> => {
+    const panel = (
+      await screen.findByRole("heading", { name, level: 3 })
+    ).closest("section") as HTMLElement;
+    await user.click(within(panel).getByRole("button", { name: "Gửi giao dịch lên mạng" }));
+    const seal = within(panel).queryByRole("button", { name: "Ghi giao dịch vào khối" });
+    if (seal !== null) await user.click(seal);
+  };
+  const answer = async (option: RegExp): Promise<void> => {
+    await user.click(await screen.findByRole("radio", { name: option }));
+    const submit = screen
+      .getAllByRole("button", { name: "Trả lời" })
+      .find((button) => !(button as HTMLButtonElement).disabled);
+    if (submit === undefined) throw new Error("No enabled answer button");
+    await user.click(submit);
+  };
+  const advance = async (): Promise<void> => {
+    const buttons = await screen.findAllByRole("button", { name: "Tiếp tục" });
+    await user.click(buttons[buttons.length - 1] as HTMLElement);
+  };
+
+  await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
+  await answer(/Không\. Blockchain giúp xác định/);
+  await advance();
+
+  await submitAndSeal("Thông tin lô hàng");
+  await advance();
+
+  await answer(/Lưu tệp ngoài chuỗi/);
+  await submitAndSeal("Ghi nhận tài liệu lên chuỗi");
+  await submitAndSeal("Cấp chứng nhận cho lô hàng");
+  await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
+  await answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
+  await advance();
+
+  await answer(/Chỉ chuyển quyền lưu giữ/);
+  await submitAndSeal("Bàn giao lô hàng cho đơn vị vận chuyển");
+  await answer(/Ghi nhận vượt ngưỡng/);
+  await submitAndSeal("Ghi nhận điều kiện vận chuyển");
+  await advance();
+
+  await screen.findByRole("heading", { name: /Bước 5/ });
+  await submitAndSeal("Tiếp nhận lô hàng");
+  await submitAndSeal("Ghi nhận việc mua lô hàng");
+  await submitAndSeal("Gửi giao dịch điều chỉnh");
 }
 
 function duplicateIds(): string[] {
@@ -158,6 +209,23 @@ describe("controls and references", () => {
 
     const offenders = duplicateIds();
     expect(offenders, offenders.join(", ")).toEqual([]);
+  });
+
+  /**
+   * Stage 1 renders one of everything, which is why it never caught this: the
+   * transaction pipeline and the validation results each carried a hard-coded
+   * heading id, so stage 5 -- three transaction panels at once -- issued
+   * `pipeline-heading` and `validation-heading` three times apiece and two
+   * thirds of those regions were labelled by the wrong heading.
+   */
+  it("issues no duplicate element ids on a stage showing several transactions", async () => {
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await playThroughStageFive(user);
+
+    const offenders = duplicateIds();
+    expect(offenders, offenders.join(", ")).toEqual([]);
+    expect(skippedLevels(), headingLevels().join(",")).toEqual([]);
   });
 
   it("exposes exactly one main landmark, reachable by the skip link", async () => {

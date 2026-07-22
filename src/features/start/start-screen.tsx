@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
+import { allScorableItems } from "../../domain/types/scenario";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
 import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
 
@@ -96,6 +97,8 @@ export function StartScreen(): ReactNode {
               <li key={key}>{t(key)}</li>
             ))}
           </ul>
+
+          <ScoringSummary />
         </section>
 
         {isConfirmingRestart ? (
@@ -112,6 +115,48 @@ export function StartScreen(): ReactNode {
         ) : null}
       </div>
     </main>
+  );
+}
+
+/**
+ * What the marks are for, before any of them are at stake.
+ *
+ * A learner who does not know that hints are priced, that retries are floored,
+ * or that most of the credit sits in the questions rather than the transactions
+ * cannot make an informed choice about any of the three. Every figure is derived
+ * from the scoring configuration, so a scenario that reallocates its points says
+ * so here without anyone remembering to update a sentence.
+ */
+function ScoringSummary(): ReactNode {
+  const t = useTranslator();
+  const { scenario } = useScenario();
+  const configuration = scenario.scoringConfiguration;
+  const items = allScorableItems(scenario);
+
+  const sum = (procedural: boolean): number =>
+    items
+      .filter((item) => item.isProcedural === procedural)
+      .reduce((total, item) => total + item.points, 0);
+  const count = (procedural: boolean): number =>
+    items.filter((item) => item.isProcedural === procedural).length;
+
+  return (
+    <section className="start__scoring">
+      <h3>{t("start.scoringHeading")}</h3>
+      <ul className="start__scoring-list">
+        <li>{t("start.scoringActions", { points: sum(true), count: count(true) })}</li>
+        <li>{t("start.scoringQuestions", { points: sum(false), count: count(false) })}</li>
+        <li>
+          <strong>{t("start.scoringPass", { points: configuration.passingScore })}</strong>
+        </li>
+      </ul>
+      <p className="muted">
+        {t("start.scoringHint", { percent: Math.round(configuration.afterHintCredit * 100) })}{" "}
+        {t("start.scoringRetry", {
+          percent: Math.round(configuration.minimumProceduralCredit * 100),
+        })}
+      </p>
+    </section>
   );
 }
 

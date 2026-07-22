@@ -1,7 +1,7 @@
 /** Shared presentation model for original and effective corrected values. */
 
 import type { DomainState } from "../ledger/domain-state";
-import { resolveEffectiveValue } from "../ledger/effective-value";
+import { resolveEffectiveValue, type AppliedCorrection } from "../ledger/effective-value";
 import type { CorrectionTarget, CorrectionValue } from "../types/correction";
 
 export interface EffectiveValueView {
@@ -10,6 +10,8 @@ export interface EffectiveValueView {
   readonly originalValue: CorrectionValue;
   readonly effectiveValue: CorrectionValue;
   readonly correctionTransactionIds: readonly string[];
+  /** Each correction with the value it established, for rendering the chain. */
+  readonly corrections: readonly AppliedCorrection[];
 }
 
 export function buildEffectiveValueView(
@@ -24,5 +26,6 @@ export function buildEffectiveValueView(
     originalValue: resolution.originalValue,
     effectiveValue: resolution.effectiveValue,
     correctionTransactionIds: resolution.appliedCorrectionTransactionIds,
+    corrections: resolution.appliedCorrections,
   };
 }

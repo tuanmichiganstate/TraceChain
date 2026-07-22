@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ProvenanceRelationshipType } from "../types/enums";
 import type { ProvenanceEdge } from "../types/models";
 import { traceBackward, traceForward, traceFullLineage } from "./trace";
+import { justifyRecallSelection } from "./recall-scope";
+import { createEmptyDomainState, type DomainState } from "../ledger/domain-state";
 
 let sequence = 0;
 function edge(source: string, target: string): ProvenanceEdge {
@@ -96,5 +98,60 @@ describe("provenance traversal", () => {
       // What the consumer-facing verification view renders.
       expect(traceFullLineage("B", linear)).toEqual(["A", "B", "C"]);
     });
+  });
+});
+
+describe("recall justification paths", () => {
+  /**
+   * The path has to be a walk the goods actually took. An earlier version
+   * derived it by listing the asset's ancestors and reversing them, which is
+   * indistinguishable from a real path on a straight chain and wrong the moment
+   * anything blends: parallel inputs came back as consecutive steps.
+   */
+  function stateWith(edges: readonly ProvenanceEdge[]): DomainState {
+    return { ...createEmptyDomainState(), provenanceEdges: edges };
+  }
+
+  it("reads from the contaminated source to the selected lot", () => {
+    const justification = justifyRecallSelection("C", "A", stateWith(linear));
+    expect(justification.isAffected).toBe(true);
+    expect(justification.pathAssetIds).toEqual(["A", "B", "C"]);
+  });
+
+  it("returns a genuine walk when a lot has an unrelated second input", () => {
+    // D is made from C (which came from the contaminated A) and from E, which
+    // has nothing to do with A. E is an ancestor of D but is not on any walk
+    // from A to D, so naming it would assert a chain of custody that never
+    // happened.
+    const blended = [edge("A", "C"), edge("C", "D"), edge("E", "D")];
+    const justification = justifyRecallSelection("D", "A", stateWith(blended));
+
+    expect(justification.pathAssetIds).toEqual(["A", "C", "D"]);
+    expect(justification.pathAssetIds).not.toContain("E");
+  });
+
+  it("gives an unreachable lot no path at all", () => {
+    expect(justifyRecallSelection("ORPHAN", "A", stateWith(linear))).toEqual({
+      assetId: "ORPHAN",
+      isAffected: false,
+      pathAssetIds: [],
+    });
+  });
+
+  it("does not run forever on a cycle", () => {
+    const cyclic = [edge("A", "B"), edge("B", "C"), edge("C", "A")];
+    expect(justifyRecallSelection("C", "A", stateWith(cyclic)).pathAssetIds).toEqual([
+      "A",
+      "B",
+      "C",
+    ]);
+  });
+
+  it("treats the source as reaching itself", () => {
+    expect(justifyRecallSelection("A", "A", stateWith(linear)).pathAssetIds).toEqual(["A"]);
+  });
+
+  it("does not walk backwards from a descendant to its ancestor", () => {
+    expect(justifyRecallSelection("A", "C", stateWith(linear)).isAffected).toBe(false);
   });
 });

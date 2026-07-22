@@ -206,18 +206,33 @@ What is tested:
 - **Every control has an accessible name**, and **no duplicate element ids** —
   a duplicate silently breaks every `aria-labelledby`, `aria-describedby` and
   `label for` pointing at it, because the reference resolves to whichever
-  element comes first.
+  element comes first. Checked on stage 1 *and* on stage 5: stage 1 renders one
+  of everything, so it could never catch the case that actually occurred —
+  `TransactionPipeline` and `ValidationResults` hard-coded their heading ids and
+  a stage showing three transaction panels issued each of them three times.
 - **Exactly one `main` landmark**, and the skip link targets it.
 
 What was verified in a real browser rather than jsdom, which has no layout:
 
 - **Contrast.** Zero failures against WCAG AA (4.5:1 body, 3:1 large) across
   the workspace and all five reference panels.
-- **Reflow at 320 px.** No horizontal scroll and no overflowing element in any
-  panel. Measured inside a 320 px iframe, because an iframe has its own
-  viewport and media queries therefore evaluate as they would on a phone — a
-  probe `div` at 320 px inside a desktop window does not work, it keeps the
+- **Reflow at 320 px.** No horizontal scroll and no overflowing element, now
+  asserted at three points in the activity rather than one. Measured in a real
+  320 px viewport, because media queries then evaluate as they would on a phone
+  — a probe `div` at 320 px inside a desktop window does not work, it keeps the
   desktop breakpoints and under-reports.
+
+  **Stage 1 alone was not enough, and the gap shipped.** It has no transaction,
+  so it renders no validation results, and the rule identifiers those carry are
+  unbreakable 29-character tokens: every stage from 2 onwards scrolled sideways
+  at 320 px while the suite stayed green. A second failure hid behind the same
+  blind spot — a `fieldset` will not shrink below its min-content width unless
+  told to, so the recall question's identifier-laden options set a floor no
+  phone could meet. Both are fixed in `app.css`, and the reflow suite now walks
+  to stage 5 on every engine and to the recall question on Chromium alone —
+  fieldset sizing is CSS box behaviour rather than an engine quirk, and a fourth
+  full walkthrough would put the WebKit suite back over the budget reclaimed
+  above.
 - **Focus.** `:focus-visible` carries a 3 px navy outline at 2 px offset,
   applied globally in `base.css`.
 - **Reduced motion.** `prefers-reduced-motion: reduce` collapses the pipeline

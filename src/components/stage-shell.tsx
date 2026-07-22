@@ -7,6 +7,7 @@ import {
   evaluateRequiredActions,
   evaluateStageCompletion,
 } from "../domain/scenario/stage-completion";
+import { allScorableItems } from "../domain/types/scenario";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -72,7 +73,12 @@ export function StageShell({
       ) : null}
 
       {definition.availableHints.map((hint) => (
-        <HintPanel key={hint.hintId} hintId={hint.hintId} textKey={hint.textKey} />
+        <HintPanel
+          key={hint.hintId}
+          hintId={hint.hintId}
+          textKey={hint.textKey}
+          stageId={stageId}
+        />
       ))}
 
       {children}
@@ -98,7 +104,24 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
   const next = scenario.stages[index + 1];
   const isUnlocked = state.completedStageIds.includes(stageId);
 
-  if (!isUnlocked || next === undefined) return null;
+  if (next === undefined) return null;
+
+  /*
+   * A control that is simply absent where one is expected reads as a bug. Say
+   * why instead -- but point at the stage's completion pill rather than at the
+   * required-actions list, and give no count. Every stage has more completion
+   * conditions than listed actions (stage 6 has three against one), so a
+   * message phrased around "the work above" can claim the visible list is
+   * finished while Continue is still locked. The pill is derived from the same
+   * evaluation that gates this button, so it cannot disagree with it.
+   */
+  if (!isUnlocked) {
+    return (
+      <div className="stage__advance">
+        <p className="muted">{t("navigation.continueLocked")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="stage__advance">
@@ -116,13 +139,34 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
 /**
  * A hint the learner opts into.
  *
- * Deliberately a two-step reveal. Using a hint costs credit, so taking one must
- * be a choice rather than something a learner stumbles into by scrolling.
+ * Deliberately a two-step reveal, and the cost is stated in points before the
+ * choice is made. Taking a hint caps *every* scored item in the stage at
+ * `afterHintCredit`, not just the item the learner is stuck on, so a vague
+ * "reduces part of this step's score" understates it substantially -- in stage 9
+ * the same sentence covers 25 points. A learner cannot weigh a cost they have
+ * not been told.
  */
-function HintPanel({ hintId, textKey }: { hintId: string; textKey: string }): ReactNode {
+function HintPanel({
+  hintId,
+  textKey,
+  stageId,
+}: {
+  hintId: string;
+  textKey: string;
+  stageId: ScenarioStageId;
+}): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
   const { state, revealHint } = useSimulation();
   const isRevealed = state.hintsUsed.includes(hintId);
+
+  const { afterHintCredit } = scenario.scoringConfiguration;
+  const stagePoints = allScorableItems(scenario)
+    .filter((item) => item.stageId === stageId)
+    .reduce((total, item) => total + item.points, 0);
+  // "Up to", because an item already on its third attempt has fallen to
+  // multipleAttemptCredit and the hint cap costs it nothing further.
+  const pointsAtRisk = Math.round(stagePoints * (1 - afterHintCredit) * 10) / 10;
 
   return (
     <section className="hint">
@@ -141,7 +185,12 @@ function HintPanel({ hintId, textKey }: { hintId: string; textKey: string }): Re
           >
             {t("hint.reveal")}
           </button>
-          <p className="muted">{t("hint.penaltyNotice")}</p>
+          <p className="muted">
+            {t("hint.penaltyNotice", {
+              percent: Math.round(afterHintCredit * 100),
+              points: pointsAtRisk,
+            })}
+          </p>
         </>
       )}
     </section>

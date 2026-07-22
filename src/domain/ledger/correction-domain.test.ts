@@ -255,6 +255,15 @@ describe("generic correction validation", () => {
       effectiveValue: q(105),
       appliedCorrectionTransactionIds: ["TX_000003", "TX_000005"],
     });
+
+    // Each correction carries the value it established, not the final one.
+    // Anything rendering the chain needs the intermediate 100: reporting only
+    // the identifiers invites showing 105 against both steps, which is right by
+    // accident for one correction and wrong for two.
+    expect(resolveEffectiveValue(valid.state, documentTarget)?.appliedCorrections).toEqual([
+      { transactionId: "TX_000003", value: q(100) },
+      { transactionId: "TX_000005", value: q(105) },
+    ]);
   });
 
   it("ignores rejected corrections when resolving the effective value", () => {

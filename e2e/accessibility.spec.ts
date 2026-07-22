@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { Activity } from "./support/activity";
 import { installScormApi } from "./scorm-harness";
 
@@ -98,17 +98,16 @@ test.describe("reflow", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
   /**
-   * Section 26's narrowest supported width. Checked in a genuinely 320 px
-   * viewport rather than a resized element, so the media queries evaluate the
-   * way they would on a phone.
+   * Every element that sticks out of a 320 px viewport, by tag and first class.
+   *
+   * Reported as a list rather than a boolean because the failure message is the
+   * whole value: "something overflows" sends a maintainer hunting, whereas
+   * "CODE.validation__rule-id" names the rule to fix.
    */
-  test("neither scrolls horizontally nor overflows at 320 px", async ({ page }) => {
-    await page.goto("/");
-    const activity = new Activity(page);
-    await activity.start();
-    await expect(page.getByRole("heading", { level: 2, name: /^Bước 1/ })).toBeVisible();
-
-    const report = await page.evaluate(() => {
+  async function measureReflow(
+    page: Page,
+  ): Promise<{ scrolls: boolean; offenders: string[] }> {
+    return page.evaluate(() => {
       const width = document.documentElement.clientWidth;
       const offenders = [...document.querySelectorAll("*")]
         .filter((el) => {
@@ -123,7 +122,63 @@ test.describe("reflow", () => {
         offenders: [...new Set(offenders)],
       };
     });
+  }
 
+  /**
+   * Section 26's narrowest supported width. Checked in a genuinely 320 px
+   * viewport rather than a resized element, so the media queries evaluate the
+   * way they would on a phone.
+   */
+  test("neither scrolls horizontally nor overflows at 320 px", async ({ page }) => {
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.start();
+    await expect(page.getByRole("heading", { level: 2, name: /^Bước 1/ })).toBeVisible();
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
+  /**
+   * Stage 1 alone is not enough, and that gap shipped: it has no transaction,
+   * so it renders no validation results, and the rule identifiers there --
+   * unbreakable 29-character tokens -- pushed every later stage into a
+   * horizontal scroll at 320 px without any test noticing.
+   */
+  test("still does not overflow once transactions and their rules are on screen", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.playThroughStageFive();
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
+  /**
+   * The recall question is the only check whose options carry asset identifiers,
+   * and a fieldset -- uniquely among elements -- refuses to shrink below its
+   * min-content width unless told to. Chromium only: this is CSS box sizing
+   * rather than an engine quirk, and a fourth full walkthrough would push the
+   * WebKit suite back over the budget that was deliberately reclaimed.
+   */
+  test("does not overflow on the recall question's identifier-laden options", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "layout-only check; one engine suffices");
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.playThroughStageSeven();
+    await activity.playThroughStageEight();
+    await activity.continue();
+    await activity.expectStage(9);
+
+    const report = await measureReflow(page);
     expect(report.offenders, report.offenders.join(", ")).toEqual([]);
     expect(report.scrolls).toBe(false);
   });

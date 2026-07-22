@@ -2,6 +2,90 @@
 
 ## [Unreleased]
 
+### Orientation, cause and effect, and what the marks are for
+
+Acting on a UI/UX review. The three themes it identified were right; roughly a
+third of what it proposed already existed, one of its figures was wrong in a way
+that would have misinformed learners, and the defect its own top priority was
+about was live in the build.
+
+**Fixed**
+
+- **The top bar described the wrong stage.** It read `currentStageId` — the
+  furthest stage unlocked — while the router renders `viewedStageId`. The two
+  diverge the instant a stage's last condition is satisfied, so the header
+  announced the next stage's number and role over the screen the learner was
+  still reading. That is precisely the disorientation the two-field split exists
+  to prevent; it was applied to the router and never to the header. A regression
+  test now holds both fields to the stage on screen.
+- **The hint cost was understated.** The notice said only that a hint "reduces
+  part of this step's score". A hint caps *every* scored item in the stage at
+  `afterHintCredit`, which in stage 9 is 7.5 points across three items —
+  measured against the score engine, not inferred. The notice now states the
+  cap and the points it puts at risk, both derived from the scoring
+  configuration, and is phrased as a ceiling rather than as an automatic
+  deduction.
+- **Two 320 px overflows that had shipped.** Validation rule identifiers, and
+  the recall question's `fieldset`, each forced a horizontal scroll on every
+  stage that renders them. The reflow test only ever visited stage 1, which is
+  the one stage that renders neither. See `docs/ARCHITECTURE.md`.
+- **Duplicate element ids on any stage showing more than one transaction.**
+  `TransactionPipeline` and `ValidationResults` each hard-coded a heading id, so
+  stage 5 issued `pipeline-heading` and `validation-heading` three times apiece
+  and two thirds of those regions were labelled by the wrong heading. Both now
+  use `useId`. The existing duplicate-id test only ever visited stage 1, which
+  renders one of each.
+- **A correction chain rendered every step with the final value.** The lineage
+  panel showed `effectiveValue` against each correction, which is correct by
+  coincidence for one correction and wrong for two: a 1000 → 100 → 105 chain
+  displayed 105 against the step that established 100. `resolveEffectiveValue`
+  now reports each correction with the value it made effective.
+
+**Changed, in the interface's use of status colour**
+
+- **Recall lots are classified, not judged.** An affected lot first rendered
+  with the validation `fail` tone, handing a learner who correctly identified
+  contaminated stock a rejection cross for getting it right. `StatusPill` gained
+  `affected` and `unaffected` tones, distinguished by fill as well as colour, and
+  kept apart from the four verdict tones on purpose.
+- **The correction lineage no longer borrows validation iconography.** The
+  superseded manifest figure is a committed historical fact, not a failed rule;
+  marking it with the rejection glyph said the opposite of the stage's lesson.
+  The step labels carry the meaning, and nothing is struck through.
+
+**Added**
+
+- **Correction lineage beside current state** in stage 5: original value,
+  correction appended, effective value, each with its transaction. The activity
+  promises learners they will "distinguish current state from transaction
+  history" and stage 5 is the one place the two genuinely disagree — but seeing
+  it meant opening the reference workspace and comparing two tabs.
+- **Per-lot recall justification** in stage 9, showing the provenance path that
+  puts each lot in scope, and stating plainly that the lookalike lot has none.
+  The score said whether the learner was right; nothing said why, which for the
+  near-miss distractor is the entire lesson. `justifyRecallSelection` derives
+  the path from the same graph the scope calculation walks.
+- **Scoring explained before the activity starts** — action points, question
+  points, the pass mark, the hint cap and the procedural floor, all derived from
+  the scenario rather than written down.
+- **A stated reason when Continue is unavailable**, instead of an absent button.
+- **Task-aware reference panel**: the workspace opens on the tab the current
+  stage actually needs, and re-aims when the learner moves on.
+
+**Changed**
+
+- The final report separates competencies from telemetry. Blocks sealed and
+  transactions committed moved into a "simulation activity summary" below the
+  breakdown; in one list with the six score components they read as marks.
+- Learner interactions record the stage on screen rather than the furthest one
+  unlocked. In this scenario the two agree everywhere they can be reached —
+  every stage's last interaction is also the one that completes it — so this
+  fixes no observable defect; it removes the possibility of one, and gives
+  "where was the learner" a single answer.
+- The reference workspace re-aims by remounting on a key rather than by
+  adjusting state during render. Same behaviour, and `isOpen` deliberately sits
+  outside the key so the panel stays open across a stage change.
+
 ### Milestone 4 — Learner interface
 
 Stages 1 to 7 are playable in the browser. An integration test walks a learner
