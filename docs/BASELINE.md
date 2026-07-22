@@ -1,9 +1,10 @@
 # TraceChain Version 2 release baseline
 
 This record is reproducible from a clean checkout. Commands and results are
-recorded only after their output has been inspected. The exact release commit
-and final GitHub run are reported after the immutable commit is created and
-pushed; neither identifier can be embedded in the commit that creates it.
+recorded only after their output has been inspected. The illustrated learner
+experience is sourced from `7eabc16d6f7dffa22403a883b13273cf9c185f0f`.
+The exact provenance commit and its GitHub run are reported after that commit is
+created and pushed; neither identifier can be embedded in the commit itself.
 
 ## Implementation boundaries
 
@@ -14,6 +15,7 @@ pushed; neither identifier can be embedded in the commit that creates it.
 | Cross-layer scenario contracts | `6ad1e7148ec2e0766f3300004fce92b1379b9bb8` | accepted |
 | Deterministic content-review generator | `4408452578ade427a993f6dc6faf009407fb33d0` | accepted |
 | Version 2 release verification | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` | local gate accepted; exact-HEAD CI follows the release metadata commit |
+| Illustrated learner experience | `7eabc16d6f7dffa22403a883b13273cf9c185f0f` | responsive visual review and full local matrix accepted |
 
 The Phase 3 clean-checkout boundary was verified by GitHub Actions run
 `29889480310` at `6ad1e7148ec2e0766f3300004fce92b1379b9bb8`:
@@ -26,13 +28,14 @@ The Phase 3 clean-checkout boundary was verified by GitHub Actions run
 | Check | Command | Inspected result |
 |---|---|---|
 | Aggregate gate | `npm run quality` | exit 0 |
-| Unit/component | `npm run test` | 371 passed, 21 files |
-| Locale parity | `npm run validate:locales` | 528 Vietnamese and 528 English strings |
+| Unit/component | `npm run test` | 372 passed, 21 files |
+| Locale parity | `npm run validate:locales` | 539 Vietnamese and 539 English strings |
 | Scenario schema | `npm run validate:scenario-schema` | 351 checks |
 | Scenario contracts | `npm run validate:scenario-contract` | 233 checks |
-| Content review | `npm run verify:content-review` | 528/528, deterministic comparison, exit 0 |
+| Content review | `npm run verify:content-review` | 539/539, deterministic comparison, exit 0 |
 | End-to-end | `npx playwright test` | 58 passed, 2 documented skips, exit 0 |
-| SCORM | `npm run verify:scorm` | 23/23 checks, 6 files, 134.4 kB |
+| Responsive UI review | Playwright-driven desktop and mobile simulation | start, Stages 1–9, 320 px reflow, and stage-entry focus inspected; 0 console errors |
+| SCORM | `npm run verify:scorm` | 23/23 checks, 10 files, 843.6 kB |
 | Moodle success | `./docker-moodle/run-acceptance.sh` | exit 0; storage, gradebook, highest-attempt grading, 4096-byte boundary, and cleanup passed |
 | Moodle forced failure | `TRACECHAIN_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh` | expected exit 1; cleanup passed and no synthetic grade or attempt remained |
 
@@ -45,18 +48,25 @@ The WebKit timeout allowance is limited to the two measured long walkthroughs
 in `e2e/activity.spec.ts`; every other test and project retains the 90-second
 default. This closes the former broad project-level timeout debt.
 
+The visual review added three locally bundled editorial illustrations: the
+farm-to-shelf coffee journey, the Stage 5 manifest/scale discrepancy, and the
+Stage 9 laboratory-to-recall investigation. The reference workspace now opens
+on demand, the mobile progress header is compact, the supply-chain flow stacks
+without horizontal overflow at 320 px, and every stage transition moves scroll
+and keyboard focus to the new heading.
+
 ## Release artifacts
 
 | Artifact | Provenance |
 |---|---|
 | SCORM package | `tracechain-scorm-v2.0.0.zip` |
-| SCORM source commit | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` |
-| SCORM SHA-256 | `23d2642811e3a4fd9533bf3fdb4ef99162fe6f22fff95d940842218e2ca9cda3` |
-| SCORM contents | 6 files, 137,644 bytes (134.4 kB), verifier 23/23 |
+| SCORM source commit | `7eabc16d6f7dffa22403a883b13273cf9c185f0f` |
+| SCORM SHA-256 | `de2f314d2224d5897ac128f3f7d6f1b210ddeb0ac800dc6f4eb05b21a902e765` |
+| SCORM contents | 10 files, 863,876 bytes (843.6 kB), verifier 23/23; two consecutive rebuilds were byte-identical |
 | Content-review artifact | `docs/content-review/tracechain-content-review.html` |
-| Content-review source commit | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` |
-| Content-review SHA-256 | `8fc8ad705725bf95655ccd77ecb3b9258f29431bc88ca0ab480d73d6d84fc665` (226,632 bytes) |
-| Content-review parity | 528/528 |
+| Content-review source commit | `7eabc16d6f7dffa22403a883b13273cf9c185f0f` |
+| Content-review SHA-256 | `6df203b5c5a5fb02f16a96b768f1f76fdb8e1c129ebd88743723ee3a9a2441d7` (231,666 bytes) |
+| Content-review parity | 539/539 |
 | Content-review status | not reviewed; Vietnamese subject-expert adjudication remains open |
 
 The Version 1 package checksum
