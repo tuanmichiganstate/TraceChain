@@ -19,10 +19,14 @@ export function OrientationStage(): ReactNode {
   const check = stage(ScenarioStageId.ORIENTATION)?.knowledgeChecks[0];
 
   return (
-    <StageShell stageId={ScenarioStageId.ORIENTATION}>
-      <section className="card">
-        <SupplyChainDiagram />
-      </section>
+    <StageShell
+      stageId={ScenarioStageId.ORIENTATION}
+      briefing={(
+        <section className="card story-card story-card--journey">
+          <SupplyChainDiagram />
+        </section>
+      )}
+    >
       {check !== undefined ? <KnowledgeCheckPanel check={check} /> : null}
     </StageShell>
   );

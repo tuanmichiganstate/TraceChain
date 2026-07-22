@@ -21,9 +21,11 @@ import { StatusPill } from "./status-pill";
  */
 export function StageShell({
   stageId,
+  briefing,
   children,
 }: {
   stageId: ScenarioStageId;
+  briefing?: ReactNode;
   children: ReactNode;
 }): ReactNode {
   const t = useTranslator();
@@ -40,9 +42,13 @@ export function StageShell({
   return (
     <div className="stage stack">
       <header>
-        <h2>{t(definition.titleKey)}</h2>
+        <h2 data-stage-heading tabIndex={-1}>
+          {t(definition.titleKey)}
+        </h2>
         <p>{t(definition.instructionKey)}</p>
       </header>
+
+      {briefing}
 
       {definition.requiredActions.length > 0 ? (
         <section className="card required-actions">

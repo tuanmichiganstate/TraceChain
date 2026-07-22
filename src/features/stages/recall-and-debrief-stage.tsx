@@ -15,6 +15,7 @@ import {
   REGULATOR_CONTEXT,
 } from "../../scenarios/coffee-traceability/commands";
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
+import recallInvestigationImage from "../../assets/illustrations/recall-investigation.webp";
 
 /**
  * Stage 9. Trace the contamination forward, recall exactly what it reached, and
@@ -56,12 +57,10 @@ export function RecallAndDebriefStage(): ReactNode {
   });
 
   return (
-    <StageShell stageId={ScenarioStageId.RECALL_AND_DEBRIEF}>
-      <section className="card">
-        <h3>{t("stage.recallAndDebrief.scopeHeading")}</h3>
-        <p className="muted">{t("stage.recallAndDebrief.scopeNotice")}</p>
-      </section>
-
+    <StageShell
+      stageId={ScenarioStageId.RECALL_AND_DEBRIEF}
+      briefing={<RecallBriefing />}
+    >
       {scopeCheck !== undefined ? <KnowledgeCheckPanel check={scopeCheck} /> : null}
 
       {hasScope ? (
@@ -119,5 +118,33 @@ export function RecallAndDebriefStage(): ReactNode {
 
       <FinalReport />
     </StageShell>
+  );
+}
+
+function RecallBriefing(): ReactNode {
+  const t = useTranslator();
+
+  return (
+    <section className="card recall-briefing">
+      <figure className="recall-briefing__scene">
+        <img
+          src={recallInvestigationImage}
+          width={1536}
+          height={1024}
+          loading="lazy"
+          decoding="async"
+          alt={t("stage.recallAndDebrief.sceneAlt")}
+        />
+      </figure>
+      <div className="recall-briefing__content">
+        <p className="eyebrow">{t("stage.recallAndDebrief.incidentLabel")}</p>
+        <h3>{t("stage.recallAndDebrief.scopeHeading")}</h3>
+        <p>{t("stage.recallAndDebrief.scopeNotice")}</p>
+        <p className="recall-briefing__source">
+          <span>{t("field.assetId")}</span>
+          <code>{GREEN_COFFEE_BATCH_ID}</code>
+        </p>
+      </div>
+    </section>
   );
 }

@@ -23,6 +23,7 @@ import {
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
 import type { AnchorDocumentCommand } from "../../domain/commands/commands";
 import { buildEffectiveValueView } from "../../domain/scenario/effective-value-view";
+import manifestDiscrepancyImage from "../../assets/illustrations/manifest-discrepancy.webp";
 
 const MINIMUM_REASON_LENGTH = 10;
 
@@ -66,49 +67,21 @@ export function ReceiveAndCorrectStage(): ReactNode {
     state.domain,
     manifestTarget,
   )?.effectiveValue;
+  const effectiveQuantityLabel =
+    effectiveManifestValue?.kind === "QUANTITY"
+      ? `${effectiveManifestValue.amount} ${effectiveManifestValue.unit}`
+      : `${MANIFEST_QUANTITY_KG} kg`;
 
   return (
-    <StageShell stageId={ScenarioStageId.RECEIVE_AND_CORRECT}>
-      <section className="card discrepancy">
-        <h3>{t("stage.receiveAndCorrect.discrepancyHeading")}</h3>
-        <dl className="asset-card__grid">
-          <div className="asset-card__row">
-            <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-            <dd>
-              <StatusPill tone="fail">{MANIFEST_QUANTITY_KG} kg</StatusPill>
-            </dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("stage.receiveAndCorrect.weighedQuantity")}</dt>
-            <dd>
-              <StatusPill tone="pass">{WEIGHED_QUANTITY_KG} kg</StatusPill>
-            </dd>
-          </div>
-        </dl>
-        <p>{t("stage.receiveAndCorrect.discrepancyBody")}</p>
-        <p className="muted">{t("message.correction")}</p>
-        {manifestTransaction !== undefined ? (
-          <dl className="asset-card__grid">
-            <div className="asset-card__row">
-              <dt>{t("field.documentAnchor")}</dt>
-              <dd><code>{SHIPPING_MANIFEST_ANCHOR_ID}</code></dd>
-            </div>
-            <div className="asset-card__row">
-              <dt>{t("history.columnTransaction")}</dt>
-              <dd><code>{manifestTransaction.transactionId}</code></dd>
-            </div>
-            <div className="asset-card__row">
-              <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
-              <dd>
-                {effectiveManifestValue?.kind === "QUANTITY"
-                  ? `${effectiveManifestValue.amount} ${effectiveManifestValue.unit}`
-                  : `${MANIFEST_QUANTITY_KG} kg`}
-              </dd>
-            </div>
-          </dl>
-        ) : null}
-      </section>
-
+    <StageShell
+      stageId={ScenarioStageId.RECEIVE_AND_CORRECT}
+      briefing={(
+        <ManifestDiscrepancy
+          manifestTransactionId={manifestTransaction?.transactionId}
+          effectiveQuantityLabel={effectiveQuantityLabel}
+        />
+      )}
+    >
       <TransactionAction
         decisionId="INT_RECEIVE_BATCH"
         labelKey="stage.receiveAndCorrect.receiveAction"
@@ -147,6 +120,78 @@ export function ReceiveAndCorrectStage(): ReactNode {
         </section>
       ) : null}
     </StageShell>
+  );
+}
+
+function ManifestDiscrepancy({
+  manifestTransactionId,
+  effectiveQuantityLabel,
+}: {
+  manifestTransactionId: string | undefined;
+  effectiveQuantityLabel: string;
+}): ReactNode {
+  const t = useTranslator();
+
+  return (
+    <section className="card discrepancy discrepancy--illustrated">
+      <figure className="discrepancy__scene">
+        <img
+          src={manifestDiscrepancyImage}
+          width={1536}
+          height={1024}
+          loading="lazy"
+          decoding="async"
+          alt={t("stage.receiveAndCorrect.sceneAlt")}
+        />
+        <figcaption className="discrepancy__comparison" aria-hidden="true">
+          <span className="discrepancy__fact discrepancy__fact--manifest">
+            <small>{t("stage.receiveAndCorrect.manifestShort")}</small>
+            <strong>{MANIFEST_QUANTITY_KG} kg</strong>
+          </span>
+          <span className="discrepancy__comparison-arrow">→</span>
+          <span className="discrepancy__fact discrepancy__fact--scale">
+            <small>{t("stage.receiveAndCorrect.scaleShort")}</small>
+            <strong>{WEIGHED_QUANTITY_KG} kg</strong>
+          </span>
+        </figcaption>
+      </figure>
+
+      <div className="discrepancy__content">
+        <h3>{t("stage.receiveAndCorrect.discrepancyHeading")}</h3>
+        <dl className="asset-card__grid">
+          <div className="asset-card__row">
+            <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
+            <dd>
+              <StatusPill tone="fail">{MANIFEST_QUANTITY_KG} kg</StatusPill>
+            </dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("stage.receiveAndCorrect.weighedQuantity")}</dt>
+            <dd>
+              <StatusPill tone="pass">{WEIGHED_QUANTITY_KG} kg</StatusPill>
+            </dd>
+          </div>
+        </dl>
+        <p>{t("stage.receiveAndCorrect.discrepancyBody")}</p>
+        <p className="muted">{t("message.correction")}</p>
+        {manifestTransactionId !== undefined ? (
+          <dl className="asset-card__grid">
+            <div className="asset-card__row">
+              <dt>{t("field.documentAnchor")}</dt>
+              <dd><code>{SHIPPING_MANIFEST_ANCHOR_ID}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("history.columnTransaction")}</dt>
+              <dd><code>{manifestTransactionId}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
+              <dd>{effectiveQuantityLabel}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

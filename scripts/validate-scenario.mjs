@@ -49,7 +49,18 @@ try {
     // The stage registry pulls in React components; they are never rendered
     // here, only their keys are read.
     external: ["react", "react-dom", "react/jsx-runtime"],
-    loader: { ".css": "empty" },
+    // Registry validation imports the real stage modules. Their visual assets
+    // are irrelevant to this Node-side check, but esbuild still needs to emit
+    // importable values for them while traversing the component graph.
+    loader: {
+      ".css": "empty",
+      ".jpeg": "file",
+      ".jpg": "file",
+      ".png": "file",
+      ".svg": "file",
+      ".webp": "file",
+    },
+    assetNames: "assets/[name]-[hash]",
   });
 
   const module = await import(pathToFileURL(bundlePath).href);

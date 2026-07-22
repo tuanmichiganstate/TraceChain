@@ -22,6 +22,7 @@ test.describe("the whole activity in a real browser", () => {
 
     // Both immutable lineage records are learner-visible. The manifest still
     // says 1000 KG; the appended correction resolves the effective value to 100 KG.
+    await page.getByRole("button", { name: "Bảng tra cứu" }).click();
     await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
     const manifestRow = page
       .getByRole("row")

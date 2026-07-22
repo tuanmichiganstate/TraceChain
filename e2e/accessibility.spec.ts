@@ -19,7 +19,10 @@ test.describe("keyboard only", () => {
     await start.focus();
     await page.keyboard.press("Enter");
 
-    await expect(page.getByRole("heading", { level: 2, name: /^Bước 1/ })).toBeVisible();
+    const stageHeading = page.getByRole("heading", { level: 2, name: /^Bước 1/ });
+    await expect(stageHeading).toBeVisible();
+    await expect(stageHeading).toBeFocused();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 
     const option = page.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ });
     await option.focus();
@@ -39,6 +42,7 @@ test.describe("keyboard only", () => {
     await page.goto("/");
     const activity = new Activity(page);
     await activity.start();
+    await page.getByRole("button", { name: "Bảng tra cứu" }).click();
 
     const tabs = page.getByRole("tab");
     await expect(tabs).toHaveCount(5);

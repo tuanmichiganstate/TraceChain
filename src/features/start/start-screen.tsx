@@ -3,6 +3,7 @@ import { useTranslator } from "../../app/providers/locale-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
+import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
 
 const OBJECTIVE_KEYS = [
   "start.objective1",
@@ -23,36 +24,51 @@ export function StartScreen(): ReactNode {
   return (
     <main className="start" id="main-content">
       <div className="start__inner">
-        <header className="start__header">
-          <h1>{t("app.title")}</h1>
-          <p className="start__subtitle">{t("app.subtitle")}</p>
-        </header>
+        <section className="start__hero">
+          <div className="start__hero-copy">
+            <p className="eyebrow">{t("start.storyEyebrow")}</p>
+            <header className="start__header">
+              <h1>{t("app.title")}</h1>
+              <p className="start__subtitle">{t("app.subtitle")}</p>
+            </header>
+            <p className="start__story">{t("start.storyIntro")}</p>
+          </div>
 
-        <div className="notice" role="note">
-          <p>{t("app.simulationNotice")}</p>
-          <p>{t("app.permissionedNotice")}</p>
+          <figure className="start__visual">
+            <img
+              src={coffeeJourneyImage}
+              width={1672}
+              height={941}
+              loading="eager"
+              decoding="async"
+              alt={t("start.heroAlt")}
+            />
+            <figcaption>{t("start.heroCaption")}</figcaption>
+          </figure>
+        </section>
+
+        <div className="start__notices">
+          <div className="notice" role="note">
+            <p>{t("app.simulationNotice")}</p>
+            <p>{t("app.permissionedNotice")}</p>
+          </div>
+
+          {state.platformMode === PlatformMode.STANDALONE ? (
+            <div className="notice notice--standalone" role="note">
+              <p>{t("status.standalone")}</p>
+            </div>
+          ) : null}
         </div>
 
-        {state.platformMode === PlatformMode.STANDALONE ? (
-          <div className="notice notice--standalone" role="note">
-            <p>{t("status.standalone")}</p>
+        <section className="card start__brief">
+          <div className="start__brief-heading">
+            <h2>{t("start.heading")}</h2>
+            <p className="start__duration">
+              {t("start.estimatedTime", { minutes: scenario.estimatedMinutes })}
+            </p>
           </div>
-        ) : null}
 
-        <section className="card">
-          <h2>{t("start.heading")}</h2>
-          <p className="muted">
-            {t("start.estimatedTime", { minutes: scenario.estimatedMinutes })}
-          </p>
-
-          <h3>{t("start.objectivesHeading")}</h3>
-          <ul>
-            {OBJECTIVE_KEYS.map((key) => (
-              <li key={key}>{t(key)}</li>
-            ))}
-          </ul>
-
-          <div className="start__actions">
+          <div className="start__actions start__actions--primary">
             {state.hasSavedAttempt ? (
               <>
                 <button type="button" className="button button--primary" onClick={resume}>
@@ -73,6 +89,13 @@ export function StartScreen(): ReactNode {
               </button>
             )}
           </div>
+
+          <h3>{t("start.objectivesHeading")}</h3>
+          <ul className="start__objectives">
+            {OBJECTIVE_KEYS.map((key) => (
+              <li key={key}>{t(key)}</li>
+            ))}
+          </ul>
         </section>
 
         {isConfirmingRestart ? (

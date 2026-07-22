@@ -34,6 +34,7 @@ test.describe("saving and resuming", () => {
 
     // The scripted manifest and learner correction are rebuilt from suspend
     // data, not inferred from static stage copy.
+    await page.getByRole("button", { name: "Bảng tra cứu" }).click();
     await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
     const correctionRow = page.getByRole("row").filter({ hasText: "Giao dịch điều chỉnh" });
     await expect(correctionRow).toHaveCount(1);

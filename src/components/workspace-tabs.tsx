@@ -28,6 +28,7 @@ const TABS: ReadonlyArray<{ id: TabId; labelKey: string }> = [
 export function WorkspaceTabs(): ReactNode {
   const t = useTranslator();
   const { state } = useSimulation();
+  const [isOpen, setOpen] = useState(false);
   const [active, setActive] = useState<TabId>("state");
   const baseId = useId();
   const tabRefs = useRef<Map<TabId, HTMLButtonElement>>(new Map());
@@ -57,42 +58,67 @@ export function WorkspaceTabs(): ReactNode {
   };
 
   return (
-    <section className="workspace-tabs">
-      <div className="workspace-tabs__list" role="tablist" aria-label={t("workspace.tabs.label")}>
-        {TABS.map((tab, index) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`${baseId}-tab-${tab.id}`}
-            aria-selected={active === tab.id}
-            aria-controls={`${baseId}-panel-${tab.id}`}
-            tabIndex={active === tab.id ? 0 : -1}
-            className={`workspace-tabs__tab${active === tab.id ? " workspace-tabs__tab--active" : ""}`}
-            ref={(element) => {
-              if (element !== null) tabRefs.current.set(tab.id, element);
-            }}
-            onClick={() => setActive(tab.id)}
-            onKeyDown={(event) => handleKeyDown(event, index)}
-          >
-            {t(tab.labelKey)}
-          </button>
-        ))}
-      </div>
-
-      <div
-        role="tabpanel"
-        id={`${baseId}-panel-${active}`}
-        aria-labelledby={`${baseId}-tab-${active}`}
-        tabIndex={0}
-        className="workspace-tabs__panel"
+    <section className="workspace-reference">
+      <button
+        type="button"
+        className="workspace-reference__toggle"
+        aria-label={t("workspace.tabs.label")}
+        aria-expanded={isOpen}
+        aria-controls={`${baseId}-content`}
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
       >
-        {active === "state" ? <CurrentStatePanel /> : null}
-        {active === "history" ? <TransactionHistory state={state.domain} /> : null}
-        {active === "ledger" ? <LedgerExplorer state={state.domain} /> : null}
-        {active === "traceability" ? <TraceabilityPanel /> : null}
-        {active === "glossary" ? <Glossary /> : null}
-      </div>
+        <span className="workspace-reference__toggle-copy">
+          <strong>{t("workspace.tabs.label")}</strong>
+          <small aria-hidden="true">{t("workspace.tabs.description")}</small>
+        </span>
+        <span className="workspace-reference__toggle-mark" aria-hidden="true">
+          {isOpen ? "−" : "+"}
+        </span>
+      </button>
+
+      {isOpen ? (
+        <div className="workspace-tabs" id={`${baseId}-content`}>
+          <div
+            className="workspace-tabs__list"
+            role="tablist"
+            aria-label={t("workspace.tabs.label")}
+          >
+            {TABS.map((tab, index) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`${baseId}-tab-${tab.id}`}
+                aria-selected={active === tab.id}
+                aria-controls={`${baseId}-panel-${tab.id}`}
+                tabIndex={active === tab.id ? 0 : -1}
+                className={`workspace-tabs__tab${active === tab.id ? " workspace-tabs__tab--active" : ""}`}
+                ref={(element) => {
+                  if (element !== null) tabRefs.current.set(tab.id, element);
+                }}
+                onClick={() => setActive(tab.id)}
+                onKeyDown={(event) => handleKeyDown(event, index)}
+              >
+                {t(tab.labelKey)}
+              </button>
+            ))}
+          </div>
+
+          <div
+            role="tabpanel"
+            id={`${baseId}-panel-${active}`}
+            aria-labelledby={`${baseId}-tab-${active}`}
+            tabIndex={0}
+            className="workspace-tabs__panel"
+          >
+            {active === "state" ? <CurrentStatePanel /> : null}
+            {active === "history" ? <TransactionHistory state={state.domain} /> : null}
+            {active === "ledger" ? <LedgerExplorer state={state.domain} /> : null}
+            {active === "traceability" ? <TraceabilityPanel /> : null}
+            {active === "glossary" ? <Glossary /> : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

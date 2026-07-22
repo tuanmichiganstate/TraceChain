@@ -50,7 +50,7 @@ export function TopBar(): ReactNode {
         </div>
 
         <dl className="top-bar__meta">
-          <div className="top-bar__item">
+          <div className="top-bar__item top-bar__item--progress">
             <dt>{t("workspace.progress")}</dt>
             <dd>
               {t("workspace.progressValue", {
@@ -61,7 +61,7 @@ export function TopBar(): ReactNode {
           </div>
 
           {/* Always present, per specification section 31.4. */}
-          <div className="top-bar__item">
+          <div className="top-bar__item top-bar__item--role">
             <dt>{t("workspace.currentRole")}</dt>
             <dd>
               {!isObserving && actor !== undefined && organization !== undefined
@@ -73,7 +73,7 @@ export function TopBar(): ReactNode {
             </dd>
           </div>
 
-          <div className="top-bar__item">
+          <div className="top-bar__item top-bar__item--score">
             <dt>{t("workspace.score")}</dt>
             <dd>
               {scoreBreakdown.score.totalScore} / {scoreBreakdown.score.maxScore}
@@ -84,7 +84,7 @@ export function TopBar(): ReactNode {
               precisely because it wrote nothing. Showing "saved" here would be
               the one claim a learner in review mode must not be given. */}
           {state.isReadOnly ? null : (
-            <div className="top-bar__item">
+            <div className="top-bar__item top-bar__item--save">
               <dt>{t("status.saved")}</dt>
               <dd>
                 <StatusPill tone={state.saveStatus === "FAILED" ? "fail" : "pass"}>

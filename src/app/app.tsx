@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react";
+import { createElement, useEffect, type ReactNode } from "react";
 import type { ScenarioStageId } from "../domain/types/enums";
 import { useTranslator } from "./providers/locale-provider";
 import { useScenario } from "./providers/scenario-provider";
@@ -13,6 +13,23 @@ import { PlatformMode } from "../infrastructure/scorm/learning-platform-adapter"
 export function App(): ReactNode {
   const t = useTranslator();
   const { state } = useSimulation();
+
+  useEffect(() => {
+    if (state.phase !== "RUNNING") return;
+
+    // Starting and advancing replace the whole task context. Put both sighted
+    // and screen-reader users at the new stage heading instead of preserving
+    // the scroll position of the button they just activated.
+    const frame = window.requestAnimationFrame(() => {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelector<HTMLElement>("[data-stage-heading]")?.focus({
+        preventScroll: true,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [state.phase, state.viewedStageId]);
 
   if (state.phase === "LOADING") {
     return (

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { organizations } from "../../scenarios/coffee-traceability/organizations";
+import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
 
 /**
  * The physical supply chain.
@@ -20,22 +21,38 @@ export function SupplyChainDiagram(): ReactNode {
 
   return (
     <figure className="supply-chain">
-      <figcaption className="visually-hidden">{t("stage.orientation.supplyChainAlt")}</figcaption>
-      <ol className="supply-chain__flow">
-        {flow.map((organization, index) => (
-          <li key={organization.organizationId} className="supply-chain__node">
-            <span className="supply-chain__step" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="supply-chain__name">{t(organization.displayNameKey)}</span>
-            {index < flow.length - 1 ? (
-              <span className="supply-chain__arrow" aria-hidden="true">
-                →
+      <div className="supply-chain__image-wrap">
+        <img
+          className="supply-chain__image"
+          src={coffeeJourneyImage}
+          width={1672}
+          height={941}
+          loading="lazy"
+          decoding="async"
+          alt=""
+        />
+        <p className="supply-chain__image-caption">{t("stage.orientation.journeyCaption")}</p>
+      </div>
+      <figcaption className="supply-chain__caption">
+        {t("stage.orientation.supplyChainAlt")}
+      </figcaption>
+      <div className="supply-chain__flow-scroll">
+        <ol className="supply-chain__flow">
+          {flow.map((organization, index) => (
+            <li key={organization.organizationId} className="supply-chain__node">
+              <span className="supply-chain__step" aria-hidden="true">
+                {index + 1}
               </span>
-            ) : null}
-          </li>
-        ))}
-      </ol>
+              <span className="supply-chain__name">{t(organization.displayNameKey)}</span>
+              {index < flow.length - 1 ? (
+                <span className="supply-chain__arrow" aria-hidden="true">
+                  →
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </div>
     </figure>
   );
 }

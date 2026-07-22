@@ -129,6 +129,22 @@ describe("controls and references", () => {
     expect(offenders, offenders.join(", ")).toEqual([]);
   });
 
+  it("keeps the reference workspace available without letting it dominate the task", async () => {
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
+    await screen.findByRole("heading", { name: /Bước 1/ });
+
+    const toggle = screen.getByRole("button", { name: "Bảng tra cứu" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("tab", { name: "Trạng thái hiện tại" })).toBeNull();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("tab", { name: "Trạng thái hiện tại" })).toBeInTheDocument();
+  });
+
   /**
    * Duplicate ids silently break every aria-labelledby, aria-describedby and
    * label-for that points at them: the reference resolves to whichever element

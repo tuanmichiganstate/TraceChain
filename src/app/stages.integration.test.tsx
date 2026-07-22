@@ -264,6 +264,7 @@ describe("the reference panels", () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);
     await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
+    await user.click(screen.getByRole("button", { name: "Bảng tra cứu" }));
 
     const tablist = await screen.findByRole("tablist");
     const tabs = within(tablist).getAllByRole("tab");
@@ -311,7 +312,8 @@ describe("the reference panels", () => {
     await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
 
     // The distractor lots exist from the start; recall is not the first time
-    // the learner sees them.
+    // the learner can inspect them, while the task remains visually primary.
+    await user.click(screen.getByRole("button", { name: "Bảng tra cứu" }));
     expect(await screen.findByText("BAT_PACKAGED_COFFEE_002")).toBeInTheDocument();
     expect(screen.getByText("BAT_PACKAGED_COFFEE_003")).toBeInTheDocument();
   });
