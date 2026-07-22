@@ -13,7 +13,7 @@ pushed; neither identifier can be embedded in the commit that creates it.
 | Stage 5 shipping-manifest repair | `d06df6ffa6d18cbcb2b0310606085deca5e67000` | accepted |
 | Cross-layer scenario contracts | `6ad1e7148ec2e0766f3300004fce92b1379b9bb8` | accepted |
 | Deterministic content-review generator | `4408452578ade427a993f6dc6faf009407fb33d0` | accepted |
-| Version 2 release verification | release source commit | local gate accepted; exact-HEAD CI follows the release commit |
+| Version 2 release verification | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` | local gate accepted; exact-HEAD CI follows the release metadata commit |
 
 The Phase 3 clean-checkout boundary was verified by GitHub Actions run
 `29889480310` at `6ad1e7148ec2e0766f3300004fce92b1379b9bb8`:
@@ -50,10 +50,12 @@ default. This closes the former broad project-level timeout debt.
 | Artifact | Provenance |
 |---|---|
 | SCORM package | `tracechain-scorm-v2.0.0.zip` |
+| SCORM source commit | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` |
 | SCORM SHA-256 | `23d2642811e3a4fd9533bf3fdb4ef99162fe6f22fff95d940842218e2ca9cda3` |
 | SCORM contents | 6 files, 137,644 bytes (134.4 kB), verifier 23/23 |
 | Content-review artifact | `docs/content-review/tracechain-content-review.html` |
-| Content-review SHA-256 | `da1929ac790ea1973b9e10c0bef977edff13c15116277ff84168c19bc800bb75` (226,632 bytes) |
+| Content-review source commit | `cad625a2d9477afbfb62d900dd3d34d9a70711a0` |
+| Content-review SHA-256 | `8fc8ad705725bf95655ccd77ecb3b9258f29431bc88ca0ab480d73d6d84fc665` (226,632 bytes) |
 | Content-review parity | 528/528 |
 | Content-review status | not reviewed; Vietnamese subject-expert adjudication remains open |
 
