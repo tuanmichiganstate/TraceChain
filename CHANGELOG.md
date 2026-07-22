@@ -105,6 +105,14 @@ about was live in the build.
 
 **Changed**
 
+- **CI runs once per commit instead of twice.** Both workflow events were
+  unfiltered, so every push to a branch with an open pull request started two
+  identical runs of the same SHA — confirmed from run metadata across four
+  commits. `push` is now filtered to master, `pull_request` to master-targeting
+  PRs, and a concurrency group cancels superseded runs per PR. Master is
+  excluded from cancellation, because a cancelled run there leaves no verdict
+  and that is too easily mistaken for a passing one. Runner-minutes per
+  feature-branch commit fall by half; nothing was removed from the gate.
 - The final report separates competencies from telemetry. Blocks sealed and
   transactions committed moved into a "simulation activity summary" below the
   breakdown; in one list with the six score components they read as marks.
