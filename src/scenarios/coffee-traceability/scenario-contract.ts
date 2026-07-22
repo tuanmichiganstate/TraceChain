@@ -28,6 +28,8 @@ import {
   type ScenarioContractValidationResult,
 } from "../../domain/scenario/contract-helpers";
 import { buildEffectiveValueView } from "../../domain/scenario/effective-value-view";
+import { allHints, allScorableItems } from "../../domain/types/scenario";
+import { calculateScore, hintPointsAtRisk } from "../../domain/scoring/score-engine";
 import { evaluateCondition, evaluateStageCompletion } from "../../domain/scenario/stage-completion";
 import { scoringEvidenceSatisfied } from "../../domain/scenario/transaction-evidence";
 import {
@@ -636,6 +638,50 @@ export function validateCoffeeScenarioContracts(): ScenarioContractValidationRes
     recallScope.confirmedRetrievedAssetIds.length === 0,
     "The scenario has no physical pickup-confirmation transaction",
   );
+
+  /*
+   * 15. Hint scope is priced the way it is declared.
+   *
+   * The schema validator already holds every target to a real, same-stage,
+   * nameable item. What it cannot see is whether the engine then charges those
+   * items and only those, so this drives the real scoring engine once per hint
+   * and compares the result against the hint's own declaration.
+   */
+  const scorableItems = allScorableItems(coffeeScenario);
+  for (const hint of allHints(coffeeScenario)) {
+    const targets = new Set(hint.targetScorableItemIds);
+    const scored = calculateScore(
+      {
+        decisions: Object.fromEntries(
+          scorableItems.map((item) => [item.decisionId, { encodedValue: 1, attemptCount: 1 }]),
+        ),
+        hintsUsed: [hint.hintId],
+        correctness: Object.fromEntries(
+          scorableItems.map((item) => [item.decisionId, true]),
+        ),
+      },
+      coffeeScenario,
+    );
+
+    recorder.check(
+      `hints.${hint.hintId}.caps-exactly-its-targets`,
+      scored.items.every((item) => item.wasHintUsed === targets.has(item.decisionId)),
+      "A hint must cap the items it declares, and no others",
+    );
+
+    const expectedLoss =
+      hint.targetScorableItemIds.reduce((total, decisionId) => {
+        const item = scorableItems.find((candidate) => candidate.decisionId === decisionId);
+        return total + (item?.points ?? 0);
+      }, 0) *
+      (1 - coffeeScenario.scoringConfiguration.afterHintCredit);
+
+    recorder.check(
+      `hints.${hint.hintId}.disclosed-risk-matches-engine`,
+      Math.abs(hintPointsAtRisk(hint, coffeeScenario, {}) - expectedLoss) < 0.05,
+      "The points shown to the learner must be the points the engine removes",
+    );
+  }
 
   return recorder.result();
 }

@@ -14,7 +14,8 @@
 <body>
 <a class="skip" href="#main">Tới nội dung</a>
 <div class="layout">
-<nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol><li><a href="#group-actors"><span>actors</span><b>8</b></a></li>
+<nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol><li><a href="#group-activity"><span>activity</span><b>6</b></a></li>
+<li><a href="#group-actors"><span>actors</span><b>8</b></a></li>
 <li><a href="#group-app"><span>app</span><b>5</b></a></li>
 <li><a href="#group-check"><span>check</span><b>72</b></a></li>
 <li><a href="#group-compliance"><span>compliance</span><b>5</b></a></li>
@@ -63,13 +64,46 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>564/564</b>chuỗi song ngữ</li>
+    <li><b>570/570</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
     <li><b>1</b>phiên bản định dạng</li>
   </ul>
 </header>
+<section id="group-activity">
+  <h2>activity <span>6 chuỗi</span></h2>
+  <article class="entry" data-locale-key="activity.certificateStorage">
+  <header><code>activity.certificateStorage</code></header>
+  <p class="vi" lang="vi">Chọn nơi lưu chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Choose where the certificate is stored</p></details>
+</article>
+  <article class="entry" data-locale-key="activity.createBatch">
+  <header><code>activity.createBatch</code></header>
+  <p class="vi" lang="vi">Tạo lô cà phê trên sổ cái</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Create the coffee batch</p></details>
+</article>
+  <article class="entry" data-locale-key="activity.custodyScope">
+  <header><code>activity.custodyScope</code></header>
+  <p class="vi" lang="vi">Chọn phạm vi của giao dịch bàn giao</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Choose what the handover transfers</p></details>
+</article>
+  <article class="entry" data-locale-key="activity.recallScope">
+  <header><code>activity.recallScope</code></header>
+  <p class="vi" lang="vi">Xác định phạm vi thu hồi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Determine the recall scope</p></details>
+</article>
+  <article class="entry" data-locale-key="activity.recordCorrection">
+  <header><code>activity.recordCorrection</code></header>
+  <p class="vi" lang="vi">Ghi nhận giao dịch điều chỉnh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Record the correction</p></details>
+</article>
+  <article class="entry" data-locale-key="activity.transformBatch">
+  <header><code>activity.transformBatch</code></header>
+  <p class="vi" lang="vi">Rang lô cà phê</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Roast the batch</p></details>
+</article>
+</section>
 <section id="group-actors">
   <h2>actors <span>8 chuỗi</span></h2>
   <article class="entry" data-locale-key="actors.certificationOfficer.name">
@@ -798,8 +832,8 @@
 </article>
   <article class="entry" data-locale-key="hint.penaltyNotice">
   <header><code>hint.penaltyNotice</code></header>
-  <p class="vi" lang="vi">Xem gợi ý sẽ giới hạn điểm của mọi mục tính điểm trong bước này ở mức {percent}%, kể cả những câu bạn đã trả lời xong. Vì vậy điểm tối đa của bước giảm nhiều nhất {points} điểm.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Opening a hint caps credit for every scored item in this step at {percent}%, including answers you have already given. That lowers the most this step can be worth by up to {points} points.</p></details>
+  <p class="vi" lang="vi">Xem gợi ý này sẽ giới hạn điểm của {activities} ở mức {percent}%, làm giảm nhiều nhất {points} điểm còn có thể đạt. Các phần việc khác trong bước này không bị ảnh hưởng, và giới hạn vẫn áp dụng ngay cả khi bạn đã làm xong phần việc đó.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Using this hint caps credit for {activities} at {percent}%, reducing the score still available by up to {points} points. Nothing else in this step is affected, and the cap applies even if you have already finished that work.</p></details>
 </article>
   <article class="entry" data-locale-key="hint.recallProvenance">
   <header><code>hint.recallProvenance</code><ul class="context"><li>Bước 9 · STG_09_RECALL_AND_DEBRIEF · gợi ý</li></ul></header>
@@ -2093,8 +2127,8 @@
 </article>
   <article class="entry" data-locale-key="start.scoringHint">
   <header><code>start.scoringHint</code></header>
-  <p class="vi" lang="vi">Xem gợi ý sẽ giới hạn điểm của mọi mục tính điểm trong bước đó ở mức {percent}%, kể cả những câu đã trả lời xong.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Opening a hint caps credit for every scored item in that step at {percent}%, including answers already given.</p></details>
+  <p class="vi" lang="vi">Gợi ý chỉ giới hạn điểm của đúng những phần việc mà nó hỗ trợ. Trước khi mở, bạn sẽ thấy rõ đó là phần việc nào và có thể mất tối đa bao nhiêu điểm.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">A hint caps credit only for the activities it actually helps with. Which ones, and how many points are at stake, are shown before you open it.</p></details>
 </article>
   <article class="entry" data-locale-key="start.scoringPass">
   <header><code>start.scoringPass</code></header>
@@ -3020,7 +3054,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>2a8d7a99691436381e94dce69206ab0ac559c9b0</code> · SHA-256 nguồn: <code>c75bc28289f54e3f48b313cf112946a79c058ec700a9622c7d2ac63c53488609</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>72ee5dd32244e694a35a9c494fd5ba00764c6551</code> · SHA-256 nguồn: <code>62aef7086ba315ac0a4f9f11155f5bff880a0e4eed60a408904971ac21780396</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

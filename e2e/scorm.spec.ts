@@ -43,6 +43,49 @@ test.describe("saving and resuming", () => {
     await expect(page.getByText("100 kg", { exact: true }).last()).toBeVisible();
   });
 
+  /**
+   * A hint is persisted as one bit in the hint bitmap, and the credit it caps is
+   * recomputed from the scenario's declared targets on load rather than stored.
+   * That is what keeps a resumed attempt worth exactly what it was worth when
+   * the learner left it -- and it is the part a schema change could silently
+   * break, because nothing on screen would look wrong.
+   */
+  test("keeps the score a used hint produced across a real reload", async ({ page }) => {
+    await installScormApi(page);
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.start();
+    await activity.expectStage(1);
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.expectStage(2);
+
+    // Do the work first, then take the hint: that exercises the retroactive
+    // cap through a real reload rather than only the flag surviving.
+    await activity.submitAndSeal("Thông tin lô hàng");
+    const earned = await page.locator(".top-bar__item--score dd").innerText();
+
+    // The stage 2 hint caps only "create the coffee batch": 4 points at 70%.
+    await expect(page.getByText(/Tạo lô cà phê trên sổ cái/).last()).toBeVisible();
+    await page.getByRole("button", { name: "Xem gợi ý" }).click();
+
+    const capped = await page.locator(".top-bar__item--score dd").innerText();
+    expect(capped).not.toBe(earned);
+
+    const saved = await peek(page, "cmi.suspend_data");
+    expect(saved).not.toBe("");
+
+    await installScormApi(page, {
+      initialValues: { "cmi.suspend_data": saved, "cmi.core.entry": "resume" },
+    });
+    await page.goto("/");
+    await activity.resumePrevious();
+    await activity.expectStage(3);
+
+    await expect(page.locator(".top-bar__item--score dd")).toHaveText(capped);
+  });
+
   test("keeps suspend data inside the 4096-character ceiling", async ({ page }) => {
     await installScormApi(page);
     await page.goto("/");

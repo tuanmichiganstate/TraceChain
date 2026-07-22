@@ -48,41 +48,81 @@ round trip through the state codec.
 A hint is treated as no worse than a second attempt: a learner who asks for help
 before guessing should not do worse than one who guesses twice.
 
-**A hint caps the whole stage, not the one item it was about.** The table above
-reads per item, and the implementation is deliberately wider: `hintsForStage`
-applies `afterHintCredit` as a ceiling on *every* scorable item in the stage the
-hint belongs to, and leaves other stages untouched. In stage 9 that is one hint
-against 25 points. Two consequences are worth stating because neither is
-obvious: the ceiling applies retroactively, so opening a hint after answering
-everything correctly still lowers those answers to 70%; and a second hint in the
-same stage costs nothing further, because the cap is already in force. Items
-already down to `multipleAttemptCredit`, and items never answered correctly, are
-unaffected — the cap can only lower credit that exists.
+**A hint caps the items it names, and nothing else.** Every hint declares
+`targetScorableItemIds`: the scorable items its text genuinely assists. Opening
+it caps exactly those at `afterHintCredit`, and the scenario validator holds
+each target to a real, uniquely-named scorable item in the hint's own stage.
+Nothing is inferred from stage membership.
 
-The learner is told all of this before choosing: the hint control states the
-ceiling, that it covers answers already given, and the points it puts at risk,
-all derived from this configuration.
+Four consequences, none of them obvious enough to leave unwritten:
 
-### Open decision for the product owner
+- **The cap is retroactive** for a targeted item. Score is a pure function of
+  decisions and hints, so it cannot depend on which came first: opening a hint
+  after answering that item correctly still lowers it to 70%.
+- **A second hint on the same item costs nothing further.** The cap is a
+  ceiling, not a deduction, so it cannot apply twice.
+- **Items already below the ceiling are untouched** — an item on its third
+  attempt is at `multipleAttemptCredit`, which is lower, and an item never
+  answered correctly is at zero. A cap can only lower credit that exists.
+- **Everything else keeps full credit**, including other items in the same
+  stage. The learner is told which activities a hint will affect, the ceiling,
+  and the points still at stake, before deciding to open it — all three derived
+  from the same configuration the engine applies, so the figure shown cannot
+  drift from the figure charged.
 
-The behaviour above is what the code does, verified against the score engine
-rather than inferred, and it is not being changed on anyone's preference. But it
-was never written down as a choice, and two of its properties surprise people:
-a hint bought for one question is charged against every question in the stage,
-and buying it after finishing the stage still costs the full amount.
+Multi-item hints are represented by listing more than one target, and are
+allowed only when the hint's text genuinely helps with each. No hint in the
+coffee scenario currently needs one.
 
-> **Decision required.** Retain the current stage-wide, retroactive hint cap, or
-> redesign it so a hint affects only the item it belongs to, or only work
-> completed after it is opened.
+### The decision, and why
 
-No authoritative specification is held in this repository, so nothing here
-contradicts a higher authority — the only conflict was internal, between the
-per-item table above and the stage-wide implementation, and that is now
-reconciled in favour of describing what the code does. Whichever way this is
-settled, three tests pin the current behaviour and would need to move with it:
-`score-engine.test.ts` "reduces credit for items in the stage the hint belongs
-to" and "leaves other stages untouched", and the derived figure the hint control
-shows.
+Hints were originally scoped by stage: opening one capped every scorable item
+around it. That was never written down as a choice, and it produced results
+nobody would have chosen deliberately. Stage 9's hint says to follow provenance
+links rather than trust a product name — help with one 15-point question — and
+it also repriced the recall transaction and an entirely separate question about
+whether a blockchain is warranted at all. Seven and a half points for help with
+four and a half points' worth of difficulty.
+
+**Decided: hints cap only the items they support.** Two alternatives were
+considered and rejected. Keeping the stage-wide rule is simple and was already
+tested, but charges a learner for work the hint did not touch, which is the
+hardest kind of mark to defend when a student asks. Making the cap apply only to
+work completed after the hint was opened fixes the retroactivity but not the
+scope, and would need scoring to gain a chronology it does not have — the codec
+stores decisions, not their order relative to hints, so it would cost a saved
+state schema bump for the smaller half of the problem.
+
+Retroactivity is kept deliberately. Without it, "answer first, then open the
+hint to check" would be free, and the hint would stop being a considered choice.
+
+### What it cost, and what happened to attempts in flight
+
+Across a perfect attempt using every hint, the maximum loss falls from 22.5
+points to 13.2. Per hint:
+
+| Hint | Stage | Targets | At risk |
+|---|---|---|---|
+| `HINT_CREATE_BATCH_FIELDS` | 2 | `INT_CREATE_BATCH` | 1.2 |
+| `HINT_CERTIFICATE_STORAGE` | 3 | `INT_CERTIFICATE_STORAGE_CHOICE` | 1.5 |
+| `HINT_CUSTODY_VERSUS_OWNERSHIP` | 4 | `INT_CUSTODY_TRANSFER_SCOPE` | 1.8 |
+| `HINT_CORRECTION_MECHANISM` | 5 | `INT_CORRECTION_RECORDED` | 3.0 |
+| `HINT_TRANSFORMATION_YIELD` | 6 | `INT_TRANSFORM_BATCH` | 1.2 |
+| `HINT_RECALL_PROVENANCE` | 9 | `INT_RECALL_SCOPE` | 4.5 |
+
+**No migration is needed and none is performed.** `HINT_IDS` did not move, so
+the hint bitmap in `cmi.suspend_data` means exactly what it meant before, and
+the codec format is unchanged — old state decodes as it always did. The score
+itself was never stored: it is recomputed from decisions and hints on every
+load, which is what makes recalculation safe rather than a reinterpretation.
+
+The recomputation is one-directional. The new rule caps a subset of what the old
+one capped, so a resumed attempt can only score the same or higher; no learner
+loses a mark they had already been awarded, and a test asserts that across every
+combination of hints. A grade already written to the LMS is untouched: it lives
+in the gradebook, not in suspend data, and a relaunch of a completed attempt is
+read-only, so nothing can overwrite it. The scenario version moves to 2.1.0 to
+record the content change; it is not part of any storage key.
 
 ## Two provisions that keep exploration safe
 

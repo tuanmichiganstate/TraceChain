@@ -91,12 +91,18 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       { conditionType: "ASSET_EXISTS", assetId: GREEN_COFFEE_BATCH_ID },
     ],
     availableHints: [
-      { hintId: "HINT_CREATE_BATCH_FIELDS", textKey: "hint.createBatchFields", penaltyPercent: 10 },
+      {
+        hintId: "HINT_CREATE_BATCH_FIELDS",
+        textKey: "hint.createBatchFields",
+        // Names the two fields the create-batch transaction is rejected on.
+        targetScorableItemIds: ["INT_CREATE_BATCH"],
+      },
     ],
     knowledgeChecks: [],
     scoredActions: [
       {
         decisionId: "INT_CREATE_BATCH",
+        nameKey: "activity.createBatch",
         descriptionKey: "stage.createBatch.instruction",
         transactionType: TransactionType.CREATE_BATCH,
         scoreComponent: ScoreComponent.TRANSACTION_ACCURACY,
@@ -137,7 +143,13 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
     ],
     availableHints: [
-      { hintId: "HINT_CERTIFICATE_STORAGE", textKey: "hint.certificateStorage", penaltyPercent: 10 },
+      {
+        hintId: "HINT_CERTIFICATE_STORAGE",
+        textKey: "hint.certificateStorage",
+        // On-chain versus off-chain storage. It says nothing about whether an
+        // issuer has standing, so the issuer check keeps its full credit.
+        targetScorableItemIds: ["INT_CERTIFICATE_STORAGE_CHOICE"],
+      },
     ],
     knowledgeChecks: [certificateStorageCheck, certificateIssuerCheck],
     scoredActions: [],
@@ -179,7 +191,9 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       {
         hintId: "HINT_CUSTODY_VERSUS_OWNERSHIP",
         textKey: "hint.custodyVersusOwnership",
-        penaltyPercent: 10,
+        // "Who may sell it, and who is holding it" is the custody/ownership
+        // distinction. The humidity threshold is a separate judgement.
+        targetScorableItemIds: ["INT_CUSTODY_TRANSFER_SCOPE"],
       },
     ],
     knowledgeChecks: [custodyTransferScopeCheck, transportConditionCheck],
@@ -245,7 +259,13 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.TRANSFER_OWNERSHIP },
     ],
     availableHints: [
-      { hintId: "HINT_CORRECTION_MECHANISM", textKey: "hint.correctionMechanism", penaltyPercent: 10 },
+      {
+        hintId: "HINT_CORRECTION_MECHANISM",
+        textKey: "hint.correctionMechanism",
+        // Points at appending a linked record. Booking the batch in is an
+        // ordinary receipt and is not made easier by knowing that.
+        targetScorableItemIds: ["INT_CORRECTION_RECORDED"],
+      },
     ],
     knowledgeChecks: [],
     scoredActions: [
@@ -258,6 +278,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
       {
         decisionId: "INT_CORRECTION_RECORDED",
+        nameKey: "activity.recordCorrection",
         descriptionKey: "message.correction",
         transactionType: TransactionType.RECORD_CORRECTION,
         scoreComponent: ScoreComponent.COMPLIANCE_AND_CORRECTION,
@@ -302,12 +323,20 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
     ],
     availableHints: [
-      { hintId: "HINT_TRANSFORMATION_YIELD", textKey: "hint.transformationYield", penaltyPercent: 10 },
+      {
+        hintId: "HINT_TRANSFORMATION_YIELD",
+        textKey: "hint.transformationYield",
+        // Output mass is below input mass -- the quantity the transformation
+        // transaction carries. Whether the roasted batch is a new asset with a
+        // provenance edge is a different question, and unaided by this.
+        targetScorableItemIds: ["INT_TRANSFORM_BATCH"],
+      },
     ],
     knowledgeChecks: [transformationProvenanceCheck],
     scoredActions: [
       {
         decisionId: "INT_TRANSFORM_BATCH",
+        nameKey: "activity.transformBatch",
         descriptionKey: "stage.transformBatch.instruction",
         transactionType: TransactionType.TRANSFORM_BATCH,
         scoreComponent: ScoreComponent.TRANSACTION_ACCURACY,
@@ -444,7 +473,19 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
       },
     ],
     availableHints: [
-      { hintId: "HINT_RECALL_PROVENANCE", textKey: "hint.recallProvenance", penaltyPercent: 10 },
+      {
+        hintId: "HINT_RECALL_PROVENANCE",
+        textKey: "hint.recallProvenance",
+        /*
+         * The scope question alone. Filing the recall is scored on whether the
+         * transaction was accepted -- a regulator authorisation matter that
+         * holds whichever lots were chosen -- and the blockchain-versus-database
+         * question is an independent evaluative judgement this text does not
+         * touch. Capping all three because they share a stage was the old
+         * behaviour and cost 7.5 points for help with one 15-point item.
+         */
+        targetScorableItemIds: ["INT_RECALL_SCOPE"],
+      },
     ],
     knowledgeChecks: [recallScopeCheck, blockchainNecessityCheck],
     scoredActions: [

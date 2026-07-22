@@ -7,7 +7,8 @@ import {
   evaluateRequiredActions,
   evaluateStageCompletion,
 } from "../domain/scenario/stage-completion";
-import { allScorableItems } from "../domain/types/scenario";
+import { allScorableItems, type ScenarioHint } from "../domain/types/scenario";
+import { hintPointsAtRisk } from "../domain/scoring/score-engine";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -73,12 +74,7 @@ export function StageShell({
       ) : null}
 
       {definition.availableHints.map((hint) => (
-        <HintPanel
-          key={hint.hintId}
-          hintId={hint.hintId}
-          textKey={hint.textKey}
-          stageId={stageId}
-        />
+        <HintPanel key={hint.hintId} hint={hint} />
       ))}
 
       {children}
@@ -139,56 +135,56 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
 /**
  * A hint the learner opts into.
  *
- * Deliberately a two-step reveal, and the cost is stated in points before the
- * choice is made. Taking a hint caps *every* scored item in the stage at
- * `afterHintCredit`, not just the item the learner is stuck on, so a vague
- * "reduces part of this step's score" understates it substantially -- in stage 9
- * the same sentence covers 25 points. A learner cannot weigh a cost they have
- * not been told.
+ * Deliberately a two-step reveal, and the cost is named before the choice is
+ * made: which activities the cap will touch, the cap itself, and the points
+ * still at stake. All three come from the hint's declared targets and the live
+ * scoring state, so none of them can drift from what the engine applies. A
+ * learner cannot weigh a cost they have not been told, and a vague one is worse
+ * than none -- this notice once covered a whole stage without saying so.
  */
-function HintPanel({
-  hintId,
-  textKey,
-  stageId,
-}: {
-  hintId: string;
-  textKey: string;
-  stageId: ScenarioStageId;
-}): ReactNode {
+function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
   const { state, revealHint } = useSimulation();
-  const isRevealed = state.hintsUsed.includes(hintId);
+  const isRevealed = state.hintsUsed.includes(hint.hintId);
 
   const { afterHintCredit } = scenario.scoringConfiguration;
-  const stagePoints = allScorableItems(scenario)
-    .filter((item) => item.stageId === stageId)
-    .reduce((total, item) => total + item.points, 0);
-  // "Up to", because an item already on its third attempt has fallen to
-  // multipleAttemptCredit and the hint cap costs it nothing further.
-  const pointsAtRisk = Math.round(stagePoints * (1 - afterHintCredit) * 10) / 10;
+  const namesByDecisionId = new Map(
+    allScorableItems(scenario)
+      .filter((item) => item.nameKey !== undefined)
+      .map((item) => [item.decisionId, item.nameKey as string]),
+  );
+  // Quoted so a name reads as a name inside the sentence, and joined rather
+  // than conjoined because every hint in this scenario targets exactly one
+  // activity; a multi-target hint would be worth re-reading this phrasing for.
+  const activities = hint.targetScorableItemIds
+    .map((decisionId) => namesByDecisionId.get(decisionId))
+    .filter((nameKey): nameKey is string => nameKey !== undefined)
+    .map((nameKey) => `\u201C${t(nameKey)}\u201D`)
+    .join(", ");
 
   return (
     <section className="hint">
       {isRevealed ? (
         <>
           <h3>{t("hint.heading")}</h3>
-          <p>{t(textKey)}</p>
+          <p>{t(hint.textKey)}</p>
         </>
       ) : (
         <>
           <button
             type="button"
             className="button button--secondary"
-            onClick={() => revealHint(hintId)}
+            onClick={() => revealHint(hint.hintId)}
             disabled={state.isReadOnly}
           >
             {t("hint.reveal")}
           </button>
           <p className="muted">
             {t("hint.penaltyNotice", {
+              activities,
               percent: Math.round(afterHintCredit * 100),
-              points: pointsAtRisk,
+              points: hintPointsAtRisk(hint, scenario, state.decisions),
             })}
           </p>
         </>

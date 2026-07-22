@@ -18,16 +18,25 @@ about was live in the build.
   still reading. That is precisely the disorientation the two-field split exists
   to prevent; it was applied to the router and never to the header. A regression
   test now holds both fields to the stage on screen.
-- **The hint cost was understated.** The notice said only that a hint "reduces
-  part of this step's score". A hint caps *every* scored item in the stage at
-  `afterHintCredit`, which in stage 9 is 7.5 points across three items —
-  measured against the score engine, not inferred. The notice now states the
-  cap and the points it puts at risk, both derived from the scoring
-  configuration, phrased as a ceiling rather than as an automatic deduction, and
-  saying that it covers answers already given — the cap is retroactive, which
-  was the one material consequence the wording still left out.
-  `docs/SCORING_MODEL.md` now records the policy and an open decision for the
-  product owner; nothing about the scoring itself changed.
+- **A hint charged for work it did not help with.** Opening one capped every
+  scorable item in its stage, so stage 9's "follow the provenance links" — help
+  with a single 15-point question — also repriced the recall transaction and an
+  unrelated question about whether a blockchain is warranted at all: 7.5 points
+  for 4.5 points' worth of difficulty. Every hint now declares
+  `targetScorableItemIds`, and caps exactly those. Across a perfect attempt the
+  maximum a learner can lose to hints falls from 22.5 points to 13.2. The
+  reasoning, the per-hint mapping and the compatibility position are recorded in
+  `docs/SCORING_MODEL.md`.
+- **`penaltyPercent: 10` on every hint was never read**, while the cap the
+  engine actually applied was 30%. A dead field contradicting live behaviour is
+  where the "hints cost 10%" figure in the original review came from; it is
+  gone, and the single knob is `afterHintCredit`.
+- **The hint notice was vague, then incomplete.** It said only that a hint
+  "reduces part of this step's score". It now names the activities it will cap,
+  the ceiling, and the points still at stake — all derived from the hint's own
+  targets and the live scoring state, so the figure shown cannot drift from the
+  figure charged — and says the cap covers work already finished, which is the
+  one consequence a learner cannot infer.
 - **Two 320 px overflows that had shipped.** Validation rule identifiers, and
   the recall question's `fieldset`, each forced a horizontal scroll on every
   stage that renders them. The reflow test only ever visited stage 1, which is

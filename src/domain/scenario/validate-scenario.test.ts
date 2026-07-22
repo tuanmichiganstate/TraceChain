@@ -379,6 +379,82 @@ describe("scenario validation catches authoring mistakes", () => {
     const broken = withScenario((draft) => ({ ...draft, scenarioId: "COFFEE" }));
     expect(() => assertValidScenario(broken)).toThrow(/failed|invalid/i);
   });
+  /**
+   * Hint scope is scoring. A hint that names the wrong item charges the learner
+   * for work it did not help with, and nothing on screen would reveal it -- so
+   * every way of getting the mapping wrong has to fail the gate instead.
+   */
+  describe("hint targets", () => {
+    const firstHintOf = (draft: ScenarioDefinition, stageId: ScenarioStageId) => {
+      const stage = draft.stages.find((candidate) => candidate.stageId === stageId);
+      if (stage === undefined || stage.availableHints[0] === undefined) {
+        throw new Error(`No hint in ${stageId}`);
+      }
+      return stage.availableHints[0];
+    };
+    const retarget = (stageId: ScenarioStageId, targets: readonly string[]) =>
+      withScenario((draft) => {
+        const hint = firstHintOf(draft, stageId);
+        (hint as { targetScorableItemIds: readonly string[] }).targetScorableItemIds = targets;
+        return draft;
+      });
+
+    it("rejects a hint that names no item at all", () => {
+      expect(errorMessages(retarget(ScenarioStageId.RECALL_AND_DEBRIEF, []))).toContain(
+        "at least one scorable item",
+      );
+    });
+
+    it("rejects a hint that names an item twice", () => {
+      const broken = retarget(ScenarioStageId.RECALL_AND_DEBRIEF, [
+        "INT_RECALL_SCOPE",
+        "INT_RECALL_SCOPE",
+      ]);
+      expect(errorMessages(broken)).toContain("same scorable item twice");
+    });
+
+    it("rejects a target that is not a scorable item", () => {
+      const broken = retarget(ScenarioStageId.RECALL_AND_DEBRIEF, ["INT_NOT_A_REAL_ITEM"]);
+      expect(errorMessages(broken)).toContain("not a scorable item");
+    });
+
+    it("rejects a target in another stage", () => {
+      // A hint is offered inside one stage; charging it against work elsewhere
+      // would be invisible at the moment the learner decides to open it.
+      const broken = retarget(ScenarioStageId.RECALL_AND_DEBRIEF, ["INT_CREATE_BATCH"]);
+      expect(errorMessages(broken)).toContain("may only cap items in their own stage");
+    });
+
+    it("rejects a target the learner could not be shown by name", () => {
+      const broken = withScenario((draft) => {
+        const hint = firstHintOf(draft, ScenarioStageId.RECALL_AND_DEBRIEF);
+        (hint as { targetScorableItemIds: readonly string[] }).targetScorableItemIds = [
+          "INT_BLOCKCHAIN_NECESSITY",
+        ];
+        return draft;
+      });
+      expect(errorMessages(broken)).toContain("no nameKey");
+    });
+
+    it("accepts a hint that genuinely names two items in its own stage", () => {
+      const scenario = withScenario((draft) => {
+        const stage = draft.stages.find(
+          (candidate) => candidate.stageId === ScenarioStageId.RECALL_AND_DEBRIEF,
+        );
+        const check = stage?.knowledgeChecks.find(
+          (candidate) => candidate.knowledgeCheckId === "INT_BLOCKCHAIN_NECESSITY",
+        );
+        (check as { nameKey?: string }).nameKey = "activity.recallScope";
+        const hint = firstHintOf(draft, ScenarioStageId.RECALL_AND_DEBRIEF);
+        (hint as { targetScorableItemIds: readonly string[] }).targetScorableItemIds = [
+          "INT_RECALL_SCOPE",
+          "INT_BLOCKCHAIN_NECESSITY",
+        ];
+        return draft;
+      });
+      expect(errorMessages(scenario)).toBe("");
+    });
+  });
 });
 
 describe("transaction and event symmetry", () => {
