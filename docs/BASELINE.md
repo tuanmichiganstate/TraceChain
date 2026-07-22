@@ -91,6 +91,6 @@ this release does not claim it. The terminology question around “quyền lưu 
 is recorded in the content-review manifest.
 
 The abandoned `wip/stage5-failed-dispatch-approach` branch and any stash are not
-release inputs. Version 2 uses no `DISPATCH_BATCH`, positional stash reference,
-rejected-attempt completion shortcut, `DECISION_RECORDED` Stage 5 evidence, or
-asset `quantity` shortcut for manifest metadata.
+release inputs. Stage 5 uses no `DISPATCH_BATCH`, positional stash reference,
+rejected-attempt completion shortcut, `DECISION_RECORDED` completion evidence,
+or asset `quantity` shortcut for manifest metadata.
