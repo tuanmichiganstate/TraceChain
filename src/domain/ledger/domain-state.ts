@@ -251,13 +251,24 @@ export function reduce(state: DomainState, event: LedgerDomainEvent): DomainStat
        * history, still bearing the wrong value. Only current state moves. That
        * is the difference between correcting a record and editing one, and it
        * is what stage 5 exists to demonstrate.
+       *
+       * Only an ASSET_FIELD correction moves state the ledger tracks. A
+       * DOCUMENT_METADATA_FIELD correction -- the shipping manifest's declared
+       * quantity -- changes nothing here: the asset never held that value, and
+       * its effective figure is derived by replaying the correction chain
+       * (see effective-value.ts), not stored. Editing asset.quantity from a
+       * manifest correction is exactly the shortcut stage 5 must not take.
        */
-      const corrected =
-        event.fieldName === "quantity"
-          ? { ...asset, quantity: Number(event.correctedValue) }
-          : asset;
+      if (
+        event.target.kind === "ASSET_FIELD" &&
+        event.target.field === "quantity" &&
+        event.correctedValue.kind === "QUANTITY"
+      ) {
+        const corrected = { ...asset, quantity: event.correctedValue.amount };
+        return withAsset(state, touchAsset(corrected, event.transactionId));
+      }
 
-      return withAsset(state, touchAsset(corrected, event.transactionId));
+      return state;
     }
 
     case LedgerEventType.BATCH_TRANSFORMED:

@@ -131,6 +131,9 @@ export const recordTransportConditionCommand = (): RecordTransportConditionComma
  */
 export const MANIFEST_QUANTITY_KG = 1000;
 export const WEIGHED_QUANTITY_KG = 100;
+/** Interim (Step 2): a reweigh discrepancy the ASSET_FIELD correction fixes
+ *  until Step 3 restores the manifest 1000 -> 100 correction on a document. */
+export const REWEIGHED_QUANTITY_KG = 98;
 
 export const receiveBatchCommand = (): ReceiveBatchCommand => ({
   commandType: TransactionType.RECEIVE_BATCH,
@@ -154,6 +157,15 @@ export const purchaseOnReceiptCommand = (): TransferOwnershipCommand => ({
   scenarioTimestamp: SCENARIO_TIMELINE.batchReceived,
 });
 
+/**
+ * Interim correction for Step 2, while the shipping manifest does not yet exist.
+ *
+ * A coherent ASSET_FIELD reweigh: the batch reads 100 kg, a re-weigh finds 98,
+ * and the correction states the current value (100) and the corrected one (98).
+ * Step 3 replaces this with a DOCUMENT_METADATA_FIELD correction of the
+ * manifest's declared 1000 kg, which changes no asset state. Kept an ASSET_FIELD
+ * correction here only so stage 5 stays playable before the manifest lands.
+ */
 export const recordCorrectionCommand = (
   correctionOfTransactionId: string,
   reason: string,
@@ -161,9 +173,9 @@ export const recordCorrectionCommand = (
   commandType: TransactionType.RECORD_CORRECTION,
   assetId: GREEN_COFFEE_BATCH_ID,
   correctionOfTransactionId,
-  fieldName: "quantity",
-  incorrectValue: String(MANIFEST_QUANTITY_KG),
-  correctedValue: String(WEIGHED_QUANTITY_KG),
+  target: { kind: "ASSET_FIELD", assetId: GREEN_COFFEE_BATCH_ID, field: "quantity" },
+  incorrectValue: { kind: "QUANTITY", amount: WEIGHED_QUANTITY_KG, unit: QuantityUnit.KG },
+  correctedValue: { kind: "QUANTITY", amount: REWEIGHED_QUANTITY_KG, unit: QuantityUnit.KG },
   reason,
   initiatedByActorId: ActorId.PROCESSING_MANAGER,
   scenarioTimestamp: SCENARIO_TIMELINE.correctionRecorded,

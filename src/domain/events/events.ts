@@ -5,6 +5,7 @@
  * it to world state cannot fail. All state change flows through these.
  */
 
+import type { CorrectionTarget, CorrectionValue } from "../types/correction";
 import type {
   AssetType,
   ComplianceStatus,
@@ -90,9 +91,9 @@ export interface CorrectionRecordedEvent extends EventBase {
   readonly eventType: LedgerEventType.CORRECTION_RECORDED;
   readonly assetId: string;
   readonly correctionOfTransactionId: string;
-  readonly fieldName: string;
-  readonly incorrectValue: string;
-  readonly correctedValue: string;
+  readonly target: CorrectionTarget;
+  readonly incorrectValue: CorrectionValue;
+  readonly correctedValue: CorrectionValue;
   readonly reason: string;
 }
 

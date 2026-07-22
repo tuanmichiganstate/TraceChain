@@ -299,8 +299,10 @@ describe("correction rather than deletion", () => {
     const correction = await ledger.submitCommand(
       commands.recordCorrection({
         correctionOfTransactionId: wrong.transaction.transactionId,
-        incorrectValue: "1000",
-        correctedValue: "90",
+        // Typed values: the asset currently reads 100 kg (its created quantity;
+        // receiving does not change it), and the correction moves it to 90.
+        incorrectValue: { kind: "QUANTITY", amount: 100, unit: QuantityUnit.KG },
+        correctedValue: { kind: "QUANTITY", amount: 90, unit: QuantityUnit.KG },
       }),
       contextFor(ActorId.PROCESSING_MANAGER),
     );

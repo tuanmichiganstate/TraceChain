@@ -146,7 +146,7 @@ export function commandToEvent(
         committedAt,
         assetId: command.assetId,
         correctionOfTransactionId: command.correctionOfTransactionId,
-        fieldName: command.fieldName,
+        target: command.target,
         incorrectValue: command.incorrectValue,
         correctedValue: command.correctedValue,
         reason: command.reason,

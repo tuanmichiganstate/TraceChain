@@ -16,6 +16,7 @@ import type {
   QuantityUnit,
   TransactionType,
 } from "../types/enums";
+import type { CorrectionTarget, CorrectionValue } from "../types/correction";
 
 /** Fields every command carries. */
 interface CommandBase {
@@ -114,11 +115,12 @@ export interface ReceiveBatchCommand extends CommandBase {
 
 export interface RecordCorrectionCommand extends CommandBase {
   readonly commandType: TransactionType.RECORD_CORRECTION;
+  /** The asset this correction concerns, for history association. */
   readonly assetId: string;
   readonly correctionOfTransactionId: string;
-  readonly fieldName: string;
-  readonly incorrectValue: string;
-  readonly correctedValue: string;
+  readonly target: CorrectionTarget;
+  readonly incorrectValue: CorrectionValue;
+  readonly correctedValue: CorrectionValue;
   readonly reason: string;
 }
 

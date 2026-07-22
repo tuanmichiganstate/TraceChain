@@ -5,8 +5,8 @@
 | Artifact | `tracechain-content-review-2026-07-21.html` |
 | Generated | 2026-07-21 |
 | Source commit | `07274457d769af099803a4b2555d3f06ea79ce7b` |
-| Locale parity | **509/509** strings present, 0 missing |
-| SHA-256 | `3ec8c56f7b2d7f20ea21728320285e32bb6eecc6ae18d3a9ab4000981070dfda` |
+| Locale parity | **512/512** strings present, 0 missing |
+| SHA-256 | `66a34d1d2328a35db84a7fdabd6a088a6f70068ad99644d5a907f78b0dd83536` |
 | Review status | **Not yet reviewed** — awaiting Vietnamese subject expert |
 
 Generated from `src/scenarios/coffee-traceability/` and `src/locales/vi.json`,
@@ -21,7 +21,7 @@ missing = [k for k in vi if escape(vi[k]) not in html]
 assert not missing
 ```
 
-An earlier draft of this pack claimed completeness while containing 204/509
+An earlier draft of this pack claimed completeness while containing 512/512
 strings. That is why the count is recorded here and why it must be re-verified
 whenever the pack is regenerated.
 

@@ -4,12 +4,10 @@
   "app.subtitle": "Follow a batch of coffee from the growing region to the consumer",
   "app.simulationNotice": "This is a simulated blockchain environment for learning. It is not connected to any real blockchain network.",
   "app.permissionedNotice": "The model simulated here is a permissioned blockchain: only recognized organizations can write transactions.",
-
   "navigation.continue": "Continue",
   "navigation.back": "Back",
   "navigation.exit": "Exit and save progress",
   "navigation.skip": "Skip the introduction",
-
   "start.heading": "Start the activity",
   "start.estimatedTime": "Estimated time: {minutes} minutes",
   "start.objectivesHeading": "After this activity you will be able to",
@@ -26,13 +24,11 @@
   "start.restartConfirmBody": "All progress and scores from your previous session will be deleted. This cannot be undone.",
   "start.restartConfirmAccept": "Delete and start over",
   "start.restartConfirmCancel": "Keep my current progress",
-
   "status.saving": "Saving...",
   "status.saved": "Progress saved",
   "status.saveFailed": "Progress could not be saved",
   "status.standalone": "Standalone mode: progress is being saved in this browser and has not been sent to Moodle.",
   "status.readOnly": "Review only: this attempt is finished. You can look through all of it, but nothing you do is saved and the grade you already earned will not change.",
-
   "workspace.currentRole": "Current role",
   "workspace.currentRoleValue": "{role} at {organization}",
   "workspace.currentRoleObserver": "No role yet - getting oriented",
@@ -44,7 +40,6 @@
   "workspace.tabs.ledger": "Ledger",
   "workspace.tabs.traceability": "Traceability",
   "workspace.tabs.glossary": "Glossary",
-
   "stage.orientation.title": "Step 1 - Meet the simulated blockchain network",
   "stage.orientation.instruction": "Before writing anything to the ledger, look at the real supply chain and the organizations in it. The coffee batch is a physical object; the ledger record is only a digital representation of it.",
   "stage.orientation.supplyChainAlt": "Supply chain diagram: producer co-operative, certification body, logistics provider, processing plant, distributor, retailer, consumer and regulator.",
@@ -54,14 +49,12 @@
   "stage.orientation.checkOptionPartly": "Yes, if the transaction is endorsed by several organizations.",
   "stage.orientation.checkFeedback": "Blockchain can help establish who recorded data, when it was recorded, and whether it has been altered; but the truthfulness of the input still has to be verified by procedures, inspections, and the accountability of the participating organizations.",
   "stage.orientation.noPenaltyNotice": "This question is not scored. It is here so you can check your own starting assumptions.",
-
   "stage.createBatch.title": "Step 2 - Create the coffee batch on the ledger",
   "stage.createBatch.instruction": "You are the production manager at the co-operative. Create the first record for the green coffee batch just harvested. This will be the first transaction, and it will be written into the first block of the ledger.",
   "stage.createBatch.action.create": "Create the record for the 100 kg green coffee batch and write the transaction into the first block.",
   "stage.createBatch.formHeading": "Batch details",
   "stage.createBatch.sealBlock": "Write the transaction into a block",
   "stage.createBatch.sealBlockHelp": "In a real blockchain a block may contain many transactions. Here we write it immediately so you can watch the first block form.",
-
   "stage.anchorCertificate.title": "Step 3 - Anchor the quality certificate",
   "stage.shipAndMonitor.title": "Step 4 - Hand over and monitor transport",
   "stage.receiveAndCorrect.title": "Step 5 - Receive the batch and correct the error",
@@ -71,7 +64,6 @@
   "stage.recallAndDebrief.title": "Step 9 - Trace and recall the product",
   "stage.notYetAvailable.heading": "This step arrives in the next update",
   "stage.notYetAvailable.body": "You have completed the steps available so far. Your progress has been saved and will be restored when you return.",
-
   "stage.anchorCertificate.instruction": "You are the certification officer. Decide how the quality certificate should be recorded on the ledger, then examine a certificate issued by an organization that is not recognized.",
   "stage.shipAndMonitor.instruction": "The co-operative hands the batch to the carrier. Decide what this transaction actually transfers, then record the transport conditions the sensor reports.",
   "stage.receiveAndCorrect.instruction": "The plant receives the batch and reweighs it. The actual quantity does not match the dispatch manifest already on the ledger. The old record cannot be edited or deleted, so you must add a correction transaction.",
@@ -129,7 +121,6 @@
   "score.conceptualUnderstanding": "Conceptual understanding",
   "stage.recallAndDebrief.action.recall": "Issue a recall transaction for exactly the lots inside the affected scope.",
   "hint.createBatchFields": "The batch identifier must be unique across the network, and the batch must be created by the same organization submitting the transaction.",
-
   "field.assetId": "Batch identifier",
   "field.productName": "Product name",
   "field.originLocation": "Origin",
@@ -143,11 +134,9 @@
   "field.complianceStatus": "Compliance status",
   "field.saleEligibility": "Sale eligibility",
   "field.stateVersion": "State version",
-
   "unit.KG": "kg",
   "unit.GRAM": "g",
   "unit.UNIT": "packages",
-
   "transaction.compose": "Compose transaction",
   "transaction.validate": "Check the data",
   "transaction.sign": "Sign the simulated transaction",
@@ -155,7 +144,6 @@
   "transaction.edit": "Edit",
   "transaction.cancel": "Cancel the transaction",
   "transaction.signatureNotice": "This signature is simulated to illustrate identifying who submitted a transaction. It is not a legally valid digital signature.",
-
   "pipeline.heading": "Transaction processing pipeline",
   "pipeline.DRAFT": "Compose",
   "pipeline.SIGNED": "Sign",
@@ -167,19 +155,16 @@
   "pipeline.REJECTED": "Rejected",
   "pipeline.announceCommitted": "The transaction has been written to the ledger, in block {blockId}.",
   "pipeline.announceRejected": "The transaction was rejected. {count} rules were not satisfied.",
-
   "endorsement.heading": "Simulated endorsement",
   "endorsement.byOrganization": "{organization} - simulated endorsement",
   "endorsement.simulatedCounterparty": "{organization} - simulated endorsement (generated by the system on the counterparty's behalf)",
   "endorsement.notice": "In a real network each organization endorses using its own system. Here the system endorses on behalf of the other parties so that you can work through this alone.",
-
   "validation.heading": "Business rule check results",
   "validation.allPassed": "All rules are satisfied.",
   "validation.someFailed": "The transaction was not accepted. Review the unsatisfied rules below.",
   "validation.statusPassed": "Passed",
   "validation.statusFailed": "Not passed",
   "validation.statusWarning": "Warning",
-
   "validation.actorAuthorized": "The actor is authorized to submit this transaction.",
   "validation.actorNotAuthorized": "The actor is not authorized to submit transactions on this network.",
   "validation.organizationUnknown": "The submitting organization is not among the recognized organizations.",
@@ -196,7 +181,6 @@
   "validation.unitCompatible": "The unit of measure is compatible.",
   "validation.packageSizeRequired": "When the unit is packages, declare the mass of each package so the system can compare masses.",
   "validation.packageSizeNotApplicable": "Only declare a package mass when the unit is packages.",
-
   "validation.actorOrganizationMismatch": "The actor does not belong to the organization named in the transaction.",
   "validation.assetExists": "The batch exists on the ledger.",
   "validation.assetDoesNotExist": "This batch is not on the ledger yet. It must be created before anything can be done to it.",
@@ -256,7 +240,9 @@
   "validation.correctionReasonRequired": "A reason is required. The original record is preserved unchanged, so the reason is the only explanation anyone reading the ledger later will have.",
   "validation.correctionFieldRequired": "The field being corrected must be named.",
   "validation.correctionValuesIdentical": "The corrected value is the same as the incorrect one.",
-
+  "validation.correctionTargetUnknown": "Cannot determine the current effective value to check against.",
+  "validation.correctionIncorrectValueMismatch": "The stated incorrect value does not match the current effective value. Check the original record and any earlier corrections.",
+  "validation.correctionIncorrectValueOk": "The stated incorrect value matches the current effective value.",
   "check.certificateStorage.question": "The quality certificate is a PDF of about 2 MB. How should it be recorded on the ledger?",
   "check.certificateStorage.optionWholeFile": "Store the entire PDF file on chain.",
   "check.certificateStorage.optionHash": "Store the file off chain, and record its hash and metadata on chain.",
@@ -326,7 +312,6 @@
   "hint.correctionMechanism": "A committed record cannot be edited directly. Look for a way to add a new record that links to the incorrect one.",
   "hint.transformationYield": "Roasting drives off moisture, so the output mass is always lower than the input mass.",
   "hint.recallProvenance": "Do not rely on product name or roasting date. Follow the provenance links from the contaminated batch.",
-
   "ledger.title": "Simulated blockchain ledger",
   "ledger.empty": "The ledger has no blocks yet.",
   "ledger.blockNumber": "Block number",
@@ -340,11 +325,9 @@
   "ledger.genesisNotice": "The first block has no predecessor, so it has no previous block hash.",
   "ledger.pendingQueue": "Waiting to be written into a block",
   "ledger.pendingQueueHelp": "These transactions have been ordered but not yet written into a block. In a real blockchain, several transactions are usually gathered and written into the same block.",
-
   "state.title": "Current state",
   "state.empty": "There are no assets on the ledger yet.",
   "state.versionHelp": "Each time the state changes, the version number increases by one.",
-
   "history.title": "Transaction history",
   "history.empty": "There are no transactions yet.",
   "history.columnTime": "Time",
@@ -353,10 +336,8 @@
   "history.columnAction": "Action",
   "history.columnStatus": "Status",
   "history.columnBlock": "Block",
-
   "traceability.title": "Traceability",
   "recall.title": "Product recall handling",
-
   "lifecycle.CREATED": "Created",
   "lifecycle.CERTIFIED": "Certified",
   "lifecycle.READY_FOR_SHIPMENT": "Ready for shipment",
@@ -369,17 +350,14 @@
   "lifecycle.SOLD": "Sold",
   "lifecycle.RECALLED": "Recalled",
   "lifecycle.CLOSED": "Closed",
-
   "compliance.PENDING_CERTIFICATION": "Pending certification",
   "compliance.COMPLIANT": "Compliant",
   "compliance.INSPECTION_REQUIRED": "Inspection required",
   "compliance.NON_COMPLIANT": "Non-compliant",
   "compliance.RECALLED": "Recalled",
-
   "sale.NOT_YET_ELIGIBLE": "Not yet eligible for sale",
   "sale.ELIGIBLE": "Eligible for sale",
   "sale.PROHIBITED": "Sale prohibited",
-
   "organizations.producerCoop.name": "Cao Nguyen Coffee Co-operative",
   "organizations.certificationBody.name": "Agricultural Certification Centre",
   "organizations.logisticsProvider.name": "Lien Viet Transport Company",
@@ -388,7 +366,6 @@
   "organizations.retailer.name": "Viet Market Supermarket",
   "organizations.regulator.name": "Food Safety Authority",
   "organizations.unrecognizedCertifier.name": "Global Quality Consulting (not a recognized certifier)",
-
   "actors.producerManager.name": "Production manager",
   "actors.certificationOfficer.name": "Certification officer",
   "actors.logisticsCoordinator.name": "Logistics coordinator",
@@ -397,13 +374,11 @@
   "actors.retailManager.name": "Retail manager",
   "actors.regulatoryAuditor.name": "Regulatory auditor",
   "actors.shippingClerk.name": "Shipping clerk",
-
   "locations.producerFarm.name": "Coffee farm, Lam Dong",
   "locations.transitStation.name": "Bao Loc transit station",
   "locations.processingPlant.name": "Roasting plant, Binh Duong",
   "locations.distributionCentre.name": "Distribution centre, Ho Chi Minh City",
   "locations.retailStore.name": "Viet Market, District 1",
-
   "terms.transaction": "Transaction",
   "terms.block": "Block",
   "terms.hash": "Hash",
@@ -417,14 +392,12 @@
   "terms.endorsement": "Endorsement",
   "terms.orderingService": "Ordering service",
   "terms.permissionedBlockchain": "Permissioned blockchain",
-
   "message.inputTruth": "Blockchain helps preserve and trace submitted records, but it does not automatically prove that a physical-world claim is true.",
   "message.correction": "Committed records are not edited or deleted. A new correction transaction is added and linked to the original record.",
   "message.sharedLedger": "A shared ledger does not necessarily mean that every participant can see every item of data.",
   "message.blockchainNecessity": "Blockchain is most defensible when independent organizations need shared records and do not want one participant to control the entire system.",
   "message.physicalDigital": "Reliable traceability also requires identifiers, procedures, sensors, inspections, authorized data sources, and organizational accountability.",
   "message.tamperDetected": "The hash chain is no longer consistent. Altering the old record has invalidated this block and every block after it.",
-
   "check.submit": "Submit answer",
   "check.retry": "Try again",
   "check.correct": "Correct",
@@ -529,7 +502,6 @@
   "terms.orderingServiceDefinition": "The component that puts transactions in order before they are written into a block.",
   "terms.oracleDefinition": "An authorized external data source that brings real-world information onto the ledger, such as a sensor reading.",
   "terms.permissionedBlockchainDefinition": "A blockchain network on which only recognized organizations may write transactions.",
-
   "errors.domainValidation": "The transaction is not yet valid. Please check the information you entered.",
   "errors.ledgerIntegrity": "The ledger's integrity could not be verified. Your progress has been preserved.",
   "errors.scenarioConfiguration": "The learning scenario could not be loaded. Please reload the page.",

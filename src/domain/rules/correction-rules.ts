@@ -13,6 +13,8 @@
 import { TransactionStatus, TransactionType } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
 import type { SupplyChainCommand } from "../commands/commands";
+import { correctionValuesEqual } from "../types/correction";
+import { effectiveValueOf } from "../ledger/effective-value";
 import { failed, notApplicable, passed, type ValidationRule } from "./types";
 
 const MINIMUM_REASON_LENGTH = 10;
@@ -77,10 +79,7 @@ export const correctionReasonRequiredRule: ValidationRule = {
         { minimumLength: MINIMUM_REASON_LENGTH },
       );
     }
-    if (command.fieldName.trim().length === 0) {
-      return failed(ValidationRuleId.CORRECTION_REASON_REQUIRED, "validation.correctionFieldRequired");
-    }
-    if (command.incorrectValue === command.correctedValue) {
+    if (correctionValuesEqual(command.incorrectValue, command.correctedValue)) {
       return failed(
         ValidationRuleId.CORRECTION_REASON_REQUIRED,
         "validation.correctionValuesIdentical",
@@ -91,7 +90,48 @@ export const correctionReasonRequiredRule: ValidationRule = {
   },
 };
 
+/**
+ * The stated incorrect value must equal what the target currently effectively
+ * holds -- for the first correction that is the original committed value, and
+ * for a later one it is the value the previous correction left. This is what
+ * makes a correction chain coherent: you cannot claim to be fixing 1000 when
+ * the record already reads 100.
+ *
+ * Deliberately generic. The scenario's numbers (1000, KG, 100) live in the
+ * scenario and its tests; this rule only asks "does the stated wrong value
+ * match the current effective value", whatever they happen to be.
+ */
+export const correctionIncorrectValueMatchesEffectiveRule: ValidationRule = {
+  ruleId: ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
+  appliesTo: [TransactionType.RECORD_CORRECTION],
+  evaluate(command, context) {
+    if (command.commandType !== TransactionType.RECORD_CORRECTION) {
+      return notApplicable(ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE);
+    }
+
+    const effective = effectiveValueOf(context.state, command.target);
+    if (effective === null) {
+      return failed(
+        ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
+        "validation.correctionTargetUnknown",
+      );
+    }
+    if (!correctionValuesEqual(command.incorrectValue, effective)) {
+      return failed(
+        ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
+        "validation.correctionIncorrectValueMismatch",
+      );
+    }
+
+    return passed(
+      ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
+      "validation.correctionIncorrectValueOk",
+    );
+  },
+};
+
 export const correctionRules: readonly ValidationRule<SupplyChainCommand>[] = [
   correctionReferenceExistsRule,
   correctionReasonRequiredRule,
+  correctionIncorrectValueMatchesEffectiveRule,
 ];

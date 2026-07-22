@@ -10,6 +10,7 @@ import {
   MANIFEST_QUANTITY_KG,
   PRODUCER_CONTEXT,
   PROCESSOR_CONTEXT,
+  REWEIGHED_QUANTITY_KG,
   WEIGHED_QUANTITY_KG,
   purchaseOnReceiptCommand,
   receiveBatchCommand,
@@ -151,8 +152,8 @@ function CorrectionPanel({
           isFirstOfType
           summary={[
             ["field.correctionOf", <code key="t">{correctionOfTransactionId}</code>],
-            ["field.incorrectValue", `${MANIFEST_QUANTITY_KG} kg`],
-            ["field.correctedValue", `${WEIGHED_QUANTITY_KG} kg`],
+            ["field.incorrectValue", `${WEIGHED_QUANTITY_KG} kg`],
+            ["field.correctedValue", `${REWEIGHED_QUANTITY_KG} kg`],
             ["field.correctionReason", reason],
           ]}
           buildCommand={() => recordCorrectionCommand(correctionOfTransactionId, reason)}
