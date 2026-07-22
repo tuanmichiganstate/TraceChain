@@ -81,13 +81,21 @@ there is currently no authoritative gate — the honest control hierarchy is:
 |---|---|
 | Pre-commit hook | present, local, opt-in via `npm run setup:hooks` |
 | Pre-push hook | not implemented |
-| CI required check | workflow committed, **inert until the repo has a remote** |
+| CI (runs) | **live** — `quality` + `e2e` on every push/PR, green at `72c7241` |
+| CI (enforced as required) | **blocked by plan tier** — see below |
 
 `.github/workflows/quality.yml` runs `npm run quality` and `npx playwright test`
-on every push and pull request. It is the only control here that cannot be
-skipped by forgetting to run something — but this repository has **no git
-remote**, so nothing executes it yet. Adding a remote, pushing, and marking both
-jobs as required status checks is what turns it from a file into a gate.
+on every push and pull request against `github.com/tuanmichiganstate/TraceChain`
+(private). Both jobs are green.
+
+Making those checks *required* -- so a red run blocks a merge -- needs classic
+branch protection or a repository ruleset. **Both require GitHub Pro for a
+private repository** (HTTP 403: "Upgrade to GitHub Pro or make this repository
+public"). So CI reports on every push but cannot yet block one. Closing that is a
+decision only the owner can make: upgrade the plan, or make the repo public
+(declined here -- the content is unreviewed and stage 5 is a known defect). On a
+solo direct-push repo the practical gap is small, since required checks mainly
+gate PR merges.
 
 ## Artefacts
 
