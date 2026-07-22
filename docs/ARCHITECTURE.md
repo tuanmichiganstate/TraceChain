@@ -314,6 +314,43 @@ covered on every engine; only Tab *traversal* is platform-dependent.
 binaries that a fresh clone does not have. Run `npx playwright install` once,
 then it takes about 25 seconds for all four engines.
 
+### How the suite is run in CI, and why it is shaped that way
+
+Three durable constraints, none of them obvious from the workflow alone:
+
+**One Playwright worker per runner, and that is measured.** The GitHub-hosted
+runner is 2-core / 7 GB, so Playwright's `ceil(cores / 2)` default selects a
+single worker. Two workers on one runner was tried against real CI and was worse
+on both counts — slower, and three failures plus a flake with 90-second click
+timeouts, two browsers starving each other on two cores. Retries then pay for
+the contention a second time. Parallelism has to come from more runners, not
+more workers per runner.
+
+**One runner per browser project.** Each matrix job installs only the engine it
+launches and runs one project, so the four run side by side instead of end to
+end. `mobile-safari` is an iPhone SE profile that Playwright drives with WebKit,
+which is why the matrix carries a separate browser column: the project and the
+engine are not the same thing.
+
+**WebKit is split across two shards, because it alone sets the duration.** On
+this runner WebKit costs roughly five times what the same tests cost on Chromium
+or Firefox — a gap that does not appear locally, where all four engines are
+within a few seconds of each other. Every matrix entry carries a shard so the
+command needs no conditional; `1/1` is the whole project. Sharding partitions
+tests, it never drops them, and the totals are checked against the single-job
+figures.
+
+`fail-fast` is off: most of what this suite exists to answer is whether a break
+is engine-specific, and stopping the other browsers on the first failure hides
+exactly that. Each job uploads its report under its own name, since several jobs
+writing one artifact name would collide.
+
+A separate `e2e` job runs no tests and only reports whether every browser job
+passed. It exists so that one stable name can be depended on — by a required
+check, or by a reviewer skimming the list — rather than four that change
+whenever a project is added or sharded. It is verified to go red when any single
+browser job does.
+
 ## Dependencies
 
 Zero runtime dependencies beyond `react` and `react-dom`. Each omission is

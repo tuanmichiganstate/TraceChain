@@ -105,6 +105,16 @@ about was live in the build.
 
 **Changed**
 
+- **CI wall-clock roughly halved by running browsers on separate runners.**
+  The suite ran serially on one 2-core runner, so the four browser projects
+  queued behind each other. Each project now gets its own runner, keeping the
+  single Playwright worker that is stable there, and WebKit — which costs about
+  five times Chromium or Firefox on that hardware and alone set the duration —
+  is split across two shards. Median wall-clock falls from 758s to 436s, for
+  about 35% more runner-minutes. A stable `e2e` job aggregates the browser jobs
+  so one check name still represents all of them, and is verified to go red when
+  any single browser does. No test, browser or skip was changed: 67 passed and
+  5 skipped, before and after.
 - **CI runs once per commit instead of twice.** Both workflow events were
   unfiltered, so every push to a branch with an open pull request started two
   identical runs of the same SHA — confirmed from run metadata across four

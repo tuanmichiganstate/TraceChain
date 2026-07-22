@@ -129,10 +129,6 @@ jobs:
       # downloads are a small fraction of a job dominated by test execution.
       - run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: TEMPORARY - prove the aggregate check fails on a red browser
-        if: matrix.name == 'chromium'
-        run: exit 1
-
       - name: End-to-end
         run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}
 
