@@ -17,6 +17,7 @@ import {
   QuantityUnit,
   SaleEligibility,
   TransactionStatus,
+  TransactionType,
 } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
 import { assessRecallSelection } from "../provenance/recall-scope";
@@ -24,6 +25,11 @@ import {
   DISTRACTOR_PACKAGED_LOT_ID,
   UNRELATED_PACKAGED_LOT_ID,
 } from "../../scenarios/coffee-traceability/seed-assets";
+import {
+  MANIFEST_QUANTITY_KG,
+  SHIPPING_MANIFEST_ANCHOR_ID,
+  WEIGHED_QUANTITY_KG,
+} from "../../scenarios/coffee-traceability/facts";
 
 /**
  * THE MILESTONE 2 EXIT CONDITION.
@@ -289,36 +295,49 @@ describe("correction rather than deletion", () => {
   it("adds a correction without touching the original record", async () => {
     const ledger = await runUpTo("inTransit");
 
-    // Receipt is operational evidence; the asset quantity itself originated in
-    // the committed CREATE_BATCH transaction and that is the correction target.
     const wrong = await ledger.submitCommand(
       commands.receiveBatch({ observedQuantity: 100 }),
       contextFor(ActorId.PROCESSING_MANAGER),
     );
     expect(wrong.isAccepted).toBe(true);
 
+    const manifest = (await ledger.getAllTransactions()).find(
+      (transaction) =>
+        transaction.transactionType === TransactionType.ANCHOR_DOCUMENT &&
+        (transaction.commandPayload as { documentAnchorId?: string }).documentAnchorId ===
+          SHIPPING_MANIFEST_ANCHOR_ID,
+    );
+    if (manifest === undefined) throw new Error("manifest missing");
+
     const correction = await ledger.submitCommand(
       commands.recordCorrection({
-        correctionOfTransactionId: "TX_000001",
-        incorrectValue: { kind: "QUANTITY", amount: 100, unit: QuantityUnit.KG },
-        correctedValue: { kind: "QUANTITY", amount: 90, unit: QuantityUnit.KG },
+        correctionOfTransactionId: manifest.transactionId,
       }),
       contextFor(ActorId.PROCESSING_MANAGER),
     );
     expect(correction.isAccepted).toBe(true);
 
-    // Current state moved...
-    expect((await ledger.getAsset(GREEN_COFFEE_BATCH_ID))?.quantity).toBe(90);
+    // Document metadata correction does not rewrite operational asset quantity.
+    expect((await ledger.getAsset(GREEN_COFFEE_BATCH_ID))?.quantity).toBe(100);
 
-    // ...but the original transaction is byte-for-byte what it always was.
-    const original = await ledger.getTransaction("TX_000001");
+    // The original manifest remains byte-for-byte what it always was.
+    const original = await ledger.getTransaction(manifest.transactionId);
     expect(original?.transactionStatus).not.toBe(TransactionStatus.REJECTED);
-    expect((original?.commandPayload as { quantity: number }).quantity).toBe(100);
+    expect(
+      (original?.commandPayload as {
+        metadata: { declaredQuantity: { amount: number } };
+      }).metadata.declaredQuantity.amount,
+    ).toBe(MANIFEST_QUANTITY_KG);
+    expect(
+      (correction.transaction.commandPayload as {
+        correctedValue: { amount: number };
+      }).correctedValue.amount,
+    ).toBe(WEIGHED_QUANTITY_KG);
 
     // Both records are in history.
     const history = await ledger.getAssetHistory(GREEN_COFFEE_BATCH_ID);
     const ids = history.map((transaction) => transaction.transactionId);
-    expect(ids).toContain("TX_000001");
+    expect(ids).toContain(manifest.transactionId);
     expect(ids).toContain(wrong.transaction.transactionId);
     expect(ids).toContain(correction.transaction.transactionId);
   });

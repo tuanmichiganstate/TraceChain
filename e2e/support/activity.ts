@@ -113,8 +113,8 @@ export class Activity {
     await this.page.getByRole("button", { name: "Tiếp tục" }).last().click();
   }
 
-  /** Stages 1 to 7, ending with the packaged lot on the retailer's shelf. */
-  async playThroughStageSeven(): Promise<void> {
+  /** Stages 1 to 5, ending with the committed manifest correction. */
+  async playThroughStageFive(): Promise<void> {
     await this.start();
     await this.expectStage(1);
     await this.answer(/Không\. Blockchain giúp xác định/);
@@ -143,6 +143,11 @@ export class Activity {
     await this.submitAndSeal("Tiếp nhận lô hàng");
     await this.submitAndSeal("Ghi nhận việc mua lô hàng");
     await this.submitAndSeal("Gửi giao dịch điều chỉnh");
+  }
+
+  /** Stages 1 to 7, ending with the packaged lot on the retailer's shelf. */
+  async playThroughStageSeven(): Promise<void> {
+    await this.playThroughStageFive();
     await this.continue();
 
     await this.expectStage(6);

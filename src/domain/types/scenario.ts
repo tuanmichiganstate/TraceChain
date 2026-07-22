@@ -10,11 +10,12 @@
  * required feature unbuildable:
  *
  *   - `seedTransactions` and `seedProvenanceEdges`. Section 17.1 offered only
- *     `seedAssets`, which cannot express committed history. Two required
- *     features need it: the dispatch manifest carrying the quantity error must
- *     already be sealed in a block before the learner arrives, and the
- *     distractor lots in section 24.4 need real provenance chains, or
+ *     `seedAssets`, which cannot express committed history. The distractor lots
+ *     in section 24.4 need real provenance chains, or
  *     `calculateRecallScope` has nothing to correctly exclude.
+ *
+ *   - `scriptedTransactions`. Some authored history depends on a learner event:
+ *     Stage 5's manifest is inserted only after custody commits.
  *
  *   - `locations`. Section 10.3 referenced `currentLocationId` and section 24.2
  *     referenced `RecallLocation` without ever defining the entity.
@@ -34,6 +35,7 @@ import type {
 } from "./enums";
 import type { Actor, Location, Organization } from "./models";
 import type { SupplyChainCommand } from "../commands/commands";
+import type { CorrectionTarget, CorrectionValue } from "./correction";
 import type { LedgerConfiguration } from "../ledger/ledger-engine";
 import { ScoreComponent } from "./scoring";
 import type { ScoringConfiguration } from "./scoring";
@@ -65,6 +67,27 @@ export interface SupplyChainAssetSeed {
  */
 export interface SeedTransactionDefinition {
   readonly seedId: string;
+  readonly command: SupplyChainCommand;
+  readonly actorId: string;
+  readonly organizationId: string;
+}
+
+/**
+ * A deterministic scenario-authored transaction that becomes eligible only
+ * after a real committed transaction exists. Unlike startup seeds, scripts may
+ * depend on learner-created evidence.
+ */
+export interface ScriptedTransactionDefinition {
+  readonly scriptId: string;
+  readonly trigger: {
+    readonly kind: "AFTER_COMMITTED_TRANSACTION";
+    readonly transactionType: TransactionType;
+    readonly assetId: string;
+  };
+  readonly idempotencyGuard: {
+    readonly kind: "DOCUMENT_ANCHOR_ABSENT";
+    readonly documentAnchorId: string;
+  };
   readonly command: SupplyChainCommand;
   readonly actorId: string;
   readonly organizationId: string;
@@ -136,6 +159,7 @@ export interface RequiredScenarioAction {
   readonly actionId: string;
   readonly descriptionKey: string;
   readonly transactionType?: TransactionType;
+  readonly transactionEvidence?: CommittedTransactionEvidence;
   readonly knowledgeCheckId?: string;
 }
 
@@ -156,7 +180,23 @@ export interface ScoredAction {
   readonly transactionType: TransactionType;
   readonly scoreComponent: ScoreComponent;
   readonly points: number;
+  /** Optional domain evidence that must agree with the recorded action. */
+  readonly evidence?: ScoringEvidence;
 }
+
+/** Immutable evidence captured by one committed transaction. */
+export type CommittedTransactionEvidence = {
+  readonly kind: "CORRECTION_RECORDED";
+  readonly target: CorrectionTarget;
+  readonly correctedValue: CorrectionValue;
+};
+
+/** Evidence whose correctness may be recomputed from current ledger state. */
+export type ScoringEvidence = {
+  readonly kind: "EFFECTIVE_VALUE";
+  readonly target: CorrectionTarget;
+  readonly expectedValue: CorrectionValue;
+};
 
 /**
  * Evaluated against world state and the learner's decisions, so stage
@@ -178,7 +218,11 @@ export interface ScoredAction {
  * the transaction that put it there.
  */
 export type StageCompletionCondition =
-  | { readonly conditionType: "TRANSACTION_COMMITTED"; readonly transactionType: TransactionType }
+  | {
+      readonly conditionType: "TRANSACTION_COMMITTED";
+      readonly transactionType: TransactionType;
+      readonly evidence?: CommittedTransactionEvidence;
+    }
   | { readonly conditionType: "KNOWLEDGE_CHECK_ANSWERED"; readonly knowledgeCheckId: string }
   | { readonly conditionType: "ASSET_EXISTS"; readonly assetId: string }
   | { readonly conditionType: "DECISION_RECORDED"; readonly decisionId: string };
@@ -234,6 +278,7 @@ export interface ScenarioDefinition {
   readonly timeline: ScenarioTimeline;
   readonly seedAssets: readonly SupplyChainAssetSeed[];
   readonly seedTransactions: readonly SeedTransactionDefinition[];
+  readonly scriptedTransactions: readonly ScriptedTransactionDefinition[];
   readonly seedProvenanceEdges: readonly SeedProvenanceEdgeDefinition[];
   readonly stages: readonly ScenarioStageDefinition[];
   readonly scoringConfiguration: ScoringConfiguration;

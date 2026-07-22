@@ -111,6 +111,28 @@ describe("state codec", () => {
       expect(decodeAttemptState(encoded, smallSchema)).toEqual(baseSnapshot);
     });
 
+    it("preserves the UTF-8 correction reason needed for deterministic replay", () => {
+      const snapshot: AttemptSnapshot = {
+        ...baseSnapshot,
+        replayData: {
+          correctionReason: "Cân lại tại nhà máy: 100 kg, không phải 1000 kg.",
+        },
+      };
+      expect(decodeAttemptState(encodeAttemptState(snapshot, smallSchema), smallSchema)).toEqual(
+        snapshot,
+      );
+    });
+
+    it("reads legacy TC1 data and treats appended decisions as unanswered", () => {
+      const parts = encodeAttemptState(baseSnapshot, smallSchema).split(".");
+      const legacyBody = ["TC1", parts[1], parts[2], parts[3], parts[4]].join(".");
+      const legacy = `${legacyBody}.${sha256Prefix(legacyBody)}`;
+      const restored = decodeAttemptState(legacy, makeSchema(9, 3));
+
+      expect(restored).toEqual(baseSnapshot);
+      expect(restored.decisions["INT_DECISION_8"]).toBeUndefined();
+    });
+
     it("restores a completed and passed attempt", () => {
       const snapshot: AttemptSnapshot = {
         ...baseSnapshot,
@@ -217,16 +239,17 @@ describe("state codec", () => {
       expect(() => decodeAttemptState(foreign, smallSchema)).toThrow(UnsupportedStateVersionError);
     });
 
-    it("rejects data written by a build with a different decision count", () => {
+    it("accepts appended decision keys but rejects a schema that removed old keys", () => {
       const encoded = encodeAttemptState(baseSnapshot, smallSchema);
-      expect(() => decodeAttemptState(encoded, makeSchema(9, 3))).toThrow(/does not match/);
+      expect(() => decodeAttemptState(encoded, makeSchema(9, 3))).not.toThrow();
+      expect(() => decodeAttemptState(encoded, makeSchema(2, 3))).toThrow(/incompatible/);
     });
 
     it("rejects a stage index beyond the known stages", () => {
       // Stage index "z" is 35, far past the nine defined stages.
       const parts = encodeAttemptState(baseSnapshot, smallSchema).split(".");
       parts[1] = `z${(parts[1] as string).slice(1)}`;
-      const body = parts.slice(0, 5).join(".");
+      const body = parts.slice(0, 6).join(".");
       // Re-checksum so the stage check is what fails, not the checksum.
       const rebuilt = `${body}.${sha256Prefix(body)}`;
       expect(() => decodeAttemptState(rebuilt, smallSchema)).toThrow(/out of range/);

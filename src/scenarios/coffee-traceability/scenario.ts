@@ -15,6 +15,7 @@ import { coffeeScoringConfiguration } from "./scoring";
 import { coffeeSeedAssets, coffeeSeedProvenanceEdges } from "./seed-assets";
 import { SCENARIO_TIMELINE } from "./timeline";
 import { DECISION_IDS, HINT_IDS } from "./decisions";
+import { coffeeScriptedTransactions } from "./scripted-transactions";
 
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
@@ -31,12 +32,11 @@ export const coffeeScenario: ScenarioDefinition = {
 
   seedAssets: coffeeSeedAssets,
   /*
-   * Empty at startup. The erroneous dispatch manifest that drives the stage 5
-   * correction is not a startup seed: it depends on the batch the learner
-   * creates in stage 2, so it is injected at the stage 4 boundary instead.
-   * Milestone 3 adds it.
+   * Empty at startup. The erroneous shipping manifest is a scripted transaction
+   * because it depends on the learner's committed custody handoff.
    */
   seedTransactions: [],
+  scriptedTransactions: coffeeScriptedTransactions,
   seedProvenanceEdges: coffeeSeedProvenanceEdges,
 
   stages: coffeeStages,

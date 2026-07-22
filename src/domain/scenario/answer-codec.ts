@@ -31,6 +31,8 @@ import {
   type ScenarioDefinition,
 } from "../types/scenario";
 import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DomainState } from "../ledger/domain-state";
+import { scoringEvidenceSatisfied } from "./transaction-evidence";
 
 /** A learner's answer, in the form the interface works with. */
 export interface Answer {
@@ -146,6 +148,7 @@ export const ACTION_REJECTED = 0;
 export function deriveCorrectnessFromDecisions(
   decisions: Readonly<Record<string, DecisionRecord>>,
   scenario: ScenarioDefinition,
+  state?: DomainState,
 ): Record<string, boolean> {
   const correctness: Record<string, boolean> = {};
 
@@ -161,7 +164,10 @@ export function deriveCorrectnessFromDecisions(
   for (const action of allScoredActions(scenario)) {
     const decision = decisions[action.decisionId];
     if (decision === undefined) continue;
-    correctness[action.decisionId] = decision.encodedValue === ACTION_ACCEPTED;
+    correctness[action.decisionId] =
+      decision.encodedValue === ACTION_ACCEPTED &&
+      (action.evidence === undefined ||
+        (state !== undefined && scoringEvidenceSatisfied(state, action.evidence)));
   }
 
   return correctness;

@@ -34,6 +34,11 @@ import {
   PACKAGED_COFFEE_LOT_ID,
   ROASTED_COFFEE_BATCH_ID,
 } from "../../src/scenarios/coffee-traceability/stages";
+import {
+  MANIFEST_QUANTITY_KG,
+  SHIPPING_MANIFEST_ANCHOR_ID,
+  WEIGHED_QUANTITY_KG,
+} from "../../src/scenarios/coffee-traceability/facts";
 
 export {
   ActorId,
@@ -81,6 +86,7 @@ export function createDriver(options: DriverOptions = {}): SimulatedLedgerAdapte
     hash: sha256Hex,
     configuration: coffeeScenario.ledgerConfiguration,
     registries,
+    scriptedTransactions: coffeeScenario.scriptedTransactions,
     ...(initialState === undefined ? {} : { initialState }),
   });
 }
@@ -185,11 +191,23 @@ export const commands = {
     return {
       commandType: TransactionType.RECORD_CORRECTION,
       assetId: GREEN_COFFEE_BATCH_ID,
-      correctionOfTransactionId: "TX_000001",
-      target: { kind: "ASSET_FIELD", assetId: GREEN_COFFEE_BATCH_ID, field: "quantity" },
-      incorrectValue: { kind: "QUANTITY", amount: 100, unit: QuantityUnit.KG },
-      correctedValue: { kind: "QUANTITY", amount: 98, unit: QuantityUnit.KG },
-      reason: "Can lai tai nha may cho ket qua 98 kg",
+      correctionOfTransactionId: "TX_MANIFEST_REQUIRED",
+      target: {
+        kind: "DOCUMENT_METADATA_FIELD",
+        documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+        field: "declaredQuantity",
+      },
+      incorrectValue: {
+        kind: "QUANTITY",
+        amount: MANIFEST_QUANTITY_KG,
+        unit: QuantityUnit.KG,
+      },
+      correctedValue: {
+        kind: "QUANTITY",
+        amount: WEIGHED_QUANTITY_KG,
+        unit: QuantityUnit.KG,
+      },
+      reason: "Can lai tai nha may cho ket qua 100 kg, khong phai 1000 kg",
       initiatedByActorId: ActorId.PROCESSING_MANAGER,
       scenarioTimestamp: SCENARIO_TIMELINE.correctionRecorded,
       ...overrides,
@@ -317,8 +335,15 @@ export async function runUpTo(
       await ledger.submitCommand(commands.purchaseOnReceipt(), contextFor(ActorId.PRODUCER_MANAGER));
       // The dispatch manifest said 1000 kg; the scales say 100. The committed
       // record cannot be edited, so a correction is added alongside it.
+      const manifest = (await ledger.getAllTransactions()).find(
+        (transaction) =>
+          transaction.transactionType === TransactionType.ANCHOR_DOCUMENT &&
+          (transaction.commandPayload as { documentAnchorId?: string }).documentAnchorId ===
+            SHIPPING_MANIFEST_ANCHOR_ID,
+      );
+      if (manifest === undefined) throw new Error("Scripted shipping manifest is missing");
       return ledger.submitCommand(
-        commands.recordCorrection({ correctionOfTransactionId: "TX_000001" }),
+        commands.recordCorrection({ correctionOfTransactionId: manifest.transactionId }),
         contextFor(ActorId.PROCESSING_MANAGER),
       );
     }],
@@ -336,6 +361,7 @@ export async function runUpTo(
       const reasons = result.validation.failures.map((failure) => failure.messageKey).join(", ");
       throw new Error(`Scenario driver failed at "${name}": ${reasons}`);
     }
+    await ledger.sealPendingTransactions(result.transaction.createdAt);
     if (name === step) break;
   }
 

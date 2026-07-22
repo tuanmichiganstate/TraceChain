@@ -1,5 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { ScenarioStageId, TransactionType } from "../../domain/types/enums";
+import {
+  ScenarioStageId,
+  TransactionStatus,
+  TransactionType,
+} from "../../domain/types/enums";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
 import { StageShell } from "../../components/stage-shell";
@@ -10,13 +14,15 @@ import {
   MANIFEST_QUANTITY_KG,
   PRODUCER_CONTEXT,
   PROCESSOR_CONTEXT,
-  REWEIGHED_QUANTITY_KG,
+  SHIPPING_MANIFEST_ANCHOR_ID,
   WEIGHED_QUANTITY_KG,
   purchaseOnReceiptCommand,
   receiveBatchCommand,
   recordCorrectionCommand,
 } from "../../scenarios/coffee-traceability/commands";
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
+import type { AnchorDocumentCommand } from "../../domain/commands/commands";
+import { resolveEffectiveValue } from "../../domain/ledger/effective-value";
 
 const MINIMUM_REASON_LENGTH = 10;
 
@@ -40,13 +46,23 @@ export function ReceiveAndCorrectStage(): ReactNode {
   const receiptTransaction = Object.values(state.domain.transactionsById).find(
     (transaction) =>
       transaction.transactionType === TransactionType.RECEIVE_BATCH &&
-      transaction.transactionStatus !== "REJECTED",
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
   );
-  const assetCreationTransaction = Object.values(state.domain.transactionsById).find(
+  const manifestTransaction = state.domain.transactionOrder
+    .map((transactionId) => state.domain.transactionsById[transactionId])
+    .find(
     (transaction) =>
-      transaction.transactionType === TransactionType.CREATE_BATCH &&
-      transaction.transactionStatus !== "REJECTED",
+      transaction?.transactionType === TransactionType.ANCHOR_DOCUMENT &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED &&
+      (transaction.commandPayload as AnchorDocumentCommand).documentAnchorId ===
+        SHIPPING_MANIFEST_ANCHOR_ID,
   );
+  const manifestTarget = {
+    kind: "DOCUMENT_METADATA_FIELD" as const,
+    documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+    field: "declaredQuantity" as const,
+  };
+  const effectiveManifestValue = resolveEffectiveValue(state.domain, manifestTarget)?.effectiveValue;
 
   return (
     <StageShell stageId={ScenarioStageId.RECEIVE_AND_CORRECT}>
@@ -68,6 +84,26 @@ export function ReceiveAndCorrectStage(): ReactNode {
         </dl>
         <p>{t("stage.receiveAndCorrect.discrepancyBody")}</p>
         <p className="muted">{t("message.correction")}</p>
+        {manifestTransaction !== undefined ? (
+          <dl className="asset-card__grid">
+            <div className="asset-card__row">
+              <dt>{t("field.documentAnchor")}</dt>
+              <dd><code>{SHIPPING_MANIFEST_ANCHOR_ID}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("history.columnTransaction")}</dt>
+              <dd><code>{manifestTransaction.transactionId}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
+              <dd>
+                {effectiveManifestValue?.kind === "QUANTITY"
+                  ? `${effectiveManifestValue.amount} ${effectiveManifestValue.unit}`
+                  : `${MANIFEST_QUANTITY_KG} kg`}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </section>
 
       <TransactionAction
@@ -85,7 +121,7 @@ export function ReceiveAndCorrectStage(): ReactNode {
       />
 
       <TransactionAction
-        decisionId={null}
+        decisionId="INT_OWNERSHIP_PURCHASED_TRANSACTION"
         labelKey="stage.receiveAndCorrect.purchaseAction"
         isFirstOfType
         summary={[
@@ -97,8 +133,8 @@ export function ReceiveAndCorrectStage(): ReactNode {
         context={PRODUCER_CONTEXT}
       />
 
-      {receiptTransaction !== undefined && assetCreationTransaction !== undefined ? (
-        <CorrectionPanel correctionOfTransactionId={assetCreationTransaction.transactionId} />
+      {receiptTransaction !== undefined && manifestTransaction !== undefined ? (
+        <CorrectionPanel correctionOfTransactionId={manifestTransaction.transactionId} />
       ) : null}
 
       {asset !== undefined ? (
@@ -125,7 +161,10 @@ function CorrectionPanel({
   correctionOfTransactionId: string;
 }): ReactNode {
   const t = useTranslator();
-  const [reason, setReason] = useState(t("stage.receiveAndCorrect.reasonSuggestion"));
+  const { state } = useSimulation();
+  const [reason, setReason] = useState(
+    state.correctionReason ?? t("stage.receiveAndCorrect.reasonSuggestion"),
+  );
 
   const isReasonUsable = reason.trim().length >= MINIMUM_REASON_LENGTH;
 
@@ -141,6 +180,7 @@ function CorrectionPanel({
           id="correction-reason"
           className="field__control"
           rows={3}
+          maxLength={240}
           value={reason}
           aria-describedby="correction-reason-hint"
           onChange={(event) => setReason(event.target.value)}
@@ -157,8 +197,9 @@ function CorrectionPanel({
           isFirstOfType
           summary={[
             ["field.correctionOf", <code key="t">{correctionOfTransactionId}</code>],
-            ["field.incorrectValue", `${WEIGHED_QUANTITY_KG} kg`],
-            ["field.correctedValue", `${REWEIGHED_QUANTITY_KG} kg`],
+            ["field.correctionTarget", `${SHIPPING_MANIFEST_ANCHOR_ID}.declaredQuantity`],
+            ["field.incorrectValue", `${MANIFEST_QUANTITY_KG} kg`],
+            ["field.correctedValue", `${WEIGHED_QUANTITY_KG} kg`],
             ["field.correctionReason", reason],
           ]}
           buildCommand={() => recordCorrectionCommand(correctionOfTransactionId, reason)}

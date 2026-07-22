@@ -25,7 +25,7 @@
  * headless in tests.
  */
 
-import { ScenarioStageId, TransactionType } from "../../domain/types/enums";
+import { QuantityUnit, ScenarioStageId, TransactionType } from "../../domain/types/enums";
 import { ScoreComponent } from "../../domain/types/scoring";
 import type { ScenarioStageDefinition } from "../../domain/types/scenario";
 import { ActorId } from "./organizations";
@@ -41,6 +41,7 @@ import {
   transformationProvenanceCheck,
   transportConditionCheck,
 } from "./knowledge-checks";
+import { SHIPPING_MANIFEST_ANCHOR_ID, WEIGHED_QUANTITY_KG } from "./facts";
 
 export const GREEN_COFFEE_BATCH_ID = "BAT_GREEN_COFFEE_001";
 export const ROASTED_COFFEE_BATCH_ID = "BAT_ROASTED_COFFEE_001";
@@ -203,6 +204,19 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
         actionId: "ACTION_CORRECT",
         descriptionKey: "stage.receiveAndCorrect.action.correct",
         transactionType: TransactionType.RECORD_CORRECTION,
+        transactionEvidence: {
+          kind: "CORRECTION_RECORDED",
+          target: {
+            kind: "DOCUMENT_METADATA_FIELD",
+            documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+            field: "declaredQuantity",
+          },
+          correctedValue: {
+            kind: "QUANTITY",
+            amount: WEIGHED_QUANTITY_KG,
+            unit: QuantityUnit.KG,
+          },
+        },
       },
     ],
     // The correction is mandatory, not optional: the erroneous dispatch
@@ -210,7 +224,23 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     // meets the mechanic rather than only those who fail to spot a typo.
     completionConditions: [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECEIVE_BATCH },
-      { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECORD_CORRECTION },
+      {
+        conditionType: "TRANSACTION_COMMITTED",
+        transactionType: TransactionType.RECORD_CORRECTION,
+        evidence: {
+          kind: "CORRECTION_RECORDED",
+          target: {
+            kind: "DOCUMENT_METADATA_FIELD",
+            documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+            field: "declaredQuantity",
+          },
+          correctedValue: {
+            kind: "QUANTITY",
+            amount: WEIGHED_QUANTITY_KG,
+            unit: QuantityUnit.KG,
+          },
+        },
+      },
       // Booking goods in moves custody; buying them moves title. The processor
       // must acquire ownership here, or it cannot later sell what it produced.
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.TRANSFER_OWNERSHIP },
@@ -233,6 +263,19 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
         transactionType: TransactionType.RECORD_CORRECTION,
         scoreComponent: ScoreComponent.COMPLIANCE_AND_CORRECTION,
         points: 10,
+        evidence: {
+          kind: "EFFECTIVE_VALUE",
+          target: {
+            kind: "DOCUMENT_METADATA_FIELD",
+            documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+            field: "declaredQuantity",
+          },
+          expectedValue: {
+            kind: "QUANTITY",
+            amount: WEIGHED_QUANTITY_KG,
+            unit: QuantityUnit.KG,
+          },
+        },
       },
     ],
     unlocksStageId: ScenarioStageId.TRANSFORM_BATCH,

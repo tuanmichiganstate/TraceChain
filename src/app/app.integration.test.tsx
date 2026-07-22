@@ -151,7 +151,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     expect(suspendData).not.toBe("");
     expect(suspendData.length).toBeLessThan(4096);
     expect(suspendData.length).toBeLessThan(200);
-    expect(suspendData.startsWith("TC1.")).toBe(true);
+    expect(suspendData.startsWith("TC2.")).toBe(true);
 
     // The raw stage identifier, not a translated label (section 21.6).
     expect(api.peek("cmi.core.lesson_location")).toMatch(/^STG_0\d_[A-Z_]+$/);

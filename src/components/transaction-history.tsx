@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { TransactionStatus } from "../domain/types/enums";
+import { DocumentType, TransactionStatus, TransactionType } from "../domain/types/enums";
 import type { DomainState } from "../domain/ledger/domain-state";
+import type {
+  AnchorDocumentCommand,
+  RecordCorrectionCommand,
+} from "../domain/commands/commands";
+import { formatCorrectionValue } from "../domain/types/correction";
+import { resolveEffectiveValue } from "../domain/ledger/effective-value";
 import { formatScenarioTime } from "../infrastructure/time/scenario-clock";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
@@ -117,6 +123,18 @@ function TransactionDetail({
   const t = useTranslator();
   const transaction = state.transactionsById[transactionId];
   if (transaction === undefined) return null;
+  const anchor =
+    transaction.transactionType === TransactionType.ANCHOR_DOCUMENT
+      ? (transaction.commandPayload as AnchorDocumentCommand)
+      : null;
+  const correction =
+    transaction.transactionType === TransactionType.RECORD_CORRECTION
+      ? (transaction.commandPayload as RecordCorrectionCommand)
+      : null;
+  const effective =
+    correction === null
+      ? null
+      : (resolveEffectiveValue(state, correction.target)?.effectiveValue ?? null);
 
   return (
     <article className="card">
@@ -128,6 +146,54 @@ function TransactionDetail({
           <dt>{t("history.columnAction")}</dt>
           <dd>{t(`transactionType.${transaction.transactionType}`)}</dd>
         </div>
+        {anchor !== null ? (
+          <>
+            <div className="asset-card__row">
+              <dt>{t("field.documentAnchor")}</dt>
+              <dd><code>{anchor.documentAnchorId}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("field.documentType")}</dt>
+              <dd>{t(`documentType.${anchor.documentType}`)}</dd>
+            </div>
+            {anchor.metadata.kind === DocumentType.SHIPPING_MANIFEST ? (
+              <div className="asset-card__row">
+                <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
+                <dd>{formatCorrectionValue(anchor.metadata.declaredQuantity)}</dd>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        {correction !== null ? (
+          <>
+            <div className="asset-card__row">
+              <dt>{t("field.correctionOf")}</dt>
+              <dd><code>{correction.correctionOfTransactionId}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("field.correctionTarget")}</dt>
+              <dd>
+                <code>
+                  {correction.target.kind === "DOCUMENT_METADATA_FIELD"
+                    ? `${correction.target.documentAnchorId}.${correction.target.field}`
+                    : `${correction.target.assetId}.${correction.target.field}`}
+                </code>
+              </dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("field.incorrectValue")}</dt>
+              <dd>{formatCorrectionValue(correction.incorrectValue)}</dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("field.correctedValue")}</dt>
+              <dd>{formatCorrectionValue(correction.correctedValue)}</dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
+              <dd>{effective === null ? "-" : formatCorrectionValue(effective)}</dd>
+            </div>
+          </>
+        ) : null}
         <div className="asset-card__row">
           <dt>{t("history.columnStatus")}</dt>
           <dd>{t(`pipeline.${transaction.transactionStatus}`)}</dd>

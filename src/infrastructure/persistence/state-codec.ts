@@ -24,14 +24,15 @@
  *
  * FORMAT
  * ------
- *     TC1.<stage><completed>.<decisions>.<hints>.<flags>.<checksum>
+ *     TC2.<stage><completed>.<decisions>.<hints>.<flags>.<reason>.<checksum>
  *
- *     TC1         magic + schema version; identifies foreign or future data
+ *     TC2         magic + schema version; identifies foreign or future data
  *     stage       current stage index, 1 base36 char
  *     completed   completed-stage bitmap, 2 base36 chars
  *     decisions   4 base36 chars per decision, positional: 3 value + 1 attempts
  *     hints       hint bitmap, variable-length base36
  *     flags       1 base36 char: bit 0 completed, bit 1 passed
+ *     reason      `0` or `1` plus UTF-8 bytes as hexadecimal
  *     checksum    first 8 hex characters of the SHA-256 of everything before it
  *
  * An attempt count of zero means "not answered", which is why a genuine answer
@@ -43,7 +44,9 @@ import { sha256Hex } from "../hashing/sha256";
 import { SCENARIO_STAGE_ORDER, ScenarioStageId } from "../../domain/types/enums";
 import { PersistenceError, UnsupportedStateVersionError } from "../../domain/errors";
 
-export const STATE_SCHEMA_MAGIC = "TC1";
+export const STATE_SCHEMA_MAGIC = "TC2";
+const LEGACY_STATE_SCHEMA_MAGIC = "TC1";
+const MAX_REPLAY_REASON_BYTES = 1024;
 
 /** Characters per decision: 3 for the value, 1 for the attempt count. */
 const DECISION_VALUE_CHARS = 3;
@@ -74,6 +77,9 @@ export interface AttemptSnapshot {
   readonly hintsUsed: readonly string[];
   readonly isCompleted: boolean;
   readonly isPassed: boolean;
+  readonly replayData?: {
+    readonly correctionReason?: string;
+  };
 }
 
 /**
@@ -95,6 +101,38 @@ function fromBase36(text: string): number {
     throw new PersistenceError(`Malformed base36 field: "${text}"`);
   }
   return Number.parseInt(text, 36);
+}
+
+function encodeReplayReason(reason: string | undefined): string {
+  if (reason === undefined) return "0";
+  const bytes = new TextEncoder().encode(reason);
+  if (bytes.length > MAX_REPLAY_REASON_BYTES) {
+    throw new PersistenceError(
+      `Correction reason exceeds ${MAX_REPLAY_REASON_BYTES} UTF-8 bytes`,
+    );
+  }
+  return `1${[...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function decodeReplayReason(field: string): string | undefined {
+  if (field === "0") return undefined;
+  if (!field.startsWith("1") || !/^[0-9a-f]+$/.test(field)) {
+    throw new PersistenceError("Malformed replay-reason field");
+  }
+  const hex = field.slice(1);
+  if (hex.length % 2 !== 0 || hex.length / 2 > MAX_REPLAY_REASON_BYTES) {
+    throw new PersistenceError("Malformed replay-reason length");
+  }
+  const bytes = new Uint8Array(
+    Array.from({ length: hex.length / 2 }, (_unused, index) =>
+      Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16),
+    ),
+  );
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new PersistenceError("Replay reason is not valid UTF-8");
+  }
 }
 
 function encodeStageBitmap(
@@ -176,6 +214,7 @@ export function encodeAttemptState(snapshot: AttemptSnapshot, schema: CodecSchem
     decisionField,
     hintBitmap.toString(36),
     toBase36(flags, 1),
+    encodeReplayReason(snapshot.replayData?.correctionReason),
   ].join(FIELD_SEPARATOR);
 
   return `${body}${FIELD_SEPARATOR}${sha256Hex(body).slice(0, CHECKSUM_CHARS)}`;
@@ -196,22 +235,29 @@ export function decodeAttemptState(encoded: string, schema: CodecSchema): Attemp
   }
 
   const parts = trimmed.split(FIELD_SEPARATOR);
-  if (parts.length !== 6) {
-    throw new PersistenceError(`Expected 6 fields in suspend data, found ${parts.length}`);
+  const magic = parts[0];
+  const isLegacy = magic === LEGACY_STATE_SCHEMA_MAGIC;
+  const expectedFields = isLegacy ? 6 : 7;
+  if (parts.length !== expectedFields) {
+    throw new PersistenceError(
+      `Expected ${expectedFields} fields in suspend data, found ${parts.length}`,
+    );
   }
-
-  const [magic, stageField, decisionField, hintField, flagField, checksum] = parts as [
-    string, string, string, string, string, string,
-  ];
-
-  if (magic !== STATE_SCHEMA_MAGIC) {
+  if (magic !== STATE_SCHEMA_MAGIC && !isLegacy) {
     throw new UnsupportedStateVersionError(
-      `Unsupported state schema: expected ${STATE_SCHEMA_MAGIC}, found "${magic}"`,
-      magic,
+      `Unsupported state schema: expected ${STATE_SCHEMA_MAGIC}, found "${magic ?? ""}"`,
+      magic ?? "",
     );
   }
 
-  const body = parts.slice(0, 5).join(FIELD_SEPARATOR);
+  const stageField = parts[1] as string;
+  const decisionField = parts[2] as string;
+  const hintField = parts[3] as string;
+  const flagField = parts[4] as string;
+  const replayReasonField = isLegacy ? "0" : (parts[5] as string);
+  const checksum = parts[isLegacy ? 5 : 6] as string;
+
+  const body = parts.slice(0, isLegacy ? 5 : 6).join(FIELD_SEPARATOR);
   if (sha256Hex(body).slice(0, CHECKSUM_CHARS) !== checksum) {
     throw new PersistenceError("Suspend data failed its checksum; the value may be truncated");
   }
@@ -226,15 +272,19 @@ export function decodeAttemptState(encoded: string, schema: CodecSchema): Attemp
   }
   const completedStageIds = decodeStageBitmap(fromBase36(stageField.slice(1)));
 
-  if (decisionField.length !== schema.decisionIds.length * DECISION_RECORD_CHARS) {
+  if (
+    decisionField.length % DECISION_RECORD_CHARS !== 0 ||
+    decisionField.length > schema.decisionIds.length * DECISION_RECORD_CHARS
+  ) {
     throw new PersistenceError(
-      `Decision field length ${decisionField.length} does not match the ` +
-        `${schema.decisionIds.length} decisions this build expects`,
+      `Decision field length ${decisionField.length} is incompatible with the ` +
+        `${schema.decisionIds.length} append-only decisions this build expects`,
     );
   }
 
   const decisions: Record<string, DecisionRecord> = {};
-  for (let i = 0; i < schema.decisionIds.length; i += 1) {
+  const encodedDecisionCount = decisionField.length / DECISION_RECORD_CHARS;
+  for (let i = 0; i < encodedDecisionCount; i += 1) {
     const offset = i * DECISION_RECORD_CHARS;
     const attemptCount = fromBase36(
       decisionField.slice(offset + DECISION_VALUE_CHARS, offset + DECISION_RECORD_CHARS),
@@ -260,6 +310,7 @@ export function decodeAttemptState(encoded: string, schema: CodecSchema): Attemp
   );
 
   const flags = fromBase36(flagField);
+  const correctionReason = decodeReplayReason(replayReasonField);
 
   return {
     currentStageId,
@@ -268,5 +319,8 @@ export function decodeAttemptState(encoded: string, schema: CodecSchema): Attemp
     hintsUsed,
     isCompleted: (flags & 1) !== 0,
     isPassed: (flags & 2) !== 0,
+    ...(correctionReason === undefined
+      ? {}
+      : { replayData: { correctionReason } }),
   };
 }

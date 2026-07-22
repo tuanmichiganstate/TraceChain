@@ -4,9 +4,9 @@
 |---|---|
 | Artifact | `tracechain-content-review-2026-07-21.html` |
 | Generated | 2026-07-21 |
-| Source state | Phase 1 locale update; deterministic commit provenance lands with the Phase 4 generator |
-| Locale parity | **519/519** strings present, 0 missing |
-| SHA-256 | `5a52ab22e85272b2087fe79209179036b9eb4db3678df6efd3254a508b22d70f` |
+| Source state | Phase 2 Stage 5 locale update; deterministic commit provenance lands with the Phase 4 generator |
+| Locale parity | **530/530** strings present, 0 missing |
+| SHA-256 | `b7ab921ae5a6eeedd66fd4d371b40724753ff3fd059fb0aab933f47106e6614f` |
 | Review status | **Not yet reviewed** — awaiting Vietnamese subject expert |
 
 Generated from `src/scenarios/coffee-traceability/` and `src/locales/vi.json`,

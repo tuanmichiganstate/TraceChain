@@ -175,6 +175,7 @@ describe("stage progression", () => {
   it("blocks completion until the debrief question is answered", async () => {
     const ledger = await runUpTo("sold", { withSeed: true });
     await ledger.submitCommand(commands.recallBatch(), contextFor(ActorId.REGULATORY_AUDITOR));
+    await ledger.sealPendingTransactions(SCENARIO_TIMELINE.laboratoryResult);
 
     const recorder = new AttemptRecorder().completeEveryAction();
     // Answer everything except the debrief.
@@ -257,6 +258,7 @@ describe("a learner who makes mistakes", () => {
     // Section 19.6 permits completing without passing.
     const ledger = await runUpTo("sold", { withSeed: true });
     await ledger.submitCommand(commands.recallBatch(), contextFor(ActorId.REGULATORY_AUDITOR));
+    await ledger.sealPendingTransactions(SCENARIO_TIMELINE.laboratoryResult);
 
     const recorder = new AttemptRecorder().completeEveryAction();
     for (const stage of coffeeScenario.stages) {

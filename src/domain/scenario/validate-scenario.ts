@@ -200,6 +200,40 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     );
   }
 
+  const scriptIds = new Set(scenario.scriptedTransactions.map((script) => script.scriptId));
+  check(
+    scriptIds.size === scenario.scriptedTransactions.length,
+    "scriptedTransactions",
+    "Scripted transaction identifiers must be unique",
+  );
+  for (const script of scenario.scriptedTransactions) {
+    const path = `scriptedTransactions.${script.scriptId}`;
+    check(actorIds.has(script.actorId), path, `References unknown actor "${script.actorId}"`);
+    check(
+      organizationIds.has(script.organizationId),
+      path,
+      `References unknown organization "${script.organizationId}"`,
+    );
+    check(
+      scenario.actors.find((actor) => actor.actorId === script.actorId)?.organizationId ===
+        script.organizationId,
+      path,
+      "Script actor must belong to the proposing organization",
+    );
+    check(
+      Number.isFinite(Date.parse(script.command.scenarioTimestamp)),
+      path,
+      "Command must carry a valid scenario timestamp",
+    );
+    check(
+      script.idempotencyGuard.kind !== "DOCUMENT_ANCHOR_ABSENT" ||
+        (script.command.commandType === "ANCHOR_DOCUMENT" &&
+          script.command.documentAnchorId === script.idempotencyGuard.documentAnchorId),
+      path,
+      "Document idempotency guard must match the scripted anchor command",
+    );
+  }
+
   for (const edge of scenario.seedProvenanceEdges) {
     const path = `seedProvenanceEdges.${edge.sourceAssetId}->${edge.targetAssetId}`;
     check(
@@ -272,6 +306,17 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
 
     for (const condition of stage.completionConditions) {
       if (
+        condition.conditionType === "TRANSACTION_COMMITTED" &&
+        condition.evidence !== undefined
+      ) {
+        check(
+          condition.transactionType === "RECORD_CORRECTION" &&
+            condition.evidence.kind === "CORRECTION_RECORDED",
+          path,
+          "Correction completion evidence must be attached to RECORD_CORRECTION",
+        );
+      }
+      if (
         condition.conditionType === "ASSET_EXISTS" &&
         !knownAssetIds.has(condition.assetId)
       ) {
@@ -291,6 +336,14 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
 
     const seenActionDescriptions = new Set<string>();
     for (const action of stage.requiredActions) {
+      if (action.transactionEvidence !== undefined) {
+        check(
+          action.transactionType === "RECORD_CORRECTION" &&
+            action.transactionEvidence.kind === "CORRECTION_RECORDED",
+          path,
+          "Correction action evidence must be attached to RECORD_CORRECTION",
+        );
+      }
       if (
         action.knowledgeCheckId !== undefined &&
         !stage.knowledgeChecks.some((c) => c.knowledgeCheckId === action.knowledgeCheckId)

@@ -13,8 +13,8 @@
  *   SEED TRANSACTIONS replay through the identical
  *   command -> validate -> event -> commit pipeline as learner transactions.
  *   They are real history: hash-linked, in blocks, indistinguishable from
- *   anything the learner does. The erroneous dispatch manifest in stage 4 is
- *   one of these, which is exactly why the learner cannot edit it away.
+ *   anything the learner does. History that depends on learner actions uses
+ *   the separate deterministic scripted-transaction mechanism.
  */
 
 import {

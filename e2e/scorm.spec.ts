@@ -15,11 +15,9 @@ test.describe("saving and resuming", () => {
     await page.goto("/");
     const activity = new Activity(page);
 
-    await activity.start();
-    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.playThroughStageFive();
     await activity.continue();
-    await activity.expectStage(2);
-    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.expectStage(6);
 
     const saved = await peek(page, "cmi.suspend_data");
     expect(saved).not.toBe("");
@@ -32,9 +30,16 @@ test.describe("saving and resuming", () => {
     await page.goto("/");
 
     await activity.resumePrevious();
-    await activity.expectStage(2);
-    // The batch the learner created is still on the ledger after the reload.
-    await expect(page.getByText("BAT_GREEN_COFFEE_001").first()).toBeVisible();
+    await activity.expectStage(6);
+
+    // The scripted manifest and learner correction are rebuilt from suspend
+    // data, not inferred from static stage copy.
+    await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
+    const correctionRow = page.getByRole("row").filter({ hasText: "Giao dịch điều chỉnh" });
+    await expect(correctionRow).toHaveCount(1);
+    await correctionRow.getByRole("button").click();
+    await expect(page.getByText("DOC_SHIPPING_MANIFEST_001.declaredQuantity")).toBeVisible();
+    await expect(page.getByText("100 KG", { exact: true }).last()).toBeVisible();
   });
 
   test("keeps suspend data inside the 4096-character ceiling", async ({ page }) => {

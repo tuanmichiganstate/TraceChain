@@ -43,6 +43,7 @@ import {
   type PlatformInteraction,
 } from "../../infrastructure/scorm/learning-platform-adapter";
 import { applyScenarioSeed } from "../../domain/scenario/seed-replay";
+import { applyEligibleScriptedTransactions } from "../../domain/scenario/scripted-transactions";
 import {
   ACTION_ACCEPTED,
   ACTION_REJECTED,
@@ -64,7 +65,9 @@ import {
   sessionReducer,
   toAttemptSnapshot,
   type SessionState,
+  type SessionAction,
 } from "../session/session-state";
+import { replayCoffeeAttempt } from "../../scenarios/coffee-traceability/replay-attempt";
 
 interface SimulationContextValue {
   readonly state: SessionState;
@@ -122,7 +125,18 @@ const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }): ReactNode {
   const { scenario } = useScenario();
-  const [state, dispatch] = useReducer(sessionReducer, undefined, createInitialSessionState);
+  const [state, reactDispatch] = useReducer(
+    sessionReducer,
+    undefined,
+    createInitialSessionState,
+  );
+  const stateRef = useRef(state);
+  const dispatch = useCallback((action: SessionAction): void => {
+    // Keep the imperative persistence view in lock-step with queued React
+    // updates. A save requested in the same click now sees that click.
+    stateRef.current = sessionReducer(stateRef.current, action);
+    reactDispatch(action);
+  }, []);
 
   const ledger = useMemo(
     () => new SimulatedLedger(sha256Hex, scenario.ledgerConfiguration),
@@ -149,10 +163,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   );
 
   const adapterRef = useRef<LearningPlatformAdapter | null>(null);
+  const saveRef = useRef<() => Promise<void>>(async () => undefined);
   const diagnosticsRef = useRef<string[]>([]);
   const [diagnostics, setDiagnostics] = useState<readonly string[]>([]);
 
-  const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   });
@@ -170,11 +184,15 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         {
           decisions: state.decisions,
           hintsUsed: state.hintsUsed,
-          correctness: deriveCorrectnessFromDecisions(state.decisions, scenario),
+          correctness: deriveCorrectnessFromDecisions(
+            state.decisions,
+            scenario,
+            state.domain,
+          ),
         },
         scenario,
       ),
-    [state.decisions, state.hintsUsed, scenario],
+    [state.decisions, state.hintsUsed, state.domain, scenario],
   );
 
   const isPassed = isPassing(scoreBreakdown.score, scenario.scoringConfiguration);
@@ -197,6 +215,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
     if (!sameCompleted || current !== state.currentStageId) {
       dispatch({ type: "STAGE_PROGRESS", completedStageIds: completed, currentStageId: current });
+      void saveRef.current();
     }
   }, [
     state.phase,
@@ -205,6 +224,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     state.completedStageIds,
     state.currentStageId,
     scenario,
+    dispatch,
   ]);
 
   // ---- Platform ---------------------------------------------------------
@@ -246,8 +266,12 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       }
 
       try {
-        decodeAttemptState(stored, codecSchema);
+        const snapshot = decodeAttemptState(stored, codecSchema);
         dispatch({ type: "INITIALIZED", platformMode: mode, isReadOnly, hasSavedAttempt: true });
+        if (isReadOnly) {
+          const domain = replayCoffeeAttempt(snapshot, seededState, ledger, registries);
+          dispatch({ type: "RESUME", snapshot, domain });
+        }
       } catch (error) {
         addDiagnostic(
           `Stored attempt could not be decoded: ${
@@ -261,7 +285,15 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     return () => {
       cancelled = true;
     };
-  }, [addDiagnostic, codecSchema, scenario.scenarioId]);
+  }, [
+    addDiagnostic,
+    codecSchema,
+    dispatch,
+    ledger,
+    registries,
+    scenario.scenarioId,
+    seededState,
+  ]);
 
   const save = useCallback(async (): Promise<void> => {
     const adapter = adapterRef.current;
@@ -274,7 +306,11 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     dispatch({ type: "SAVE_STATUS", status: "SAVING" });
     try {
       const current = stateRef.current;
-      const correctness = deriveCorrectnessFromDecisions(current.decisions, scenario);
+      const correctness = deriveCorrectnessFromDecisions(
+        current.decisions,
+        scenario,
+        current.domain,
+      );
       const breakdown = calculateScore(
         { decisions: current.decisions, hintsUsed: current.hintsUsed, correctness },
         scenario,
@@ -287,21 +323,17 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       await adapter.setLocation(current.currentStageId);
       await adapter.setScore(breakdown.score.totalScore);
 
-      // A learner may complete without passing; the LMS status distinguishes
-      // them, and neither is written before the activity is actually finished.
-      if (current.completedStageIds.length === SCENARIO_STAGE_ORDER.length) {
-        await adapter.setCompletion(
-          passed ? CompletionStatus.PASSED : CompletionStatus.COMPLETED,
-        );
-      }
-
       await adapter.commit();
       dispatch({ type: "SAVE_STATUS", status: "SAVED" });
     } catch (error) {
       addDiagnostic(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
       dispatch({ type: "SAVE_STATUS", status: "FAILED" });
     }
-  }, [addDiagnostic, codecSchema, scenario]);
+  }, [addDiagnostic, codecSchema, dispatch, scenario]);
+
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
 
   useEffect(() => {
     if (state.phase !== "RUNNING") return undefined;
@@ -346,14 +378,12 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           }
           try {
             const snapshot = decodeAttemptState(stored, codecSchema);
-            /*
-             * Milestone 4 restores position, decisions and the seeded world.
-             * Full ledger replay from the decision record lands with the report
-             * milestone; until then a resumed learner keeps their answers and
-             * their score but re-does the current stage's transactions.
-             */
-            dispatch({ type: "RESUME", snapshot, domain: seededState });
-          } catch {
+            const domain = replayCoffeeAttempt(snapshot, seededState, ledger, registries);
+            dispatch({ type: "RESUME", snapshot, domain });
+          } catch (error) {
+            addDiagnostic(
+              `Attempt replay failed: ${error instanceof Error ? error.message : String(error)}`,
+            );
             dispatch({ type: "RECOVERY_FAILED", messageKey: "errors.persistence" });
           }
         })();
@@ -428,15 +458,30 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       },
 
       submitCommand: (command, context) => {
-        const result = ledger.submitCommand(
+        const scriptedBefore = applyEligibleScriptedTransactions(
           stateRef.current.domain,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
+        const result = ledger.submitCommand(
+          scriptedBefore,
           command,
           context,
           registries,
         );
+        const domain = applyEligibleScriptedTransactions(
+          result.state,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
+        if (command.commandType === "RECORD_CORRECTION" && result.isAccepted) {
+          dispatch({ type: "CORRECTION_REASON_RECORDED", reason: command.reason });
+        }
         dispatch({
           type: "LEDGER_UPDATED",
-          domain: result.state,
+          domain,
           transactionId: result.transaction.transactionId,
         });
         void save();
@@ -445,11 +490,18 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       sealPendingBlock: (createdAt) => {
         const sealed = ledger.sealPendingTransactions(stateRef.current.domain, createdAt);
+        const domain = applyEligibleScriptedTransactions(
+          sealed,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
         dispatch({
           type: "LEDGER_UPDATED",
-          domain: sealed,
+          domain,
           transactionId: stateRef.current.lastTransactionId,
         });
+        void save();
       },
 
       viewStage: (stageId) => dispatch({ type: "VIEW_STAGE", stageId }),
@@ -458,7 +510,27 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       finish: async () => {
         await save();
-        await adapterRef.current?.finish();
+        const adapter = adapterRef.current;
+        if (adapter === null) return;
+        const current = stateRef.current;
+        if (current.completedStageIds.length === SCENARIO_STAGE_ORDER.length) {
+          const correctness = deriveCorrectnessFromDecisions(
+            current.decisions,
+            scenario,
+            current.domain,
+          );
+          const breakdown = calculateScore(
+            { decisions: current.decisions, hintsUsed: current.hintsUsed, correctness },
+            scenario,
+          );
+          await adapter.setCompletion(
+            isPassing(breakdown.score, scenario.scoringConfiguration)
+              ? CompletionStatus.PASSED
+              : CompletionStatus.COMPLETED,
+          );
+          await adapter.commit();
+        }
+        await adapter.finish();
       },
     }),
     [
@@ -473,6 +545,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       registries,
       seededState,
       scenario,
+      addDiagnostic,
+      dispatch,
     ],
   );
 

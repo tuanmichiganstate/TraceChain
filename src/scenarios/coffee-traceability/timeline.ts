@@ -23,12 +23,10 @@ export const SCENARIO_TIMELINE = {
   certificateExpires: "2027-01-15T03:00:00.000Z",
 
   /**
-   * Stage 4 -- the shipping clerk files the dispatch manifest. This record
-   * carries the 1000 kg transcription error, and it is committed before the
-   * learner's shift begins, so every learner meets the correction mechanic in
-   * stage 5 rather than only those who fail to spot a typo.
+   * Stage 4 -- after custody commits, the shipping clerk files the manifest.
+   * It carries the 1000 kg transcription error and precedes sensor evidence.
    */
-  dispatchManifestFiled: "2026-06-15T23:00:00.000Z",
+  dispatchManifestFiled: "2026-06-16T02:00:00.000Z",
 
   /** Stage 4 -- custody moves to the carrier; ownership does not. */
   custodyTransferred: "2026-06-16T01:00:00.000Z",
@@ -76,20 +74,16 @@ export const TIMELINE_ORDERING_CONSTRAINTS: ReadonlyArray<
   readonly [ScenarioTimelineKey, ScenarioTimelineKey, string]
 > = [
   ["batchCreated", "certificateIssued", "A batch must exist before it can be certified"],
+  ["certificateIssued", "custodyTransferred", "Certification precedes dispatch in this scenario"],
   [
-    "certificateIssued",
+    "custodyTransferred",
     "dispatchManifestFiled",
-    "Certification precedes dispatch in this scenario",
+    "The committed custody handoff triggers the shipping manifest",
   ],
   [
     "dispatchManifestFiled",
-    "custodyTransferred",
-    "The manifest is filed before the carrier takes custody",
-  ],
-  [
-    "custodyTransferred",
     "sensorReading",
-    "Transport conditions are recorded while the carrier holds the batch",
+    "The manifest is committed before the Stage 5 sensor evidence",
   ],
   ["sensorReading", "batchReceived", "Shipment must precede receipt"],
   ["batchReceived", "correctionRecorded", "A receipt must exist before it can be corrected"],

@@ -24,7 +24,7 @@ describe("rule registry", () => {
     const missing = declared.filter((ruleId) => !registered.has(ruleId));
 
     expect(missing, `Unregistered rules: ${missing.join(", ")}`).toHaveLength(0);
-    expect(declared).toHaveLength(28);
+    expect(declared).toHaveLength(29);
   });
 
   it("registers each rule exactly once", () => {

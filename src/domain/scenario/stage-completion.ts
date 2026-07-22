@@ -19,6 +19,8 @@ import type {
 import type { SupplyChainCommand } from "../commands/commands";
 import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
 import type { ScenarioStageId } from "../types/enums";
+import type { CommittedTransactionEvidence } from "../types/scenario";
+import { transactionMatchesEvidence } from "./transaction-evidence";
 
 export interface CompletionContext {
   readonly state: DomainState;
@@ -39,14 +41,16 @@ export interface StageCompletionResult {
   readonly unsatisfiedCount: number;
 }
 
-function hasCommittedTransactionOfType(state: DomainState, transactionType: string): boolean {
+function hasCommittedTransactionOfType(
+  state: DomainState,
+  transactionType: string,
+  evidence?: CommittedTransactionEvidence,
+): boolean {
   return Object.values(state.transactionsById).some(
     (transaction) =>
       transaction.transactionType === transactionType &&
-      // ORDERED counts: the outcome is determined and world state already
-      // reflects it. Requiring COMMITTED would stall a stage behind its own
-      // block-sealing step, which is a presentation concern.
-      transaction.transactionStatus !== TransactionStatus.REJECTED,
+      transaction.transactionStatus === TransactionStatus.COMMITTED &&
+      transactionMatchesEvidence(transaction, evidence),
   );
 }
 
@@ -59,6 +63,7 @@ export function evaluateCondition(
       const isSatisfied = hasCommittedTransactionOfType(
         context.state,
         condition.transactionType,
+        condition.evidence,
       );
       return {
         condition,
@@ -147,7 +152,11 @@ export function evaluateRequiredActions(
     action,
     isSatisfied:
       action.transactionType !== undefined
-        ? hasCommittedTransactionOfType(context.state, action.transactionType)
+        ? hasCommittedTransactionOfType(
+            context.state,
+            action.transactionType,
+            action.transactionEvidence,
+          )
         : action.knowledgeCheckId !== undefined
           ? (context.decisions[action.knowledgeCheckId]?.attemptCount ?? 0) > 0
           : false,

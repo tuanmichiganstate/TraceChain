@@ -15,10 +15,29 @@ test.describe("the whole activity in a real browser", () => {
 
     await activity.playThroughStageSeven();
 
+    // Both immutable lineage records are learner-visible. The manifest still
+    // says 1000 KG; the appended correction resolves the effective value to 100 KG.
+    await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
+    const manifestRow = page
+      .getByRole("row")
+      .filter({ hasText: "Hợp tác xã Cà phê Cao nguyên" })
+      .filter({ hasText: "Ghi nhận tài liệu" });
+    await expect(manifestRow).toHaveCount(1);
+    await manifestRow.getByRole("button").click();
+    await expect(page.getByText("Vận đơn", { exact: true })).toBeVisible();
+    await expect(page.getByText("1000 KG", { exact: true })).toBeVisible();
+
+    const correctionRow = page.getByRole("row").filter({ hasText: "Giao dịch điều chỉnh" });
+    await correctionRow.getByRole("button").click();
+    await expect(page.getByText("DOC_SHIPPING_MANIFEST_001.declaredQuantity")).toBeVisible();
+    await expect(page.getByText("100 KG", { exact: true }).last()).toBeVisible();
+
     // The packaged lot reached the retailer holding both rights.
-    const lastCard = page.getByRole("article").last();
-    await expect(lastCard.getByText("Siêu thị Việt Market").first()).toBeVisible();
-    await expect(lastCard.getByText("820 gói")).toBeVisible();
+    const packagedCard = page.getByRole("article").filter({
+      has: page.getByText("BAT_PACKAGED_COFFEE_001", { exact: true }),
+    });
+    await expect(packagedCard.getByText("Siêu thị Việt Market").first()).toBeVisible();
+    await expect(packagedCard.getByText("820 gói")).toBeVisible();
 
     await activity.playThroughStageEight();
     await activity.continue();

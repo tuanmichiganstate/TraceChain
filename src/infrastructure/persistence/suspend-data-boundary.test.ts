@@ -155,7 +155,9 @@ describe("the encoded payload keeps the budget claim true", () => {
   it("encodes as printable ASCII, and to the codec's own grammar", () => {
     const encoded = worstCase();
     expect(encoded).toMatch(/^[\x20-\x7E]+$/);
-    expect(encoded).toMatch(/^TC1\.[0-9a-z]+\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-f]{8}$/);
+    expect(encoded).toMatch(
+      /^TC2\.[0-9a-z]+\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-f]+\.[0-9a-f]{8}$/,
+    );
   });
 });
 

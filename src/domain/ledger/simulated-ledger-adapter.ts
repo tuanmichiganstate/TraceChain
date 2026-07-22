@@ -29,12 +29,15 @@ import {
   type LedgerConfiguration,
   type TransactionResult,
 } from "./ledger-engine";
+import type { ScriptedTransactionDefinition } from "../types/scenario";
+import { applyEligibleScriptedTransactions } from "../scenario/scripted-transactions";
 
 export interface SimulatedLedgerAdapterOptions {
   readonly hash: HashFunction;
   readonly configuration?: LedgerConfiguration;
   readonly initialState?: DomainState;
   readonly registries: ValidationRegistries;
+  readonly scriptedTransactions?: readonly ScriptedTransactionDefinition[];
 }
 
 export class SimulatedLedgerAdapter implements LedgerAdapter {
@@ -42,11 +45,13 @@ export class SimulatedLedgerAdapter implements LedgerAdapter {
   private readonly engine: SimulatedLedger;
   private readonly hash: HashFunction;
   private readonly registries: ValidationRegistries;
+  private readonly scriptedTransactions: readonly ScriptedTransactionDefinition[];
 
   constructor(options: SimulatedLedgerAdapterOptions) {
     this.hash = options.hash;
     this.state = options.initialState ?? createEmptyDomainState();
     this.registries = options.registries;
+    this.scriptedTransactions = options.scriptedTransactions ?? [];
     this.engine = new SimulatedLedger(
       options.hash,
       options.configuration ?? DEFAULT_LEDGER_CONFIGURATION,
@@ -68,8 +73,13 @@ export class SimulatedLedgerAdapter implements LedgerAdapter {
       context,
       this.registries,
     );
-    this.state = result.state;
-    return result;
+    this.state = this.applyScripts(result.state);
+    return {
+      ...result,
+      state: this.state,
+      transaction: this.state.transactionsById[result.transaction.transactionId] ??
+        result.transaction,
+    };
   }
 
   async getAsset(assetId: string): Promise<SupplyChainAsset | null> {
@@ -120,6 +130,7 @@ export class SimulatedLedgerAdapter implements LedgerAdapter {
   async sealPendingTransactions(createdAt: string): Promise<readonly LedgerBlock[]> {
     const before = new Set(this.state.blockOrder);
     this.state = this.engine.sealPendingTransactions(this.state, createdAt);
+    this.state = this.applyScripts(this.state);
     return this.state.blockOrder
       .filter((id) => !before.has(id))
       .map((id) => this.state.blocksById[id])
@@ -151,5 +162,14 @@ export class SimulatedLedgerAdapter implements LedgerAdapter {
     return Object.values(this.state.transactionsById).filter(
       (transaction) => transaction.transactionStatus === status,
     ).length;
+  }
+
+  private applyScripts(state: DomainState): DomainState {
+    return applyEligibleScriptedTransactions(
+      state,
+      this.scriptedTransactions,
+      this.engine,
+      this.registries,
+    ).state;
   }
 }

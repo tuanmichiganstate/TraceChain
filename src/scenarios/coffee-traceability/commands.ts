@@ -34,10 +34,24 @@ import {
   ROASTED_COFFEE_BATCH_ID,
 } from "./stages";
 import { SCENARIO_TIMELINE } from "./timeline";
+import {
+  MANIFEST_QUANTITY_KG,
+  SHIPPING_MANIFEST_ANCHOR_ID,
+  WEIGHED_QUANTITY_KG,
+} from "./facts";
+
+export {
+  MANIFEST_QUANTITY_KG,
+  SHIPPING_MANIFEST_ANCHOR_ID,
+  WEIGHED_QUANTITY_KG,
+} from "./facts";
 
 export const QUALITY_CERTIFICATE_ANCHOR_ID = "DOC_QUALITY_CERTIFICATE_001";
 export const QUALITY_CERTIFICATE_ID = "CERT_QUALITY_001";
 export const SENSOR_ID = "SENSOR_HUMIDITY_001";
+export const SHIPPING_MANIFEST_FILE_NAME = "van-don-lo-ca-phe-001.pdf";
+export const SHIPPING_MANIFEST_CONTENT =
+  "Van don lo ca phe BAT_GREEN_COFFEE_001 - so luong khai bao 1000 KG";
 
 /**
  * The certificate's digest, computed from bundled content.
@@ -130,11 +144,27 @@ export const recordTransportConditionCommand = (): RecordTransportConditionComma
  * what they measured, and the discrepancy against the committed record is what
  * the correction then explains.
  */
-export const MANIFEST_QUANTITY_KG = 1000;
-export const WEIGHED_QUANTITY_KG = 100;
-/** Interim (Step 2): a reweigh discrepancy the ASSET_FIELD correction fixes
- *  until Step 3 restores the manifest 1000 -> 100 correction on a document. */
-export const REWEIGHED_QUANTITY_KG = 98;
+/** Scenario-authored record inserted after custody commits and before sensing. */
+export const anchorShippingManifestCommand = (): AnchorDocumentCommand => ({
+  commandType: TransactionType.ANCHOR_DOCUMENT,
+  assetId: GREEN_COFFEE_BATCH_ID,
+  documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+  documentType: DocumentType.SHIPPING_MANIFEST,
+  fileName: SHIPPING_MANIFEST_FILE_NAME,
+  contentHash: sha256Hex(SHIPPING_MANIFEST_CONTENT),
+  metadata: {
+    kind: DocumentType.SHIPPING_MANIFEST,
+    declaredQuantity: {
+      kind: "QUANTITY",
+      amount: MANIFEST_QUANTITY_KG,
+      unit: QuantityUnit.KG,
+    },
+  },
+  issuerOrganizationId: OrganizationId.PRODUCER_COOP,
+  issuedAt: SCENARIO_TIMELINE.dispatchManifestFiled,
+  initiatedByActorId: ActorId.SHIPPING_CLERK,
+  scenarioTimestamp: SCENARIO_TIMELINE.dispatchManifestFiled,
+});
 
 export const receiveBatchCommand = (): ReceiveBatchCommand => ({
   commandType: TransactionType.RECEIVE_BATCH,
@@ -158,15 +188,7 @@ export const purchaseOnReceiptCommand = (): TransferOwnershipCommand => ({
   scenarioTimestamp: SCENARIO_TIMELINE.batchReceived,
 });
 
-/**
- * Interim correction for Step 2, while the shipping manifest does not yet exist.
- *
- * A coherent ASSET_FIELD reweigh: the batch reads 100 kg, a re-weigh finds 98,
- * and the correction states the current value (100) and the corrected one (98).
- * Step 3 replaces this with a DOCUMENT_METADATA_FIELD correction of the
- * manifest's declared 1000 kg, which changes no asset state. Kept an ASSET_FIELD
- * correction here only so stage 5 stays playable before the manifest lands.
- */
+/** Append a correction to the manifest; the asset quantity is not rewritten. */
 export const recordCorrectionCommand = (
   correctionOfTransactionId: string,
   reason: string,
@@ -174,9 +196,13 @@ export const recordCorrectionCommand = (
   commandType: TransactionType.RECORD_CORRECTION,
   assetId: GREEN_COFFEE_BATCH_ID,
   correctionOfTransactionId,
-  target: { kind: "ASSET_FIELD", assetId: GREEN_COFFEE_BATCH_ID, field: "quantity" },
-  incorrectValue: { kind: "QUANTITY", amount: WEIGHED_QUANTITY_KG, unit: QuantityUnit.KG },
-  correctedValue: { kind: "QUANTITY", amount: REWEIGHED_QUANTITY_KG, unit: QuantityUnit.KG },
+  target: {
+    kind: "DOCUMENT_METADATA_FIELD",
+    documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
+    field: "declaredQuantity",
+  },
+  incorrectValue: { kind: "QUANTITY", amount: MANIFEST_QUANTITY_KG, unit: QuantityUnit.KG },
+  correctedValue: { kind: "QUANTITY", amount: WEIGHED_QUANTITY_KG, unit: QuantityUnit.KG },
   reason,
   initiatedByActorId: ActorId.PROCESSING_MANAGER,
   scenarioTimestamp: SCENARIO_TIMELINE.correctionRecorded,
@@ -265,6 +291,10 @@ export const CERTIFIER_CONTEXT = contextFor(
 export const LOGISTICS_CONTEXT = contextFor(
   ActorId.LOGISTICS_COORDINATOR,
   OrganizationId.LOGISTICS_PROVIDER,
+);
+export const SHIPPING_CLERK_CONTEXT = contextFor(
+  ActorId.SHIPPING_CLERK,
+  OrganizationId.PRODUCER_COOP,
 );
 export const PROCESSOR_CONTEXT = contextFor(
   ActorId.PROCESSING_MANAGER,

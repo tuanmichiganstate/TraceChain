@@ -63,6 +63,8 @@ export interface SessionState {
   readonly recoveryMessageKey: string | null;
   /** Most recent transaction, so the pipeline knows what to display. */
   readonly lastTransactionId: string | null;
+  /** Free-text command input needed to deterministically replay Stage 5. */
+  readonly correctionReason: string | null;
 }
 
 export function createInitialSessionState(): SessionState {
@@ -81,6 +83,7 @@ export function createInitialSessionState(): SessionState {
     hasSavedAttempt: false,
     recoveryMessageKey: null,
     lastTransactionId: null,
+    correctionReason: null,
   };
 }
 
@@ -102,6 +105,7 @@ export type SessionAction =
     }
   | { type: "USE_HINT"; hintId: string }
   | { type: "LEDGER_UPDATED"; domain: DomainState; transactionId: string | null }
+  | { type: "CORRECTION_REASON_RECORDED"; reason: string }
   | {
       type: "STAGE_PROGRESS";
       completedStageIds: readonly ScenarioStageId[];
@@ -146,6 +150,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         decisions: action.snapshot.decisions,
         hintsUsed: action.snapshot.hintsUsed,
         domain: action.domain,
+        correctionReason: action.snapshot.replayData?.correctionReason ?? null,
         recoveryMessageKey: null,
       };
 
@@ -176,6 +181,9 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
 
     case "LEDGER_UPDATED":
       return { ...state, domain: action.domain, lastTransactionId: action.transactionId };
+
+    case "CORRECTION_REASON_RECORDED":
+      return { ...state, correctionReason: action.reason };
 
     case "STAGE_PROGRESS":
       return {
@@ -221,5 +229,8 @@ export function toAttemptSnapshot(state: SessionState, isPassed: boolean): Attem
     hintsUsed: state.hintsUsed,
     isCompleted: state.completedStageIds.length === SCENARIO_STAGE_ORDER.length,
     isPassed,
+    ...(state.correctionReason === null
+      ? {}
+      : { replayData: { correctionReason: state.correctionReason } }),
   };
 }

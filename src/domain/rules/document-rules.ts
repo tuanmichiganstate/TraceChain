@@ -7,7 +7,7 @@
  * to. Integrity is not authority, and neither is validity.
  */
 
-import { TransactionType } from "../types/enums";
+import { DocumentType, TransactionType } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
 import type { SupplyChainCommand } from "../commands/commands";
 import { failed, notApplicable, passed, type ValidationRule } from "./types";
@@ -54,6 +54,40 @@ export const documentHashPresentRule: ValidationRule = {
   },
 };
 
+/** The metadata discriminant must match the document and its values be valid. */
+export const documentMetadataValidRule: ValidationRule = {
+  ruleId: ValidationRuleId.DOCUMENT_METADATA_VALID,
+  appliesTo: [TransactionType.ANCHOR_DOCUMENT],
+  evaluate(command) {
+    if (command.commandType !== TransactionType.ANCHOR_DOCUMENT) {
+      return notApplicable(ValidationRuleId.DOCUMENT_METADATA_VALID);
+    }
+
+    if (command.metadata.kind !== command.documentType) {
+      return failed(
+        ValidationRuleId.DOCUMENT_METADATA_VALID,
+        "validation.documentMetadataTypeMismatch",
+      );
+    }
+    if (
+      command.documentType === DocumentType.SHIPPING_MANIFEST &&
+      (command.metadata.kind !== DocumentType.SHIPPING_MANIFEST ||
+        !Number.isFinite(command.metadata.declaredQuantity.amount) ||
+        command.metadata.declaredQuantity.amount <= 0)
+    ) {
+      return failed(
+        ValidationRuleId.DOCUMENT_METADATA_VALID,
+        "validation.documentMetadataInvalid",
+      );
+    }
+
+    return passed(
+      ValidationRuleId.DOCUMENT_METADATA_VALID,
+      "validation.documentMetadataValid",
+    );
+  },
+};
+
 /** A certificate that has lapsed cannot be used to certify anything. */
 export const certificateNotExpiredRule: ValidationRule = {
   ruleId: ValidationRuleId.CERTIFICATE_NOT_EXPIRED,
@@ -89,5 +123,6 @@ export const certificateNotExpiredRule: ValidationRule = {
 
 export const documentRules: readonly ValidationRule<SupplyChainCommand>[] = [
   documentHashPresentRule,
+  documentMetadataValidRule,
   certificateNotExpiredRule,
 ];

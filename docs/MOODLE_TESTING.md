@@ -63,7 +63,8 @@ varies between Moodle releases, and that context matters when triaging.
 
 **If resume fails, capture `cmi.suspend_data` before doing anything else** —
 Moodle admins can read it from the SCORM report, or `?debug=true` shows the
-decode error. It should start with `TC1.` and be a few hundred characters.
+decode error. Current saves start with `TC2.` (legacy `TC1` is still accepted)
+and should be a few hundred characters.
 
 ## 4. Score and status reporting
 

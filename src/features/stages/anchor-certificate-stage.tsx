@@ -54,7 +54,7 @@ export function AnchorCertificateStage(): ReactNode {
       {storageCheck !== undefined ? <KnowledgeCheckPanel check={storageCheck} /> : null}
 
       <TransactionAction
-        decisionId={null}
+        decisionId="INT_CERTIFICATE_ANCHORED_TRANSACTION"
         labelKey="stage.anchorCertificate.anchorAction"
         isFirstOfType
         summary={[
@@ -67,7 +67,7 @@ export function AnchorCertificateStage(): ReactNode {
       />
 
       <TransactionAction
-        decisionId={null}
+        decisionId="INT_CERTIFICATE_ISSUED_TRANSACTION"
         labelKey="stage.anchorCertificate.issueAction"
         summary={[
           ["field.assetId", <code key="a">BAT_GREEN_COFFEE_001</code>],
@@ -94,7 +94,7 @@ export function AnchorCertificateStage(): ReactNode {
  */
 function SuspiciousCertificatePanel(): ReactNode {
   const t = useTranslator();
-  const { submitCommand } = useSimulation();
+  const { submitCommand, recordActionOutcome } = useSimulation();
   const [attempted, setAttempted] = useState<ReturnType<typeof submitCommand> | null>(null);
 
   return (
@@ -119,14 +119,14 @@ function SuspiciousCertificatePanel(): ReactNode {
         <button
           type="button"
           className="button button--secondary"
-          onClick={() =>
-            setAttempted(
-              submitCommand(
-                anchorCertificateCommand(OrganizationId.UNRECOGNIZED_CERTIFIER),
-                CERTIFIER_CONTEXT,
-              ),
-            )
-          }
+          onClick={() => {
+            const result = submitCommand(
+              anchorCertificateCommand(OrganizationId.UNRECOGNIZED_CERTIFIER),
+              CERTIFIER_CONTEXT,
+            );
+            recordActionOutcome("INT_SUSPICIOUS_CERTIFICATE_ATTEMPT", result.isAccepted);
+            setAttempted(result);
+          }}
         >
           {t("stage.anchorCertificate.trySuspicious")}
         </button>

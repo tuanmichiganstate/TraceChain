@@ -5,6 +5,9 @@ import { useSimulation } from "../app/providers/simulation-provider";
 import { ScoreComponent } from "../domain/types/scoring";
 import { TransactionStatus } from "../domain/types/enums";
 import { StatusPill } from "./status-pill";
+import { allScoredActions } from "../domain/types/scenario";
+import { resolveEffectiveValue } from "../domain/ledger/effective-value";
+import { formatCorrectionValue } from "../domain/types/correction";
 
 const COMPONENT_LABELS: Readonly<Record<ScoreComponent, string>> = {
   [ScoreComponent.TRANSACTION_ACCURACY]: "score.transactionAccuracy",
@@ -46,8 +49,15 @@ export function FinalReport(): ReactNode {
 
   const { score } = scoreBreakdown;
   const committedCount = Object.values(state.domain.transactionsById).filter(
-    (transaction) => transaction.transactionStatus !== TransactionStatus.REJECTED,
+    (transaction) => transaction.transactionStatus === TransactionStatus.COMMITTED,
   ).length;
+  const correctionEvidence = allScoredActions(scenario)
+    .map((action) => action.evidence)
+    .find((evidence) => evidence?.kind === "EFFECTIVE_VALUE");
+  const correctionResolution =
+    correctionEvidence === undefined
+      ? null
+      : resolveEffectiveValue(state.domain, correctionEvidence.target);
 
   // Awaited rather than fired and forgotten: "the result has been sent" must
   // not appear until it has been.
@@ -96,6 +106,26 @@ export function FinalReport(): ReactNode {
           <dd>{state.domain.blockOrder.length}</dd>
         </div>
       </dl>
+
+      {correctionResolution !== null ? (
+        <section aria-labelledby="report-correction-heading">
+          <h4 id="report-correction-heading">{t("report.correctionLineage")}</h4>
+          <dl className="asset-card__grid">
+            <div className="asset-card__row">
+              <dt>{t("field.correctionOf")}</dt>
+              <dd><code>{correctionResolution.originalTransactionId}</code></dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
+              <dd>{formatCorrectionValue(correctionResolution.originalValue)}</dd>
+            </div>
+            <div className="asset-card__row">
+              <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
+              <dd>{formatCorrectionValue(correctionResolution.effectiveValue)}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       {isSubmitted ? (
         <p>

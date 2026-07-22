@@ -62,7 +62,7 @@ export function ShipAndMonitorStage(): ReactNode {
 
       {transfersOwnership !== null ? (
         <TransactionAction
-          decisionId={null}
+          decisionId="INT_CUSTODY_TRANSFERRED_TRANSACTION"
           labelKey="stage.shipAndMonitor.custodyAction"
           isFirstOfType
           summary={[
@@ -110,7 +110,7 @@ export function ShipAndMonitorStage(): ReactNode {
       {transportCheck !== undefined ? <KnowledgeCheckPanel check={transportCheck} /> : null}
 
       <TransactionAction
-        decisionId={null}
+        decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
         labelKey="stage.shipAndMonitor.transportAction"
         isFirstOfType
         summary={[

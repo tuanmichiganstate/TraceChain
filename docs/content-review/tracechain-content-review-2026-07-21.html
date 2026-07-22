@@ -566,6 +566,27 @@ tr:last-child td{border-bottom:0}
     </tbody></table></div>
   </section>
 
+  <section id="phase2-stage5-repair" class="stage">
+    <header class="stage__head stage__head--plain"><div><h2>Nội dung sửa chữa Bước 5</h2>
+      <p class="stage__role">Chuỗi vận đơn đã cam kết, giao dịch điều chỉnh và giá trị khai báo có hiệu lực.</p></div></header>
+    <div class="tablewrap"><table><thead><tr><th>Mã</th><th>Tiếng Việt</th><th>English</th></tr></thead><tbody>
+      <tr><td class="mono">stage.receiveAndCorrect.instruction</td><td lang="vi">Nhà máy tiếp nhận lô hàng và cân lại. Vận đơn đã cam kết khai 1000 kg, trong khi khối lượng thực tế là 100 kg. Bản ghi gốc được giữ nguyên; bạn cần bổ sung một giao dịch điều chỉnh để giá trị khai báo có hiệu lực trở thành 100 kg.</td><td lang="en" class="muted">The plant receives and reweighs the batch. The committed manifest declares 1000 kg while the measured quantity is 100 kg. The original record remains unchanged; append a correction so the effective declared quantity becomes 100 kg.</td></tr>
+      <tr><td class="mono">stage.receiveAndCorrect.action.correct</td><td lang="vi">Bổ sung giao dịch điều chỉnh declaredQuantity của vận đơn từ 1000 kg thành 100 kg; bản ghi gốc không bị sửa.</td><td lang="en" class="muted">Append a correction of the manifest's declaredQuantity from 1000 kg to 100 kg; the original record is not edited.</td></tr>
+      <tr><td class="mono">stage.receiveAndCorrect.discrepancyBody</td><td lang="vi">Vận đơn do nhân viên giao nhận của hợp tác xã lập sau khi giao dịch bàn giao quyền lưu giữ được cam kết, trước dữ liệu cảm biến, và đã được ghi vào một khối. Giao dịch điều chỉnh sẽ được bổ sung sau bản ghi gốc thay vì thay thế nó.</td><td lang="en" class="muted">The co-operative's shipping clerk filed the manifest after the custody handoff committed and before the sensor evidence. The correction is appended after that original block record instead of replacing it.</td></tr>
+      <tr><td class="mono">stage.receiveAndCorrect.effectiveQuantity</td><td lang="vi">Số lượng khai báo có hiệu lực</td><td lang="en" class="muted">Effective declared quantity</td></tr>
+      <tr><td class="mono">field.correctionTarget</td><td lang="vi">Đối tượng điều chỉnh</td><td lang="en" class="muted">Correction target</td></tr>
+      <tr><td class="mono">field.documentType</td><td lang="vi">Loại tài liệu</td><td lang="en" class="muted">Document type</td></tr>
+      <tr><td class="mono">report.correctionLineage</td><td lang="vi">Dòng lịch sử điều chỉnh vận đơn</td><td lang="en" class="muted">Shipping-manifest correction lineage</td></tr>
+      <tr><td class="mono">validation.documentMetadataValid</td><td lang="vi">Siêu dữ liệu phù hợp với loại tài liệu và chứa các giá trị hợp lệ.</td><td lang="en" class="muted">The document metadata matches its document type and contains valid values.</td></tr>
+      <tr><td class="mono">validation.documentMetadataTypeMismatch</td><td lang="vi">Siêu dữ liệu không phù hợp với loại tài liệu đã chọn.</td><td lang="en" class="muted">The document metadata does not match the selected document type.</td></tr>
+      <tr><td class="mono">validation.documentMetadataInvalid</td><td lang="vi">Siêu dữ liệu tài liệu chứa giá trị không hợp lệ.</td><td lang="en" class="muted">The document metadata contains an invalid value.</td></tr>
+      <tr><td class="mono">documentType.SHIPPING_MANIFEST</td><td lang="vi">Vận đơn</td><td lang="en" class="muted">Shipping manifest</td></tr>
+      <tr><td class="mono">documentType.QUALITY_CERTIFICATE</td><td lang="vi">Chứng nhận chất lượng</td><td lang="en" class="muted">Quality certificate</td></tr>
+      <tr><td class="mono">documentType.SENSOR_DATASET</td><td lang="vi">Bộ dữ liệu cảm biến</td><td lang="en" class="muted">Sensor dataset</td></tr>
+      <tr><td class="mono">documentType.LABORATORY_REPORT</td><td lang="vi">Báo cáo phòng thí nghiệm</td><td lang="en" class="muted">Laboratory report</td></tr>
+    </tbody></table></div>
+  </section>
+
   <footer class="foot"><p>Sinh tự động từ định nghĩa kịch bản và tệp ngôn ngữ của TraceChain — không chép tay, nên không sót và không sai lệch so với bản chạy thật. Ngày sinh: 21/07/2026.</p></footer>
 </main></div>
 </body>

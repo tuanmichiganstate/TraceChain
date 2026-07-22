@@ -6,6 +6,7 @@ import { useScenario } from "../app/providers/scenario-provider";
 import { useSimulation } from "../app/providers/simulation-provider";
 import { TransactionPipeline } from "./transaction-pipeline";
 import { ValidationResults } from "./validation-results";
+import { ACTION_ACCEPTED } from "../domain/scenario/answer-codec";
 
 /**
  * One transaction: submit it, watch the lifecycle, read the rules, seal it.
@@ -30,8 +31,8 @@ export function TransactionAction({
   isFirstOfType = false,
   onCommitted,
 }: {
-  /** Scored action identifier; omitted for unscored supporting transactions. */
-  decisionId: string | null;
+  /** Persisted action identifier; scoring is declared separately by the scenario. */
+  decisionId: string;
   labelKey: string;
   /** Field label/value pairs shown in the detail panel. */
   summary: ReadonlyArray<readonly [string, ReactNode]>;
@@ -41,9 +42,22 @@ export function TransactionAction({
   onCommitted?: () => void;
 }): ReactNode {
   const t = useTranslator();
-  const { scenario } = useScenario();
   const { state, submitCommand, recordActionOutcome, sealPendingBlock } = useSimulation();
-  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(() => {
+    if (state.decisions[decisionId]?.encodedValue !== ACTION_ACCEPTED) return null;
+    const commandType = buildCommand().commandType;
+    return (
+      [...state.domain.transactionOrder]
+        .reverse()
+        .map((id) => state.domain.transactionsById[id])
+        .find(
+          (candidate) =>
+            candidate?.transactionType === commandType &&
+            candidate.transactionStatus !== TransactionStatus.REJECTED &&
+            candidate.proposedByActorId === context.actorId,
+        )?.transactionId ?? null
+    );
+  });
   const [isDetailOpen, setDetailOpen] = useState(isFirstOfType);
 
   const transaction =
@@ -55,13 +69,12 @@ export function TransactionAction({
   const submit = (): void => {
     const outcome = submitCommand(buildCommand(), context);
     setTransactionId(outcome.transaction.transactionId);
-    if (decisionId !== null) {
-      recordActionOutcome(decisionId, outcome.isAccepted);
-    }
+    recordActionOutcome(decisionId, outcome.isAccepted);
   };
 
   const seal = (): void => {
-    sealPendingBlock(scenario.timeline["batchCreated"] as string);
+    if (transaction === undefined) return;
+    sealPendingBlock(transaction.createdAt);
     onCommitted?.();
   };
 
