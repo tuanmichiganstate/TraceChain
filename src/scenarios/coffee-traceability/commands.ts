@@ -74,6 +74,7 @@ export const anchorCertificateCommand = (
   documentType: DocumentType.QUALITY_CERTIFICATE,
   fileName: "giay-chung-nhan-chat-luong-001.pdf",
   contentHash: sha256Hex(QUALITY_CERTIFICATE_CONTENT),
+  metadata: { kind: DocumentType.QUALITY_CERTIFICATE },
   issuerOrganizationId,
   issuedAt: SCENARIO_TIMELINE.certificateIssued,
   expiresAt: SCENARIO_TIMELINE.certificateExpires,

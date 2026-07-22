@@ -25,6 +25,7 @@ import type {
   ValidationStatus,
 } from "./enums";
 import type { ValidationRuleId } from "./rule-ids";
+import type { DocumentMetadata } from "./document-metadata";
 
 /** Business actions an organization may be authorized to perform. */
 export type SupplyChainAction = TransactionType;
@@ -91,6 +92,7 @@ export interface DocumentAnchor {
   documentType: DocumentType;
   fileName: string;
   contentHash: string;
+  metadata: DocumentMetadata;
   hashAlgorithm: "SHA-256";
   issuerOrganizationId: string;
   issuedAt: string;

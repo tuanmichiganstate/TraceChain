@@ -12,7 +12,12 @@
  */
 
 import { sha256Hex } from "../../src/infrastructure/hashing/sha256";
-import { AssetType, QuantityUnit, TransactionType } from "../../src/domain/types/enums";
+import {
+  AssetType,
+  DocumentType,
+  QuantityUnit,
+  TransactionType,
+} from "../../src/domain/types/enums";
 import type { CommandContext, SupplyChainCommand } from "../../src/domain/commands/commands";
 import type { TransactionResult } from "../../src/domain/ledger/ledger-engine";
 import { SimulatedLedgerAdapter } from "../../src/domain/ledger/simulated-ledger-adapter";
@@ -107,9 +112,10 @@ export const commands = {
       commandType: TransactionType.ANCHOR_DOCUMENT,
       assetId: GREEN_COFFEE_BATCH_ID,
       documentAnchorId: "DOC_QUALITY_CERTIFICATE_001",
-      documentType: "QUALITY_CERTIFICATE",
+      documentType: DocumentType.QUALITY_CERTIFICATE,
       fileName: "quality-certificate-001.pdf",
       contentHash: sha256Hex("simulated quality certificate content"),
+      metadata: { kind: DocumentType.QUALITY_CERTIFICATE },
       issuerOrganizationId: OrganizationId.CERTIFICATION_BODY,
       issuedAt: SCENARIO_TIMELINE.certificateIssued,
       expiresAt: SCENARIO_TIMELINE.certificateExpires,

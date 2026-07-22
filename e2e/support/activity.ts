@@ -26,7 +26,6 @@ export class Activity {
   private mark(label: string): void {
     if (!this.timingEnabled) return;
     const now = Date.now();
-    // eslint-disable-next-line no-console
     console.log(`[timing] ${label}: +${now - this.lastMark}ms`);
     this.lastMark = now;
   }

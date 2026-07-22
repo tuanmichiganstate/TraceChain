@@ -24,7 +24,7 @@
  * teaching device that shows ordering and commitment are separate steps.
  */
 
-import { TransactionStatus } from "../types/enums";
+import { TransactionStatus, TransactionType } from "../types/enums";
 import type {
   EndorsementResult,
   LedgerBlock,
@@ -93,22 +93,38 @@ export class SimulatedLedger {
     const transactionId = formatTransactionId(state.nextTransactionSequence);
     const timestamp = command.scenarioTimestamp;
 
-    const signature: SimulatedSignature = {
-      signatureId: `SIG_${transactionId}`,
-      signedByActorId: context.actorId,
-      signedByOrganizationId: context.organizationId,
-      signedAt: timestamp,
-      signedPayloadHash: this.hash(canonicalize(command)),
-      signatureType: "EDUCATIONAL_SIMULATION",
-    };
-
     // The acting identity comes from this call, never from a stored default.
+    // Rules run before serialization so an explicitly invalid numeric value is
+    // rejected by its domain rule instead of crashing canonicalization while
+    // the simulated signature is being assembled.
     const validation = evaluateRules(command, {
       ...registries,
       state,
       actorId: context.actorId,
       organizationId: context.organizationId,
     });
+
+    let signedPayloadHash: string;
+    try {
+      signedPayloadHash = this.hash(canonicalize(command));
+    } catch (error) {
+      if (validation.isValid) throw error;
+      signedPayloadHash = this.hash(
+        canonicalize({
+          rejectedCommandType: command.commandType,
+          serializationFailure: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+
+    const signature: SimulatedSignature = {
+      signatureId: `SIG_${transactionId}`,
+      signedByActorId: context.actorId,
+      signedByOrganizationId: context.organizationId,
+      signedAt: timestamp,
+      signedPayloadHash,
+      signatureType: "EDUCATIONAL_SIMULATION",
+    };
 
     const baseTransaction: LedgerTransaction = {
       transactionId,
@@ -122,6 +138,9 @@ export class SimulatedLedger {
       endorsementResults: [],
       createdAt: timestamp,
       submittedAt: timestamp,
+      ...(command.commandType === TransactionType.RECORD_CORRECTION
+        ? { correctionOfTransactionId: command.correctionOfTransactionId }
+        : {}),
     };
 
     if (!validation.isValid) {

@@ -4,9 +4,9 @@
 |---|---|
 | Artifact | `tracechain-content-review-2026-07-21.html` |
 | Generated | 2026-07-21 |
-| Source commit | `07274457d769af099803a4b2555d3f06ea79ce7b` |
-| Locale parity | **512/512** strings present, 0 missing |
-| SHA-256 | `66a34d1d2328a35db84a7fdabd6a088a6f70068ad99644d5a907f78b0dd83536` |
+| Source state | Phase 1 locale update; deterministic commit provenance lands with the Phase 4 generator |
+| Locale parity | **519/519** strings present, 0 missing |
+| SHA-256 | `5a52ab22e85272b2087fe79209179036b9eb4db3678df6efd3254a508b22d70f` |
 | Review status | **Not yet reviewed** — awaiting Vietnamese subject expert |
 
 Generated from `src/scenarios/coffee-traceability/` and `src/locales/vi.json`,
@@ -21,9 +21,9 @@ missing = [k for k in vi if escape(vi[k]) not in html]
 assert not missing
 ```
 
-An earlier draft of this pack claimed completeness while containing 512/512
-strings. That is why the count is recorded here and why it must be re-verified
-whenever the pack is regenerated.
+An earlier draft of this pack claimed completeness while containing only part
+of the locale catalog. The current count is recorded mechanically rather than
+assumed, and must be re-verified whenever the pack is regenerated.
 
 ## Known limitation of the current check
 

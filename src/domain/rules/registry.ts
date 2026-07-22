@@ -21,7 +21,7 @@ import type { ValidationContext, ValidationRule } from "./types";
 
 /**
  * Every rule in the application, grouped by concern. A test asserts this
- * covers all twenty-five identifiers in `ValidationRuleId`, so a rule that is
+ * covers every identifier in `ValidationRuleId`, so a rule that is
  * declared but never registered cannot slip through.
  */
 const ALL_RULES: readonly ValidationRule<SupplyChainCommand>[] = [

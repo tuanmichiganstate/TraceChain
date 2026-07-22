@@ -6,6 +6,7 @@
  */
 
 import type { CorrectionTarget, CorrectionValue } from "../types/correction";
+import type { DocumentMetadata } from "../types/document-metadata";
 import type {
   AssetType,
   ComplianceStatus,
@@ -57,6 +58,7 @@ export interface DocumentAnchoredEvent extends EventBase {
   readonly documentType: DocumentType;
   readonly fileName: string;
   readonly contentHash: string;
+  readonly metadata: DocumentMetadata;
   readonly issuerOrganizationId: string;
   readonly issuedAt: string;
   readonly expiresAt?: string;

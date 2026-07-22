@@ -17,6 +17,7 @@ import type {
   TransactionType,
 } from "../types/enums";
 import type { CorrectionTarget, CorrectionValue } from "../types/correction";
+import type { DocumentMetadata } from "../types/document-metadata";
 
 /** Fields every command carries. */
 interface CommandBase {
@@ -81,6 +82,7 @@ export interface AnchorDocumentCommand extends CommandBase {
   readonly documentType: DocumentType;
   readonly fileName: string;
   readonly contentHash: string;
+  readonly metadata: DocumentMetadata;
   readonly issuerOrganizationId: string;
   readonly issuedAt: string;
   readonly expiresAt?: string;

@@ -13,8 +13,15 @@
 import { TransactionStatus, TransactionType } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
 import type { SupplyChainCommand } from "../commands/commands";
-import { correctionValuesEqual } from "../types/correction";
-import { effectiveValueOf } from "../ledger/effective-value";
+import {
+  correctionValuesEqual,
+  correctionValuesTypeCompatible,
+  isCorrectionValueValid,
+} from "../types/correction";
+import {
+  correctionTargetValueInTransaction,
+  resolveEffectiveValue,
+} from "../ledger/effective-value";
 import { failed, notApplicable, passed, type ValidationRule } from "./types";
 
 const MINIMUM_REASON_LENGTH = 10;
@@ -40,10 +47,12 @@ export const correctionReferenceExistsRule: ValidationRule = {
         { transactionId: command.correctionOfTransactionId },
       );
     }
-    if (original.transactionStatus === TransactionStatus.REJECTED) {
+    if (original.transactionStatus !== TransactionStatus.COMMITTED) {
       return failed(
         ValidationRuleId.CORRECTION_REFERENCE_EXISTS,
-        "validation.correctionReferencesRejected",
+        original.transactionStatus === TransactionStatus.REJECTED
+          ? "validation.correctionReferencesRejected"
+          : "validation.correctionReferenceNotCommitted",
         { transactionId: command.correctionOfTransactionId },
       );
     }
@@ -56,6 +65,39 @@ export const correctionReferenceExistsRule: ValidationRule = {
     }
 
     return passed(ValidationRuleId.CORRECTION_REFERENCE_EXISTS, "validation.correctionReferenceOk");
+  },
+};
+
+/** The typed target must be evidence the referenced transaction actually created. */
+export const correctionTargetValidRule: ValidationRule = {
+  ruleId: ValidationRuleId.CORRECTION_TARGET_VALID,
+  appliesTo: [TransactionType.RECORD_CORRECTION],
+  evaluate(command, context) {
+    if (command.commandType !== TransactionType.RECORD_CORRECTION) {
+      return notApplicable(ValidationRuleId.CORRECTION_TARGET_VALID);
+    }
+
+    const original = context.state.transactionsById[command.correctionOfTransactionId];
+    if (original?.transactionStatus !== TransactionStatus.COMMITTED) {
+      return failed(
+        ValidationRuleId.CORRECTION_TARGET_VALID,
+        "validation.correctionTargetUnknown",
+      );
+    }
+
+    const originalValue = correctionTargetValueInTransaction(original, command.target);
+    const commandTargetsSameAsset =
+      command.target.kind === "ASSET_FIELD"
+        ? command.target.assetId === command.assetId
+        : (original.commandPayload as { assetId?: unknown }).assetId === command.assetId;
+    if (originalValue === null || !commandTargetsSameAsset) {
+      return failed(
+        ValidationRuleId.CORRECTION_TARGET_VALID,
+        "validation.correctionTargetNotInReference",
+      );
+    }
+
+    return passed(ValidationRuleId.CORRECTION_TARGET_VALID, "validation.correctionTargetOk");
   },
 };
 
@@ -109,14 +151,17 @@ export const correctionIncorrectValueMatchesEffectiveRule: ValidationRule = {
       return notApplicable(ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE);
     }
 
-    const effective = effectiveValueOf(context.state, command.target);
-    if (effective === null) {
+    const resolution = resolveEffectiveValue(context.state, command.target);
+    if (
+      resolution === null ||
+      resolution.originalTransactionId !== command.correctionOfTransactionId
+    ) {
       return failed(
         ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
         "validation.correctionTargetUnknown",
       );
     }
-    if (!correctionValuesEqual(command.incorrectValue, effective)) {
+    if (!correctionValuesEqual(command.incorrectValue, resolution.effectiveValue)) {
       return failed(
         ValidationRuleId.CORRECTION_INCORRECT_VALUE_MATCHES_EFFECTIVE,
         "validation.correctionIncorrectValueMismatch",
@@ -130,8 +175,43 @@ export const correctionIncorrectValueMatchesEffectiveRule: ValidationRule = {
   },
 };
 
+/** Corrected values must preserve the target type/unit, be valid, and move it. */
+export const correctionValueValidRule: ValidationRule = {
+  ruleId: ValidationRuleId.CORRECTION_VALUE_VALID,
+  appliesTo: [TransactionType.RECORD_CORRECTION],
+  evaluate(command, context) {
+    if (command.commandType !== TransactionType.RECORD_CORRECTION) {
+      return notApplicable(ValidationRuleId.CORRECTION_VALUE_VALID);
+    }
+
+    const resolution = resolveEffectiveValue(context.state, command.target);
+    if (resolution === null) {
+      return failed(ValidationRuleId.CORRECTION_VALUE_VALID, "validation.correctionTargetUnknown");
+    }
+    if (!correctionValuesTypeCompatible(resolution.effectiveValue, command.correctedValue)) {
+      return failed(
+        ValidationRuleId.CORRECTION_VALUE_VALID,
+        "validation.correctionValueTypeMismatch",
+      );
+    }
+    if (!isCorrectionValueValid(command.correctedValue)) {
+      return failed(ValidationRuleId.CORRECTION_VALUE_VALID, "validation.correctionValueInvalid");
+    }
+    if (correctionValuesEqual(command.correctedValue, resolution.effectiveValue)) {
+      return failed(
+        ValidationRuleId.CORRECTION_VALUE_VALID,
+        "validation.correctionValuesIdentical",
+      );
+    }
+
+    return passed(ValidationRuleId.CORRECTION_VALUE_VALID, "validation.correctionValueOk");
+  },
+};
+
 export const correctionRules: readonly ValidationRule<SupplyChainCommand>[] = [
   correctionReferenceExistsRule,
+  correctionTargetValidRule,
   correctionReasonRequiredRule,
   correctionIncorrectValueMatchesEffectiveRule,
+  correctionValueValidRule,
 ];

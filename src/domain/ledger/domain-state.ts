@@ -131,6 +131,7 @@ export function reduce(state: DomainState, event: LedgerDomainEvent): DomainStat
         documentType: event.documentType,
         fileName: event.fileName,
         contentHash: event.contentHash,
+        metadata: event.metadata,
         hashAlgorithm: "SHA-256",
         issuerOrganizationId: event.issuerOrganizationId,
         issuedAt: event.issuedAt,

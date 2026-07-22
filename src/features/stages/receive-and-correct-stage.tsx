@@ -42,6 +42,11 @@ export function ReceiveAndCorrectStage(): ReactNode {
       transaction.transactionType === TransactionType.RECEIVE_BATCH &&
       transaction.transactionStatus !== "REJECTED",
   );
+  const assetCreationTransaction = Object.values(state.domain.transactionsById).find(
+    (transaction) =>
+      transaction.transactionType === TransactionType.CREATE_BATCH &&
+      transaction.transactionStatus !== "REJECTED",
+  );
 
   return (
     <StageShell stageId={ScenarioStageId.RECEIVE_AND_CORRECT}>
@@ -92,8 +97,8 @@ export function ReceiveAndCorrectStage(): ReactNode {
         context={PRODUCER_CONTEXT}
       />
 
-      {receiptTransaction !== undefined ? (
-        <CorrectionPanel correctionOfTransactionId={receiptTransaction.transactionId} />
+      {receiptTransaction !== undefined && assetCreationTransaction !== undefined ? (
+        <CorrectionPanel correctionOfTransactionId={assetCreationTransaction.transactionId} />
       ) : null}
 
       {asset !== undefined ? (

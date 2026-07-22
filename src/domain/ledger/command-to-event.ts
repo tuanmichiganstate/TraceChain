@@ -56,6 +56,7 @@ export function commandToEvent(
         documentType: command.documentType,
         fileName: command.fileName,
         contentHash: command.contentHash,
+        metadata: command.metadata,
         issuerOrganizationId: command.issuerOrganizationId,
         issuedAt: command.issuedAt,
         ...(command.expiresAt === undefined ? {} : { expiresAt: command.expiresAt }),

@@ -1,30 +1,40 @@
 /**
- * The current effective value of a correctable target.
+ * Authoritative resolution of correctable values.
  *
- * A value can be corrected more than once -- 1000 -> 100, then 100 -> 98 -- and
- * every one of those transactions stays in history. The effective value is the
- * last link in that chain, resolved in ledger order, never a mutable field
- * someone overwrote.
- *
- * For an ASSET_FIELD the ledger already tracks the live value on the asset (the
- * reducer moves it with each correction), so that field *is* the effective
- * value. For a DOCUMENT_METADATA_FIELD nothing on the asset tracks it: the base
- * is the value the referenced document declared, and each committed correction
- * for that same target supersedes it, in the order the transactions committed.
+ * Resolution starts at the value committed by the transaction that created
+ * the target evidence, then folds valid committed corrections in deterministic
+ * `transactionOrder`. No historical transaction is rewritten.
  */
 
+import type {
+  AnchorDocumentCommand,
+  RecordCorrectionCommand,
+  SupplyChainCommand,
+} from "../commands/commands";
+import {
+  correctionTargetKey,
+  correctionValuesEqual,
+  correctionValuesTypeCompatible,
+  isCorrectionValueValid,
+  type CorrectionTarget,
+  type CorrectionValue,
+} from "../types/correction";
+import { DocumentType, QuantityUnit, TransactionStatus, TransactionType } from "../types/enums";
+import type { LedgerTransaction } from "../types/models";
 import type { DomainState } from "./domain-state";
-import type { CorrectionValue, CorrectionTarget } from "../types/correction";
-import { correctionTargetKey } from "../types/correction";
-import type { RecordCorrectionCommand } from "../commands/commands";
-import { TransactionType, QuantityUnit } from "../types/enums";
+
+export interface EffectiveValueResolution {
+  readonly target: CorrectionTarget;
+  readonly originalTransactionId: string;
+  readonly originalValue: CorrectionValue;
+  readonly effectiveValue: CorrectionValue;
+  readonly appliedCorrectionTransactionIds: readonly string[];
+}
 
 /**
- * Fold a chain of corrected values onto a base, in the order given.
- *
- * Pure and independent of the ledger, so the "apply successive corrections in
- * order" logic can be tested on its own. The caller is responsible for passing
- * the corrections already sorted into ledger order.
+ * Fold corrected values onto a base in caller-supplied ledger order.
+ * Kept as a small pure primitive; ledger-aware callers use
+ * `resolveEffectiveValue`, which additionally filters and validates the chain.
  */
 export function applyCorrectionChain(
   base: CorrectionValue,
@@ -37,79 +47,135 @@ export function applyCorrectionChain(
   return { effectiveValue, appliedCount: orderedCorrectedValues.length };
 }
 
-/** Committed corrections for one target, oldest first. */
-function committedCorrectionsFor(
-  state: DomainState,
+/**
+ * The value for `target` that one transaction originally committed, or null
+ * when the transaction is about a different object/field.
+ */
+export function correctionTargetValueInTransaction(
+  transaction: LedgerTransaction,
   target: CorrectionTarget,
-): readonly RecordCorrectionCommand[] {
-  const key = correctionTargetKey(target);
-  const matches: RecordCorrectionCommand[] = [];
-  for (const transactionId of state.transactionOrder) {
-    const transaction = state.transactionsById[transactionId];
-    if (transaction === undefined) continue;
-    const command = transaction.commandPayload as { commandType?: unknown };
-    if (command.commandType !== TransactionType.RECORD_CORRECTION) continue;
-    const correction = command as unknown as RecordCorrectionCommand;
-    if (correctionTargetKey(correction.target) === key) matches.push(correction);
+): CorrectionValue | null {
+  const command = transaction.commandPayload as SupplyChainCommand;
+
+  if (target.kind === "ASSET_FIELD") {
+    switch (command.commandType) {
+      case TransactionType.CREATE_BATCH:
+        return command.assetId === target.assetId
+          ? { kind: "QUANTITY", amount: command.quantity, unit: command.quantityUnit }
+          : null;
+      case TransactionType.TRANSFORM_BATCH:
+        return command.outputAssetId === target.assetId
+          ? {
+              kind: "QUANTITY",
+              amount: command.outputQuantity,
+              unit: command.outputQuantityUnit,
+            }
+          : null;
+      case TransactionType.PACKAGE_BATCH:
+        return command.outputAssetId === target.assetId
+          ? { kind: "QUANTITY", amount: command.packageCount, unit: QuantityUnit.UNIT }
+          : null;
+      default:
+        return null;
+    }
   }
-  return matches;
+
+  if (
+    command.commandType !== TransactionType.ANCHOR_DOCUMENT ||
+    command.documentAnchorId !== target.documentAnchorId
+  ) {
+    return null;
+  }
+
+  const anchor = command as AnchorDocumentCommand;
+  if (
+    target.field === "declaredQuantity" &&
+    anchor.documentType === DocumentType.SHIPPING_MANIFEST &&
+    anchor.metadata.kind === DocumentType.SHIPPING_MANIFEST
+  ) {
+    return anchor.metadata.declaredQuantity;
+  }
+
+  return null;
 }
 
-/** The declared value a document anchored, if the referenced transaction has one. */
-function declaredBaseValue(
+function originalResolution(
   state: DomainState,
-  documentAnchorId: string,
-): CorrectionValue | null {
+  target: CorrectionTarget,
+): Omit<EffectiveValueResolution, "effectiveValue" | "appliedCorrectionTransactionIds"> | null {
   for (const transactionId of state.transactionOrder) {
     const transaction = state.transactionsById[transactionId];
-    if (transaction === undefined) continue;
-    const command = transaction.commandPayload as {
-      commandType?: unknown;
-      documentAnchorId?: unknown;
-      declaredQuantity?: unknown;
-      declaredQuantityUnit?: unknown;
-    };
-    if (
-      command.commandType === TransactionType.ANCHOR_DOCUMENT &&
-      command.documentAnchorId === documentAnchorId &&
-      typeof command.declaredQuantity === "number"
-    ) {
-      return {
-        kind: "QUANTITY",
-        amount: command.declaredQuantity,
-        unit: (command.declaredQuantityUnit as QuantityUnit | undefined) ?? QuantityUnit.KG,
-      };
+    if (transaction?.transactionStatus !== TransactionStatus.COMMITTED) continue;
+    const originalValue = correctionTargetValueInTransaction(transaction, target);
+    if (originalValue !== null) {
+      return { target, originalTransactionId: transactionId, originalValue };
     }
   }
   return null;
 }
 
-/**
- * The value a correction submitted now must state as its "incorrect" value:
- * whatever the target currently effectively holds. `null` when it cannot be
- * determined -- an unknown asset, or a document field with no declared base and
- * no corrections yet -- which the caller treats as a validation failure.
- */
+function isApplicableCommittedCorrection(
+  transaction: LedgerTransaction,
+  target: CorrectionTarget,
+  originalTransactionId: string,
+): transaction is LedgerTransaction & { commandPayload: RecordCorrectionCommand } {
+  if (
+    transaction.transactionStatus !== TransactionStatus.COMMITTED ||
+    transaction.transactionType !== TransactionType.RECORD_CORRECTION
+  ) {
+    return false;
+  }
+  const command = transaction.commandPayload as RecordCorrectionCommand;
+  return (
+    command.correctionOfTransactionId === originalTransactionId &&
+    correctionTargetKey(command.target) === correctionTargetKey(target) &&
+    !transaction.validationResults.some((result) => result.status === "FAILED")
+  );
+}
+
+/** Resolve an original value plus every coherent committed correction. */
+export function resolveEffectiveValue(
+  state: DomainState,
+  target: CorrectionTarget,
+): EffectiveValueResolution | null {
+  const original = originalResolution(state, target);
+  if (original === null) return null;
+
+  let effectiveValue = original.originalValue;
+  const appliedCorrectionTransactionIds: string[] = [];
+
+  for (const transactionId of state.transactionOrder) {
+    const transaction = state.transactionsById[transactionId];
+    if (
+      transaction === undefined ||
+      !isApplicableCommittedCorrection(transaction, target, original.originalTransactionId)
+    ) {
+      continue;
+    }
+
+    const correction = transaction.commandPayload;
+    const coherent =
+      correctionValuesEqual(correction.incorrectValue, effectiveValue) &&
+      correctionValuesTypeCompatible(effectiveValue, correction.correctedValue) &&
+      isCorrectionValueValid(correction.correctedValue) &&
+      !correctionValuesEqual(correction.correctedValue, effectiveValue);
+    if (!coherent) continue;
+
+    effectiveValue = correction.correctedValue;
+    appliedCorrectionTransactionIds.push(transactionId);
+  }
+
+  return {
+    ...original,
+    effectiveValue,
+    appliedCorrectionTransactionIds,
+  };
+}
+
+/** Convenience for consumers that need only the resolved value. */
 export function effectiveValueOf(
   state: DomainState,
   target: CorrectionTarget,
 ): CorrectionValue | null {
-  if (target.kind === "ASSET_FIELD") {
-    const asset = state.assetsById[target.assetId];
-    if (asset === undefined) return null;
-    // Only "quantity" is correctable today; the live field is the effective value.
-    return { kind: "QUANTITY", amount: asset.quantity, unit: asset.quantityUnit };
-  }
-
-  const corrections = committedCorrectionsFor(state, target);
-  const base = declaredBaseValue(state, target.documentAnchorId);
-  if (base === null) {
-    // No declared base: the effective value is the latest correction, if any.
-    if (corrections.length === 0) return null;
-    return (corrections[corrections.length - 1] as RecordCorrectionCommand).correctedValue;
-  }
-  return applyCorrectionChain(
-    base,
-    corrections.map((correction) => correction.correctedValue),
-  ).effectiveValue;
+  return resolveEffectiveValue(state, target)?.effectiveValue ?? null;
 }

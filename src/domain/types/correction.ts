@@ -15,7 +15,7 @@
  * runtime.
  */
 
-import type { QuantityUnit } from "./enums";
+import type { QuantityValue } from "./document-metadata";
 
 /** The only asset field a correction may move. Deliberately a closed set. */
 export type CorrectableAssetField = "quantity";
@@ -51,19 +51,39 @@ export type CorrectionTarget =
  * shapes so a future correction of a name or a date needs no new plumbing.
  */
 export type CorrectionValue =
-  | { readonly kind: "QUANTITY"; readonly amount: number; readonly unit: QuantityUnit }
+  | QuantityValue
   | { readonly kind: "TEXT"; readonly value: string }
   | { readonly kind: "DATE"; readonly value: string };
 
 /** Typed equality: a quantity differs from another of a different unit. */
 export function correctionValuesEqual(a: CorrectionValue, b: CorrectionValue): boolean {
   if (a.kind !== b.kind) return false;
-  switch (a.kind) {
+  if (a.kind === "QUANTITY" && b.kind === "QUANTITY") {
+    return a.amount === b.amount && a.unit === b.unit;
+  }
+  if (a.kind === "TEXT" && b.kind === "TEXT") return a.value === b.value;
+  return a.kind === "DATE" && b.kind === "DATE" && a.value === b.value;
+}
+
+/** Values may replace each other only when their discriminants and units agree. */
+export function correctionValuesTypeCompatible(
+  current: CorrectionValue,
+  proposed: CorrectionValue,
+): boolean {
+  if (current.kind !== proposed.kind) return false;
+  return current.kind !== "QUANTITY" ||
+    (proposed.kind === "QUANTITY" && current.unit === proposed.unit);
+}
+
+/** Domain-level validity independent of any scenario-specific number. */
+export function isCorrectionValueValid(value: CorrectionValue): boolean {
+  switch (value.kind) {
     case "QUANTITY":
-      return a.amount === (b as { amount: number }).amount && a.unit === (b as { unit: QuantityUnit }).unit;
+      return Number.isFinite(value.amount) && value.amount > 0;
     case "TEXT":
+      return value.value.trim().length > 0;
     case "DATE":
-      return a.value === (b as { value: string }).value;
+      return Number.isFinite(Date.parse(value.value));
   }
 }
 

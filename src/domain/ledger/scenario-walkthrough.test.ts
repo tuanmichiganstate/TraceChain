@@ -289,7 +289,8 @@ describe("correction rather than deletion", () => {
   it("adds a correction without touching the original record", async () => {
     const ledger = await runUpTo("inTransit");
 
-    // A receipt recorded with the manifest's wrong figure.
+    // Receipt is operational evidence; the asset quantity itself originated in
+    // the committed CREATE_BATCH transaction and that is the correction target.
     const wrong = await ledger.submitCommand(
       commands.receiveBatch({ observedQuantity: 100 }),
       contextFor(ActorId.PROCESSING_MANAGER),
@@ -298,9 +299,7 @@ describe("correction rather than deletion", () => {
 
     const correction = await ledger.submitCommand(
       commands.recordCorrection({
-        correctionOfTransactionId: wrong.transaction.transactionId,
-        // Typed values: the asset currently reads 100 kg (its created quantity;
-        // receiving does not change it), and the correction moves it to 90.
+        correctionOfTransactionId: "TX_000001",
         incorrectValue: { kind: "QUANTITY", amount: 100, unit: QuantityUnit.KG },
         correctedValue: { kind: "QUANTITY", amount: 90, unit: QuantityUnit.KG },
       }),
@@ -312,13 +311,14 @@ describe("correction rather than deletion", () => {
     expect((await ledger.getAsset(GREEN_COFFEE_BATCH_ID))?.quantity).toBe(90);
 
     // ...but the original transaction is byte-for-byte what it always was.
-    const original = await ledger.getTransaction(wrong.transaction.transactionId);
+    const original = await ledger.getTransaction("TX_000001");
     expect(original?.transactionStatus).not.toBe(TransactionStatus.REJECTED);
-    expect((original?.commandPayload as { observedQuantity: number }).observedQuantity).toBe(100);
+    expect((original?.commandPayload as { quantity: number }).quantity).toBe(100);
 
     // Both records are in history.
     const history = await ledger.getAssetHistory(GREEN_COFFEE_BATCH_ID);
     const ids = history.map((transaction) => transaction.transactionId);
+    expect(ids).toContain("TX_000001");
     expect(ids).toContain(wrong.transaction.transactionId);
     expect(ids).toContain(correction.transaction.transactionId);
   });
