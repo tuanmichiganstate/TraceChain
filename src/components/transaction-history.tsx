@@ -5,7 +5,7 @@ import type {
   AnchorDocumentCommand,
   RecordCorrectionCommand,
 } from "../domain/commands/commands";
-import { formatCorrectionValue } from "../domain/types/correction";
+import { formatCorrectionValueLabel } from "../localization/format-correction-value";
 import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
 import { formatScenarioTime } from "../infrastructure/time/scenario-clock";
 import { useTranslator } from "../app/providers/locale-provider";
@@ -159,7 +159,7 @@ function TransactionDetail({
             {anchor.metadata.kind === DocumentType.SHIPPING_MANIFEST ? (
               <div className="asset-card__row">
                 <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-                <dd>{formatCorrectionValue(anchor.metadata.declaredQuantity)}</dd>
+                <dd>{formatCorrectionValueLabel(anchor.metadata.declaredQuantity, t)}</dd>
               </div>
             ) : null}
           </>
@@ -182,15 +182,15 @@ function TransactionDetail({
             </div>
             <div className="asset-card__row">
               <dt>{t("field.incorrectValue")}</dt>
-              <dd>{formatCorrectionValue(correction.incorrectValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correction.incorrectValue, t)}</dd>
             </div>
             <div className="asset-card__row">
               <dt>{t("field.correctedValue")}</dt>
-              <dd>{formatCorrectionValue(correction.correctedValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correction.correctedValue, t)}</dd>
             </div>
             <div className="asset-card__row">
               <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
-              <dd>{effective === null ? "-" : formatCorrectionValue(effective)}</dd>
+              <dd>{effective === null ? "-" : formatCorrectionValueLabel(effective, t)}</dd>
             </div>
           </>
         ) : null}

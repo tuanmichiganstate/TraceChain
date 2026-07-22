@@ -23,12 +23,29 @@ import { DocumentType, QuantityUnit, TransactionStatus, TransactionType } from "
 import type { LedgerTransaction } from "../types/models";
 import type { DomainState } from "./domain-state";
 
+/**
+ * One correction that was applied, with the value it made effective.
+ *
+ * The value matters as much as the identifier: a chain of two corrections
+ * (1000 -> 100 -> 105) has an intermediate value that belongs to the first
+ * correction alone, and anything rendering the chain needs it. Reporting only
+ * the identifiers forces a caller to re-derive it, and the obvious wrong guess
+ * -- showing the final effective value against every step -- is silently
+ * correct for a single correction and wrong for two.
+ */
+export interface AppliedCorrection {
+  readonly transactionId: string;
+  readonly value: CorrectionValue;
+}
+
 export interface EffectiveValueResolution {
   readonly target: CorrectionTarget;
   readonly originalTransactionId: string;
   readonly originalValue: CorrectionValue;
   readonly effectiveValue: CorrectionValue;
   readonly appliedCorrectionTransactionIds: readonly string[];
+  /** The same corrections, each paired with the value it established. */
+  readonly appliedCorrections: readonly AppliedCorrection[];
 }
 
 /**
@@ -102,7 +119,10 @@ export function correctionTargetValueInTransaction(
 function originalResolution(
   state: DomainState,
   target: CorrectionTarget,
-): Omit<EffectiveValueResolution, "effectiveValue" | "appliedCorrectionTransactionIds"> | null {
+): Omit<
+  EffectiveValueResolution,
+  "effectiveValue" | "appliedCorrectionTransactionIds" | "appliedCorrections"
+> | null {
   for (const transactionId of state.transactionOrder) {
     const transaction = state.transactionsById[transactionId];
     if (transaction?.transactionStatus !== TransactionStatus.COMMITTED) continue;
@@ -142,7 +162,7 @@ export function resolveEffectiveValue(
   if (original === null) return null;
 
   let effectiveValue = original.originalValue;
-  const appliedCorrectionTransactionIds: string[] = [];
+  const appliedCorrections: AppliedCorrection[] = [];
 
   for (const transactionId of state.transactionOrder) {
     const transaction = state.transactionsById[transactionId];
@@ -162,13 +182,16 @@ export function resolveEffectiveValue(
     if (!coherent) continue;
 
     effectiveValue = correction.correctedValue;
-    appliedCorrectionTransactionIds.push(transactionId);
+    appliedCorrections.push({ transactionId, value: correction.correctedValue });
   }
 
   return {
     ...original,
     effectiveValue,
-    appliedCorrectionTransactionIds,
+    appliedCorrectionTransactionIds: appliedCorrections.map(
+      (correction) => correction.transactionId,
+    ),
+    appliedCorrections,
   };
 }
 

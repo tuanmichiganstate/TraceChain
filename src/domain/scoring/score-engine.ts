@@ -41,9 +41,10 @@
 
 import { ScoreComponent, type ScoreState, type ScoringConfiguration } from "../types/scoring";
 import {
+  allHints,
   allScorableItems,
   type ScenarioDefinition,
-  type ScorableItem,
+  type ScenarioHint,
 } from "../types/scenario";
 import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
 
@@ -137,14 +138,72 @@ const COMPONENT_FIELD: Readonly<Record<ScoreComponent, keyof ScoreState>> = {
   [ScoreComponent.CONCEPTUAL_UNDERSTANDING]: "conceptualUnderstanding",
 };
 
-/** Hints belonging to the stage an item sits in. */
-function hintsForStage(
-  item: ScorableItem,
+/**
+ * The items an opened hint caps, read from the hint's declared targets.
+ *
+ * Never inferred from stage membership. A hint used to cap every scorable item
+ * in its stage, so the provenance hint in stage 9 -- help with one 15-point
+ * question -- also repriced the recall transaction and an unrelated question
+ * about whether a blockchain is warranted at all, for 7.5 points against 25.
+ * A hint now costs credit on exactly the work it assists.
+ *
+ * Returned as a set so the caller pays for the lookup once rather than per item.
+ */
+function hintedItemIds(
   scenario: ScenarioDefinition,
   hintsUsed: readonly string[],
-): boolean {
-  const stage = scenario.stages.find((candidate) => candidate.stageId === item.stageId);
-  return (stage?.availableHints ?? []).some((hint) => hintsUsed.includes(hint.hintId));
+): ReadonlySet<string> {
+  const used = new Set(hintsUsed);
+  const targeted = new Set<string>();
+  for (const hint of allHints(scenario)) {
+    if (!used.has(hint.hintId)) continue;
+    for (const decisionId of hint.targetScorableItemIds) targeted.add(decisionId);
+  }
+  return targeted;
+}
+
+/**
+ * The most a hint can still cost, given what the learner has done so far.
+ *
+ * An upper bound rather than a prediction, because it assumes every targeted
+ * item would otherwise be earned at the best credit still available to it. That
+ * makes three cases fall out correctly: an item not yet attempted is worth the
+ * full difference between first-attempt and after-hint credit; an item already
+ * down to `multipleAttemptCredit` is worth nothing further, because the cap
+ * cannot lower credit that is already below it; and an item answered correctly
+ * on the first attempt is worth the full difference too, since the cap applies
+ * to work already completed.
+ *
+ * Computed rather than authored so the figure a learner is shown cannot drift
+ * from the one the engine applies.
+ */
+export function hintPointsAtRisk(
+  hint: ScenarioHint,
+  scenario: ScenarioDefinition,
+  decisions: Readonly<Record<string, DecisionRecord>>,
+): number {
+  const configuration = scenario.scoringConfiguration;
+  const itemsByDecisionId = new Map(
+    allScorableItems(scenario).map((item) => [item.decisionId, item]),
+  );
+
+  const floored = (credit: number, isProcedural: boolean): number =>
+    isProcedural ? Math.max(credit, configuration.minimumProceduralCredit) : credit;
+
+  let atRisk = 0;
+  for (const decisionId of hint.targetScorableItemIds) {
+    const item = itemsByDecisionId.get(decisionId);
+    if (item === undefined) continue;
+
+    // Never attempted still counts as a first attempt: the credit ladder only
+    // descends, so this is the best the item can still be worth either way.
+    const attempts = Math.max(1, decisions[decisionId]?.attemptCount ?? 0);
+    const without = floored(creditFor(attempts, false, configuration), item.isProcedural);
+    const withHint = floored(creditFor(attempts, true, configuration), item.isProcedural);
+    atRisk += item.points * Math.max(0, without - withHint);
+  }
+
+  return round(atRisk);
 }
 
 export function calculateScore(
@@ -153,13 +212,14 @@ export function calculateScore(
 ): ScoreBreakdown {
   const configuration = scenario.scoringConfiguration;
   const items = allScorableItems(scenario);
+  const hinted = hintedItemIds(scenario, inputs.hintsUsed);
 
   const scored: ItemScore[] = items.map((item) => {
     const decision = inputs.decisions[item.decisionId];
     const attemptCount = decision?.attemptCount ?? 0;
     const isAnswered = attemptCount > 0;
     const isCorrect = inputs.correctness[item.decisionId] === true;
-    const wasHintUsed = hintsForStage(item, scenario, inputs.hintsUsed);
+    const wasHintUsed = hinted.has(item.decisionId);
 
     let creditFraction = 0;
     if (isAnswered && isCorrect) {

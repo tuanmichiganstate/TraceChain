@@ -94,7 +94,15 @@ export function correctionTargetKey(target: CorrectionTarget): string {
     : `DOC:${target.documentAnchorId}:${target.field}`;
 }
 
-/** Human-facing rendering of a value, for feedback and reports. Identifiers-safe. */
+/**
+ * The canonical rendering: the unit exactly as the ledger holds it, `1000 KG`.
+ *
+ * Deliberately not the learner-facing one. A screen needs the translated label,
+ * and UNIT in particular is a word rather than a symbol and differs per
+ * language, so components go through `formatCorrectionValueLabel` in the
+ * localization layer. This stays free of the translator so the domain has a
+ * stable, language-independent form to quote in diagnostics.
+ */
 export function formatCorrectionValue(value: CorrectionValue): string {
   switch (value.kind) {
     case "QUANTITY":

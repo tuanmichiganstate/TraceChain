@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { TransactionStatus } from "../domain/types/enums";
 import { useTranslator } from "../app/providers/locale-provider";
 
@@ -37,6 +37,9 @@ export function TransactionPipeline({
   failureCount?: number | undefined;
 }): ReactNode {
   const t = useTranslator();
+  // Unique per instance: several transaction panels can be on screen at once,
+  // and a repeated id makes every aria-labelledby point at the first one.
+  const headingId = useId();
   const isRejected = status === TransactionStatus.REJECTED;
   const currentIndex = status === null ? -1 : stepIndex(status);
 
@@ -48,8 +51,8 @@ export function TransactionPipeline({
         : "";
 
   return (
-    <section className="pipeline" aria-labelledby="pipeline-heading">
-      <h3 id="pipeline-heading">{t("pipeline.heading")}</h3>
+    <section className="pipeline" aria-labelledby={headingId}>
+      <h3 id={headingId}>{t("pipeline.heading")}</h3>
 
       <ol className="pipeline__steps">
         {PIPELINE_STEPS.map((step, index) => {

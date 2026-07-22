@@ -24,8 +24,13 @@ export function TopBar(): ReactNode {
   const { state, scoreBreakdown } = useSimulation();
   const { scenario, stage } = useScenario();
 
-  const definition = stage(state.currentStageId);
-  const stageNumber = scenario.stages.findIndex((s) => s.stageId === state.currentStageId) + 1;
+  // The stage on screen, not the furthest one unlocked. Progression is derived,
+  // so the moment a learner satisfies a stage's last condition the furthest
+  // stage jumps forward while they are still reading the feedback that explains
+  // their answer. Following that here would announce the next stage's number
+  // and role over the screen they are still on.
+  const definition = stage(state.viewedStageId);
+  const stageNumber = scenario.stages.findIndex((s) => s.stageId === state.viewedStageId) + 1;
 
   // The first entry is the role the learner starts the stage in. Stages 4 and 7
   // hand over to a second role partway through.

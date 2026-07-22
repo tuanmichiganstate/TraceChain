@@ -206,32 +206,84 @@ What is tested:
 - **Every control has an accessible name**, and **no duplicate element ids** —
   a duplicate silently breaks every `aria-labelledby`, `aria-describedby` and
   `label for` pointing at it, because the reference resolves to whichever
-  element comes first.
+  element comes first. Checked on stage 1 *and* on stage 5: stage 1 renders one
+  of everything, so it could never catch the case that actually occurred —
+  `TransactionPipeline` and `ValidationResults` hard-coded their heading ids and
+  a stage showing three transaction panels issued each of them three times.
 - **Exactly one `main` landmark**, and the skip link targets it.
 
 What was verified in a real browser rather than jsdom, which has no layout:
 
 - **Contrast.** Zero failures against WCAG AA (4.5:1 body, 3:1 large) across
   the workspace and all five reference panels.
-- **Reflow at 320 px.** No horizontal scroll and no overflowing element in any
-  panel. Measured inside a 320 px iframe, because an iframe has its own
-  viewport and media queries therefore evaluate as they would on a phone — a
-  probe `div` at 320 px inside a desktop window does not work, it keeps the
+- **Reflow at 320 px.** No horizontal scroll and no overflowing element, now
+  asserted at three points in the activity rather than one. Measured in a real
+  320 px viewport, because media queries then evaluate as they would on a phone
+  — a probe `div` at 320 px inside a desktop window does not work, it keeps the
   desktop breakpoints and under-reports.
+
+  **Stage 1 alone was not enough, and the gap shipped.** It has no transaction,
+  so it renders no validation results, and the rule identifiers those carry are
+  unbreakable 29-character tokens: every stage from 2 onwards scrolled sideways
+  at 320 px while the suite stayed green. A second failure hid behind the same
+  blind spot — a `fieldset` will not shrink below its min-content width unless
+  told to, so the recall question's identifier-laden options set a floor no
+  phone could meet. Both are fixed in `app.css`, and the reflow suite now walks
+  to stage 5 on every engine and to the recall question on Chromium alone —
+  fieldset sizing is CSS box behaviour rather than an engine quirk, and a fourth
+  full walkthrough would put the WebKit suite back over the budget reclaimed
+  above.
 - **Focus.** `:focus-visible` carries a 3 px navy outline at 2 px offset,
   applied globally in `base.css`.
 - **Reduced motion.** `prefers-reduced-motion: reduce` collapses the pipeline
   step duration to zero and neutralises animation and transition durations.
 
-Colour never carries meaning alone: every `StatusPill` tone pairs its colour
-with a distinct glyph and a text label, so status survives greyscale, colour
-blindness and a screen reader.
+Colour never carries meaning alone: every pill pairs its colour with a distinct
+glyph and a text label, so status survives greyscale, colour blindness and a
+screen reader. The glyph is `aria-hidden`, so what is announced is the label.
+
+**Verdicts and classifications are different components on purpose.**
+`StatusPill` carries `pass`, `warn`, `fail` and `neutral` — answers to "was this
+right". `ClassificationPill` carries `affected` and `unaffected` — an answer to
+"did the contamination reach this lot", which is a fact about the goods. Stage 9
+first used the verdict tones for it, so a learner who correctly identified
+contaminated stock was handed a rejection cross for getting it right. Two types
+rather than one widened union, because `validation-results.tsx` and
+`transaction-history.tsx` both map a status enum onto `StatusTone`, and those
+maps only mean anything while every member of it is a judgement.
+
+Some things are neither. Stage 5's discrepancy panel puts a declared quantity
+beside a measured one, and no pill fits: the manifest passed every rule when it
+was filed and is inaccurate rather than invalid, and a scale reading is not a
+validation outcome. The two figures are plain text under labels that say where
+each came from, and the disagreement between them is written out. Colour there
+follows the palette's ledger and physical-world meanings, with amber kept for
+the mismatch.
+
+### Three levels of accessibility evidence, not one
+
+These are not interchangeable, and the difference is worth keeping visible:
+
+1. **Automated assertions** (`src/app/accessibility.test.tsx`, `e2e/accessibility.spec.ts`)
+   — the document outline, accessible names, unique ids, keyboard operability
+   and 320 px reflow, on every commit. Stage 1 *and* stage 5, because stage 1
+   renders one of everything and therefore could not catch a duplicate id.
+2. **Accessibility-tree inspection** — ARIA snapshots taken during review to
+   confirm reading order, that decorative glyphs are absent from the tree, and
+   that live regions announce once. Useful, and still only a model of what
+   assistive technology would do.
+3. **A real screen reader** — VoiceOver, NVDA or equivalent, driven by a person.
+
+**Open release QA item: run one complete stage 5 and stage 9 flow with a real
+screen reader before the next formal release.** Levels 1 and 2 have been done
+for the current work; level 3 has not, and nothing in levels 1 or 2 substitutes
+for it.
 
 ## End-to-end testing
 
 `npm run test:e2e` runs the Playwright suite in **Chromium, Firefox, WebKit and
-an iPhone SE profile** — 14 scenarios each. They run against `dist/`, the
-artefact that actually ships, not the dev server.
+an iPhone SE profile** — 18 scenarios each, 72 in all. They run against
+`dist/`, the artefact that actually ships, not the dev server.
 
 The unit and component suites already drive all nine stages in jsdom, so these
 deliberately do not re-assert domain behaviour. They cover what only a real
@@ -261,6 +313,75 @@ covered on every engine; only Tab *traversal* is platform-dependent.
 `test:e2e` is deliberately not part of `npm run quality`: it needs browser
 binaries that a fresh clone does not have. Run `npx playwright install` once,
 then it takes about 25 seconds for all four engines.
+
+### How the suite is run in CI, and why it is shaped that way
+
+Three durable constraints, none of them obvious from the workflow alone:
+
+**One Playwright worker per runner, and that is measured.** The GitHub-hosted
+runner is 2-core / 7 GB, so Playwright's `ceil(cores / 2)` default selects a
+single worker. Two workers on one runner was tried against real CI and was worse
+on both counts — slower, and three failures plus a flake with 90-second click
+timeouts, two browsers starving each other on two cores. Retries then pay for
+the contention a second time. Parallelism has to come from more runners, not
+more workers per runner.
+
+**One runner per browser project.** Each matrix job installs only the engine it
+launches and runs one project, so the four run side by side instead of end to
+end. `mobile-safari` is an iPhone SE profile that Playwright drives with WebKit,
+which is why the matrix carries a separate browser column: the project and the
+engine are not the same thing.
+
+**WebKit is split across two shards, because it alone sets the duration.** On
+this runner WebKit costs roughly five times what the same tests cost on Chromium
+or Firefox — a gap that does not appear locally, where all four engines are
+within a few seconds of each other. Every matrix entry carries a shard so the
+command needs no conditional; `1/1` is the whole project. Sharding partitions
+tests, it never drops them, and the totals are checked against the single-job
+figures.
+
+`fail-fast` is off: most of what this suite exists to answer is whether a break
+is engine-specific, and stopping the other browsers on the first failure hides
+exactly that. Each job uploads its report under its own name, since several jobs
+writing one artifact name would collide.
+
+A separate `e2e` job runs no tests and only reports whether every browser job
+passed. It exists so that one stable name can be depended on — by a required
+check, or by a reviewer skimming the list — rather than four that change
+whenever a project is added or sharded. It is verified to go red when any single
+browser job does.
+
+`scripts/verify-e2e-shards.mjs` runs inside `npm run quality` and holds the
+matrix to the Playwright configuration: every configured project has a job, and
+every sharded project's shards form an exact partition of it. Both mistakes it
+guards against leave a green tick behind — a project added to the config but not
+the matrix never runs in CI, and a shard edited without its siblings drops a
+slice of a project — so neither would be noticed by watching for failures. It
+compares identities rather than counts, because a count written into a workflow
+goes stale the first time somebody adds a test.
+
+**When to reconsider a third WebKit shard.** Two shards were enough, and the
+imbalance between them — the slower carries the long walkthroughs — is tolerated
+rather than fixed, because Playwright shards by test count and not by duration.
+
+The trigger is the complete workflow, not the shard: **revisit only if the median
+complete workflow exceeds eight minutes across five comparable successful runs,
+or the slower WebKit shard exceeds eight minutes in at least three of five.**
+"Consistently" is spelled out because one slow sample is weather, not climate.
+
+Both thresholds are deliberately set above the measured steady state rather than
+inside it. Across the four comparable runs available when the matrix landed, the
+workflow ran 6.42–8.13 minutes (median 6.89) and the slow shard 6.27–7.95
+(median 6.72). An earlier draft of this note put the shard threshold at six
+minutes, which every one of those runs already exceeded — a trigger that fires
+on the day it is written measures nothing. The slow shard is also the workflow's
+critical path by construction, finishing within seconds of it, so a shard
+threshold below the workflow threshold could never mean anything separate.
+
+Neither criterion is met: the workflow median is 6.89 minutes against a budget
+of eight. **No third shard is justified today.** One would cost another runner
+and another full setup, and shard imbalance on its own has never been the
+question — total elapsed time is.
 
 ## Dependencies
 

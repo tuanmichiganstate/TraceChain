@@ -2,6 +2,144 @@
 
 ## [Unreleased]
 
+### Orientation, cause and effect, and what the marks are for
+
+Acting on a UI/UX review. The three themes it identified were right; roughly a
+third of what it proposed already existed, one of its figures was wrong in a way
+that would have misinformed learners, and the defect its own top priority was
+about was live in the build.
+
+**Fixed**
+
+- **The top bar described the wrong stage.** It read `currentStageId` — the
+  furthest stage unlocked — while the router renders `viewedStageId`. The two
+  diverge the instant a stage's last condition is satisfied, so the header
+  announced the next stage's number and role over the screen the learner was
+  still reading. That is precisely the disorientation the two-field split exists
+  to prevent; it was applied to the router and never to the header. A regression
+  test now holds both fields to the stage on screen.
+- **A hint charged for work it did not help with.** Opening one capped every
+  scorable item in its stage, so stage 9's "follow the provenance links" — help
+  with a single 15-point question — also repriced the recall transaction and an
+  unrelated question about whether a blockchain is warranted at all: 7.5 points
+  for 4.5 points' worth of difficulty. Every hint now declares
+  `targetScorableItemIds`, and caps exactly those. Across a perfect attempt the
+  maximum a learner can lose to hints falls from 22.5 points to 13.2. The
+  reasoning, the per-hint mapping and the compatibility position are recorded in
+  `docs/SCORING_MODEL.md`.
+- **`penaltyPercent: 10` on every hint was never read**, while the cap the
+  engine actually applied was 30%. A dead field contradicting live behaviour is
+  where the "hints cost 10%" figure in the original review came from; it is
+  gone, and the single knob is `afterHintCredit`.
+- **The hint notice was vague, then incomplete.** It said only that a hint
+  "reduces part of this step's score". It now names the activities it will cap,
+  the ceiling, and the points still at stake — all derived from the hint's own
+  targets and the live scoring state, so the figure shown cannot drift from the
+  figure charged — and says the cap covers work already finished, which is the
+  one consequence a learner cannot infer.
+- **Two 320 px overflows that had shipped.** Validation rule identifiers, and
+  the recall question's `fieldset`, each forced a horizontal scroll on every
+  stage that renders them. The reflow test only ever visited stage 1, which is
+  the one stage that renders neither. See `docs/ARCHITECTURE.md`.
+- **Duplicate element ids on any stage showing more than one transaction.**
+  `TransactionPipeline` and `ValidationResults` each hard-coded a heading id, so
+  stage 5 issued `pipeline-heading` and `validation-heading` three times apiece
+  and two thirds of those regions were labelled by the wrong heading. Both now
+  use `useId`. The existing duplicate-id test only ever visited stage 1, which
+  renders one of each.
+- **A correction chain rendered every step with the final value.** The lineage
+  panel showed `effectiveValue` against each correction, which is correct by
+  coincidence for one correction and wrong for two: a 1000 → 100 → 105 chain
+  displayed 105 against the step that established 100. `resolveEffectiveValue`
+  now reports each correction with the value it made effective.
+
+**Changed, in the interface's use of status colour**
+
+- **Recall lots are classified, not judged.** An affected lot first rendered
+  with the validation `fail` tone, handing a learner who correctly identified
+  contaminated stock a rejection cross for getting it right. Classification is
+  now a separate `ClassificationPill` with `affected` and `unaffected`,
+  distinguished by fill as well as colour. Two components rather than one
+  widened union because `validation-results.tsx` and `transaction-history.tsx`
+  both map a status enum onto `StatusTone`, and adding classifications to it
+  made `{ FAILED: "affected" }` type-check.
+- **One spelling of a unit on a screen.** `formatCorrectionValue` writes the
+  canonical `1000 KG`, which stage 5 showed beside the manifest panel's
+  `1000 kg` and the asset card's `100 kg`. Learner-facing renders go through
+  `formatCorrectionValueLabel`, which maps the enum to the translated label --
+  `kg`, and `gói`/`packages` for UNIT, which is a word rather than a symbol.
+  Commands, payloads, hashes, suspend data and the scenario contracts are
+  untouched, and a test asserts it.
+- **The correction lineage no longer borrows validation iconography.** The
+  superseded manifest figure is a committed historical fact, not a failed rule;
+  marking it with the rejection glyph said the opposite of the stage's lesson.
+  The step labels carry the meaning, and nothing is struck through.
+- **Nor does the stage 5 discrepancy panel.** It showed the declared 1000 kg
+  with the rejection glyph and the measured 100 kg with the success glyph, on a
+  screen the learner reaches before doing anything. The manifest passed every
+  rule when the clerk filed it and is committed for good, so it is inaccurate
+  rather than invalid, and a scale reading is not a validation outcome at all.
+  Both figures are now plain, the labels say which is which, and the mismatch is
+  stated in words. The illustration's overlay moved off fail-red and pass-green
+  onto the palette's own ledger and physical-world colours; amber is reserved
+  for the mismatch itself.
+
+**Added**
+
+- **Correction lineage beside current state** in stage 5: original value,
+  correction appended, effective value, each with its transaction. The activity
+  promises learners they will "distinguish current state from transaction
+  history" and stage 5 is the one place the two genuinely disagree — but seeing
+  it meant opening the reference workspace and comparing two tabs.
+- **Per-lot recall justification** in stage 9, showing the provenance path that
+  puts each lot in scope, and stating plainly that the lookalike lot has none.
+  The score said whether the learner was right; nothing said why, which for the
+  near-miss distractor is the entire lesson. `justifyRecallSelection` derives
+  the path from the same graph the scope calculation walks.
+- **Scoring explained before the activity starts** — action points, question
+  points, the pass mark, the hint cap and the procedural floor, all derived from
+  the scenario rather than written down.
+- **A stated reason when Continue is unavailable**, instead of an absent button.
+- **Task-aware reference panel**: the workspace opens on the tab the current
+  stage actually needs, and re-aims when the learner moves on.
+
+**Changed**
+
+- **CI wall-clock roughly halved by running browsers on separate runners.**
+  The suite ran serially on one 2-core runner, so the four browser projects
+  queued behind each other. Each project now gets its own runner, keeping the
+  single Playwright worker that is stable there, and WebKit — which costs about
+  five times Chromium or Firefox on that hardware and alone set the duration —
+  is split across two shards. Median wall-clock falls from 758s to 416s — 45%
+  — for 33% more runner-minutes (838s to 1117s), measured across three baseline
+  and three matrix runs. A stable `e2e` job aggregates the browser jobs so one
+  check name still represents all of them, and is verified to go red when any
+  single browser does. `npm run quality` now also holds the matrix to the
+  Playwright configuration, so a project or shard that stops running in CI fails
+  the gate instead of passing quietly. No test, browser or skip was changed: 67
+  passed and 5 skipped, before and after. A third WebKit shard was considered and
+  rejected: the criterion for revisiting it is in `docs/ARCHITECTURE.md`, keyed
+  to the complete workflow rather than to shard imbalance.
+- **CI runs once per commit instead of twice.** Both workflow events were
+  unfiltered, so every push to a branch with an open pull request started two
+  identical runs of the same SHA — confirmed from run metadata across four
+  commits. `push` is now filtered to master, `pull_request` to master-targeting
+  PRs, and a concurrency group cancels superseded runs per PR. Master is
+  excluded from cancellation, because a cancelled run there leaves no verdict
+  and that is too easily mistaken for a passing one. Runner-minutes per
+  feature-branch commit fall by half; nothing was removed from the gate.
+- The final report separates competencies from telemetry. Blocks sealed and
+  transactions committed moved into a "simulation activity summary" below the
+  breakdown; in one list with the six score components they read as marks.
+- Learner interactions record the stage on screen rather than the furthest one
+  unlocked. In this scenario the two agree everywhere they can be reached —
+  every stage's last interaction is also the one that completes it — so this
+  fixes no observable defect; it removes the possibility of one, and gives
+  "where was the learner" a single answer.
+- The reference workspace re-aims by remounting on a key rather than by
+  adjusting state during render. Same behaviour, and `isOpen` deliberately sits
+  outside the key so the panel stays open across a stage change.
+
 ### Milestone 4 — Learner interface
 
 Stages 1 to 7 are playable in the browser. An integration test walks a learner

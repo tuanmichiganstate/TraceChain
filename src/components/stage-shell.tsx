@@ -7,6 +7,8 @@ import {
   evaluateRequiredActions,
   evaluateStageCompletion,
 } from "../domain/scenario/stage-completion";
+import { allScorableItems, type ScenarioHint } from "../domain/types/scenario";
+import { hintPointsAtRisk } from "../domain/scoring/score-engine";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -72,7 +74,7 @@ export function StageShell({
       ) : null}
 
       {definition.availableHints.map((hint) => (
-        <HintPanel key={hint.hintId} hintId={hint.hintId} textKey={hint.textKey} />
+        <HintPanel key={hint.hintId} hint={hint} />
       ))}
 
       {children}
@@ -98,7 +100,24 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
   const next = scenario.stages[index + 1];
   const isUnlocked = state.completedStageIds.includes(stageId);
 
-  if (!isUnlocked || next === undefined) return null;
+  if (next === undefined) return null;
+
+  /*
+   * A control that is simply absent where one is expected reads as a bug. Say
+   * why instead -- but point at the stage's completion pill rather than at the
+   * required-actions list, and give no count. Every stage has more completion
+   * conditions than listed actions (stage 6 has three against one), so a
+   * message phrased around "the work above" can claim the visible list is
+   * finished while Continue is still locked. The pill is derived from the same
+   * evaluation that gates this button, so it cannot disagree with it.
+   */
+  if (!isUnlocked) {
+    return (
+      <div className="stage__advance">
+        <p className="muted">{t("navigation.continueLocked")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="stage__advance">
@@ -116,32 +135,58 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
 /**
  * A hint the learner opts into.
  *
- * Deliberately a two-step reveal. Using a hint costs credit, so taking one must
- * be a choice rather than something a learner stumbles into by scrolling.
+ * Deliberately a two-step reveal, and the cost is named before the choice is
+ * made: which activities the cap will touch, the cap itself, and the points
+ * still at stake. All three come from the hint's declared targets and the live
+ * scoring state, so none of them can drift from what the engine applies. A
+ * learner cannot weigh a cost they have not been told, and a vague one is worse
+ * than none -- this notice once covered a whole stage without saying so.
  */
-function HintPanel({ hintId, textKey }: { hintId: string; textKey: string }): ReactNode {
+function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
   const { state, revealHint } = useSimulation();
-  const isRevealed = state.hintsUsed.includes(hintId);
+  const isRevealed = state.hintsUsed.includes(hint.hintId);
+
+  const { afterHintCredit } = scenario.scoringConfiguration;
+  const namesByDecisionId = new Map(
+    allScorableItems(scenario)
+      .filter((item) => item.nameKey !== undefined)
+      .map((item) => [item.decisionId, item.nameKey as string]),
+  );
+  // Quoted so a name reads as a name inside the sentence, and joined rather
+  // than conjoined because every hint in this scenario targets exactly one
+  // activity; a multi-target hint would be worth re-reading this phrasing for.
+  const activities = hint.targetScorableItemIds
+    .map((decisionId) => namesByDecisionId.get(decisionId))
+    .filter((nameKey): nameKey is string => nameKey !== undefined)
+    .map((nameKey) => `\u201C${t(nameKey)}\u201D`)
+    .join(", ");
 
   return (
     <section className="hint">
       {isRevealed ? (
         <>
           <h3>{t("hint.heading")}</h3>
-          <p>{t(textKey)}</p>
+          <p>{t(hint.textKey)}</p>
         </>
       ) : (
         <>
           <button
             type="button"
             className="button button--secondary"
-            onClick={() => revealHint(hintId)}
+            onClick={() => revealHint(hint.hintId)}
             disabled={state.isReadOnly}
           >
             {t("hint.reveal")}
           </button>
-          <p className="muted">{t("hint.penaltyNotice")}</p>
+          <p className="muted">
+            {t("hint.penaltyNotice", {
+              activities,
+              percent: Math.round(afterHintCredit * 100),
+              points: hintPointsAtRisk(hint, scenario, state.decisions),
+            })}
+          </p>
         </>
       )}
     </section>

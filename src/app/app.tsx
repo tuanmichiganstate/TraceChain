@@ -116,7 +116,8 @@ function DeveloperPanel(): ReactNode {
       <h2>Developer diagnostics</h2>
       <p>
         Scenario: <code>{scenario.scenarioId}</code> v<code>{scenario.scenarioVersion}</code> ·
-        Platform: <code>{state.platformMode}</code> · Stage:{" "}
+        Platform: <code>{state.platformMode}</code> · Viewing:{" "}
+        <code>{state.viewedStageId}</code> · Unlocked:{" "}
         <code>{state.currentStageId}</code> · Blocks:{" "}
         <code>{state.domain.blockOrder.length}</code> · Pending:{" "}
         <code>{state.domain.pendingTransactionIds.length}</code> · Seeded assets:{" "}

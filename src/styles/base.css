@@ -250,6 +250,24 @@ li { margin-bottom: var(--space-2); }
   border-color: var(--colour-border-strong);
 }
 
+/*
+ * Classification, not verdict. Contaminated stock is a serious fact and reads
+ * in the alert colour, but it carries the filled glyph rather than the
+ * rejection cross: a learner who correctly identified an affected lot has not
+ * made a mistake.
+ */
+.status--affected {
+  background: var(--colour-fail-soft);
+  color: var(--colour-fail);
+  border-color: var(--colour-fail);
+}
+
+.status--unaffected {
+  background: var(--colour-surface-sunken);
+  color: var(--colour-text-muted);
+  border-color: var(--colour-border-strong);
+}
+
 /* ---- Utilities ---- */
 
 .visually-hidden {

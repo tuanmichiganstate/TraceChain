@@ -7,7 +7,7 @@ import { TransactionStatus } from "../domain/types/enums";
 import { StatusPill } from "./status-pill";
 import { allScoredActions } from "../domain/types/scenario";
 import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
-import { formatCorrectionValue } from "../domain/types/correction";
+import { formatCorrectionValueLabel } from "../localization/format-correction-value";
 
 const COMPONENT_LABELS: Readonly<Record<ScoreComponent, string>> = {
   [ScoreComponent.TRANSACTION_ACCURACY]: "score.transactionAccuracy",
@@ -89,22 +89,6 @@ export function FinalReport(): ReactNode {
             </dd>
           </div>
         ))}
-        <div className="asset-card__row">
-          <dt>{t("report.hintsUsed")}</dt>
-          <dd>{score.hintsUsed}</dd>
-        </div>
-        <div className="asset-card__row">
-          <dt>{t("report.invalidAttempts")}</dt>
-          <dd>{score.invalidAttempts}</dd>
-        </div>
-        <div className="asset-card__row">
-          <dt>{t("report.transactionsCommitted")}</dt>
-          <dd>{committedCount}</dd>
-        </div>
-        <div className="asset-card__row">
-          <dt>{t("report.blocksSealed")}</dt>
-          <dd>{state.domain.blockOrder.length}</dd>
-        </div>
       </dl>
 
       {correctionResolution !== null ? (
@@ -117,15 +101,41 @@ export function FinalReport(): ReactNode {
             </div>
             <div className="asset-card__row">
               <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-              <dd>{formatCorrectionValue(correctionResolution.originalValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correctionResolution.originalValue, t)}</dd>
             </div>
             <div className="asset-card__row">
               <dt>{t("stage.receiveAndCorrect.effectiveQuantity")}</dt>
-              <dd>{formatCorrectionValue(correctionResolution.effectiveValue)}</dd>
+              <dd>{formatCorrectionValueLabel(correctionResolution.effectiveValue, t)}</dd>
             </div>
           </dl>
         </section>
       ) : null}
+
+      {/* Counts, not competencies. Blocks sealed and transactions committed say
+          how much machinery ran, never what the learner understood, so they sit
+          below the breakdown rather than inside it -- mixed into one list they
+          read as marks and crowd out the six things that are. */}
+      <section aria-labelledby="report-activity-heading">
+        <h4 id="report-activity-heading">{t("report.activityHeading")}</h4>
+        <dl className="asset-card__grid">
+          <div className="asset-card__row">
+            <dt>{t("report.hintsUsed")}</dt>
+            <dd>{score.hintsUsed}</dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.invalidAttempts")}</dt>
+            <dd>{score.invalidAttempts}</dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.transactionsCommitted")}</dt>
+            <dd>{committedCount}</dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.blocksSealed")}</dt>
+            <dd>{state.domain.blockOrder.length}</dd>
+          </div>
+        </dl>
+      </section>
 
       {isSubmitted ? (
         <p>

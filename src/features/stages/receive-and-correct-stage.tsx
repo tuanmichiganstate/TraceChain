@@ -9,7 +9,7 @@ import { useSimulation } from "../../app/providers/simulation-provider";
 import { StageShell } from "../../components/stage-shell";
 import { TransactionAction } from "../../components/transaction-action";
 import { AssetCard } from "../../components/asset-card";
-import { StatusPill } from "../../components/status-pill";
+import { CorrectionLineage } from "../../components/correction-lineage";
 import {
   MANIFEST_QUANTITY_KG,
   PRODUCER_CONTEXT,
@@ -23,6 +23,7 @@ import {
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
 import type { AnchorDocumentCommand } from "../../domain/commands/commands";
 import { buildEffectiveValueView } from "../../domain/scenario/effective-value-view";
+import { formatCorrectionValueLabel } from "../../localization/format-correction-value";
 import manifestDiscrepancyImage from "../../assets/illustrations/manifest-discrepancy.webp";
 
 const MINIMUM_REASON_LENGTH = 10;
@@ -67,10 +68,12 @@ export function ReceiveAndCorrectStage(): ReactNode {
     state.domain,
     manifestTarget,
   )?.effectiveValue;
+  // Through the display formatter, not the raw enum: this label sits inches
+  // from the manifest and scale figures, which are written `1000 kg`.
   const effectiveQuantityLabel =
-    effectiveManifestValue?.kind === "QUANTITY"
-      ? `${effectiveManifestValue.amount} ${effectiveManifestValue.unit}`
-      : `${MANIFEST_QUANTITY_KG} kg`;
+    effectiveManifestValue === undefined
+      ? `${MANIFEST_QUANTITY_KG} kg`
+      : formatCorrectionValueLabel(effectiveManifestValue, t);
 
   return (
     <StageShell
@@ -113,12 +116,23 @@ export function ReceiveAndCorrectStage(): ReactNode {
         <CorrectionPanel correctionOfTransactionId={manifestTransaction.transactionId} />
       ) : null}
 
-      {asset !== undefined ? (
-        <section>
-          <h3>{t("state.title")}</h3>
-          <AssetCard asset={asset} />
-        </section>
-      ) : null}
+      {/* Ledger history beside current state. Stage 5 is the one place the two
+          genuinely disagree -- the manifest says 1000 kg forever while the
+          effective quantity is 100 -- so this is where the activity's third
+          objective, distinguishing them, can actually be seen rather than
+          reconstructed from two tabs of the reference workspace. */}
+      <div className="state-versus-history">
+        {manifestTransaction !== undefined ? (
+          <CorrectionLineage state={state.domain} target={manifestTarget} />
+        ) : null}
+
+        {asset !== undefined ? (
+          <section className="card">
+            <h3>{t("state.title")}</h3>
+            <AssetCard asset={asset} />
+          </section>
+        ) : null}
+      </div>
     </StageShell>
   );
 }
@@ -158,20 +172,27 @@ function ManifestDiscrepancy({
 
       <div className="discrepancy__content">
         <h3>{t("stage.receiveAndCorrect.discrepancyHeading")}</h3>
+        {/*
+          Two values, neither of them a verdict. The manifest passed every rule
+          when the clerk filed it and is committed for good -- it is inaccurate,
+          not invalid -- and a scale reading is not a validation result at all.
+          These carried the rejection and success glyphs, which mean "failed"
+          and "passed" everywhere else in this interface, on a screen where the
+          learner has not yet done anything and could reasonably read a red cross
+          as their own mistake. The labels already say which figure came from
+          where; the disagreement between them is stated in words.
+        */}
         <dl className="asset-card__grid">
           <div className="asset-card__row">
             <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-            <dd>
-              <StatusPill tone="fail">{MANIFEST_QUANTITY_KG} kg</StatusPill>
-            </dd>
+            <dd className="discrepancy__value">{MANIFEST_QUANTITY_KG} kg</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("stage.receiveAndCorrect.weighedQuantity")}</dt>
-            <dd>
-              <StatusPill tone="pass">{WEIGHED_QUANTITY_KG} kg</StatusPill>
-            </dd>
+            <dd className="discrepancy__value">{WEIGHED_QUANTITY_KG} kg</dd>
           </div>
         </dl>
+        <p className="discrepancy__mismatch">{t("stage.receiveAndCorrect.mismatchDetected")}</p>
         <p>{t("stage.receiveAndCorrect.discrepancyBody")}</p>
         <p className="muted">{t("message.correction")}</p>
         {manifestTransactionId !== undefined ? (

@@ -73,6 +73,17 @@ The Version 1 package checksum
 `5f2e0225708eefb45d2e6a041980ab6aa6fb3a0f564fa958dc6fb7841447b2bf`
 is historical and is not the current package checksum.
 
+**Every checksum in this table is evidence for the Version 2 release at
+`7eabc16d6f7dffa22403a883b13273cf9c185f0f`, and is not updated by later work.**
+Commits after the release regenerate both artifacts — any change to
+`src/locales/` moves the content-review digest by construction — so a checksum
+here will not match a later working tree, and is not meant to. What a later
+checkout is held to is `npm run verify:scorm` and `npm run verify:content-review`,
+which regenerate and compare against the tree they are run in; the manifest at
+`docs/content-review/MANIFEST.md` carries the artifact's current digest and the
+commit it was generated from. Restating these rows against a newer tree would
+destroy the only record of what was actually released and verified.
+
 ## Stage 5 and M3 evidence
 
 The committed ledger contains the scripted shipping manifest after custody

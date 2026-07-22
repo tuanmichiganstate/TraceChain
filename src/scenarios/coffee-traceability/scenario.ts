@@ -19,7 +19,13 @@ import { coffeeScriptedTransactions } from "./scripted-transactions";
 
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
-  scenarioVersion: "2.0.0",
+  /*
+   * 2.1.0: hints cap only the scorable items they declare, rather than every
+   * item in their stage. The saved-state format is untouched -- HINT_IDS did
+   * not move and the codec is unchanged -- so this is a content version, not a
+   * schema one, and no stored attempt needs migrating. See docs/SCORING_MODEL.md.
+   */
+  scenarioVersion: "2.1.0",
   titleKey: "app.title",
   descriptionKey: "app.subtitle",
   // Nine stages rather than ten, to protect this budget (section 2.4).

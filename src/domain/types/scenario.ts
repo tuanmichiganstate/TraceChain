@@ -128,6 +128,13 @@ export interface KnowledgeCheckDefinition {
   readonly knowledgeCheckId: string;
   readonly checkType: KnowledgeCheckType;
   readonly questionKey: string;
+  /**
+   * A short name for the activity, for places that must refer to it rather
+   * than pose it -- the hint disclosure names the activities it will cap.
+   * Required only of items a hint targets, which the validator enforces:
+   * naming every item up front would be authoring copy nothing displays.
+   */
+  readonly nameKey?: string;
   readonly options: readonly KnowledgeCheckOption[];
   /** Present for CLASSIFICATION checks only. */
   readonly categories?: readonly KnowledgeCheckCategory[];
@@ -151,8 +158,24 @@ export interface KnowledgeCheckDefinition {
 export interface ScenarioHint {
   readonly hintId: string;
   readonly textKey: string;
-  /** Applied to the stage's items, capped by the scoring configuration. */
-  readonly penaltyPercent: number;
+  /**
+   * The scorable items this hint actually assists, by decision id.
+   *
+   * Required, and never inferred from stage membership. Taking a hint caps
+   * exactly these items at `afterHintCredit` and nothing else -- so a hint
+   * about following provenance links cannot quietly reprice an unrelated
+   * question about when a blockchain is warranted at all.
+   *
+   * List more than one only when the hint's text genuinely helps with each of
+   * them. The validator holds every id to an existing scorable item in the same
+   * stage, and requires that item to carry a `nameKey`, because the learner is
+   * told which activities a hint will affect before deciding to open it.
+   *
+   * There is deliberately no per-hint penalty size. One knob -- the scoring
+   * configuration's `afterHintCredit` -- keeps the cap uniform and keeps a
+   * second number from drifting away from the one the engine actually applies.
+   */
+  readonly targetScorableItemIds: readonly string[];
 }
 
 export interface RequiredScenarioAction {
@@ -177,6 +200,8 @@ export interface ScoredAction {
   /** Must appear in `decisionIds`; the codec stores the outcome positionally. */
   readonly decisionId: string;
   readonly descriptionKey: string;
+  /** Short activity name; see `KnowledgeCheckDefinition.nameKey`. */
+  readonly nameKey?: string;
   readonly transactionType: TransactionType;
   readonly scoreComponent: ScoreComponent;
   readonly points: number;
@@ -316,6 +341,8 @@ export interface ScorableItem {
   readonly decisionId: string;
   readonly scoreComponent: ScoreComponent;
   readonly points: number;
+  /** Present when something needs to name this activity to the learner. */
+  readonly nameKey?: string;
   /** Procedural items get the minimum-credit floor; questions do not. */
   readonly isProcedural: boolean;
   readonly stageId: ScenarioStageId;
@@ -331,6 +358,7 @@ export function allScorableItems(scenario: ScenarioDefinition): readonly Scorabl
         points: check.points,
         isProcedural: false,
         stageId: stage.stageId,
+        ...(check.nameKey === undefined ? {} : { nameKey: check.nameKey }),
       })),
     ...stage.scoredActions.map((action) => ({
       decisionId: action.decisionId,
@@ -338,6 +366,7 @@ export function allScorableItems(scenario: ScenarioDefinition): readonly Scorabl
       points: action.points,
       isProcedural: true,
       stageId: stage.stageId,
+      ...(action.nameKey === undefined ? {} : { nameKey: action.nameKey }),
     })),
   ]);
 }

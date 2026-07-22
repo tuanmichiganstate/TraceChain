@@ -7,9 +7,13 @@ import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { TransactionAction } from "../../components/transaction-action";
 import { FinalReport } from "../../components/final-report";
-import { StatusPill } from "../../components/status-pill";
+import { ClassificationPill, StatusPill } from "../../components/status-pill";
 import { decodeAnswer } from "../../domain/scenario/answer-codec";
-import { assessRecallSelection, calculateRecallScope } from "../../domain/provenance/recall-scope";
+import {
+  assessRecallSelection,
+  calculateRecallScope,
+  justifyRecallSelection,
+} from "../../domain/provenance/recall-scope";
 import {
   recallBatchCommand,
   REGULATOR_CONTEXT,
@@ -66,13 +70,25 @@ export function RecallAndDebriefStage(): ReactNode {
       {hasScope ? (
         <section className="card">
           <h3>{t("stage.recallAndDebrief.selectedHeading")}</h3>
-          <ul className="required-actions__list">
+
+          <ul className="recall-scope__list">
             {selectedAssetIds.map((assetId) => (
-              <li key={assetId}>
-                <code>{assetId}</code>
-              </li>
+              <RecallJustificationItem key={assetId} assetId={assetId} />
             ))}
           </ul>
+
+          {accuracy.missed.length > 0 ? (
+            <>
+              <h4>{t("stage.recallAndDebrief.missedHeading")}</h4>
+              <ul className="recall-scope__list">
+                {accuracy.missed.map((assetId) => (
+                  <RecallJustificationItem key={assetId} assetId={assetId} />
+                ))}
+              </ul>
+              <p className="muted">{t("stage.recallAndDebrief.missedNote")}</p>
+            </>
+          ) : null}
+
           <p>
             {accuracy.isExact ? (
               <StatusPill tone="pass">{t("stage.recallAndDebrief.accuracyExact")}</StatusPill>
@@ -118,6 +134,57 @@ export function RecallAndDebriefStage(): ReactNode {
 
       <FinalReport />
     </StageShell>
+  );
+}
+
+/**
+ * One lot, and why it is or is not in scope.
+ *
+ * The score already tells the learner whether they were right. Without the path
+ * it does not tell them *why*, and for the lookalike lot -- same co-operative,
+ * same plant, same roasting date -- "why" is the entire lesson: nothing on the
+ * label separates it, only the absence of an edge does. Showing the chain turns
+ * a mark into an argument the learner can check.
+ */
+function RecallJustificationItem({ assetId }: { assetId: string }): ReactNode {
+  const t = useTranslator();
+  const { state } = useSimulation();
+
+  const nameOf = (id: string): string => state.domain.assetsById[id]?.productName ?? id;
+  const justification = justifyRecallSelection(assetId, GREEN_COFFEE_BATCH_ID, state.domain);
+
+  return (
+    <li className="recall-scope__item">
+      <p className="recall-scope__asset">
+        {/* A classification of the goods, not a verdict on the answer. Whether
+            the learner was right is the accuracy summary's job, stated
+            separately -- an affected lot they correctly identified must not be
+            handed a rejection cross for getting it right. */}
+        <ClassificationPill tone={justification.isAffected ? "affected" : "unaffected"}>
+          {t(
+            justification.isAffected
+              ? "stage.recallAndDebrief.affected"
+              : "stage.recallAndDebrief.notAffected",
+          )}
+        </ClassificationPill>{" "}
+        <strong>{nameOf(assetId)}</strong> <code>{assetId}</code>
+      </p>
+
+      {justification.isAffected ? (
+        <>
+          <p className="muted">{t("stage.recallAndDebrief.reasonAffected")}</p>
+          <ol className="recall-scope__path">
+            {justification.pathAssetIds.map((pathAssetId) => (
+              <li key={pathAssetId}>
+                {nameOf(pathAssetId)} <code>{pathAssetId}</code>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : (
+        <p className="muted">{t("stage.recallAndDebrief.reasonUnaffected")}</p>
+      )}
+    </li>
   );
 }
 

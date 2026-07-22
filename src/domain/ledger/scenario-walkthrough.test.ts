@@ -20,7 +20,7 @@ import {
   TransactionType,
 } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
-import { assessRecallSelection } from "../provenance/recall-scope";
+import { assessRecallSelection, justifyRecallSelection } from "../provenance/recall-scope";
 import {
   DISTRACTOR_PACKAGED_LOT_ID,
   UNRELATED_PACKAGED_LOT_ID,
@@ -525,6 +525,63 @@ describe("recall scope", () => {
     const tooNarrow = assessRecallSelection([GREEN_COFFEE_BATCH_ID], scope);
     expect(tooNarrow.missed).toContain(PACKAGED_COFFEE_LOT_ID);
     expect(tooNarrow.overSelected).toEqual([]);
+  });
+
+  it("explains an affected lot by the path the goods actually travelled", async () => {
+    const ledger = await runUpTo("sold", { withSeed: true });
+    const justification = justifyRecallSelection(
+      PACKAGED_COFFEE_LOT_ID,
+      GREEN_COFFEE_BATCH_ID,
+      ledger.getState(),
+    );
+
+    expect(justification.isAffected).toBe(true);
+    // Source first, so the reason reads forwards: the green batch was roasted,
+    // and the roasted batch was packaged into this lot.
+    expect(justification.pathAssetIds).toEqual([
+      GREEN_COFFEE_BATCH_ID,
+      ROASTED_COFFEE_BATCH_ID,
+      PACKAGED_COFFEE_LOT_ID,
+    ]);
+  });
+
+  it("gives the lookalike lot no path, which is the whole reason to exclude it", async () => {
+    const ledger = await runUpTo("sold", { withSeed: true });
+    const justification = justifyRecallSelection(
+      DISTRACTOR_PACKAGED_LOT_ID,
+      GREEN_COFFEE_BATCH_ID,
+      ledger.getState(),
+    );
+
+    expect(justification.isAffected).toBe(false);
+    expect(justification.pathAssetIds).toEqual([]);
+  });
+
+  it("does not justify an ancestor as though the contamination reached it", async () => {
+    const ledger = await runUpTo("sold", { withSeed: true });
+    // Read the other way round: is the green batch downstream of the roasted
+    // batch it produced? It is not -- provenance runs one way, and a problem
+    // found downstream does not travel back up.
+    const justification = justifyRecallSelection(
+      GREEN_COFFEE_BATCH_ID,
+      ROASTED_COFFEE_BATCH_ID,
+      ledger.getState(),
+    );
+
+    expect(justification.isAffected).toBe(false);
+    expect(justification.pathAssetIds).toEqual([]);
+  });
+
+  it("explains the contaminated source as itself", async () => {
+    const ledger = await runUpTo("sold", { withSeed: true });
+    const justification = justifyRecallSelection(
+      GREEN_COFFEE_BATCH_ID,
+      GREEN_COFFEE_BATCH_ID,
+      ledger.getState(),
+    );
+
+    expect(justification.isAffected).toBe(true);
+    expect(justification.pathAssetIds).toEqual([GREEN_COFFEE_BATCH_ID]);
   });
 
   it("does not recall ancestors of an affected asset", async () => {

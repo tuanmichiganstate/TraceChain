@@ -493,11 +493,50 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
       `hints.${hint.hintId}`,
       "Must appear in hintIds, or its use will not be saved",
     );
-    check(
-      hint.penaltyPercent >= 0 && hint.penaltyPercent <= 100,
-      `hints.${hint.hintId}`,
-      "Penalty must be between 0 and 100 percent",
-    );
+  }
+
+  /*
+   * Hint scope. A hint caps exactly the items it names, so an unnamed,
+   * duplicated, misspelled or cross-stage target is a scoring bug that would
+   * otherwise be invisible: the learner is simply charged for the wrong work.
+   * There is deliberately no fallback to "everything in this stage" -- that was
+   * the previous behaviour and the reason this scope exists.
+   */
+  const scorableItems = allScorableItems(scenario);
+  const itemsByDecisionId = new Map(scorableItems.map((item) => [item.decisionId, item]));
+
+  for (const stage of scenario.stages) {
+    for (const hint of stage.availableHints) {
+      const targets = hint.targetScorableItemIds;
+      const where = `hints.${hint.hintId}`;
+
+      check(targets.length > 0, where, "Must name at least one scorable item it assists");
+      check(
+        new Set(targets).size === targets.length,
+        where,
+        "Must not name the same scorable item twice",
+      );
+
+      for (const decisionId of targets) {
+        const item = itemsByDecisionId.get(decisionId);
+        check(item !== undefined, where, `Targets "${decisionId}", which is not a scorable item`);
+        if (item === undefined) continue;
+
+        // Cross-stage targets are prohibited rather than justified: a hint is
+        // offered inside one stage, and charging it against work in another
+        // would be invisible at the point the learner decides to open it.
+        check(
+          item.stageId === stage.stageId,
+          where,
+          `Targets "${decisionId}" in ${item.stageId}, but hints may only cap items in their own stage (${stage.stageId})`,
+        );
+        check(
+          item.nameKey !== undefined,
+          where,
+          `Targets "${decisionId}", which has no nameKey; the learner is told which activities a hint caps`,
+        );
+      }
+    }
   }
 
   /*

@@ -1,16 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { ScoreComponent } from "../types/scoring";
-import { allScorableItems } from "../types/scenario";
+import { allHints, allScorableItems, type ScenarioDefinition } from "../types/scenario";
 import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
 import {
   calculateScore,
   creditFor,
+  hintPointsAtRisk,
   isPassing,
   scoreRecallPrecision,
   weakestComponents,
   type ScoreInputs,
 } from "./score-engine";
+
+/** The shipped scenario with one hint re-pointed, for cases it does not cover. */
+function withHintTargets(hintId: string, targets: readonly string[]): ScenarioDefinition {
+  return {
+    ...coffeeScenario,
+    stages: coffeeScenario.stages.map((stage) => ({
+      ...stage,
+      availableHints: stage.availableHints.map((hint) =>
+        hint.hintId === hintId ? { ...hint, targetScorableItemIds: targets } : hint,
+      ),
+    })),
+  };
+}
 
 const configuration = coffeeScenario.scoringConfiguration;
 const items = allScorableItems(coffeeScenario);
@@ -202,21 +216,182 @@ describe("score engine", () => {
     });
   });
 
-  describe("hints", () => {
-    it("reduces credit for items in the stage the hint belongs to", () => {
-      const withHint = withOverrides({}, ["HINT_RECALL_PROVENANCE"]);
-      const { score } = calculateScore(withHint, coffeeScenario);
-      expect(score.totalScore).toBeLessThan(100);
+  /**
+   * A hint caps exactly the items it declares it assists, and nothing else.
+   *
+   * The previous behaviour capped every scorable item in the hint's stage, so
+   * the stage 9 provenance hint -- help with one 15-point question -- also
+   * repriced the recall transaction and an unrelated question about whether a
+   * blockchain is warranted, costing 7.5 points instead of 4.5.
+   */
+  describe("hints cap only the items they target", () => {
+    const item = (inputs: ScoreInputs, decisionId: string) =>
+      calculateScore(inputs, coffeeScenario).items.find(
+        (entry) => entry.decisionId === decisionId,
+      );
+
+    it("caps the knowledge item it targets", () => {
+      const scored = item(withOverrides({}, ["HINT_RECALL_PROVENANCE"]), "INT_RECALL_SCOPE");
+      expect(scored?.wasHintUsed).toBe(true);
+      expect(scored?.creditFraction).toBe(configuration.afterHintCredit);
+    });
+
+    it("leaves another knowledge item in the same stage at full credit", () => {
+      const scored = item(
+        withOverrides({}, ["HINT_RECALL_PROVENANCE"]),
+        "INT_BLOCKCHAIN_NECESSITY",
+      );
+      expect(scored?.wasHintUsed).toBe(false);
+      expect(scored?.creditFraction).toBe(1);
+    });
+
+    it("leaves an untargeted procedural item in the same stage at full credit", () => {
+      const scored = item(withOverrides({}, ["HINT_RECALL_PROVENANCE"]), "INT_RECALL_COMMITTED");
+      expect(scored?.wasHintUsed).toBe(false);
+      expect(scored?.creditFraction).toBe(1);
+    });
+
+    it("caps every item a multi-target hint names", () => {
+      // No shipped hint targets two items, so the behaviour is exercised
+      // against a scenario that declares one rather than left unproven.
+      const scenario = withHintTargets("HINT_RECALL_PROVENANCE", [
+        "INT_RECALL_SCOPE",
+        "INT_BLOCKCHAIN_NECESSITY",
+      ]);
+      const scored = calculateScore(withOverrides({}, ["HINT_RECALL_PROVENANCE"]), scenario);
+      for (const decisionId of ["INT_RECALL_SCOPE", "INT_BLOCKCHAIN_NECESSITY"]) {
+        const entry = scored.items.find((candidate) => candidate.decisionId === decisionId);
+        expect(entry?.creditFraction, decisionId).toBe(configuration.afterHintCredit);
+      }
+      expect(
+        scored.items.find((entry) => entry.decisionId === "INT_RECALL_COMMITTED")?.creditFraction,
+      ).toBe(1);
+    });
+
+    it("does not compound when two hints overlap on the same item", () => {
+      const scenario = withHintTargets("HINT_TRANSFORMATION_YIELD", ["INT_RECALL_SCOPE"]);
+      const once = calculateScore(withOverrides({}, ["HINT_RECALL_PROVENANCE"]), scenario);
+      const twice = calculateScore(
+        withOverrides({}, ["HINT_RECALL_PROVENANCE", "HINT_TRANSFORMATION_YIELD"]),
+        scenario,
+      );
+      const creditOf = (breakdown: typeof once) =>
+        breakdown.items.find((entry) => entry.decisionId === "INT_RECALL_SCOPE")?.creditFraction;
+      expect(creditOf(twice)).toBe(creditOf(once));
+      expect(creditOf(twice)).toBe(configuration.afterHintCredit);
+    });
+
+    it("keeps two hints with disjoint targets to their own items", () => {
+      const inputs = withOverrides({}, ["HINT_RECALL_PROVENANCE", "HINT_CORRECTION_MECHANISM"]);
+      expect(item(inputs, "INT_RECALL_SCOPE")?.wasHintUsed).toBe(true);
+      expect(item(inputs, "INT_CORRECTION_RECORDED")?.wasHintUsed).toBe(true);
+      expect(item(inputs, "INT_RECEIVE_BATCH")?.wasHintUsed).toBe(false);
+      expect(item(inputs, "INT_BLOCKCHAIN_NECESSITY")?.wasHintUsed).toBe(false);
+    });
+
+    it("caps a targeted item that was already answered correctly", () => {
+      // The cap is retroactive by construction: the score is a pure function of
+      // decisions and hints, so it cannot depend on which came first.
+      const answered = withOverrides({ INT_RECALL_SCOPE: { attempts: 1, correct: true } });
+      const before = calculateScore(answered, coffeeScenario).score.totalScore;
+      const after = calculateScore(
+        { ...answered, hintsUsed: ["HINT_RECALL_PROVENANCE"] },
+        coffeeScenario,
+      ).score.totalScore;
+      expect(after).toBeLessThan(before);
+      expect(before - after).toBeCloseTo(15 * (1 - configuration.afterHintCredit), 5);
+    });
+
+    it("leaves an untargeted item that was already answered correctly alone", () => {
+      const inputs = withOverrides({}, ["HINT_RECALL_PROVENANCE"]);
+      expect(item(inputs, "INT_BLOCKCHAIN_NECESSITY")?.pointsEarned).toBe(5);
+    });
+
+    it("takes nothing further from a targeted item already below the cap", () => {
+      const overrides = { INT_RECALL_SCOPE: { attempts: 3, correct: true } };
+      const without = calculateScore(withOverrides(overrides), coffeeScenario).score.totalScore;
+      const withHint = calculateScore(
+        withOverrides(overrides, ["HINT_RECALL_PROVENANCE"]),
+        coffeeScenario,
+      ).score.totalScore;
+      expect(withHint).toBe(without);
+    });
+
+    it("leaves every other stage untouched", () => {
+      const breakdown = calculateScore(
+        withOverrides({}, ["HINT_RECALL_PROVENANCE"]),
+        coffeeScenario,
+      );
+      const elsewhere = breakdown.items.filter(
+        (entry) => entry.decisionId !== "INT_RECALL_SCOPE",
+      );
+      expect(elsewhere.every((entry) => !entry.wasHintUsed)).toBe(true);
+      expect(elsewhere.every((entry) => entry.creditFraction === 1)).toBe(true);
+    });
+
+    it("costs 4.5 points on a perfect attempt, not the stage's 7.5", () => {
+      const { score } = calculateScore(
+        withOverrides({}, ["HINT_RECALL_PROVENANCE"]),
+        coffeeScenario,
+      );
+      expect(score.totalScore).toBe(95.5);
       expect(score.hintsUsed).toBe(1);
     });
 
-    it("leaves other stages untouched", () => {
-      const withHint = withOverrides({}, ["HINT_RECALL_PROVENANCE"]);
-      const item = calculateScore(withHint, coffeeScenario).items.find(
-        (entry) => entry.decisionId === "INT_CREATE_BATCH",
+    it("reports the same score whichever order the inputs arrive in", () => {
+      const inputs = withOverrides({}, ["HINT_CORRECTION_MECHANISM", "HINT_RECALL_PROVENANCE"]);
+      const reversed: ScoreInputs = { ...inputs, hintsUsed: [...inputs.hintsUsed].reverse() };
+      expect(calculateScore(reversed, coffeeScenario).score).toEqual(
+        calculateScore(inputs, coffeeScenario).score,
       );
-      expect(item?.wasHintUsed).toBe(false);
-      expect(item?.creditFraction).toBe(1);
+    });
+
+    it("keeps the pass mark deterministic across a reload", () => {
+      const inputs = withOverrides({}, ["HINT_RECALL_PROVENANCE"]);
+      const first = calculateScore(inputs, coffeeScenario).score;
+      const second = calculateScore({ ...inputs }, coffeeScenario).score;
+      expect(second).toEqual(first);
+      expect(isPassing(second, configuration)).toBe(isPassing(first, configuration));
+    });
+  });
+
+  describe("the points a hint puts at risk", () => {
+    const hintFor = (hintId: string) => {
+      const found = allHints(coffeeScenario).find((hint) => hint.hintId === hintId);
+      if (found === undefined) throw new Error(`No hint ${hintId}`);
+      return found;
+    };
+
+    it("is the cap applied to an untouched target", () => {
+      // 15 points at 100% versus 70%.
+      expect(hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {})).toBe(4.5);
+    });
+
+    it("is zero once the target has fallen below the cap anyway", () => {
+      expect(
+        hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {
+          INT_RECALL_SCOPE: { encodedValue: 1, attemptCount: 3 },
+        }),
+      ).toBe(0);
+    });
+
+    it("still counts a target the learner has already answered", () => {
+      expect(
+        hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {
+          INT_RECALL_SCOPE: { encodedValue: 1, attemptCount: 1 },
+        }),
+      ).toBe(4.5);
+    });
+
+    it("never exceeds the points the targeted items are worth", () => {
+      for (const hint of allHints(coffeeScenario)) {
+        const targeted = items
+          .filter((entry) => hint.targetScorableItemIds.includes(entry.decisionId))
+          .reduce((total, entry) => total + entry.points, 0);
+        const risk = hintPointsAtRisk(hint, coffeeScenario, {});
+        expect(risk, hint.hintId).toBeGreaterThanOrEqual(0);
+        expect(risk, hint.hintId).toBeLessThanOrEqual(targeted);
+      }
     });
   });
 

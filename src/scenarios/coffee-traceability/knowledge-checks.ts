@@ -48,6 +48,7 @@ export const orientationTruthCheck: KnowledgeCheckDefinition = {
 /** Stage 3 -- where a large document actually belongs. */
 export const certificateStorageCheck: KnowledgeCheckDefinition = {
   knowledgeCheckId: "INT_CERTIFICATE_STORAGE_CHOICE",
+  nameKey: "activity.certificateStorage",
   checkType: KnowledgeCheckType.SINGLE_CHOICE,
   questionKey: "check.certificateStorage.question",
   options: [
@@ -92,6 +93,7 @@ export const certificateIssuerCheck: KnowledgeCheckDefinition = {
  */
 export const custodyTransferScopeCheck: KnowledgeCheckDefinition = {
   knowledgeCheckId: "INT_CUSTODY_TRANSFER_SCOPE",
+  nameKey: "activity.custodyScope",
   checkType: KnowledgeCheckType.SINGLE_CHOICE,
   questionKey: "check.custodyScope.question",
   options: [
@@ -220,6 +222,7 @@ export const dataGovernanceCheck: KnowledgeCheckDefinition = {
  */
 export const recallScopeCheck: KnowledgeCheckDefinition = {
   knowledgeCheckId: "INT_RECALL_SCOPE",
+  nameKey: "activity.recallScope",
   checkType: KnowledgeCheckType.MULTIPLE_CHOICE,
   questionKey: "check.recallScope.question",
   options: [
