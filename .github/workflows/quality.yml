@@ -3,9 +3,38 @@ name: quality
 # The authoritative gate. scripts/hooks/pre-commit is a local early warning that
 # a fresh clone does not run and `--no-verify` bypasses; this is the check that
 # cannot be skipped by forgetting something.
+#
+# WHY THE BRANCH FILTERS
+# ----------------------
+# Both events were previously unfiltered, so every push to a branch with an open
+# pull request started two identical runs of the same commit -- verified across
+# four commits on PR #1, each carrying a `push` run and a `pull_request` run of
+# the same SHA. Filtering `push` to master leaves exactly one trigger per case:
+#
+#   feature branch with an open PR  ->  pull_request only
+#   push or merge to master         ->  push only
+#
+# A feature branch with no PR open yet gets no run. That is the deliberate cost
+# of the model: scripts/hooks/pre-commit runs the same gate locally, and the
+# work is checked here the moment a pull request exists.
 on:
   push:
+    branches: [master]
   pull_request:
+    branches: [master]
+  # Re-running master's gate without pushing an empty commit.
+  workflow_dispatch:
+
+# One run per pull request, or per ref outside one. Superseded runs are
+# cancelled, which matters most for `e2e`: it takes about ten minutes, so three
+# pushes in quick succession otherwise hold three of them open at once.
+#
+# Master is deliberately excluded from cancellation. A cancelled run there would
+# leave the branch with no verdict, and on master a missing answer is too easily
+# mistaken for a passing one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
   quality:
@@ -37,6 +66,12 @@ jobs:
 
       - run: npm ci
 
+      # Playwright takes its worker count from the core count, so recording the
+      # runner's size makes the length of this job self-explaining instead of
+      # something to go and measure again later.
+      - name: Runner size
+        run: echo "cores=$(nproc) memory=$(free -g | awk '/^Mem:/{print $2}')GB"
+
       # Chromium, Firefox, WebKit and the iPhone SE profile. Browsers are a
       # large download, so this is a separate job rather than serialised behind
       # the gate above.
@@ -46,6 +81,10 @@ jobs:
       # It passed locally only because dist/ was left over from earlier builds.
       - run: npm run build
 
+      # Deliberately not cached. Of the ~75s this takes, ~56s is apt installing
+      # system libraries, which a browser cache cannot hold; the downloads
+      # themselves are ~19s, or 3% of this job. That 3% is not worth a cache key
+      # that can go stale against the installed Playwright version.
       - run: npx playwright install --with-deps
 
       - name: End-to-end
