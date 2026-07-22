@@ -58,10 +58,14 @@ export function StageShell({
           <ul className="required-actions__list">
             {actionOutcomes.map(({ action, isSatisfied }) => (
               <li key={action.actionId}>
+                {/* The task first, its state after it. Leading with the status
+                    made every line start with the same word and pushed the
+                    thing the learner is actually looking for to a ragged
+                    second column. */}
+                {t(action.descriptionKey)}{" "}
                 <StatusPill tone={isSatisfied ? "pass" : "neutral"}>
                   {isSatisfied ? t("stage.actionDone") : t("stage.actionTodo")}
-                </StatusPill>{" "}
-                {t(action.descriptionKey)}
+                </StatusPill>
               </li>
             ))}
           </ul>

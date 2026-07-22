@@ -56,11 +56,11 @@ export function ValidationResults({
       <ul className="validation__list">
         {ordered.map((result) => (
           <li key={result.ruleId} className="validation__item">
+            <span className="validation__message">{t(result.messageKey)}</span>
+            <code className="validation__rule-id">{result.ruleId}</code>
             <StatusPill tone={TONE_BY_STATUS[result.status] ?? "neutral"}>
               {t(LABEL_KEY_BY_STATUS[result.status] ?? "validation.statusWarning")}
             </StatusPill>
-            <span className="validation__message">{t(result.messageKey)}</span>
-            <code className="validation__rule-id">{result.ruleId}</code>
           </li>
         ))}
       </ul>

@@ -160,14 +160,14 @@ function RecallJustificationItem({ assetId }: { assetId: string }): ReactNode {
             the learner was right is the accuracy summary's job, stated
             separately -- an affected lot they correctly identified must not be
             handed a rejection cross for getting it right. */}
+        <strong>{nameOf(assetId)}</strong> <code>{assetId}</code>{" "}
         <ClassificationPill tone={justification.isAffected ? "affected" : "unaffected"}>
           {t(
             justification.isAffected
               ? "stage.recallAndDebrief.affected"
               : "stage.recallAndDebrief.notAffected",
           )}
-        </ClassificationPill>{" "}
-        <strong>{nameOf(assetId)}</strong> <code>{assetId}</code>
+        </ClassificationPill>
       </p>
 
       {justification.isAffected ? (
