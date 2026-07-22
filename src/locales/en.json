@@ -450,6 +450,7 @@
   "hint.heading": "Hint",
   "hint.reveal": "Show a hint",
   "hint.penaltyNotice": "Using this hint caps credit for {activities} at {percent}%, reducing the score still available by up to {points} points. Nothing else in this step is affected, and the cap applies even if you have already finished that work.",
+  "hint.penaltyNoticeNone": "Using this hint will not reduce the score still available for {activities}, because earlier attempts have already lowered it below the cap.",
   "transaction.showDetail": "Show full detail",
   "transaction.hashLabel": "Transaction hash",
   "transaction.signatureLabel": "Simulated signature hash",

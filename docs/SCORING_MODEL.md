@@ -64,6 +64,12 @@ Four consequences, none of them obvious enough to leave unwritten:
 - **Items already below the ceiling are untouched** — an item on its third
   attempt is at `multipleAttemptCredit`, which is lower, and an item never
   answered correctly is at zero. A cap can only lower credit that exists.
+- **The cost shown is what remains at stake, not a flat percentage.** Credit is
+  read at the attempt the item would actually be scored on — the next one, for
+  anything not yet correct — so a hint offered after two wrong answers is priced
+  at what it can still take, which is often nothing. `attemptCount` counts
+  attempts already made, and reading it as the scoring attempt overstates the
+  cost precisely when a struggling learner is most likely to want help.
 - **Everything else keeps full credit**, including other items in the same
   stage. The learner is told which activities a hint will affect, the ceiling,
   and the points still at stake, before deciding to open it — all three derived

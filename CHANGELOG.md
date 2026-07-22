@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **A hint claimed to cost more than it could after a failed attempt.** The
+  points-at-risk figure read `attemptCount` — attempts already made — as though
+  it were the attempt the item would be scored on. Those differ exactly when the
+  learner has not got it right yet, so the notice overstated the cost precisely
+  when someone struggling was most likely to want help: 4.5 points claimed where
+  1.5 were at stake after one wrong answer, and 1.5 claimed after two when the
+  retry ladder had already put the item below the cap and the hint was free. The
+  figure is now taken at the attempt the item will actually be scored on, and
+  when a hint can no longer reduce anything the notice says so instead of
+  offering "up to 0 points". Scores themselves are unchanged.
+
 ### Orientation, cause and effect, and what the marks are for
 
 Acting on a UI/UX review. The three themes it identified were right; roughly a

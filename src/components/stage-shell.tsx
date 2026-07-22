@@ -145,7 +145,7 @@ function StageAdvance({ stageId }: { stageId: ScenarioStageId }): ReactNode {
 function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
-  const { state, revealHint } = useSimulation();
+  const { state, scoreBreakdown, revealHint } = useSimulation();
   const isRevealed = state.hintsUsed.includes(hint.hintId);
 
   const { afterHintCredit } = scenario.scoringConfiguration;
@@ -162,6 +162,7 @@ function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
     .filter((nameKey): nameKey is string => nameKey !== undefined)
     .map((nameKey) => `\u201C${t(nameKey)}\u201D`)
     .join(", ");
+  const pointsAtRisk = hintPointsAtRisk(hint, scenario, scoreBreakdown);
 
   return (
     <section className="hint">
@@ -181,11 +182,16 @@ function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
             {t("hint.reveal")}
           </button>
           <p className="muted">
-            {t("hint.penaltyNotice", {
-              activities,
-              percent: Math.round(afterHintCredit * 100),
-              points: hintPointsAtRisk(hint, scenario, state.decisions),
-            })}
+            {/* Once the retry ladder has already dropped the target below the
+                cap, opening the hint costs nothing -- and saying "up to 0
+                points" invites a learner to think it costs something. */}
+            {pointsAtRisk === 0
+              ? t("hint.penaltyNoticeNone", { activities })
+              : t("hint.penaltyNotice", {
+                  activities,
+                  percent: Math.round(afterHintCredit * 100),
+                  points: pointsAtRisk,
+                })}
           </p>
         </>
       )}

@@ -8,6 +8,7 @@ import {
   type AttemptSnapshot,
 } from "../../infrastructure/persistence/state-codec";
 import { ScenarioStageId } from "../types/enums";
+import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import { calculateScore, isPassing } from "./score-engine";
 
 /**
@@ -110,5 +111,46 @@ describe("attempts saved before hint scope became explicit", () => {
   it("takes at most 13.2 points across every hint, where the stage-wide rule took 22.5", () => {
     const all = scoreOf([...coffeeScenario.hintIds]);
     expect(100 - all).toBeCloseTo(13.2, 5);
+  });
+
+  /**
+   * A hint bit with no hint behind it. Recorded rather than defended against:
+   * the codec maps bits to `hintIds` positionally, so a bit past the end simply
+   * matches nothing. It cannot crash a resume, cannot borrow another hint's
+   * identity, and cannot reach scoring, because only declared hints carry
+   * targets. Nothing to fix; this pins the behaviour so a codec change that
+   * broke it would be noticed.
+   */
+  it("ignores a persisted hint bit that no longer has a hint behind it", () => {
+    const snapshot: AttemptSnapshot = {
+      currentStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
+      completedStageIds: [],
+      decisions: {},
+      hintsUsed: [...coffeeScenario.hintIds],
+      isCompleted: false,
+      isPassed: false,
+    };
+    const parts = encodeAttemptState(snapshot, schema).split(".");
+    // Set a bit far beyond the defined hints, then re-checksum so the payload
+    // is well formed rather than merely corrupt.
+    const widened = (BigInt(Number.parseInt(parts[3] as string, 36)) | (1n << 40n)).toString(36);
+    const body = [parts[0], parts[1], parts[2], widened, parts[4], parts[5]].join(".");
+    const forged = `${body}.${sha256Hex(body).slice(0, 8)}`;
+
+    const restored = decodeAttemptState(forged, schema);
+    expect(restored.hintsUsed).toEqual([...coffeeScenario.hintIds]);
+
+    // And it changes no score, because an unknown id targets nothing.
+    expect(
+      calculateScore(
+        { decisions: perfectDecisions(), hintsUsed: restored.hintsUsed, correctness },
+        coffeeScenario,
+      ).score.totalScore,
+    ).toBe(
+      calculateScore(
+        { decisions: perfectDecisions(), hintsUsed: [...coffeeScenario.hintIds], correctness },
+        coffeeScenario,
+      ).score.totalScore,
+    );
   });
 });

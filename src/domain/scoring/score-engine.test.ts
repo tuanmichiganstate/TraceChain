@@ -355,6 +355,15 @@ describe("score engine", () => {
     });
   });
 
+  /**
+   * What the hint panel promises: the most opening a hint can *still* cost.
+   *
+   * The trap is `attemptCount`, which counts attempts already made. An item the
+   * learner has not yet got right will be scored on its *next* attempt, so
+   * reading attemptCount as the scoring attempt overstates: after one wrong
+   * answer the ladder has already dropped to 80%, and the 70% cap can only take
+   * the difference. After two it cannot take anything at all.
+   */
   describe("the points a hint puts at risk", () => {
     const hintFor = (hintId: string) => {
       const found = allHints(coffeeScenario).find((hint) => hint.hintId === hintId);
@@ -362,33 +371,127 @@ describe("score engine", () => {
       return found;
     };
 
-    it("is the cap applied to an untouched target", () => {
-      // 15 points at 100% versus 70%.
-      expect(hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {})).toBe(4.5);
+    const RECALL_SCOPE = "INT_RECALL_SCOPE";
+    const recallHint = () => hintFor("HINT_RECALL_PROVENANCE");
+    const scopePoints = items.find((item) => item.decisionId === RECALL_SCOPE)!.points;
+
+    /** The breakdown for a run where one target sits in the given state. */
+    const stateOf = (
+      decisionId: string,
+      attemptCount: number,
+      isCorrect: boolean,
+      hintsUsed: readonly string[] = [],
+    ) => {
+      const base = perfectAttempt();
+      const decisions = { ...base.decisions };
+      const correctness = { ...base.correctness };
+      if (attemptCount === 0) {
+        delete decisions[decisionId];
+        delete correctness[decisionId];
+      } else {
+        decisions[decisionId] = { encodedValue: 1, attemptCount };
+        correctness[decisionId] = isCorrect;
+      }
+      return calculateScore({ decisions, correctness, hintsUsed }, coffeeScenario);
+    };
+
+    /** What the item is actually worth once the learner eventually gets it right. */
+    const eventualCredit = (attemptCount: number, isCorrect: boolean, hinted: boolean) => {
+      const scoringAttempt = isCorrect ? attemptCount : attemptCount + 1;
+      return creditFor(scoringAttempt, hinted, configuration);
+    };
+
+    // state, attempts already made, already correct, expected points at risk
+    const cases: ReadonlyArray<readonly [string, number, boolean, number]> = [
+      ["no attempts yet", 0, false, 4.5],
+      ["correct on the first attempt", 1, true, 4.5],
+      ["one incorrect attempt, not yet correct", 1, false, 1.5],
+      ["two incorrect attempts, not yet correct", 2, false, 0],
+      ["correct on the second attempt", 2, true, 1.5],
+      ["correct on the third attempt", 3, true, 0],
+      ["already below the hint cap", 4, true, 0],
+    ];
+
+    for (const [label, attempts, isCorrect, expected] of cases) {
+      it(`is ${expected} points when the target is ${label}`, () => {
+        const breakdown = stateOf(RECALL_SCOPE, attempts, isCorrect);
+        expect(hintPointsAtRisk(recallHint(), coffeeScenario, breakdown)).toBe(expected);
+
+        // The same figure, derived from the credit ladder rather than the
+        // function under test, so an off-by-one in either would disagree.
+        const without = eventualCredit(attempts, isCorrect, false);
+        const withHint = eventualCredit(attempts, isCorrect, true);
+        expect(scopePoints * (without - withHint)).toBeCloseTo(expected, 5);
+
+        // And the score difference the learner actually ends up with, once they
+        // eventually answer correctly: with the hint against without it.
+        const base = perfectAttempt();
+        const eventual = (hinted: boolean) =>
+          calculateScore(
+            {
+              decisions: {
+                ...base.decisions,
+                [RECALL_SCOPE]: {
+                  encodedValue: 1,
+                  attemptCount: isCorrect ? attempts : attempts + 1,
+                },
+              },
+              correctness: base.correctness,
+              hintsUsed: hinted ? [recallHint().hintId] : [],
+            },
+            coffeeScenario,
+          ).score.totalScore;
+        expect(eventual(false) - eventual(true)).toBeCloseTo(expected, 5);
+      });
+    }
+
+    it("is the full cap for a procedural target, and nothing once its floor binds", () => {
+      // The correction transaction: 10 points, floored at minimumProceduralCredit.
+      const correctionHint = hintFor("HINT_CORRECTION_MECHANISM");
+      const untouched = stateOf("INT_CORRECTION_RECORDED", 0, false);
+      expect(hintPointsAtRisk(correctionHint, coffeeScenario, untouched)).toBe(3);
+
+      // Two failed attempts put the next success at multipleAttemptCredit, which
+      // is already below the cap, and the floor keeps it there either way.
+      const struggling = stateOf("INT_CORRECTION_RECORDED", 2, false);
+      expect(hintPointsAtRisk(correctionHint, coffeeScenario, struggling)).toBe(0);
     });
 
-    it("is zero once the target has fallen below the cap anyway", () => {
-      expect(
-        hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {
-          INT_RECALL_SCOPE: { encodedValue: 1, attemptCount: 3 },
-        }),
-      ).toBe(0);
+    it("counts each target of a multi-item hint in its own state", () => {
+      const scenario = withHintTargets("HINT_RECALL_PROVENANCE", [
+        RECALL_SCOPE,
+        "INT_BLOCKCHAIN_NECESSITY",
+      ]);
+      const base = perfectAttempt();
+      const breakdown = calculateScore(
+        {
+          decisions: {
+            ...base.decisions,
+            // One untouched, one already twice wrong: 4.5 + 0.
+            [RECALL_SCOPE]: { encodedValue: 1, attemptCount: 1 },
+            INT_BLOCKCHAIN_NECESSITY: { encodedValue: 1, attemptCount: 2 },
+          },
+          correctness: { ...base.correctness, INT_BLOCKCHAIN_NECESSITY: false },
+          hintsUsed: [],
+        },
+        scenario,
+      );
+      const hint = allHints(scenario).find((entry) => entry.hintId === "HINT_RECALL_PROVENANCE")!;
+      expect(hintPointsAtRisk(hint, scenario, breakdown)).toBe(4.5);
     });
 
-    it("still counts a target the learner has already answered", () => {
-      expect(
-        hintPointsAtRisk(hintFor("HINT_RECALL_PROVENANCE"), coffeeScenario, {
-          INT_RECALL_SCOPE: { encodedValue: 1, attemptCount: 1 },
-        }),
-      ).toBe(4.5);
+    it("is zero once the hint is already open, because the cap is already applied", () => {
+      const breakdown = stateOf(RECALL_SCOPE, 1, true, ["HINT_RECALL_PROVENANCE"]);
+      expect(hintPointsAtRisk(recallHint(), coffeeScenario, breakdown)).toBe(0);
     });
 
-    it("never exceeds the points the targeted items are worth", () => {
+    it("never goes negative or exceeds what the targets are worth", () => {
+      const breakdown = calculateScore(perfectAttempt(), coffeeScenario);
       for (const hint of allHints(coffeeScenario)) {
         const targeted = items
           .filter((entry) => hint.targetScorableItemIds.includes(entry.decisionId))
           .reduce((total, entry) => total + entry.points, 0);
-        const risk = hintPointsAtRisk(hint, coffeeScenario, {});
+        const risk = hintPointsAtRisk(hint, coffeeScenario, breakdown);
         expect(risk, hint.hintId).toBeGreaterThanOrEqual(0);
         expect(risk, hint.hintId).toBeLessThanOrEqual(targeted);
       }

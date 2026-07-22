@@ -676,9 +676,19 @@ export function validateCoffeeScenarioContracts(): ScenarioContractValidationRes
       }, 0) *
       (1 - coffeeScenario.scoringConfiguration.afterHintCredit);
 
+    // Against a fresh attempt: nothing answered, so every target is still worth
+    // the full difference between first-attempt and after-hint credit.
+    const untouched = calculateScore(
+      {
+        decisions: {},
+        hintsUsed: [],
+        correctness: {},
+      },
+      coffeeScenario,
+    );
     recorder.check(
       `hints.${hint.hintId}.disclosed-risk-matches-engine`,
-      Math.abs(hintPointsAtRisk(hint, coffeeScenario, {}) - expectedLoss) < 0.05,
+      Math.abs(hintPointsAtRisk(hint, coffeeScenario, untouched) - expectedLoss) < 0.05,
       "The points shown to the learner must be the points the engine removes",
     );
   }

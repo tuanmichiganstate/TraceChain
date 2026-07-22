@@ -58,6 +58,8 @@ export interface ItemScore {
   readonly attemptCount: number;
   readonly wasHintUsed: boolean;
   readonly isAnswered: boolean;
+  /** Answered *and* right. Needed to know which attempt an item scores on. */
+  readonly isCorrect: boolean;
   readonly isProcedural: boolean;
 }
 
@@ -163,44 +165,47 @@ function hintedItemIds(
 }
 
 /**
- * The most a hint can still cost, given what the learner has done so far.
+ * The most that opening a hint can still cost, given where the learner is.
  *
- * An upper bound rather than a prediction, because it assumes every targeted
- * item would otherwise be earned at the best credit still available to it. That
- * makes three cases fall out correctly: an item not yet attempted is worth the
- * full difference between first-attempt and after-hint credit; an item already
- * down to `multipleAttemptCredit` is worth nothing further, because the cap
- * cannot lower credit that is already below it; and an item answered correctly
- * on the first attempt is worth the full difference too, since the cap applies
- * to work already completed.
+ * The subtlety is `attemptCount`: it counts attempts already made, not the
+ * attempt an item will be scored on. Those differ precisely when the learner
+ * has not got it right yet, because the next attempt is the one that counts --
+ * and reading one for the other overstates the cost of a hint exactly when a
+ * struggling learner is most likely to want one. After a single wrong answer
+ * the ladder has already dropped to `secondAttemptCredit`, so a 70% cap can
+ * only take the difference; after two it is at `multipleAttemptCredit` and the
+ * cap can take nothing at all.
  *
- * Computed rather than authored so the figure a learner is shown cannot drift
- * from the one the engine applies.
+ * Reads the breakdown rather than raw decisions so correctness, the procedural
+ * floor and any cap already in force come from the engine that applies them,
+ * instead of being derived a second time here and drifting.
  */
 export function hintPointsAtRisk(
   hint: ScenarioHint,
   scenario: ScenarioDefinition,
-  decisions: Readonly<Record<string, DecisionRecord>>,
+  breakdown: ScoreBreakdown,
 ): number {
   const configuration = scenario.scoringConfiguration;
-  const itemsByDecisionId = new Map(
-    allScorableItems(scenario).map((item) => [item.decisionId, item]),
+  const scoredByDecisionId = new Map(
+    breakdown.items.map((item) => [item.decisionId, item]),
   );
-
-  const floored = (credit: number, isProcedural: boolean): number =>
-    isProcedural ? Math.max(credit, configuration.minimumProceduralCredit) : credit;
 
   let atRisk = 0;
   for (const decisionId of hint.targetScorableItemIds) {
-    const item = itemsByDecisionId.get(decisionId);
+    const item = scoredByDecisionId.get(decisionId);
     if (item === undefined) continue;
 
-    // Never attempted still counts as a first attempt: the credit ladder only
-    // descends, so this is the best the item can still be worth either way.
-    const attempts = Math.max(1, decisions[decisionId]?.attemptCount ?? 0);
-    const without = floored(creditFor(attempts, false, configuration), item.isProcedural);
-    const withHint = floored(creditFor(attempts, true, configuration), item.isProcedural);
-    atRisk += item.points * Math.max(0, without - withHint);
+    // An open hint already caps this item, so opening another cannot take more.
+    // This is also what keeps overlapping hints from compounding.
+    if (item.wasHintUsed) continue;
+
+    const scoringAttempt = item.isCorrect ? item.attemptCount : item.attemptCount + 1;
+    const floored = (credit: number): number =>
+      item.isProcedural ? Math.max(credit, configuration.minimumProceduralCredit) : credit;
+
+    const without = floored(creditFor(scoringAttempt, false, configuration));
+    const withHint = floored(creditFor(scoringAttempt, true, configuration));
+    atRisk += item.pointsAvailable * Math.max(0, without - withHint);
   }
 
   return round(atRisk);
@@ -239,6 +244,7 @@ export function calculateScore(
       attemptCount,
       wasHintUsed,
       isAnswered,
+      isCorrect,
       isProcedural: item.isProcedural,
     };
   });
