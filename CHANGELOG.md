@@ -65,6 +65,15 @@ about was live in the build.
   superseded manifest figure is a committed historical fact, not a failed rule;
   marking it with the rejection glyph said the opposite of the stage's lesson.
   The step labels carry the meaning, and nothing is struck through.
+- **Nor does the stage 5 discrepancy panel.** It showed the declared 1000 kg
+  with the rejection glyph and the measured 100 kg with the success glyph, on a
+  screen the learner reaches before doing anything. The manifest passed every
+  rule when the clerk filed it and is committed for good, so it is inaccurate
+  rather than invalid, and a scale reading is not a validation outcome at all.
+  Both figures are now plain, the labels say which is which, and the mismatch is
+  stated in words. The illustration's overlay moved off fail-red and pass-green
+  onto the palette's own ledger and physical-world colours; amber is reserved
+  for the mismatch itself.
 
 **Added**
 

@@ -482,6 +482,7 @@
   "stage.receiveAndCorrect.scaleShort": "Plant scale",
   "stage.receiveAndCorrect.manifestQuantity": "Quantity on the manifest already recorded on the ledger",
   "stage.receiveAndCorrect.weighedQuantity": "Quantity actually weighed at the plant",
+  "stage.receiveAndCorrect.mismatchDetected": "Mismatch detected: the recorded manifest and the plant scale do not agree. The manifest is not invalid, it is inaccurate, and it stays on the ledger either way.",
   "stage.receiveAndCorrect.discrepancyBody": "The co-operative's shipping clerk filed the manifest after the custody handoff committed and before the sensor evidence. The correction is appended after that original block record instead of replacing it.",
   "stage.receiveAndCorrect.receiveAction": "Receive the batch",
   "stage.receiveAndCorrect.purchaseAction": "Record the purchase of the batch",

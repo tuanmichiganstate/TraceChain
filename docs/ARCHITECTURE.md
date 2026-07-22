@@ -252,6 +252,14 @@ rather than one widened union, because `validation-results.tsx` and
 `transaction-history.tsx` both map a status enum onto `StatusTone`, and those
 maps only mean anything while every member of it is a judgement.
 
+Some things are neither. Stage 5's discrepancy panel puts a declared quantity
+beside a measured one, and no pill fits: the manifest passed every rule when it
+was filed and is inaccurate rather than invalid, and a scale reading is not a
+validation outcome. The two figures are plain text under labels that say where
+each came from, and the disagreement between them is written out. Colour there
+follows the palette's ledger and physical-world meanings, with amber kept for
+the mismatch.
+
 ### Three levels of accessibility evidence, not one
 
 These are not interchangeable, and the difference is worth keeping visible:

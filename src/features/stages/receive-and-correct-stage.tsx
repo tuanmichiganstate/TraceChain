@@ -10,7 +10,6 @@ import { StageShell } from "../../components/stage-shell";
 import { TransactionAction } from "../../components/transaction-action";
 import { AssetCard } from "../../components/asset-card";
 import { CorrectionLineage } from "../../components/correction-lineage";
-import { StatusPill } from "../../components/status-pill";
 import {
   MANIFEST_QUANTITY_KG,
   PRODUCER_CONTEXT,
@@ -173,20 +172,27 @@ function ManifestDiscrepancy({
 
       <div className="discrepancy__content">
         <h3>{t("stage.receiveAndCorrect.discrepancyHeading")}</h3>
+        {/*
+          Two values, neither of them a verdict. The manifest passed every rule
+          when the clerk filed it and is committed for good -- it is inaccurate,
+          not invalid -- and a scale reading is not a validation result at all.
+          These carried the rejection and success glyphs, which mean "failed"
+          and "passed" everywhere else in this interface, on a screen where the
+          learner has not yet done anything and could reasonably read a red cross
+          as their own mistake. The labels already say which figure came from
+          where; the disagreement between them is stated in words.
+        */}
         <dl className="asset-card__grid">
           <div className="asset-card__row">
             <dt>{t("stage.receiveAndCorrect.manifestQuantity")}</dt>
-            <dd>
-              <StatusPill tone="fail">{MANIFEST_QUANTITY_KG} kg</StatusPill>
-            </dd>
+            <dd className="discrepancy__value">{MANIFEST_QUANTITY_KG} kg</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("stage.receiveAndCorrect.weighedQuantity")}</dt>
-            <dd>
-              <StatusPill tone="pass">{WEIGHED_QUANTITY_KG} kg</StatusPill>
-            </dd>
+            <dd className="discrepancy__value">{WEIGHED_QUANTITY_KG} kg</dd>
           </div>
         </dl>
+        <p className="discrepancy__mismatch">{t("stage.receiveAndCorrect.mismatchDetected")}</p>
         <p>{t("stage.receiveAndCorrect.discrepancyBody")}</p>
         <p className="muted">{t("message.correction")}</p>
         {manifestTransactionId !== undefined ? (

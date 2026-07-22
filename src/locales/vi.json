@@ -482,6 +482,7 @@
   "stage.receiveAndCorrect.scaleShort": "Cân tại nhà máy",
   "stage.receiveAndCorrect.manifestQuantity": "Số lượng trên vận đơn đã ghi lên sổ cái",
   "stage.receiveAndCorrect.weighedQuantity": "Số lượng cân thực tế tại nhà máy",
+  "stage.receiveAndCorrect.mismatchDetected": "Phát hiện chênh lệch: vận đơn đã ghi và cân tại nhà máy không khớp nhau. Vận đơn không phải là bản ghi không hợp lệ, mà là bản ghi sai số liệu, và dù thế nào nó vẫn nằm trên sổ cái.",
   "stage.receiveAndCorrect.discrepancyBody": "Vận đơn do nhân viên giao nhận của hợp tác xã lập sau khi giao dịch bàn giao quyền lưu giữ được cam kết, trước dữ liệu cảm biến, và đã được ghi vào một khối. Giao dịch điều chỉnh sẽ được bổ sung sau bản ghi gốc thay vì thay thế nó.",
   "stage.receiveAndCorrect.receiveAction": "Tiếp nhận lô hàng",
   "stage.receiveAndCorrect.purchaseAction": "Ghi nhận việc mua lô hàng",

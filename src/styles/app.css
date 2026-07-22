@@ -775,10 +775,17 @@
 }
 
 .discrepancy__fact strong { font-size: var(--size-heading-3); }
-.discrepancy__fact--manifest { background: var(--colour-fail-soft); }
-.discrepancy__fact--manifest strong { color: var(--colour-fail); }
-.discrepancy__fact--scale { background: var(--colour-pass-soft); }
-.discrepancy__fact--scale strong { color: var(--colour-pass); }
+/*
+ * A ledger record and a physical measurement, using the palette's own meanings
+ * for those two things. They were fail-red and pass-green, which said one
+ * figure was wrong and the other right; the manifest is inaccurate rather than
+ * invalid, and a scale reading is not a validation outcome. Amber is reserved
+ * for the mismatch between them, which is the thing actually worth flagging.
+ */
+.discrepancy__fact--manifest { background: var(--colour-navy-soft); }
+.discrepancy__fact--manifest strong { color: var(--colour-navy); }
+.discrepancy__fact--scale { background: var(--colour-physical-soft); }
+.discrepancy__fact--scale strong { color: var(--colour-physical); }
 .discrepancy__comparison-arrow {
   color: var(--colour-warn);
   font-size: var(--size-heading-3);
@@ -1235,3 +1242,21 @@
 }
 
 .recall-scope__path li + li { margin-top: var(--space-1); }
+
+/*
+ * The two figures the stage turns on. Prominent, and deliberately without a
+ * status pill: neither is a verdict, and the glyphs mean "failed" and "passed"
+ * everywhere else here.
+ */
+.discrepancy__value {
+  font-size: var(--size-heading-3);
+  font-weight: 650;
+}
+
+.discrepancy__mismatch {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 4px solid var(--colour-warn);
+  background: var(--colour-warn-soft);
+  color: var(--colour-text);
+}
