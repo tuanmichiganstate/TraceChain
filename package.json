@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:site": "npm run build && node scripts/build-site.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
