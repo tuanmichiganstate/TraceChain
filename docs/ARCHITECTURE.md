@@ -282,8 +282,8 @@ for it.
 ## End-to-end testing
 
 `npm run test:e2e` runs the Playwright suite in **Chromium, Firefox, WebKit and
-an iPhone SE profile** — 14 scenarios each. They run against `dist/`, the
-artefact that actually ships, not the dev server.
+an iPhone SE profile** — 17 scenarios each, 68 in all. They run against
+`dist/`, the artefact that actually ships, not the dev server.
 
 The unit and component suites already drive all nine stages in jsdom, so these
 deliberately do not re-assert domain behaviour. They cover what only a real

@@ -29,7 +29,7 @@ evidence and the M3 acceptance decision are recorded in `docs/BASELINE.md`.
 | Scenario | complete — 9 stages, 10 knowledge checks, scoring, completion |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
-| Content review | deterministic 528-key bilingual pack; human Vietnamese review remains open |
+| Content review | deterministic 564-key bilingual pack; human Vietnamese review remains open |
 | SCORM package | builds reproducibly and verifies (23/23 checks) |
 | Moodle | Docker acceptance covers storage, grading, forced failure, and cleanup |
 
