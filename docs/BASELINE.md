@@ -39,28 +39,54 @@ first, no blind timeout bumps:
 | Linux WebKit, container, isolated | ~48s |
 | Linux WebKit, container, CPU-time throttled to 2 | ~180s |
 
-Per-stage timing (`TRACECHAIN_E2E_TIMING=1`) showed every action succeeding and
-the cost spread across all nine stages, heaviest at the transaction-heavy ones
-(4, 6) -- cumulative execution time, not a stall, product defect, or animation
-wait. Reduced-motion was tested and made no difference, ruling animation out.
+**No CI trace was inspected** -- the first failing run uploaded nothing (see
+below), so the diagnosis came from reproducing the failure in the pinned Linux
+container and reading per-stage timing, not from a Playwright trace. Timing
+(`TRACECHAIN_E2E_TIMING=1`) showed every action succeeding and the cost spread
+across all nine stages, heaviest at the transaction-heavy ones (4, 6) --
+cumulative execution time, not a stall, product defect, or animation wait.
+Reduced-motion was tested and made no difference, ruling animation out.
 
-The cause is WebKit's Linux port being far slower than macOS for this suite's
-accessibility-tree locators (`getByRole` with name regexes), which recompute as
-the workspace DOM grows. On the real GitHub runner the 7-stage tamper test
-passed at 90s while only the two full-9-stage tests failed, so the real need is
-~100-130s; the container is pessimistic because `docker --cpus` throttles CPU
-*time* rather than giving dedicated cores, so it cannot faithfully reproduce a
-2-core runner.
+**Hypothesis for the slowness** (not proven): WebKit's Linux port is far slower
+than macOS, and this suite's accessibility-tree locators (`getByRole` with name
+regexes) recompute as the workspace DOM grows, so the heaviest stages are the
+ones with the most accumulated DOM. This was not isolated to a specific cause --
+it is the most likely explanation for the measured curve, no more. What *is*
+established is the shape: every action succeeds, and the total exceeds the
+budget on WebKit-Linux alone.
+
+On the real GitHub runner the 7-stage tamper test passed at 90s while only the
+two full-9-stage tests failed, so the real need is ~100-130s; the container is
+pessimistic because `docker --cpus` throttles CPU *time* rather than giving
+dedicated cores, so it cannot faithfully reproduce a 2-core runner.
 
 **Fix:** per-project test timeouts, set explicitly rather than via `test.slow()`
 (which tripled an implicit default and made a per-project override ambiguous).
 Blink/Gecko keep 90s; the WebKit family gets 240s (measured 180s plus margin).
 Raising Chromium/Firefox would hide a real regression behind a WebKit allowance.
 
+**Technical debt.** The 240s timeout is set at the *project* level, so it
+applies to every WebKit test, not only the two long walkthroughs that need it.
+That is broad: a genuinely hung short WebKit test now takes 240s to fail instead
+of 90s. It should later be scoped to the two long walkthroughs specifically
+(a per-test `test.setTimeout(240_000)` on them, WebKit-family only), or those
+walkthroughs split into shorter tests that fit the default budget. Left broad
+for now because the immediate goal was a trustworthy green baseline, and
+narrowing it is a refinement, not a correctness fix.
+
+**Trace and report capture** was the reason the first failure gave no evidence:
+the `line` reporter writes no report directory, so `upload-artifact` found
+nothing. Now `use.trace` is `on-first-retry`, CI adds an `html` reporter, and
+the workflow uploads both `playwright-report/` and `test-results/` with
+`if-no-files-found: error`. Verified locally in CI mode: a deliberately failing
+fixture produces `test-results/.../retry1/trace.zip` and a ~516K
+`playwright-report/index.html`, openable with `npx playwright show-trace`. The
+`upload-artifact` action itself is exercised only on a real red run.
+
 **Verified on the real GitHub runner** at commit `72c7241`, green twice:
 run `29878612762` (initial) and its rerun, both `quality` + `e2e` success. The
 e2e job took about 738s. This is the authoritative result; the container was
-diagnostic only.
+diagnostic only. Later docs-only commits carry the same source and stayed green.
 
 ## Commit gating — what it is and is not
 
