@@ -10,6 +10,7 @@
 export { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 export { validateScenario } from "../src/domain/scenario/validate-scenario";
 export {
+  ALL_SCENARIO_DATES,
   SCENARIO_TIMELINE,
   TIMELINE_ORDERING_CONSTRAINTS,
 } from "../src/scenarios/coffee-traceability/timeline";

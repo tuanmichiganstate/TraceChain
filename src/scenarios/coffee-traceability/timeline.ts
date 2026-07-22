@@ -18,9 +18,8 @@ export const SCENARIO_TIMELINE = {
   /** Stage 2 -- the co-operative records the harvested batch. */
   batchCreated: "2025-12-10T02:00:00.000Z",
 
-  /** Stage 3 -- quality certificate, valid for one year. */
+  /** Stage 3 -- quality certificate issuance transaction. */
   certificateIssued: "2026-01-15T03:00:00.000Z",
-  certificateExpires: "2027-01-15T03:00:00.000Z",
 
   /**
    * Stage 4 -- after custody commits, the shipping clerk files the manifest.
@@ -46,8 +45,18 @@ export const SCENARIO_TIMELINE = {
   ownershipTransferred: "2026-06-20T03:00:00.000Z",
   batchDispatched: "2026-06-22T01:00:00.000Z",
 
-  /** Stage 9 -- the laboratory result that triggers the recall. */
+  /** Stage 9 -- the laboratory result that triggers the recall transaction. */
   laboratoryResult: "2026-07-05T04:00:00.000Z",
+} as const;
+
+/**
+ * Fixed dates that describe genesis state or document metadata, not events in
+ * this ledger's committed history. Keeping them separate prevents scenario
+ * prose from promising transactions that replay cannot produce.
+ */
+export const SCENARIO_FACT_DATES = {
+  /** The Stage 3 quality certificate is valid for one year. */
+  certificateExpires: "2027-01-15T03:00:00.000Z",
 
   /*
    * The near-miss distractor chain (see seed-assets.ts). Every date here is
@@ -64,6 +73,14 @@ export const SCENARIO_TIMELINE = {
 } as const;
 
 export type ScenarioTimelineKey = keyof typeof SCENARIO_TIMELINE;
+export type ScenarioFactDateKey = keyof typeof SCENARIO_FACT_DATES;
+
+export const ALL_SCENARIO_DATES = {
+  ...SCENARIO_TIMELINE,
+  ...SCENARIO_FACT_DATES,
+} as const;
+
+export type ScenarioDateKey = keyof typeof ALL_SCENARIO_DATES;
 
 /**
  * Ordering constraints the scenario must satisfy, checked at build time by
@@ -71,7 +88,7 @@ export type ScenarioTimelineKey = keyof typeof SCENARIO_TIMELINE;
  * that makes a stage unreachable.
  */
 export const TIMELINE_ORDERING_CONSTRAINTS: ReadonlyArray<
-  readonly [ScenarioTimelineKey, ScenarioTimelineKey, string]
+  readonly [ScenarioDateKey, ScenarioDateKey, string]
 > = [
   ["batchCreated", "certificateIssued", "A batch must exist before it can be certified"],
   ["certificateIssued", "custodyTransferred", "Certification precedes dispatch in this scenario"],

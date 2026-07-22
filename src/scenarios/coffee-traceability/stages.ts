@@ -20,9 +20,8 @@
  *   Recall performance          20   15 + 5
  *   Conceptual understanding     5   5
  *
- * `isImplemented: false` marks a stage whose metadata and content are complete
- * but whose interface arrives with Milestone 4. The scenario already runs
- * headless in tests.
+ * Every declared stage has a registered learner interface. The scenario also
+ * runs headless through the executable scenario-contract fixture.
  */
 
 import { QuantityUnit, ScenarioStageId, TransactionType } from "../../domain/types/enums";

@@ -18,8 +18,11 @@ Everything that makes the coffee activity *the coffee activity* is data in
 | `stages.ts` | The nine stages: titles, roles, required actions, completion conditions, hints, knowledge checks |
 | `timeline.ts` | Every scenario timestamp, plus the ordering constraints between them |
 | `seed-assets.ts` | Background lots and their provenance |
+| `scripted-transactions.ts` | Deterministic committed evidence inserted at authored triggers |
+| `facts.ts` | Shared scenario-specific quantities and evidence identifiers |
 | `scoring.ts` | Point allocation and the deduction ladder |
 | `decisions.ts` | The positional key for the save format |
+| `scenario-contract.ts` | Executable promise-to-ledger-to-replay-to-UI-to-score contracts |
 
 ## Making a change
 
@@ -32,7 +35,10 @@ The validators catch the mistakes that are otherwise invisible: a completion
 condition naming an asset no stage creates, a knowledge check missing from the
 save format, points that don't sum to 100, a timeline where receipt precedes
 dispatch. None of those crash — they produce a stage a learner silently cannot
-finish, or an answer that silently isn't saved.
+finish, or an answer that silently isn't saved. The separate scenario-contract
+validator executes a canonical attempt and proves that authored promises,
+committed evidence, replay, learner-facing identifiers, scoring, and completion
+still agree.
 
 ---
 
@@ -71,8 +77,10 @@ language changes, or the hash would change with it.
 
 **Change how long a stage takes to unlock**
 Edit `completionConditions` in `stages.ts`. The available shapes are
-`TRANSACTION_COMMITTED`, `KNOWLEDGE_CHECK_ANSWERED`, `ASSET_EXISTS`,
-`ASSET_LIFECYCLE_STATUS`, and `DECISION_RECORDED`.
+`TRANSACTION_COMMITTED`, `KNOWLEDGE_CHECK_ANSWERED`, `ASSET_EXISTS`, and
+`DECISION_RECORDED`. Prefer immutable committed evidence. A
+`DECISION_RECORDED` condition is attempt-backed, so the scenario contract must
+explicitly audit it against rejected-attempt completion.
 
 **Add a knowledge check**
 Add it to a stage's `knowledgeChecks`, add its id to the **end** of
@@ -91,8 +99,8 @@ what stop a scenario shipping with receipt before dispatch.
 **Add a stage**
 Add it to `ScenarioStageId` and `SCENARIO_STAGE_ORDER` (append only), add a
 `ScenarioStageDefinition` to `stages.ts`, and register a component in
-`src/features/stage-registry.ts`. Set `isImplemented: false` until the component
-exists; the router shows a placeholder and the learner's progress still saves.
+`src/features/stage-registry.ts`. Mark it implemented only when its component
+and executable scenario-contract acceptance are both present.
 
 ---
 

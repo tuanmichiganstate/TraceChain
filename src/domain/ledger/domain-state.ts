@@ -366,7 +366,9 @@ export function reduce(state: DomainState, event: LedgerDomainEvent): DomainStat
 
     case LedgerEventType.BATCH_RECALLED: {
       /*
-       * Every affected asset is frozen at once. Nothing is deleted: previous
+       * Every affected asset is marked as subject to the recall at once. This
+       * is not evidence of physical pickup; recall-scope keeps confirmed
+       * retrieval separate. Nothing is deleted: previous
        * transfers, sales and transformations all remain in history exactly as
        * they were, and only the current state changes.
        */

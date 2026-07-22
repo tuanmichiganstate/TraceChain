@@ -45,6 +45,11 @@ export interface RecallScopeResult {
   readonly affectedAssetIds: readonly string[];
   /** Every other asset on the ledger. Recalling one of these is an error. */
   readonly unaffectedAssetIds: readonly string[];
+  /**
+   * Physical retrieval needs separate evidence. The current scenario issues a
+   * recall and identifies affected lineage, but records no pickup confirmation.
+   */
+  readonly confirmedRetrievedAssetIds: readonly string[];
   readonly currentLocations: readonly RecallLocation[];
   readonly currentOwners: readonly string[];
   readonly currentCustodians: readonly string[];
@@ -114,6 +119,7 @@ export function calculateRecallScope(
     sourceAssetId,
     affectedAssetIds: affected,
     unaffectedAssetIds: unaffected,
+    confirmedRetrievedAssetIds: [],
     currentLocations: [...locationMap].map(([locationId, assetIds]) => ({
       locationId,
       assetIds,

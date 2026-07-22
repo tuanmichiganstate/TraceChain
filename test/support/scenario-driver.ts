@@ -28,7 +28,10 @@ import {
   LocationId,
   OrganizationId,
 } from "../../src/scenarios/coffee-traceability/organizations";
-import { SCENARIO_TIMELINE } from "../../src/scenarios/coffee-traceability/timeline";
+import {
+  SCENARIO_FACT_DATES,
+  SCENARIO_TIMELINE,
+} from "../../src/scenarios/coffee-traceability/timeline";
 import {
   GREEN_COFFEE_BATCH_ID,
   PACKAGED_COFFEE_LOT_ID,
@@ -124,7 +127,7 @@ export const commands = {
       metadata: { kind: DocumentType.QUALITY_CERTIFICATE },
       issuerOrganizationId: OrganizationId.CERTIFICATION_BODY,
       issuedAt: SCENARIO_TIMELINE.certificateIssued,
-      expiresAt: SCENARIO_TIMELINE.certificateExpires,
+      expiresAt: SCENARIO_FACT_DATES.certificateExpires,
       initiatedByActorId: ActorId.CERTIFICATION_OFFICER,
       scenarioTimestamp: SCENARIO_TIMELINE.certificateIssued,
       ...overrides,

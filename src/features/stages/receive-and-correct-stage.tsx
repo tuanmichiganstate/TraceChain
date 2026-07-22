@@ -22,7 +22,7 @@ import {
 } from "../../scenarios/coffee-traceability/commands";
 import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
 import type { AnchorDocumentCommand } from "../../domain/commands/commands";
-import { resolveEffectiveValue } from "../../domain/ledger/effective-value";
+import { buildEffectiveValueView } from "../../domain/scenario/effective-value-view";
 
 const MINIMUM_REASON_LENGTH = 10;
 
@@ -62,7 +62,10 @@ export function ReceiveAndCorrectStage(): ReactNode {
     documentAnchorId: SHIPPING_MANIFEST_ANCHOR_ID,
     field: "declaredQuantity" as const,
   };
-  const effectiveManifestValue = resolveEffectiveValue(state.domain, manifestTarget)?.effectiveValue;
+  const effectiveManifestValue = buildEffectiveValueView(
+    state.domain,
+    manifestTarget,
+  )?.effectiveValue;
 
   return (
     <StageShell stageId={ScenarioStageId.RECEIVE_AND_CORRECT}>

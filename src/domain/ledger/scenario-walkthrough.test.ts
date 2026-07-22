@@ -502,6 +502,7 @@ describe("recall scope", () => {
     );
     expect(scope.unaffectedAssetIds).toContain(DISTRACTOR_PACKAGED_LOT_ID);
     expect(scope.unaffectedAssetIds).toContain(UNRELATED_PACKAGED_LOT_ID);
+    expect(scope.confirmedRetrievedAssetIds).toEqual([]);
   });
 
   it("scores a learner who swept up the lookalike lot as over-selecting", async () => {

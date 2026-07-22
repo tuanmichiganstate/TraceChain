@@ -5,9 +5,9 @@
  * validation and endorsement, changes world state. React components construct
  * commands and never touch state directly.
  *
- * Milestone 0 implements CREATE_BATCH end to end. The remaining command shapes
- * are declared now so that the union, the rule registry and the reducer all
- * grow by addition rather than by rewrite.
+ * The complete command union is implemented end to end. Keeping the shapes in
+ * one discriminated union makes the rule registry, event factory and replay
+ * pipeline exhaustive when a command is added.
  */
 
 import type {

@@ -6,7 +6,7 @@ import type {
   RecordCorrectionCommand,
 } from "../domain/commands/commands";
 import { formatCorrectionValue } from "../domain/types/correction";
-import { resolveEffectiveValue } from "../domain/ledger/effective-value";
+import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
 import { formatScenarioTime } from "../infrastructure/time/scenario-clock";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
@@ -134,7 +134,7 @@ function TransactionDetail({
   const effective =
     correction === null
       ? null
-      : (resolveEffectiveValue(state, correction.target)?.effectiveValue ?? null);
+      : (buildEffectiveValueView(state, correction.target)?.effectiveValue ?? null);
 
   return (
     <article className="card">

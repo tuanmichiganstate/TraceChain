@@ -35,7 +35,7 @@ import type {
   SupplyChainAssetSeed,
 } from "../../domain/types/scenario";
 import { LocationId, OrganizationId } from "./organizations";
-import { SCENARIO_TIMELINE } from "./timeline";
+import { SCENARIO_FACT_DATES } from "./timeline";
 
 export const DISTRACTOR_GREEN_BATCH_ID = "BAT_GREEN_COFFEE_002";
 export const DISTRACTOR_ROASTED_BATCH_ID = "BAT_ROASTED_COFFEE_002";
@@ -49,7 +49,7 @@ export const coffeeSeedAssets: readonly SupplyChainAssetSeed[] = [
     assetType: AssetType.GREEN_COFFEE_BATCH,
     productName: "Arabica green coffee",
     originLocation: "Lam Dong",
-    productionDate: SCENARIO_TIMELINE.distractorBatchHarvested,
+    productionDate: SCENARIO_FACT_DATES.distractorBatchHarvested,
     quantity: 120,
     quantityUnit: QuantityUnit.KG,
     packageSizeGrams: null,
@@ -66,7 +66,7 @@ export const coffeeSeedAssets: readonly SupplyChainAssetSeed[] = [
     originLocation: "Lam Dong",
     // The same roasting day as the learner's own batch. Anyone filtering by
     // date, plant, or variety will sweep this up by mistake.
-    productionDate: SCENARIO_TIMELINE.distractorBatchRoasted,
+    productionDate: SCENARIO_FACT_DATES.distractorBatchRoasted,
     quantity: 98,
     quantityUnit: QuantityUnit.KG,
     packageSizeGrams: null,
@@ -81,7 +81,7 @@ export const coffeeSeedAssets: readonly SupplyChainAssetSeed[] = [
     assetType: AssetType.PACKAGED_COFFEE_LOT,
     productName: "Ca phe Arabica Lam Dong 100g",
     originLocation: "Lam Dong",
-    productionDate: SCENARIO_TIMELINE.distractorBatchPackaged,
+    productionDate: SCENARIO_FACT_DATES.distractorBatchPackaged,
     quantity: 980,
     quantityUnit: QuantityUnit.UNIT,
     packageSizeGrams: 100,
@@ -98,7 +98,7 @@ export const coffeeSeedAssets: readonly SupplyChainAssetSeed[] = [
     assetType: AssetType.PACKAGED_COFFEE_LOT,
     productName: "Ca phe Robusta Dak Lak 200g",
     originLocation: "Dak Lak",
-    productionDate: SCENARIO_TIMELINE.unrelatedLotPackaged,
+    productionDate: SCENARIO_FACT_DATES.unrelatedLotPackaged,
     quantity: 400,
     quantityUnit: QuantityUnit.UNIT,
     packageSizeGrams: 200,

@@ -33,7 +33,7 @@ import {
   PACKAGED_COFFEE_LOT_ID,
   ROASTED_COFFEE_BATCH_ID,
 } from "./stages";
-import { SCENARIO_TIMELINE } from "./timeline";
+import { SCENARIO_FACT_DATES, SCENARIO_TIMELINE } from "./timeline";
 import {
   MANIFEST_QUANTITY_KG,
   SHIPPING_MANIFEST_ANCHOR_ID,
@@ -91,7 +91,7 @@ export const anchorCertificateCommand = (
   metadata: { kind: DocumentType.QUALITY_CERTIFICATE },
   issuerOrganizationId,
   issuedAt: SCENARIO_TIMELINE.certificateIssued,
-  expiresAt: SCENARIO_TIMELINE.certificateExpires,
+  expiresAt: SCENARIO_FACT_DATES.certificateExpires,
   initiatedByActorId: ActorId.CERTIFICATION_OFFICER,
   scenarioTimestamp: SCENARIO_TIMELINE.certificateIssued,
 });

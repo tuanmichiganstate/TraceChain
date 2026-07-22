@@ -7,10 +7,10 @@
  * removing an entry silently reinterprets every learner's saved progress, so it
  * requires a schema version bump and a migration.
  *
- * Identifiers for stages not yet built are declared now rather than added
- * later, so that a learner who saves progress against this build can still
- * resume against the next one. The scenario validator warns about any decision
- * id with no knowledge check, which is expected for transaction decisions.
+ * The current list covers all nine implemented stages plus append-only replay
+ * evidence for supporting and rejected transactions. The scenario validator
+ * warns about any decision id with no knowledge check, which is expected for
+ * transaction decisions.
  */
 
 export const DECISION_IDS: readonly string[] = [

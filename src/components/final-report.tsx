@@ -6,7 +6,7 @@ import { ScoreComponent } from "../domain/types/scoring";
 import { TransactionStatus } from "../domain/types/enums";
 import { StatusPill } from "./status-pill";
 import { allScoredActions } from "../domain/types/scenario";
-import { resolveEffectiveValue } from "../domain/ledger/effective-value";
+import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
 import { formatCorrectionValue } from "../domain/types/correction";
 
 const COMPONENT_LABELS: Readonly<Record<ScoreComponent, string>> = {
@@ -57,7 +57,7 @@ export function FinalReport(): ReactNode {
   const correctionResolution =
     correctionEvidence === undefined
       ? null
-      : resolveEffectiveValue(state.domain, correctionEvidence.target);
+      : buildEffectiveValueView(state.domain, correctionEvidence.target);
 
   // Awaited rather than fired and forgotten: "the result has been sent" must
   // not appear until it has been.

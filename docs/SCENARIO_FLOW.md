@@ -47,8 +47,8 @@ reaching the roaster the following June is ordinary rather than anomalous.
 |---|---|
 | Harvest / batch created | 2025-12-10 |
 | Certificate issued (expires 2027-01-15) | 2026-01-15 |
-| **Dispatch manifest filed — with the 1000 kg error** | 2026-06-15 |
 | Custody → carrier | 2026-06-16 01:00 |
+| **Dispatch manifest filed — with the 1000 kg error** | 2026-06-16 02:00 |
 | Sensor reading, humidity 72% | 2026-06-16 09:30 |
 | Receipt by processor | 2026-06-17 |
 | Correction recorded | 2026-06-17 |
@@ -59,7 +59,9 @@ reaching the roaster the following June is ordinary rather than anomalous.
 | Laboratory result → recall | 2026-07-05 |
 
 All UTC. `TIMELINE_ORDERING_CONSTRAINTS` in `timeline.ts` encodes the required
-orderings, and `npm run validate:scenario` enforces them.
+orderings, and `npm run validate:scenario` enforces them. Genesis-asset dates
+and certificate expiry live in `SCENARIO_FACT_DATES`; they are validated as
+starting-state or metadata facts, not advertised as committed ledger events.
 
 ---
 

@@ -56,7 +56,7 @@ try {
   const {
     coffeeScenario,
     validateScenario,
-    SCENARIO_TIMELINE,
+    ALL_SCENARIO_DATES,
     TIMELINE_ORDERING_CONSTRAINTS,
     STAGE_COMPONENTS,
     TRANSACTION_TO_EVENT,
@@ -77,8 +77,8 @@ try {
   // ---- Timeline ordering ----------------------------------------------
 
   for (const [earlier, later, reason] of TIMELINE_ORDERING_CONSTRAINTS) {
-    const earlierTime = Date.parse(SCENARIO_TIMELINE[earlier]);
-    const laterTime = Date.parse(SCENARIO_TIMELINE[later]);
+    const earlierTime = Date.parse(ALL_SCENARIO_DATES[earlier]);
+    const laterTime = Date.parse(ALL_SCENARIO_DATES[later]);
     check(
       `Timeline: ${earlier} precedes ${later}`,
       Number.isFinite(earlierTime) && Number.isFinite(laterTime) && earlierTime < laterTime,
