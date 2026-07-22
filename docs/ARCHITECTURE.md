@@ -351,6 +351,23 @@ check, or by a reviewer skimming the list — rather than four that change
 whenever a project is added or sharded. It is verified to go red when any single
 browser job does.
 
+`scripts/verify-e2e-shards.mjs` runs inside `npm run quality` and holds the
+matrix to the Playwright configuration: every configured project has a job, and
+every sharded project's shards form an exact partition of it. Both mistakes it
+guards against leave a green tick behind — a project added to the config but not
+the matrix never runs in CI, and a shard edited without its siblings drops a
+slice of a project — so neither would be noticed by watching for failures. It
+compares identities rather than counts, because a count written into a workflow
+goes stale the first time somebody adds a test.
+
+**When to reconsider a third WebKit shard.** Two shards were enough, and the
+imbalance between them (the slower carries the long walkthroughs) is tolerated
+rather than fixed: Playwright shards by test count, not duration. Revisit only
+if the median complete workflow exceeds **eight minutes across five comparable
+successful runs**, or the slower WebKit shard consistently exceeds **six
+minutes**. Neither holds today. A third shard costs another runner and another
+setup, and shard imbalance on its own is not a reason to add one.
+
 ## Dependencies
 
 Zero runtime dependencies beyond `react` and `react-dom`. Each omission is

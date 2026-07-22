@@ -110,11 +110,14 @@ about was live in the build.
   queued behind each other. Each project now gets its own runner, keeping the
   single Playwright worker that is stable there, and WebKit — which costs about
   five times Chromium or Firefox on that hardware and alone set the duration —
-  is split across two shards. Median wall-clock falls from 758s to 436s, for
-  about 35% more runner-minutes. A stable `e2e` job aggregates the browser jobs
-  so one check name still represents all of them, and is verified to go red when
-  any single browser does. No test, browser or skip was changed: 67 passed and
-  5 skipped, before and after.
+  is split across two shards. Median wall-clock falls from 758s to 416s — 45%
+  — for 33% more runner-minutes (838s to 1117s), measured across three baseline
+  and three matrix runs. A stable `e2e` job aggregates the browser jobs so one
+  check name still represents all of them, and is verified to go red when any
+  single browser does. `npm run quality` now also holds the matrix to the
+  Playwright configuration, so a project or shard that stops running in CI fails
+  the gate instead of passing quietly. No test, browser or skip was changed: 67
+  passed and 5 skipped, before and after.
 - **CI runs once per commit instead of twice.** Both workflow events were
   unfiltered, so every push to a branch with an open pull request started two
   identical runs of the same SHA — confirmed from run metadata across four

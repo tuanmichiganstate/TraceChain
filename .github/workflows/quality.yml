@@ -39,6 +39,8 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    # Measured at roughly 100s; this only bounds a hang.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -89,11 +91,11 @@ jobs:
             project: firefox
             browser: firefox
             shard: 1/1
-          - name: webkit 1
+          - name: webkit-1-of-2
             project: webkit
             browser: webkit
             shard: 1/2
-          - name: webkit 2
+          - name: webkit-2-of-2
             project: webkit
             browser: webkit
             shard: 2/2
@@ -103,6 +105,10 @@ jobs:
             shard: 1/1
     name: browser (${{ matrix.name }})
     runs-on: ubuntu-latest
+    # The slowest browser job measures about eight minutes, so this is roughly
+    # four times headroom. Without it a deadlocked browser holds a runner for
+    # the 6-hour default, which is the one failure mode that costs real money.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -141,7 +147,11 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
-          if-no-files-found: error
+          # `warn`, not `error`. A job that dies before Playwright runs -- a bad
+          # install, a failed build -- produces no report directory, and failing
+          # the upload there replaces the real cause with an artifact error and
+          # uploads nothing. Observed exactly that during a deliberate failure.
+          if-no-files-found: warn
 
   # A single stable verdict for the whole browser matrix.
   #
@@ -152,8 +162,14 @@ jobs:
   # the aggregate across the matrix, so it is success only when all four are.
   e2e:
     needs: browser
-    # Runs whether the matrix passed or failed, but not when the whole run was
-    # cancelled -- a superseded run should stay cancelled rather than turn red.
+    timeout-minutes: 5
+    # Deliberately `!cancelled()` rather than `always()`. Both keep evaluating
+    # after an upstream failure, which is the point; `always()` would also run
+    # when the whole workflow is cancelled, turning every superseded run red and
+    # making a busy pull request look broken. `needs.browser.result` is the
+    # aggregate over all matrix entries, so anything other than `success` --
+    # failure, a cancelled or skipped child, a job that timed out or died during
+    # setup -- fails the step below.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
