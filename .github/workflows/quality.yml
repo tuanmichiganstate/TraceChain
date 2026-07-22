@@ -67,6 +67,12 @@ jobs:
   # `mobile-safari` is an iPhone SE profile, which Playwright drives with
   # WebKit -- hence the separate `browser` column. Only the engine a job needs
   # is installed, so no runner downloads browsers it will not launch.
+  #
+  # WebKit is split across two shards because it, alone, decides how long this
+  # workflow takes: on this runner it costs roughly five times Chromium or
+  # Firefox for the same tests. Every entry carries a `shard` so the command
+  # needs no conditional; `1/1` is the whole project. Sharding partitions tests,
+  # it does not drop them.
   browser:
     strategy:
       # Every browser reports its own verdict. Stopping the others on the first
@@ -75,15 +81,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - project: chromium
+          - name: chromium
+            project: chromium
             browser: chromium
-          - project: firefox
+            shard: 1/1
+          - name: firefox
+            project: firefox
             browser: firefox
-          - project: webkit
+            shard: 1/1
+          - name: webkit 1
+            project: webkit
             browser: webkit
-          - project: mobile-safari
+            shard: 1/2
+          - name: webkit 2
+            project: webkit
             browser: webkit
-    name: browser (${{ matrix.project }})
+            shard: 2/2
+          - name: mobile-safari
+            project: mobile-safari
+            browser: webkit
+            shard: 1/1
+    name: browser (${{ matrix.name }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,13 +130,13 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: End-to-end
-        run: npx playwright test --project=${{ matrix.project }}
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}
 
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
           # Unique per project: four jobs uploading one name would collide.
-          name: playwright-report-${{ matrix.project }}
+          name: playwright-report-${{ matrix.name }}
           path: |
             playwright-report/
             test-results/
