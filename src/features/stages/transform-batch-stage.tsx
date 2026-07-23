@@ -35,7 +35,7 @@ export function TransformBatchStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.TRANSFORM_BATCH}>
-      <section className="card">
+      <section className="card card--reference">
         <h3>{t("stage.transformBatch.yieldHeading")}</h3>
         <dl className="asset-card__grid">
           <div className="asset-card__row">
@@ -68,7 +68,7 @@ export function TransformBatchStage(): ReactNode {
       />
 
       {hasRoasted ? (
-        <section className="card">
+        <section className="card card--reference">
           <ProvenanceViewer state={state.domain} rootAssetId={ROASTED_COFFEE_BATCH_ID} />
         </section>
       ) : null}

@@ -77,7 +77,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     // ---- Start screen, in Vietnamese ---------------------------------
     const beginButton = await screen.findByRole("button", { name: "Bắt đầu mô phỏng" });
     expect(
-      screen.getByText(/Đây là môi trường blockchain mô phỏng phục vụ học tập/),
+      screen.getByText(/Đây là môi trường mô phỏng phục vụ học tập/),
     ).toBeInTheDocument();
     // Inside a SCORM host, the standalone warning must not appear.
     expect(screen.queryByText(/Chế độ chạy độc lập/)).not.toBeInTheDocument();

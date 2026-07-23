@@ -127,7 +127,7 @@ export function ReceiveAndCorrectStage(): ReactNode {
         ) : null}
 
         {asset !== undefined ? (
-          <section className="card">
+          <section className="card card--reference">
             <h3>{t("state.title")}</h3>
             <AssetCard asset={asset} />
           </section>
@@ -238,7 +238,7 @@ function CorrectionPanel({
   const isReasonUsable = reason.trim().length >= MINIMUM_REASON_LENGTH;
 
   return (
-    <section className="card">
+    <section className="card card--work">
       <h3>{t("stage.receiveAndCorrect.correctionHeading")}</h3>
 
       <div className="field">

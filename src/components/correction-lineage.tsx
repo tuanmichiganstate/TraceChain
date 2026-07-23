@@ -40,7 +40,7 @@ export function CorrectionLineage({
   const hasCorrection = view.correctionTransactionIds.length > 0;
 
   return (
-    <section className="card lineage" aria-labelledby="lineage-heading">
+    <section className="card card--reference lineage" aria-labelledby="lineage-heading">
       <h3 id="lineage-heading">{t("lineage.heading")}</h3>
 
       <ol className="lineage__chain">

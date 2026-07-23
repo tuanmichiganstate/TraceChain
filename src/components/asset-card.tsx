@@ -64,7 +64,7 @@ export function AssetCard({ asset }: { asset: SupplyChainAsset }): ReactNode {
   ];
 
   return (
-    <article className="card asset-card">
+    <article className="card card--reference asset-card">
       <h3>{asset.productName}</h3>
       <dl className="asset-card__grid">
         {rows.map(([labelKey, value]) => (

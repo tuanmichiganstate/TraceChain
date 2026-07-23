@@ -53,7 +53,7 @@ export function StageShell({
       {briefing}
 
       {definition.requiredActions.length > 0 ? (
-        <section className="card required-actions">
+        <section className="card card--brief required-actions">
           <h3>{t("stage.requiredActions")}</h3>
           <ul className="required-actions__list">
             {actionOutcomes.map(({ action, isSatisfied }) => (

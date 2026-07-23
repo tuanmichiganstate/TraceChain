@@ -63,7 +63,7 @@ export function VerifyAndTamperStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.VERIFY_AND_TAMPER}>
-      <section className="card">
+      <section className="card card--reference">
         <h3>{t("stage.verifyAndTamper.publicHeading")}</h3>
         {packagedLot !== undefined ? (
           <ProvenanceViewer state={state.domain} rootAssetId={PACKAGED_COFFEE_LOT_ID} />
@@ -71,7 +71,7 @@ export function VerifyAndTamperStage(): ReactNode {
         <p className="muted">{t("stage.verifyAndTamper.publicNotice")}</p>
       </section>
 
-      <section className="card">
+      <section className="card card--work">
         <h3>{t("stage.verifyAndTamper.tamperHeading")}</h3>
         <p>{t("stage.verifyAndTamper.tamperIntro")}</p>
 

@@ -50,8 +50,16 @@ export function StartScreen(): ReactNode {
 
         <div className="start__notices">
           <div className="notice" role="note">
-            <p>{t("app.simulationNotice")}</p>
-            <p>{t("app.permissionedNotice")}</p>
+            <p>
+              <strong>{t("app.simulationNoticeLabel")}</strong>{" "}
+              {t("app.simulationNotice")}
+            </p>
+            <p>
+              <EmphasisedTerm
+                sentence={t("app.permissionedNotice")}
+                term={t("app.permissionedTerm")}
+              />
+            </p>
           </div>
 
           {state.platformMode === PlatformMode.STANDALONE ? (
@@ -119,6 +127,27 @@ export function StartScreen(): ReactNode {
 }
 
 /**
+ * Emphasises a term of art where it sits inside a sentence.
+ *
+ * `t()` returns a string, so emphasis in the middle of a sentence cannot come
+ * from the catalogue without splitting that sentence into fragments a
+ * translator can neither read as a sentence nor reorder. Keeping the sentence
+ * whole and locating the term inside it costs one extra key, and a translation
+ * that phrases the term differently renders unemphasised rather than broken.
+ */
+function EmphasisedTerm({ sentence, term }: { sentence: string; term: string }): ReactNode {
+  const start = sentence.indexOf(term);
+  if (start < 0) return sentence;
+  return (
+    <>
+      {sentence.slice(0, start)}
+      <strong>{sentence.slice(start, start + term.length)}</strong>
+      {sentence.slice(start + term.length)}
+    </>
+  );
+}
+
+/**
  * What the marks are for, before any of them are at stake.
  *
  * A learner who does not know that hints are priced, that retries are floored,
@@ -143,15 +172,26 @@ function ScoringSummary(): ReactNode {
   return (
     <section className="start__scoring">
       <h3>{t("start.scoringHeading")}</h3>
+      {/* Label and figure are separate keys so no markup lives in the
+          catalogues, and every number still comes from the scenario. */}
       <ul className="start__scoring-list">
-        <li>{t("start.scoringActions", { points: sum(true), count: count(true) })}</li>
-        <li>{t("start.scoringQuestions", { points: sum(false), count: count(false) })}</li>
         <li>
-          <strong>{t("start.scoringPass", { points: configuration.passingScore })}</strong>
+          <strong>{t("start.scoringActionsLabel")}</strong>{" "}
+          {t("start.scoringActions", { points: sum(true), count: count(true) })}
+        </li>
+        <li>
+          <strong>{t("start.scoringQuestionsLabel")}</strong>{" "}
+          {t("start.scoringQuestions", { points: sum(false), count: count(false) })}
+        </li>
+        <li>
+          <strong>{t("start.scoringPassLabel")}</strong>{" "}
+          {t("start.scoringPass", { points: configuration.passingScore })}
         </li>
       </ul>
       <p className="muted">
-        {t("start.scoringHint", { percent: Math.round(configuration.afterHintCredit * 100) })}{" "}
+        {t("start.scoringHint")}
+      </p>
+      <p className="muted">
         {t("start.scoringRetry", {
           percent: Math.round(configuration.minimumProceduralCredit * 100),
         })}

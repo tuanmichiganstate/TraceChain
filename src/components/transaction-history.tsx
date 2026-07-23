@@ -137,7 +137,7 @@ function TransactionDetail({
       : (buildEffectiveValueView(state, correction.target)?.effectiveValue ?? null);
 
   return (
-    <article className="card">
+    <article className="card card--reference">
       <h3>
         <code>{transaction.transactionId}</code>
       </h3>

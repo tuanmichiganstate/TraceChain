@@ -36,7 +36,7 @@ export function PackageAndDistributeStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.PACKAGE_AND_DISTRIBUTE}>
-      <section className="card">
+      <section className="card card--reference">
         <h3>{t("stage.packageAndDistribute.conversionHeading")}</h3>
         <dl className="asset-card__grid">
           <div className="asset-card__row">

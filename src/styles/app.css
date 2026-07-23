@@ -213,10 +213,6 @@
   color: var(--colour-navy-strong);
 }
 
-.top-bar__simulation-flag {
-  display: none;
-}
-
 .top-bar__meta {
   display: grid;
   grid-template-columns: auto auto 1fr;
@@ -1010,13 +1006,6 @@
     padding: var(--space-3) var(--space-4);
     gap: var(--space-4);
     align-items: baseline;
-  }
-
-  .top-bar__simulation-flag {
-    display: block;
-    max-width: 32ch;
-    color: var(--colour-text-muted);
-    font-size: var(--size-caption);
   }
 
   .top-bar__meta {

@@ -48,7 +48,7 @@ export function KnowledgeCheckPanel({
   };
 
   return (
-    <section className="card knowledge-check">
+    <section className="card card--work knowledge-check">
       <fieldset className="fieldset" disabled={hasAnswered || state.isReadOnly}>
         <legend>
           <h3>{t(check.questionKey)}</h3>

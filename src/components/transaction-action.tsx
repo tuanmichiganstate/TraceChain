@@ -79,7 +79,7 @@ export function TransactionAction({
   };
 
   return (
-    <section className="card transaction-action">
+    <section className="card card--work transaction-action">
       <h3>{t(labelKey)}</h3>
 
       {isDetailOpen ? (

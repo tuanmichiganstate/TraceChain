@@ -68,7 +68,7 @@ export function RecallAndDebriefStage(): ReactNode {
       {scopeCheck !== undefined ? <KnowledgeCheckPanel check={scopeCheck} /> : null}
 
       {hasScope ? (
-        <section className="card">
+        <section className="card card--reference">
           <h3>{t("stage.recallAndDebrief.selectedHeading")}</h3>
 
           <ul className="recall-scope__list">

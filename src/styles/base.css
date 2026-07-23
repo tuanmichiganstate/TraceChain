@@ -114,6 +114,40 @@ li { margin-bottom: var(--space-2); }
 
 .card + .card { margin-top: var(--space-4); }
 
+/*
+ * Card roles.
+ *
+ * Every panel in a stage was the same white box, so nothing separated what the
+ * step asks of you from the place you act on it from the figures you are
+ * reading -- three different jobs wearing one appearance. The roles differ by
+ * weight and by an accent edge, never by hue: green, amber and red mean a
+ * verdict everywhere else in this interface and cannot also mean "this is a
+ * form". Each role reinforces a heading that already names the panel, so the
+ * treatment is a second cue rather than the only one.
+ */
+
+/* What the step asks of you. A brief, so it reads like the notices do. */
+.card--brief {
+  background: var(--colour-navy-soft);
+  border-color: var(--colour-navy-border);
+  border-inline-start: 4px solid var(--colour-navy);
+  box-shadow: none;
+}
+
+/* Where you act. The only panels carrying a control, and the only ones lifted
+   off the page. The accent sits on top so it cannot be mistaken for the
+   brief's leading edge at a glance. */
+.card--work {
+  border-block-start: 3px solid var(--colour-navy);
+  box-shadow: var(--shadow-card-raised);
+}
+
+/* What you are reading. Flat, so a panel of figures never competes with the
+   panel the learner is meant to act in. */
+.card--reference {
+  box-shadow: none;
+}
+
 .notice {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-medium);

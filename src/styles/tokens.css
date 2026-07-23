@@ -82,6 +82,8 @@
   --radius-large: 12px;
 
   --shadow-card: 0 1px 2px rgb(31 34 81 / 8%), 0 4px 12px rgb(31 34 81 / 6%);
+  /* Reserved for the panel a learner is meant to act in. */
+  --shadow-card-raised: 0 2px 4px rgb(31 34 81 / 10%), 0 10px 24px rgb(31 34 81 / 10%);
   --shadow-raised: 0 2px 4px rgb(31 34 81 / 10%), 0 8px 24px rgb(31 34 81 / 8%);
 
   --focus-ring: 3px solid #1f2251;

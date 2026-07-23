@@ -81,7 +81,7 @@ export function ShipAndMonitorStage(): ReactNode {
         />
       ) : null}
 
-      <section className="card">
+      <section className="card card--reference">
         <h3>{t("stage.shipAndMonitor.sensorHeading")}</h3>
         <p>{t("stage.shipAndMonitor.roleSwitch")}</p>
         <dl className="asset-card__grid">

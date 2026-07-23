@@ -51,7 +51,6 @@ export function TopBar(): ReactNode {
               h2, so navigating by heading landed inside a stage with nothing
               above it naming what you were in. */}
           <h1 className="top-bar__title">{t("app.shortTitle")}</h1>
-          <span className="top-bar__simulation-flag">{t("app.simulationNotice")}</span>
         </div>
 
         <dl className="top-bar__meta">

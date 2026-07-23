@@ -34,7 +34,7 @@ export function AnchorCertificateStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.ANCHOR_CERTIFICATE}>
-      <section className="card">
+      <section className="card card--reference">
         <h3>{t("stage.anchorCertificate.documentHeading")}</h3>
         <dl className="asset-card__grid">
           <div className="asset-card__row">
@@ -98,7 +98,7 @@ function SuspiciousCertificatePanel(): ReactNode {
   const [attempted, setAttempted] = useState<ReturnType<typeof submitCommand> | null>(null);
 
   return (
-    <section className="card">
+    <section className="card card--work">
       <h3>{t("stage.anchorCertificate.suspiciousHeading")}</h3>
       <p>{t("stage.anchorCertificate.suspiciousBody")}</p>
 
