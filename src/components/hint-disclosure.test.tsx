@@ -94,6 +94,23 @@ describe("what a learner is told before opening a hint", () => {
     expect(notice.textContent).toMatch(/đã hoàn thành/);
   });
 
+  it("puts the cost before the control, and ties the two together", async () => {
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await reachStageTwo(user);
+
+    const panel = document.querySelector(".hint") as HTMLElement;
+    const notice = panel.querySelector("p.muted") as HTMLElement;
+    const reveal = within(panel).getByRole("button", { name: "Xem gợi ý" });
+
+    // Reading or tabbing linearly must not reach the button before the
+    // sentence saying what pressing it costs.
+    expect(notice.compareDocumentPosition(reveal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // And someone who lands on the button directly still hears the cost.
+    expect(reveal.getAttribute("aria-describedby")).toBe(notice.id);
+    expect(notice.id).not.toBe("");
+  });
+
   it("shows no internal identifier", async () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);

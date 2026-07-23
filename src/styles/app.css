@@ -704,6 +704,34 @@
 .hint h3 { margin-bottom: var(--space-2); }
 .hint p:last-child { margin-bottom: 0; }
 
+/*
+ * The offer: what it costs, then the control that incurs it.
+ *
+ * The button used to sit above the sentence, left-aligned, leaving the panel
+ * top-heavy and the whole right half empty. On one row it reads as a statement
+ * followed by its action, and the button lands where the eye finishes.
+ *
+ * `space-between` does both jobs: side by side it pins the button to the far
+ * end, and once the row wraps -- each item alone on its line -- it leaves them
+ * flush to the start rather than stranding the button on the right.
+ */
+.hint__offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.hint__cost {
+  /* Grows into the row, still capped at the global 68ch measure. The basis is
+     the width below which the sentence is better off on its own line. */
+  flex: 1 1 22rem;
+  margin-bottom: 0;
+}
+
+.hint__reveal { flex: 0 0 auto; }
+
 /* ---- Knowledge checks ---- */
 
 .knowledge-check .fieldset:disabled .choice { opacity: 0.75; }

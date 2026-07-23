@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import type { ScenarioStageId } from "../domain/types/enums";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
@@ -151,6 +151,7 @@ function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
   const { scenario } = useScenario();
   const { state, scoreBreakdown, revealHint } = useSimulation();
   const isRevealed = state.hintsUsed.includes(hint.hintId);
+  const costId = useId();
 
   const { afterHintCredit } = scenario.scoringConfiguration;
   const namesByDecisionId = new Map(
@@ -176,16 +177,13 @@ function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
           <p>{t(hint.textKey)}</p>
         </>
       ) : (
-        <>
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={() => revealHint(hint.hintId)}
-            disabled={state.isReadOnly}
-          >
-            {t("hint.reveal")}
-          </button>
-          <p className="muted">
+        /* The cost comes first and the control second, in the document as well
+           as on screen. Reversed, someone reading or tabbing linearly met the
+           button before the sentence saying what pressing it would cost --
+           which defeats the point of naming the cost at all. `aria-describedby`
+           ties the two together for anyone who reaches the button directly. */
+        <div className="hint__offer">
+          <p className="muted hint__cost" id={costId}>
             {/* Once the retry ladder has already dropped the target below the
                 cap, opening the hint costs nothing -- and saying "up to 0
                 points" invites a learner to think it costs something. */}
@@ -197,7 +195,16 @@ function HintPanel({ hint }: { hint: ScenarioHint }): ReactNode {
                   points: pointsAtRisk,
                 })}
           </p>
-        </>
+          <button
+            type="button"
+            className="button button--secondary hint__reveal"
+            onClick={() => revealHint(hint.hintId)}
+            disabled={state.isReadOnly}
+            aria-describedby={costId}
+          >
+            {t("hint.reveal")}
+          </button>
+        </div>
       )}
     </section>
   );
