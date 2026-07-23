@@ -1485,8 +1485,8 @@
 </article>
   <article class="entry" data-locale-key="stage.anchorCertificate.hashNotice">
   <header><code>stage.anchorCertificate.hashNotice</code></header>
-  <p class="vi" lang="vi">Hàm băm được tính từ nội dung giấy chứng nhận đi kèm hoạt động. Bạn không cần tải tệp lên.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The hash is computed from the certificate content bundled with the activity. No file upload is needed.</p></details>
+  <p class="vi" lang="vi">Hàm băm này là SHA-256 thật, tính từ nội dung giấy chứng nhận đi kèm hoạt động; bạn không cần tải tệp lên. Chỉ cần đổi một ký tự trong nội dung, hàm băm sẽ khác hoàn toàn. Đó là lý do chỉ cần ghi hàm băm lên chuỗi là đủ để phát hiện tệp đã bị thay thế.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This digest is a real SHA-256, computed from the certificate content bundled with the activity; no file upload is needed. Change a single character of that content and the digest is completely different. That is why anchoring the digest alone is enough to detect a substituted file.</p></details>
 </article>
   <article class="entry" data-locale-key="stage.anchorCertificate.hashValid">
   <header><code>stage.anchorCertificate.hashValid</code></header>
@@ -3099,7 +3099,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>bad1ad70b1bff9b06025428bca1dab9e03e6ee30</code> · SHA-256 nguồn: <code>634456d50ca49e241042aafbf81fdcc9a832e239e94e5303dc8b4397cf054617</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>2268505c2d9c5b66b81229dc5497e3b8dc39bb5a</code> · SHA-256 nguồn: <code>015adad2d3e7b8008e4438ac0a5b2b2b6637987c503bcd39d7e136f182bf0e2e</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

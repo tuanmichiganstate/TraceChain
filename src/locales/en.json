@@ -478,7 +478,7 @@
   "field.correctionReason": "Reason for the correction",
   "field.reason": "Reason",
   "stage.anchorCertificate.documentHeading": "The certificate to be recorded",
-  "stage.anchorCertificate.hashNotice": "The hash is computed from the certificate content bundled with the activity. No file upload is needed.",
+  "stage.anchorCertificate.hashNotice": "This digest is a real SHA-256, computed from the certificate content bundled with the activity; no file upload is needed. Change a single character of that content and the digest is completely different. That is why anchoring the digest alone is enough to detect a substituted file.",
   "stage.anchorCertificate.anchorAction": "Anchor the document on chain",
   "stage.anchorCertificate.issueAction": "Issue the certificate for the batch",
   "stage.anchorCertificate.suspiciousHeading": "A suspicious certificate",

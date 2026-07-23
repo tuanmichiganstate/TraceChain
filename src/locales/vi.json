@@ -478,7 +478,7 @@
   "field.correctionReason": "Lý do điều chỉnh",
   "field.reason": "Lý do",
   "stage.anchorCertificate.documentHeading": "Giấy chứng nhận cần ghi nhận",
-  "stage.anchorCertificate.hashNotice": "Hàm băm được tính từ nội dung giấy chứng nhận đi kèm hoạt động. Bạn không cần tải tệp lên.",
+  "stage.anchorCertificate.hashNotice": "Hàm băm này là SHA-256 thật, tính từ nội dung giấy chứng nhận đi kèm hoạt động; bạn không cần tải tệp lên. Chỉ cần đổi một ký tự trong nội dung, hàm băm sẽ khác hoàn toàn. Đó là lý do chỉ cần ghi hàm băm lên chuỗi là đủ để phát hiện tệp đã bị thay thế.",
   "stage.anchorCertificate.anchorAction": "Ghi nhận tài liệu lên chuỗi",
   "stage.anchorCertificate.issueAction": "Cấp chứng nhận cho lô hàng",
   "stage.anchorCertificate.suspiciousHeading": "Một giấy chứng nhận đáng ngờ",
