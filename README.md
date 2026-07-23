@@ -143,6 +143,9 @@ scripts/               locale + scenario validators, SCORM build + verify
 - `AGENTS.md` — how to verify a change here, and the conventions one follows
 - `docs/CANONICAL_CONFIGURABLE_SCORM_PLAN.md` — the approved configurable
   simulation boundary, exact scoring migration, TC3 budget, and delivery gates
+- `docs/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md` — the approved,
+  two-increment follow-on plan for genuine Ed25519 signatures, authorization,
+  and endorsement policies
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time

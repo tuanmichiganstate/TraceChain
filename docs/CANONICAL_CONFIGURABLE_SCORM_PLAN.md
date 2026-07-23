@@ -3,6 +3,12 @@
 Status: approved implementation specification
 Current boundary: configurable guided and Challenge A packages only
 
+Approved follow-on work for genuine Ed25519 signatures, authorization, and
+endorsement policies is specified separately in
+[`CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md`](CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md).
+That plan extends this foundation; it does not replace the architecture or
+retroactively expand this completed boundary.
+
 ## Objective
 
 TraceChain evolves from one fixed SCORM activity into a configurable,
