@@ -30,6 +30,10 @@ Produces `tracechain-scorm-v2.0.0.zip` in the project root.
 Note the Moodle version and browser you tested with — SCORM player behaviour
 varies between Moodle releases, and that context matters when triaging.
 
+To put a build into the local Docker demo, run `./docker-moodle/deploy.sh`
+rather than re-uploading by hand; it bumps the SCORM revision, without which
+the browser keeps serving the previous build. See `docker-moodle/README.md`.
+
 ---
 
 ## 1. First launch
