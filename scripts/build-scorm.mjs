@@ -38,6 +38,9 @@ const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
   "tracechain.config.json",
   "scenario.json",
+  "identity-registry.json",
+  "educational-signing-keys.json",
+  "authorization-policies.json",
 ]);
 const packagingFileNames = new Set([
   "imsmanifest.xml",
@@ -484,6 +487,7 @@ function addFilesToZip(packageDirectory, zipPath) {
 
 function packageOne({
   configuration,
+  cryptographicRuntime,
   sourceLabel,
   scenario,
   definitions,
@@ -507,11 +511,29 @@ function packageOne({
     `${JSON.stringify(embeddedConfiguration, null, 2)}\n`,
     "utf8",
   );
+  const scenarioContent = `${JSON.stringify(scenario, null, 2)}\n`;
   writeFileSync(
     join(packageDirectory, "scenario.json"),
-    `${JSON.stringify(scenario, null, 2)}\n`,
+    scenarioContent,
     "utf8",
   );
+  const scenarioHash = createHash("sha256")
+    .update(scenarioContent, "utf8")
+    .digest("hex");
+  const cryptographicRuntimeHashes = {};
+  if (cryptographicRuntime !== null) {
+    for (const [fileName, value] of [
+      ["identity-registry.json", cryptographicRuntime.identityRegistry],
+      ["educational-signing-keys.json", cryptographicRuntime.signingKeys],
+      ["authorization-policies.json", cryptographicRuntime.authorizationPolicies],
+    ]) {
+      const content = `${JSON.stringify(value, null, 2)}\n`;
+      writeFileSync(join(packageDirectory, fileName), content, "utf8");
+      cryptographicRuntimeHashes[fileName] = createHash("sha256")
+        .update(content, "utf8")
+        .digest("hex");
+    }
+  }
 
   const { title, description } = text;
   const runtimeFiles = listFilesRecursively(packageDirectory).filter(
@@ -541,6 +563,7 @@ function packageOne({
     configurationHash: embeddedConfiguration.configurationHash,
     scenarioId: scenario.scenarioId,
     scenarioVersion: scenario.scenarioVersion,
+    scenarioHash,
     generatedAt: provenance.generatedAt,
     applicationBuildHash: staticBuild.hash,
     dirty: provenance.dirty,
@@ -548,6 +571,21 @@ function packageOne({
     releaseBuild: provenance.releaseBuild,
     reproducibleSource: provenance.reproducibleSource,
     normalizedArchiveMetadata: true,
+    cryptographicEvidenceSchemaVersion:
+      cryptographicRuntime === null ? null : "1",
+    cryptographicRuntimeHashes,
+    cryptographicMechanisms:
+      cryptographicRuntime === null
+        ? null
+        : {
+            signatureAlgorithm: "Ed25519",
+            signatureProvider: "@noble/ed25519@3.1.0",
+            signatureComputation: "REAL",
+            organizationalIdentity: "EDUCATIONAL_SIMULATION",
+            keyCustody: "STATIC_EDUCATIONAL_FIXTURE",
+            certificateIssuance: "EDUCATIONAL_SIMULATION",
+            networkAndConsensus: "EDUCATIONAL_SIMULATION",
+          },
   };
   writeFileSync(
     join(packageDirectory, "build-info.json"),
@@ -591,6 +629,18 @@ function packageOne({
       `PASSING SCORE      ${configuration.scoring.passScore} of 100`,
       `LANGUAGE           ${configuration.locale}`,
       `RELEASE BUILD      ${provenance.releaseBuild ? "yes" : "no"}`,
+      ...(cryptographicRuntime === null
+        ? []
+        : [
+            "",
+            "CRYPTOGRAPHIC AUTHENTICITY",
+            "  SHA-256 hashing and Ed25519 signing and verification are genuine",
+            "  cryptographic computations. Organizational identity, certificate",
+            "  issuance, key custody, the network, ordering, and consensus are",
+            "  educational simulations.",
+            "  Educational private-key fixtures are inspectable in this static package.",
+            "  They must never be used for authentication or real transactions.",
+          ]),
       "",
     ].join("\n"),
     "utf8",
@@ -647,7 +697,7 @@ async function main() {
     requested.push(loadConfigurationFile(configurationPath, definitions));
   }
 
-  const resolvedInputs = requested.map(({ configuration, sourceLabel }) => {
+  const resolvedInputs = await Promise.all(requested.map(async ({ configuration, sourceLabel }) => {
     const scenario = scenarios.get(configuration.scenarioId);
     if (scenario === undefined) {
       throw new Error(
@@ -655,9 +705,27 @@ async function main() {
       );
     }
     validatePackageInput(configuration, scenario, definitions);
+    const cryptographicRuntime =
+      configuration.technicalFeatures.digitalSignatures
+        ? definitions.coffeeCryptographicRuntime
+        : null;
+    if (cryptographicRuntime !== null) {
+      const validation = await definitions.validateCryptographicRuntime({
+        runtime: cryptographicRuntime,
+        scenario,
+        provider: new definitions.NobleEd25519Provider(),
+      });
+      if (!validation.isValid) {
+        throw new Error(
+          `Cryptographic runtime is invalid:\n${validation.issues
+            .map((issue) => `  ${issue.path}: ${issue.message}`)
+            .join("\n")}`,
+        );
+      }
+    }
     const text = resolvePackageText(configuration, scenario, options.title);
-    return { configuration, sourceLabel, scenario, text };
-  });
+    return { configuration, sourceLabel, scenario, cryptographicRuntime, text };
+  }));
 
   for (const input of resolvedInputs) {
     printPackageSummary(input);
@@ -681,9 +749,10 @@ async function main() {
   const staticBuild = hashStaticApplication(distDirectory);
 
   const results = resolvedInputs.map(
-    ({ configuration, sourceLabel, scenario, text }) =>
+    ({ configuration, sourceLabel, scenario, cryptographicRuntime, text }) =>
       packageOne({
         configuration,
+        cryptographicRuntime,
         sourceLabel,
         scenario,
         definitions,

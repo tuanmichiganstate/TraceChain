@@ -50,6 +50,14 @@ import {
 } from "../scenario/answer-codec";
 import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
 import { runtimeMitigationCommand } from "../scenario/runtime";
+import type {
+  CryptographicRuntime,
+  SignatureProvider,
+} from "../../crypto/signatures/types";
+import {
+  signAndVerifyCommand,
+  signatureAttemptFailures,
+} from "../../crypto/signatures/signing-service";
 
 export interface JournalReplayResult {
   readonly runtime: SimulationRuntimeState;
@@ -205,13 +213,16 @@ function sealPending(
   return { ...runtime, domain: scripted };
 }
 
-export function replayCommandJournal(options: {
+export async function replayCommandJournal(options: {
   readonly snapshot: Tc3AttemptSnapshot;
   readonly initialDomain: DomainState;
   readonly scenario: ScenarioDefinition;
   readonly configuration: TraceChainConfiguration;
+  readonly configurationHash?: string;
+  readonly cryptographicRuntime?: CryptographicRuntime | null;
+  readonly signatureProvider?: SignatureProvider;
   readonly registries: ValidationRegistries;
-}): JournalReplayResult {
+}): Promise<JournalReplayResult> {
   const ledger = new SimulatedLedger(
     sha256Hex,
     options.scenario.ledgerConfiguration,
@@ -586,6 +597,36 @@ export function replayCommandJournal(options: {
       },
       payload,
     };
+    const signed =
+      options.configuration.technicalFeatures.digitalSignatures
+        ? await signAndVerifyCommand({
+            command,
+            trustedContext: trusted,
+            configurationHash:
+              options.configurationHash ??
+              (() => {
+                throw new ScenarioConfigurationError(
+                  "Signature replay requires the configuration hash",
+                );
+              })(),
+            scenarioId: options.scenario.scenarioId,
+            scenarioVersion: options.scenario.scenarioVersion,
+            runtime:
+              options.cryptographicRuntime ??
+              (() => {
+                throw new ScenarioConfigurationError(
+                  "Signature replay requires the cryptographic runtime",
+                );
+              })(),
+            provider:
+              options.signatureProvider ??
+              (() => {
+                throw new ScenarioConfigurationError(
+                  "Signature replay requires a signature provider",
+                );
+              })(),
+          })
+        : null;
     const outcome = handleSimulationCommand({
       runtime,
       command,
@@ -599,6 +640,14 @@ export function replayCommandJournal(options: {
         ),
         ids: new SequenceIdGenerator(entry.commandSequence),
       },
+      ...(signed === null
+        ? {}
+        : {
+            signatureEvidence: signed.evidence,
+            signatureFailures: signatureAttemptFailures(
+              signed.failureRuleIds,
+            ),
+          }),
     });
     runtime = outcome.state;
     lastTransactionId = outcome.transaction?.transactionId ?? lastTransactionId;

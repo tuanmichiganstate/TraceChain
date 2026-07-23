@@ -210,7 +210,7 @@ describe("Stage 5 shipping-manifest repair", () => {
         sealAfter: true,
       }));
     const initial = applyScenarioSeed(coffeeScenario, sha256Hex, registries).state;
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       entries,
       hash: sha256Hex,
       configuration: coffeeScenario.ledgerConfiguration,

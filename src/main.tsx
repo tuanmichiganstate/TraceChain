@@ -26,6 +26,7 @@ void loadRuntimePackage((path) => fetch(path)).then(
         <ConfigurationProvider
           configuration={runtime.configuration}
           configurationHash={runtime.configurationHash}
+          cryptographicRuntime={runtime.cryptographicRuntime}
         >
           <LocaleProvider locale={runtime.configuration.locale}>
             <ScenarioProvider scenario={runtime.scenario}>

@@ -11,6 +11,10 @@ import type { SupplyChainCommand } from "../commands/commands";
 import type { LedgerDomainEvent } from "../events/events";
 import type { DomainState } from "../ledger/domain-state";
 import type { TransactionResult } from "../ledger/ledger-engine";
+import type {
+  SignatureTrustEvidence,
+  SignatureValidationRuleId,
+} from "../../crypto/signatures/types";
 
 export interface CommandMetadata {
   readonly commandId: string;
@@ -133,7 +137,8 @@ export interface AttemptValidationFailure {
     | "STALE_STATE_VERSION"
     | "MISSING_STATE_VERSION"
     | "UNEXPECTED_STATE_VERSION"
-    | "DOMAIN_RULE_FAILED";
+    | "DOMAIN_RULE_FAILED"
+    | SignatureValidationRuleId;
   readonly messageKey: string;
   readonly details?: Readonly<Record<string, string | number | boolean>>;
 }
@@ -149,6 +154,7 @@ export interface AttemptAuditEvent {
   readonly occurredAt: string;
   readonly submittedCommand: SimulationCommand;
   readonly validationFailures: readonly AttemptValidationFailure[];
+  readonly signatureEvidence?: SignatureTrustEvidence;
 }
 
 export type SimulationEvent = AcceptedDomainEvent | AttemptAuditEvent;
@@ -171,6 +177,7 @@ export interface AcceptedSimulationCommandOutcome {
   readonly transaction: TransactionResult["transaction"] | null;
   readonly events: readonly AcceptedDomainEvent[];
   readonly validation: TransactionResult["validation"] | null;
+  readonly signatureEvidence?: SignatureTrustEvidence;
 }
 
 export interface RejectedSimulationCommandOutcome {
@@ -185,6 +192,7 @@ export interface RejectedSimulationCommandOutcome {
    */
   readonly transaction: TransactionResult["transaction"] | null;
   readonly validation: TransactionResult["validation"] | null;
+  readonly signatureEvidence?: SignatureTrustEvidence;
 }
 
 export type SimulationCommandOutcome =

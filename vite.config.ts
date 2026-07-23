@@ -4,10 +4,45 @@ import { fileURLToPath, URL } from "node:url";
 import { coffeeScenario } from "./src/scenarios/coffee-traceability/scenario";
 import { GUIDED_PRESET } from "./src/config/presets";
 import { embedConfiguration } from "./src/config/hash";
+import { coffeeCryptographicRuntime } from "./src/scenarios/coffee-traceability/cryptographic-runtime";
+import { createHash } from "node:crypto";
 
+const cryptographicRuntimeFiles: Readonly<Record<string, string>> = {
+  "identity-registry.json": `${JSON.stringify(coffeeCryptographicRuntime.identityRegistry, null, 2)}\n`,
+  "educational-signing-keys.json": `${JSON.stringify(coffeeCryptographicRuntime.signingKeys, null, 2)}\n`,
+  "authorization-policies.json": `${JSON.stringify(coffeeCryptographicRuntime.authorizationPolicies, null, 2)}\n`,
+};
+const cryptographicRuntimeHashes = Object.fromEntries(
+  Object.entries(cryptographicRuntimeFiles).map(([fileName, source]) => [
+    fileName,
+    createHash("sha256").update(source, "utf8").digest("hex"),
+  ]),
+);
+const developmentScenarioSource = `${JSON.stringify(coffeeScenario, null, 2)}\n`;
 const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
   "tracechain.config.json": `${JSON.stringify(embedConfiguration(GUIDED_PRESET), null, 2)}\n`,
-  "scenario.json": `${JSON.stringify(coffeeScenario, null, 2)}\n`,
+  "scenario.json": developmentScenarioSource,
+  ...cryptographicRuntimeFiles,
+  "build-info.json": `${JSON.stringify(
+    {
+      scenarioHash: createHash("sha256")
+        .update(developmentScenarioSource, "utf8")
+        .digest("hex"),
+      cryptographicEvidenceSchemaVersion: "1",
+      cryptographicRuntimeHashes,
+      cryptographicMechanisms: {
+        signatureAlgorithm: "Ed25519",
+        signatureProvider: "@noble/ed25519@3.1.0",
+        signatureComputation: "REAL",
+        organizationalIdentity: "EDUCATIONAL_SIMULATION",
+        keyCustody: "STATIC_EDUCATIONAL_FIXTURE",
+        certificateIssuance: "EDUCATIONAL_SIMULATION",
+        networkAndConsensus: "EDUCATIONAL_SIMULATION",
+      },
+    },
+    null,
+    2,
+  )}\n`,
 };
 
 function runtimeFilesPlugin(): Plugin {

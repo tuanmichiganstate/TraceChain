@@ -117,6 +117,21 @@ import {
   type SessionState,
   type SessionAction,
 } from "../session/session-state";
+import { NobleEd25519Provider } from "../../crypto/signatures/noble-ed25519-provider";
+import {
+  demonstrateSignatureTamper,
+  signAndVerifyCommand,
+  signatureAttemptFailures,
+} from "../../crypto/signatures/signing-service";
+import type { SignatureTamperDemonstration } from "../../crypto/signatures/types";
+
+const DEVELOPMENT_FALLBACK_CONFIGURATION = {
+  ...GUIDED_PRESET,
+  technicalFeatures: {
+    ...GUIDED_PRESET.technicalFeatures,
+    digitalSignatures: false,
+  },
+} as const;
 
 interface SimulationContextValue {
   readonly state: SessionState;
@@ -145,6 +160,9 @@ interface SimulationContextValue {
     command: SubmitDiscrepancyDecisionCommand,
   ): Promise<DiscrepancyDecisionEvaluation>;
   recordMitigation(command: MitigationDecisionCommand): Promise<void>;
+  demonstrateSignatureTamper(
+    transactionId: string,
+  ): Promise<SignatureTamperDemonstration>;
   viewStage(stageId: ScenarioStageId): void;
   save(): Promise<void>;
   finish(): Promise<void>;
@@ -201,9 +219,11 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   if (configuredPackage === null && import.meta.env.PROD) {
     throw new Error("SimulationProvider requires an embedded package configuration");
   }
-  const configuration = configuredPackage?.configuration ?? GUIDED_PRESET;
+  const configuration =
+    configuredPackage?.configuration ?? DEVELOPMENT_FALLBACK_CONFIGURATION;
   const configurationHash =
-    configuredPackage?.configurationHash ?? hashConfiguration(GUIDED_PRESET);
+    configuredPackage?.configurationHash ??
+    hashConfiguration(DEVELOPMENT_FALLBACK_CONFIGURATION);
   const [state, reactDispatch] = useReducer(
     sessionReducer,
     undefined,
@@ -218,6 +238,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   const ledger = useMemo(
     () => new SimulatedLedger(sha256Hex, scenario.ledgerConfiguration),
     [scenario],
+  );
+  const signatureProvider = useMemo(
+    () => new NobleEd25519Provider(),
+    [],
   );
   const codecSchema = useMemo(
     () => tc3CodecSchema({ configuration, configurationHash, scenario }),
@@ -348,13 +372,17 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
   const commitMutation = useCallback(
     <T,>(
-      mutate: (base: SessionState) => { readonly state: SessionState; readonly result: T },
+      mutate: (
+        base: SessionState,
+      ) =>
+        | { readonly state: SessionState; readonly result: T }
+        | Promise<{ readonly state: SessionState; readonly result: T }>,
     ): Promise<T> => {
       const run = async (): Promise<T> => {
         const base = stateRef.current;
         dispatch({ type: "SAVE_STATUS", status: "SAVING" });
         try {
-          const mutation = mutate(base);
+          const mutation = await mutate(base);
           const prospective = { ...mutation.state, saveStatus: "SAVED" as const };
           await writeProspectiveState(prospective);
           dispatch({ type: "PUBLISH_STATE", state: prospective });
@@ -425,11 +453,15 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       try {
         const snapshot = decodeTc3Attempt(stored, codecSchema);
-        const replay = replayCommandJournal({
+        const replay = await replayCommandJournal({
           snapshot,
           initialDomain: seededDomain,
           scenario,
           configuration,
+          configurationHash,
+          cryptographicRuntime:
+            configuredPackage?.cryptographicRuntime ?? null,
+          signatureProvider,
           registries,
         });
         dispatch({
@@ -472,10 +504,13 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     addDiagnostic,
     codecSchema,
     configuration,
+    configurationHash,
+    configuredPackage,
     dispatch,
     registries,
     scenario,
     seededDomain,
+    signatureProvider,
   ]);
 
   // ---- Save lifecycle --------------------------------------------------
@@ -528,7 +563,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       authoredCommand: SupplyChainCommand,
       submissionOptions?: { readonly recordDecision?: boolean },
     ): Promise<SimulationCommandOutcome> =>
-      commitMutation((base) => {
+      commitMutation(async (base) => {
         const sequence = commandSequence(base.commandJournal);
         const contextId =
           actionId === "RECALL_BATCH"
@@ -573,6 +608,24 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           },
           payload,
         };
+        const signed =
+          configuration.technicalFeatures.digitalSignatures
+            ? await signAndVerifyCommand({
+                command,
+                trustedContext: trusted,
+                configurationHash,
+                scenarioId: scenario.scenarioId,
+                scenarioVersion: scenario.scenarioVersion,
+                runtime:
+                  configuredPackage?.cryptographicRuntime ??
+                  (() => {
+                    throw new Error(
+                      "Digital signatures require a cryptographic runtime",
+                    );
+                  })(),
+                provider: signatureProvider,
+              })
+            : null;
         const outcome = handleSimulationCommand({
           runtime: runtimeBefore,
           command,
@@ -586,6 +639,14 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             ),
             ids: new SequenceIdGenerator(sequence),
           },
+          ...(signed === null
+            ? {}
+            : {
+                signatureEvidence: signed.evidence,
+                signatureFailures: signatureAttemptFailures(
+                  signed.failureRuleIds,
+                ),
+          }),
         });
 
         let prospective = sessionReducer(base, {
@@ -651,7 +712,17 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           result: outcome,
         };
       }),
-    [commitMutation, configuration.scenarioSeed, ledger, registries, scenario],
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      configuration.technicalFeatures.digitalSignatures,
+      configurationHash,
+      configuredPackage,
+      ledger,
+      registries,
+      scenario,
+      signatureProvider,
+    ],
   );
 
   const sealPendingBlock = useCallback(
@@ -1136,6 +1207,27 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     [commitMutation, configuration.scenarioSeed, scenario],
   );
 
+  const runSignatureTamperDemonstration = useCallback(
+    async (transactionId: string): Promise<SignatureTamperDemonstration> => {
+      if (!configuration.technicalFeatures.digitalSignatures) {
+        throw new Error("Digital signatures are disabled");
+      }
+      const evidence =
+        stateRef.current.domain.transactionsById[transactionId]
+          ?.signatureEvidence;
+      if (evidence === undefined) {
+        throw new Error(
+          `Transaction "${transactionId}" has no genuine signature evidence`,
+        );
+      }
+      return demonstrateSignatureTamper({
+        evidence,
+        provider: signatureProvider,
+      });
+    },
+    [configuration.technicalFeatures.digitalSignatures, signatureProvider],
+  );
+
   const value = useMemo<SimulationContextValue>(
     () => ({
       state,
@@ -1168,11 +1260,15 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           }
           try {
             const snapshot = decodeTc3Attempt(stored, codecSchema);
-            const replay = replayCommandJournal({
+            const replay = await replayCommandJournal({
               snapshot,
               initialDomain: seededDomain,
               scenario,
               configuration,
+              configurationHash,
+              cryptographicRuntime:
+                configuredPackage?.cryptographicRuntime ?? null,
+              signatureProvider,
               registries,
             });
             dispatch({
@@ -1247,6 +1343,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       submitCertificateDecision,
       submitDiscrepancyDecision,
       recordMitigation,
+      demonstrateSignatureTamper: runSignatureTamperDemonstration,
       viewStage: (stageId) => dispatch({ type: "VIEW_STAGE", stageId }),
       save,
 
@@ -1273,6 +1370,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       addDiagnostic,
       codecSchema,
       configuration,
+      configurationHash,
+      configuredPackage,
       diagnostics,
       dispatch,
       isCompleted,
@@ -1284,12 +1383,14 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       scoreFor,
       sealPendingBlock,
       seededDomain,
+      signatureProvider,
       state,
       submitCommand,
       requestRoleHandoff,
       submitCertificateDecision,
       submitDiscrepancyDecision,
       recordMitigation,
+      runSignatureTamperDemonstration,
     ],
   );
 

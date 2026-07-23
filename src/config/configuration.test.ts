@@ -5,6 +5,38 @@ import { embedConfiguration, hashConfiguration } from "./hash";
 import { validateConfiguration } from "./validation";
 import { loadRuntimePackage, type RuntimeFetch } from "./runtime-loader";
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
+import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
+import { sha256Hex } from "../infrastructure/hashing/sha256";
+
+function cryptographicFiles(): Readonly<Record<string, unknown>> {
+  const values: Readonly<Record<string, unknown>> = {
+    "identity-registry.json":
+      coffeeCryptographicRuntime.identityRegistry,
+    "educational-signing-keys.json":
+      coffeeCryptographicRuntime.signingKeys,
+    "authorization-policies.json":
+      coffeeCryptographicRuntime.authorizationPolicies,
+  };
+  return {
+    "./identity-registry.json": values["identity-registry.json"],
+    "./educational-signing-keys.json":
+      values["educational-signing-keys.json"],
+    "./authorization-policies.json":
+      values["authorization-policies.json"],
+    "./build-info.json": {
+      scenarioHash: sha256Hex(
+        `${JSON.stringify(coffeeScenario, null, 2)}\n`,
+      ),
+      cryptographicEvidenceSchemaVersion: "1",
+      cryptographicRuntimeHashes: Object.fromEntries(
+        Object.entries(values).map(([fileName, value]) => [
+          fileName,
+          sha256Hex(`${JSON.stringify(value, null, 2)}\n`),
+        ]),
+      ),
+    },
+  };
+}
 
 describe("TraceChain configuration", () => {
   it("validates every shipped preset", () => {
@@ -56,6 +88,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
+      ...cryptographicFiles(),
     };
     const fetcher: RuntimeFetch = async (path) => ({
       ok: path in files,
@@ -65,6 +98,9 @@ describe("TraceChain configuration", () => {
     const runtime = await loadRuntimePackage(fetcher);
     expect(runtime.configuration).toEqual(GUIDED_PRESET);
     expect(runtime.scenario).toEqual(coffeeScenario);
+    expect(runtime.cryptographicRuntime).toEqual(
+      coffeeCryptographicRuntime,
+    );
   });
 
   it("lets the resolved package pass score override the scenario baseline", async () => {
@@ -75,6 +111,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(configuration),
       "./scenario.json": coffeeScenario,
+      ...cryptographicFiles(),
     };
     const runtime = await loadRuntimePackage(async (path) => ({
       ok: path in files,
@@ -84,5 +121,57 @@ describe("TraceChain configuration", () => {
 
     expect(runtime.configuration.scoring.passScore).toBe(80);
     expect(runtime.scenario.scoringConfiguration.passingScore).toBe(70);
+  });
+
+  it("does not request cryptographic runtime files when signatures are disabled", async () => {
+    const configuration = {
+      ...GUIDED_PRESET,
+      technicalFeatures: {
+        ...GUIDED_PRESET.technicalFeatures,
+        digitalSignatures: false,
+      },
+    };
+    const requested: string[] = [];
+    const files: Readonly<Record<string, unknown>> = {
+      "./tracechain.config.json": embedConfiguration(configuration),
+      "./scenario.json": coffeeScenario,
+    };
+    const runtime = await loadRuntimePackage(async (path) => {
+      requested.push(path);
+      return {
+        ok: path in files,
+        status: path in files ? 200 : 404,
+        json: async () => files[path],
+      };
+    });
+
+    expect(runtime.cryptographicRuntime).toBeNull();
+    expect(requested).toEqual([
+      "./tracechain.config.json",
+      "./scenario.json",
+    ]);
+  });
+
+  it("rejects cryptographic runtime metadata bound to different scenario content", async () => {
+    const crypto = cryptographicFiles();
+    const files: Readonly<Record<string, unknown>> = {
+      "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
+      "./scenario.json": coffeeScenario,
+      ...crypto,
+      "./build-info.json": {
+        ...(crypto["./build-info.json"] as object),
+        scenarioHash: "0".repeat(64),
+      },
+    };
+
+    await expect(
+      loadRuntimePackage(async (path) => ({
+        ok: path in files,
+        status: path in files ? 200 : 404,
+        json: async () => files[path],
+      })),
+    ).rejects.toThrow(
+      "Build metadata does not describe the cryptographic runtime",
+    );
   });
 });

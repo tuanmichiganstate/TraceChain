@@ -15,7 +15,7 @@
 <a class="skip" href="#main">Tới nội dung</a>
 <div class="layout">
 <nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol><li><a href="#group-activity"><span>activity</span><b>6</b></a></li>
-<li><a href="#group-actors"><span>actors</span><b>8</b></a></li>
+<li><a href="#group-actors"><span>actors</span><b>9</b></a></li>
 <li><a href="#group-app"><span>app</span><b>7</b></a></li>
 <li><a href="#group-challenge"><span>challenge</span><b>2</b></a></li>
 <li><a href="#group-check"><span>check</span><b>82</b></a></li>
@@ -37,11 +37,12 @@
 <li><a href="#group-pipeline"><span>pipeline</span><b>11</b></a></li>
 <li><a href="#group-provenance"><span>provenance</span><b>2</b></a></li>
 <li><a href="#group-recall"><span>recall</span><b>1</b></a></li>
-<li><a href="#group-report"><span>report</span><b>45</b></a></li>
+<li><a href="#group-report"><span>report</span><b>50</b></a></li>
 <li><a href="#group-sale"><span>sale</span><b>3</b></a></li>
 <li><a href="#group-score"><span>score</span><b>6</b></a></li>
+<li><a href="#group-signature"><span>signature</span><b>41</b></a></li>
 <li><a href="#group-stage"><span>stage</span><b>6</b></a></li>
-<li><a href="#group-stage.anchorCertificate"><span>stage.anchorCertificate</span><b>32</b></a></li>
+<li><a href="#group-stage.anchorCertificate"><span>stage.anchorCertificate</span><b>34</b></a></li>
 <li><a href="#group-stage.challenge"><span>stage.challenge</span><b>10</b></a></li>
 <li><a href="#group-stage.createBatch"><span>stage.createBatch</span><b>6</b></a></li>
 <li><a href="#group-stage.orientation"><span>stage.orientation</span><b>10</b></a></li>
@@ -50,13 +51,13 @@
 <li><a href="#group-stage.receiveAndCorrect"><span>stage.receiveAndCorrect</span><b>43</b></a></li>
 <li><a href="#group-stage.shipAndMonitor"><span>stage.shipAndMonitor</span><b>8</b></a></li>
 <li><a href="#group-stage.transformBatch"><span>stage.transformBatch</span><b>9</b></a></li>
-<li><a href="#group-stage.verifyAndTamper"><span>stage.verifyAndTamper</span><b>19</b></a></li>
+<li><a href="#group-stage.verifyAndTamper"><span>stage.verifyAndTamper</span><b>31</b></a></li>
 <li><a href="#group-start"><span>start</span><b>30</b></a></li>
 <li><a href="#group-state"><span>state</span><b>3</b></a></li>
 <li><a href="#group-status"><span>status</span><b>5</b></a></li>
 <li><a href="#group-terms"><span>terms</span><b>26</b></a></li>
 <li><a href="#group-traceability"><span>traceability</span><b>9</b></a></li>
-<li><a href="#group-transaction"><span>transaction</span><b>11</b></a></li>
+<li><a href="#group-transaction"><span>transaction</span><b>13</b></a></li>
 <li><a href="#group-transactionType"><span>transactionType</span><b>12</b></a></li>
 <li><a href="#group-unit"><span>unit</span><b>3</b></a></li>
 <li><a href="#group-validation"><span>validation</span><b>94</b></a></li>
@@ -67,7 +68,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>703/703</b>chuỗi song ngữ</li>
+    <li><b>766/766</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -108,7 +109,7 @@
 </article>
 </section>
 <section id="group-actors">
-  <h2>actors <span>8 chuỗi</span></h2>
+  <h2>actors <span>9 chuỗi</span></h2>
   <article class="entry" data-locale-key="actors.certificationOfficer.name">
   <header><code>actors.certificationOfficer.name</code><ul class="context"><li>Vai trò ACT_CERTIFICATION_OFFICER</li></ul></header>
   <p class="vi" lang="vi">Cán bộ chứng nhận</p>
@@ -148,6 +149,11 @@
   <header><code>actors.shippingClerk.name</code><ul class="context"><li>Vai trò ACT_SHIPPING_CLERK</li></ul></header>
   <p class="vi" lang="vi">Nhân viên giao nhận</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Shipping clerk</p></details>
+</article>
+  <article class="entry" data-locale-key="actors.unrecognizedCertificationOfficer.name">
+  <header><code>actors.unrecognizedCertificationOfficer.name</code><ul class="context"><li>Vai trò ACT_UNRECOGNIZED_CERTIFICATION_OFFICER</li></ul></header>
+  <p class="vi" lang="vi">Cán bộ của đơn vị chứng nhận chưa được công nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Officer of an unrecognized certification body</p></details>
 </article>
 </section>
 <section id="group-app">
@@ -1439,7 +1445,7 @@
 </article>
 </section>
 <section id="group-report">
-  <h2>report <span>45 chuỗi</span></h2>
+  <h2>report <span>50 chuỗi</span></h2>
   <article class="entry" data-locale-key="report.activityHeading">
   <header><code>report.activityHeading</code></header>
   <p class="vi" lang="vi">Tóm tắt hoạt động mô phỏng</p>
@@ -1459,6 +1465,11 @@
   <header><code>report.causal.certificateReviewed</code></header>
   <p class="vi" lang="vi">Ở Bước 3, đánh giá chứng nhận ban đầu cần xem xét lại đơn vị cấp. Vì vậy, ở Bước 9 có {count} bản ghi cần được kiểm tra thủ công trước khi có thể dựa vào bằng chứng.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 3, the initial certificate assessment required issuer review. At Stage 9, {count} record(s) therefore required manual review before the evidence could be relied on.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.certificateSignatureAccepted">
+  <header><code>report.causal.certificateSignatureAccepted</code></header>
+  <p class="vi" lang="vi">Giao dịch cấp chứng nhận được cam kết sau khi chữ ký Ed25519, danh tính học tập, trạng thái khóa và quyền của cán bộ chứng nhận đều được kiểm tra.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The certificate transaction committed only after its Ed25519 signature, educational identity, key status, and certification-officer authorization were checked.</p></details>
 </article>
   <article class="entry" data-locale-key="report.causal.certificateStrong">
   <header><code>report.causal.certificateStrong</code></header>
@@ -1514,6 +1525,26 @@
   <header><code>report.causal.recallNarrow</code></header>
   <p class="vi" lang="vi">Ở Bước 9, phạm vi thu hồi quá hẹp và bỏ sót {missed} lô bị ảnh hưởng, làm tăng rủi ro an toàn người tiêu dùng và tuân thủ.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 9, the recall was too narrow and missed {missed} affected lot(s), increasing consumer-safety and compliance risk.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.recallSignatureAccepted">
+  <header><code>report.causal.recallSignatureAccepted</code></header>
+  <p class="vi" lang="vi">Lệnh thu hồi được cam kết sau khi chữ ký Ed25519 và thẩm quyền của cơ quan quản lý đều được xác minh.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The recall committed only after the regulator&#39;s Ed25519 signature and recall authority were verified.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.signatureInvalidRejected">
+  <header><code>report.causal.signatureInvalidRejected</code></header>
+  <p class="vi" lang="vi">Một đề xuất có chữ ký không còn khớp với nội dung đã ký. Lần gửi đó chỉ được giữ trong lịch sử kiểm toán và không tạo giao dịch trên sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">A proposal carried a signature that no longer matched its signed content. That submission remained only in audit history and created no ledger transaction.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.signatureUnauthorizedRejected">
+  <header><code>report.causal.signatureUnauthorizedRejected</code></header>
+  <p class="vi" lang="vi">Ở Bước 3, chữ ký Ed25519 hợp lệ và danh tính được công nhận, nhưng tổ chức hoặc vai trò không có quyền cấp chứng nhận. Lần gửi đó chỉ tạo bản ghi kiểm toán.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 3, the Ed25519 signature was valid and the identity was recognized, but the organization or role was not authorized to issue a certificate. The submission created audit history only.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.signatureUnknownRejected">
+  <header><code>report.causal.signatureUnknownRejected</code></header>
+  <p class="vi" lang="vi">Ở Bước 3, phép kiểm tra mật mã xác nhận chữ ký hợp lệ nhưng danh tính tổ chức không được công nhận. Lần gửi đó bị từ chối và không đi vào sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 3, the cryptographic check found a valid signature but the organizational identity was not recognized. The submission was rejected and did not enter the ledger.</p></details>
 </article>
   <article class="entry" data-locale-key="report.causal.storageExposure">
   <header><code>report.causal.storageExposure</code></header>
@@ -1717,6 +1748,214 @@
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction accuracy</p></details>
 </article>
 </section>
+<section id="group-signature">
+  <h2>signature <span>41 chuỗi</span></h2>
+  <article class="entry" data-locale-key="signature.algorithmLabel">
+  <header><code>signature.algorithmLabel</code></header>
+  <p class="vi" lang="vi">Thuật toán</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Algorithm</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.announcement.authorized">
+  <header><code>signature.announcement.authorized</code></header>
+  <p class="vi" lang="vi">Chữ ký hợp lệ và {organization} có quyền thực hiện hành động này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signature is valid and {organization} is authorized for this action.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.announcement.invalid">
+  <header><code>signature.announcement.invalid</code></header>
+  <p class="vi" lang="vi">Chữ ký số không hợp lệ. Giao dịch bị từ chối.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The digital signature is invalid. The transaction was rejected.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.announcement.unauthorized">
+  <header><code>signature.announcement.unauthorized</code></header>
+  <p class="vi" lang="vi">Chữ ký hợp lệ, nhưng {organization} không có quyền thực hiện hành động này. Giao dịch bị từ chối.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signature is valid, but {organization} is not authorized for this action. The transaction was rejected.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.announcement.unknown">
+  <header><code>signature.announcement.unknown</code></header>
+  <p class="vi" lang="vi">Chữ ký hợp lệ, nhưng {organization} không phải là danh tính được công nhận. Giao dịch bị từ chối.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signature is valid, but {organization} is not a recognized identity. The transaction was rejected.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.authorizationLabel">
+  <header><code>signature.authorizationLabel</code></header>
+  <p class="vi" lang="vi">Quyền thực hiện</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authorization</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.authorizationQuestionLabel">
+  <header><code>signature.authorizationQuestionLabel</code></header>
+  <p class="vi" lang="vi">Nội dung cần kiểm tra quyền</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authorization question</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.authorized">
+  <header><code>signature.authorized</code></header>
+  <p class="vi" lang="vi">Được phép thực hiện hành động này</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Permitted for this action</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.copyEvidence">
+  <header><code>signature.copyEvidence</code></header>
+  <p class="vi" lang="vi">Sao chép gói bằng chứng xác minh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Copy verification evidence bundle</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.copyEvidenceFailure">
+  <header><code>signature.copyEvidenceFailure</code></header>
+  <p class="vi" lang="vi">Không thể sao chép gói bằng chứng trong trình duyệt này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This browser could not copy the evidence bundle.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.copyEvidenceSuccess">
+  <header><code>signature.copyEvidenceSuccess</code></header>
+  <p class="vi" lang="vi">Đã sao chép gói bằng chứng xác minh.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The verification evidence bundle was copied.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.digestLabel">
+  <header><code>signature.digestLabel</code></header>
+  <p class="vi" lang="vi">Mã băm đề xuất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Proposal digest</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.educationalDisclosure">
+  <header><code>signature.educationalDisclosure</code></header>
+  <p class="vi" lang="vi">Các phép ký và kiểm tra chữ ký trong mô phỏng sử dụng thuật toán mật mã thật. Danh tính tổ chức, khóa ký và cơ chế cấp chứng thư được mô phỏng phục vụ học tập. Các khóa này không được dùng cho giao dịch thực tế.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signing and signature verification in this simulation use real cryptographic operations. Organizational identities, signing keys, and certificate issuance are simulated for learning. These keys must not be used for real transactions.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.endorsementLabel">
+  <header><code>signature.endorsementLabel</code></header>
+  <p class="vi" lang="vi">Chính sách xác nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement policy</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.contextMismatch">
+  <header><code>signature.failure.contextMismatch</code></header>
+  <p class="vi" lang="vi">Bên ký không khớp với tổ chức và vai trò tin cậy đang hoạt động.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signer does not match the active trusted organization and role.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.identityUnknown">
+  <header><code>signature.failure.identityUnknown</code></header>
+  <p class="vi" lang="vi">Tổ chức ký không phải là danh tính học tập được công nhận.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signing organization is not a recognized educational identity.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.invalid">
+  <header><code>signature.failure.invalid</code></header>
+  <p class="vi" lang="vi">Chữ ký số không khớp với đề xuất đã ký.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The digital signature does not match the signed proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.keyExpired">
+  <header><code>signature.failure.keyExpired</code></header>
+  <p class="vi" lang="vi">Khóa ký đã hết hạn tại thời điểm ký xác định của kịch bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signing key had expired at the deterministic signing time.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.keyRevoked">
+  <header><code>signature.failure.keyRevoked</code></header>
+  <p class="vi" lang="vi">Khóa ký đã bị thu hồi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signing key is revoked.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.missing">
+  <header><code>signature.failure.missing</code></header>
+  <p class="vi" lang="vi">Đề xuất chưa có chữ ký số.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The proposal has no digital signature.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.organizationNotAuthorized">
+  <header><code>signature.failure.organizationNotAuthorized</code></header>
+  <p class="vi" lang="vi">Tổ chức này không có quyền thực hiện hành động.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This organization is not authorized to perform the action.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.failure.roleNotAuthorized">
+  <header><code>signature.failure.roleNotAuthorized</code></header>
+  <p class="vi" lang="vi">Vai trò đang hoạt động không có quyền thực hiện hành động.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The active role is not authorized to perform the action.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.fingerprintLabel">
+  <header><code>signature.fingerprintLabel</code></header>
+  <p class="vi" lang="vi">Dấu vân tay khóa công khai</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Public-key fingerprint</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.heading">
+  <header><code>signature.heading</code></header>
+  <p class="vi" lang="vi">Danh tính và quyền hạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Identity and authorization</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.identityLabel">
+  <header><code>signature.identityLabel</code></header>
+  <p class="vi" lang="vi">Danh tính</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Identity</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.invalid">
+  <header><code>signature.invalid</code></header>
+  <p class="vi" lang="vi">Không hợp lệ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Invalid</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.keyActive">
+  <header><code>signature.keyActive</code></header>
+  <p class="vi" lang="vi">Đang hoạt động</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Active</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.keyIdLabel">
+  <header><code>signature.keyIdLabel</code></header>
+  <p class="vi" lang="vi">Mã khóa</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Key ID</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.keyInactive">
+  <header><code>signature.keyInactive</code></header>
+  <p class="vi" lang="vi">Đã hết hạn, bị thu hồi hoặc không khả dụng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Expired, revoked, or unavailable</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.keyStatusLabel">
+  <header><code>signature.keyStatusLabel</code></header>
+  <p class="vi" lang="vi">Khóa ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signing key</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.notApplicable">
+  <header><code>signature.notApplicable</code></header>
+  <p class="vi" lang="vi">Không áp dụng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Not applicable</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.notAuthorized">
+  <header><code>signature.notAuthorized</code></header>
+  <p class="vi" lang="vi">Không được phép thực hiện hành động này</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Not permitted for this action</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.recognized">
+  <header><code>signature.recognized</code></header>
+  <p class="vi" lang="vi">Được công nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Recognized</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.signatureLabel">
+  <header><code>signature.signatureLabel</code></header>
+  <p class="vi" lang="vi">Chữ ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signature</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.signatureValueLabel">
+  <header><code>signature.signatureValueLabel</code></header>
+  <p class="vi" lang="vi">Chữ ký rút gọn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Shortened signature</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.signerLabel">
+  <header><code>signature.signerLabel</code></header>
+  <p class="vi" lang="vi">Bên ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signer</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.stateVersionsLabel">
+  <header><code>signature.stateVersionsLabel</code></header>
+  <p class="vi" lang="vi">Phiên bản trạng thái đã ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signed state versions</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.truthNotice">
+  <header><code>signature.truthNotice</code></header>
+  <p class="vi" lang="vi">Điều này có chứng minh thông tin nghiệp vụ là đúng không? Không. Chữ ký chứng minh nội dung đã ký được phê duyệt, không chứng minh tuyên bố ban đầu là đúng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Does this prove the business information is true? No. The signature proves approval of the signed content, not the truth of the original claim.</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.unrecognized">
+  <header><code>signature.unrecognized</code></header>
+  <p class="vi" lang="vi">Không được công nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Not recognized</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.valid">
+  <header><code>signature.valid</code></header>
+  <p class="vi" lang="vi">Hợp lệ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Valid</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.viewEvidence">
+  <header><code>signature.viewEvidence</code></header>
+  <p class="vi" lang="vi">Xem bằng chứng kỹ thuật</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">View technical evidence</p></details>
+</article>
+</section>
 <section id="group-stage">
   <h2>stage <span>6 chuỗi</span></h2>
   <article class="entry" data-locale-key="stage.actionDone">
@@ -1751,7 +1990,7 @@
 </article>
 </section>
 <section id="group-stage.anchorCertificate">
-  <h2>stage.anchorCertificate · Bước 3 – Ghi nhận chứng nhận chất lượng <span>32 chuỗi</span></h2>
+  <h2>stage.anchorCertificate · Bước 3 – Ghi nhận chứng nhận chất lượng <span>34 chuỗi</span></h2>
   <article class="entry" data-locale-key="stage.anchorCertificate.anchorAction">
   <header><code>stage.anchorCertificate.anchorAction</code></header>
   <p class="vi" lang="vi">Ghi nhận tài liệu lên chuỗi</p>
@@ -1881,6 +2120,16 @@
   <header><code>stage.anchorCertificate.reviewIssuer</code></header>
   <p class="vi" lang="vi">Xem xét bằng chứng về đơn vị cấp</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Review issuer evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.anchorCertificate.signatureInspectionAction">
+  <header><code>stage.anchorCertificate.signatureInspectionAction</code></header>
+  <p class="vi" lang="vi">Kiểm tra chữ ký của bên đề nghị cấp chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Check the certificate submitter&#39;s signature</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.anchorCertificate.signatureInspectionPurpose">
+  <header><code>stage.anchorCertificate.signatureInspectionPurpose</code></header>
+  <p class="vi" lang="vi">Bên ký có được phép cấp chứng nhận chất lượng hay không</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Whether the signer is permitted to issue a quality certificate</p></details>
 </article>
   <article class="entry" data-locale-key="stage.anchorCertificate.suspendLot">
   <header><code>stage.anchorCertificate.suspendLot</code></header>
@@ -2573,7 +2822,7 @@
 </article>
 </section>
 <section id="group-stage.verifyAndTamper">
-  <h2>stage.verifyAndTamper · Bước 8 – Kiểm tra nguồn gốc và thử phát hiện sửa đổi <span>19 chuỗi</span></h2>
+  <h2>stage.verifyAndTamper · Bước 8 – Kiểm tra nguồn gốc và thử phát hiện sửa đổi <span>31 chuỗi</span></h2>
   <article class="entry" data-locale-key="stage.verifyAndTamper.blocksBroken">
   <header><code>stage.verifyAndTamper.blocksBroken</code></header>
   <p class="vi" lang="vi">Khối bị hỏng</p>
@@ -2583,6 +2832,11 @@
   <header><code>stage.verifyAndTamper.conclusion</code></header>
   <p class="vi" lang="vi">Không có bước nào ở trên bị ngăn cản. Trong bản mô phỏng này, thay đổi làm chuỗi hàm băm mất nhất quán, nên phép kiểm tra toàn vẹn phát hiện được dấu vết. Sửa một lớp lại lộ ra lớp tiếp theo.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">None of those steps was prevented. In this simulation, the change makes the hash chain inconsistent, so an integrity check can detect its trace. Repairing one layer only exposes the next.</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.hashesAndSignaturesAreReal">
+  <header><code>stage.verifyAndTamper.hashesAndSignaturesAreReal</code></header>
+  <p class="vi" lang="vi">Phần hàm băm và chữ ký số trong mô phỏng này sử dụng phép tính mật mã thật: SHA-256 và Ed25519. Danh tính tổ chức, khóa học tập, mạng và dịch vụ sắp thứ tự vẫn là mô phỏng phục vụ học tập.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The hashing and digital signatures in this simulation use genuine cryptographic operations: SHA-256 and Ed25519. Organizational identities, educational keys, the network, and the ordering service remain learning simulations.</p></details>
 </article>
   <article class="entry" data-locale-key="stage.verifyAndTamper.hashesAreReal">
   <header><code>stage.verifyAndTamper.hashesAreReal</code></header>
@@ -2604,6 +2858,36 @@
   <p class="vi" lang="vi">Liên kết bị đứt</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Links broken</p></details>
 </article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.modifiedProposalDigest">
+  <header><code>stage.verifyAndTamper.modifiedProposalDigest</code></header>
+  <p class="vi" lang="vi">Mã băm sau khi đổi một ký tự</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Digest after one character changes</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.modifiedSignatureRejected">
+  <header><code>stage.verifyAndTamper.modifiedSignatureRejected</code></header>
+  <p class="vi" lang="vi">Bản đã thay đổi: chữ ký ban đầu không còn khớp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Modified copy: the original signature no longer matches</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.modifiedSignatureUnexpectedlyValid">
+  <header><code>stage.verifyAndTamper.modifiedSignatureUnexpectedlyValid</code></header>
+  <p class="vi" lang="vi">Bản đã thay đổi vẫn được xác minh ngoài dự kiến</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The modified copy verified unexpectedly</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.originalProposalDigest">
+  <header><code>stage.verifyAndTamper.originalProposalDigest</code></header>
+  <p class="vi" lang="vi">Mã băm đề xuất ban đầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original proposal digest</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.originalSignatureInvalid">
+  <header><code>stage.verifyAndTamper.originalSignatureInvalid</code></header>
+  <p class="vi" lang="vi">Bản gốc: chữ ký không hợp lệ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original: signature invalid</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.originalSignatureValid">
+  <header><code>stage.verifyAndTamper.originalSignatureValid</code></header>
+  <p class="vi" lang="vi">Bản gốc: chữ ký hợp lệ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original: signature valid</p></details>
+</article>
   <article class="entry" data-locale-key="stage.verifyAndTamper.publicHeading">
   <header><code>stage.verifyAndTamper.publicHeading</code></header>
   <p class="vi" lang="vi">Thông tin công khai khi quét mã QR</p>
@@ -2619,10 +2903,35 @@
   <p class="vi" lang="vi">Bản ghi bị phát hiện</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Records detected</p></details>
 </article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.runSignatureDemo">
+  <header><code>stage.verifyAndTamper.runSignatureDemo</code></header>
+  <p class="vi" lang="vi">Chạy kiểm tra chữ ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run the signature check</p></details>
+</article>
   <article class="entry" data-locale-key="stage.verifyAndTamper.runTamper">
   <header><code>stage.verifyAndTamper.runTamper</code></header>
   <p class="vi" lang="vi">Chạy thử nghiệm sửa dữ liệu</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run the tampering demonstration</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.signatureDemoConclusion">
+  <header><code>stage.verifyAndTamper.signatureDemoConclusion</code></header>
+  <p class="vi" lang="vi">Chữ ký gắn với nội dung chính xác của đề xuất. Thay đổi nội dung làm mã băm đề xuất khác đi, nên chữ ký ban đầu không còn xác minh được.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signature is bound to the proposal&#39;s exact content. Changing that content changes the proposal digest, so the original signature no longer verifies.</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.signatureDemoFailed">
+  <header><code>stage.verifyAndTamper.signatureDemoFailed</code></header>
+  <p class="vi" lang="vi">Không thể chạy kiểm tra chữ ký trên bản sao này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The signature check could not run on this copy.</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.signatureDemoHeading">
+  <header><code>stage.verifyAndTamper.signatureDemoHeading</code></header>
+  <p class="vi" lang="vi">Kiểm tra khi nội dung đã ký bị thay đổi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Check what happens when signed content changes</p></details>
+</article>
+  <article class="entry" data-locale-key="stage.verifyAndTamper.signatureDemoIntro">
+  <header><code>stage.verifyAndTamper.signatureDemoIntro</code></header>
+  <p class="vi" lang="vi">Mở thử nghiệm tùy chọn này để kiểm tra một đề xuất đã ký, thay đổi một ký tự trong bản sao của đề xuất, tính lại mã băm và kiểm tra lại bằng chính chữ ký ban đầu. Giao dịch và sổ cái của bạn không bị thay đổi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Open this optional demonstration to verify a signed proposal, change one character in a copy, recompute its digest, and verify it again with the original signature. Your transaction and ledger are not changed.</p></details>
 </article>
   <article class="entry" data-locale-key="stage.verifyAndTamper.step1Detail">
   <header><code>stage.verifyAndTamper.step1Detail</code></header>
@@ -3051,7 +3360,7 @@
 </article>
 </section>
 <section id="group-transaction">
-  <h2>transaction <span>11 chuỗi</span></h2>
+  <h2>transaction <span>13 chuỗi</span></h2>
   <article class="entry" data-locale-key="transaction.cancel">
   <header><code>transaction.cancel</code></header>
   <p class="vi" lang="vi">Hủy giao dịch</p>
@@ -3087,10 +3396,20 @@
   <p class="vi" lang="vi">Hàm băm chữ ký mô phỏng</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Simulated signature hash</p></details>
 </article>
+  <article class="entry" data-locale-key="transaction.signatureLabelReal">
+  <header><code>transaction.signatureLabelReal</code></header>
+  <p class="vi" lang="vi">Mã băm đề xuất được ký bằng Ed25519</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Ed25519-signed proposal digest</p></details>
+</article>
   <article class="entry" data-locale-key="transaction.signatureNotice">
   <header><code>transaction.signatureNotice</code></header>
   <p class="vi" lang="vi">Chữ ký này được mô phỏng để minh họa việc xác định chủ thể gửi giao dịch. Đây không phải là chữ ký số có giá trị pháp lý.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This signature is simulated to illustrate identifying who submitted a transaction. It is not a legally valid digital signature.</p></details>
+</article>
+  <article class="entry" data-locale-key="transaction.signatureNoticeReal">
+  <header><code>transaction.signatureNoticeReal</code></header>
+  <p class="vi" lang="vi">TraceChain tự động ký đề xuất này bằng khóa học tập cố định của tổ chức đang hoạt động. Bạn không cần thao tác với khóa riêng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">TraceChain automatically signs this proposal with the active organization&#39;s fixed educational key. You do not need to handle a private key.</p></details>
 </article>
   <article class="entry" data-locale-key="transaction.submissionFailed">
   <header><code>transaction.submissionFailed</code></header>
@@ -3731,7 +4050,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>48fc2edb34c4540460ccc3eed284ccc4d3b47642</code> · SHA-256 nguồn: <code>a62a77d4c30659a560f28f30392eb79702fd1e331d549e5103ec3e6991cb7f38</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>e9cb17a7d31e42c0a548a8994ce4f9eeb398469c</code> · SHA-256 nguồn: <code>088f7362e8318371a8d89baad4490533864dafc6b23742e8e5c572926f6dc4f2</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

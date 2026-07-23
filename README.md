@@ -23,12 +23,15 @@ mining. The interface says so on every screen.
 Version 2 implements the complete nine-stage activity as configurable guided
 and curated Challenge A packages, including atomic consequential decisions,
 trusted role handoff, append-only correction, deterministic TC3 replay, and a
-causal final report.
+causal final report. The current follow-on increment adds genuine Ed25519
+signing and verification plus scenario-authored authorization; organizational
+identity and key custody remain explicitly educational simulations.
 
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
 | Scenario | complete — one shared engine, standard coffee and curated Challenge A |
+| Cryptographic evidence | real Ed25519 proposal signatures; simulated educational identities and key custody |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
 | Content review | deterministic bilingual pack; human Vietnamese review remains open |
@@ -89,6 +92,7 @@ domain behaviour, and is never visible to an ordinary learner.
 ```
 src/
 ├── config/            typed configuration, presets, validation and hashing
+├── crypto/            Ed25519 provider, proposals, authorization and evidence
 ├── domain/            pure, synchronous, no React
 │   ├── commands/      learner intent
 │   ├── events/        committed outcomes
@@ -136,6 +140,7 @@ scripts/               locale + scenario validators, SCORM build + verify
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
 | `npm run build:scorm` | Build both local non-release preset packages |
 | `npm run verify:scorm` | Validate both packages and their shared static build |
+| `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 
 ## Documentation

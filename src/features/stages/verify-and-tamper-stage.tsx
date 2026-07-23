@@ -7,6 +7,8 @@ import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { ProvenanceViewer } from "../../components/provenance-viewer";
 import { StatusPill } from "../../components/status-pill";
+import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
+import type { SignatureTamperDemonstration } from "../../crypto/signatures/types";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   chainFingerprint,
@@ -30,10 +32,15 @@ import {
 export function VerifyAndTamperStage(): ReactNode {
   const t = useTranslator();
   const { stage, scenario } = useScenario();
-  const { state } = useSimulation();
+  const { state, demonstrateSignatureTamper } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
   const definition = stage(ScenarioStageId.VERIFY_AND_TAMPER);
   const [demonstration, setDemonstration] = useState<TamperDemonstration | null>(null);
   const [isLedgerIntact, setIsLedgerIntact] = useState(true);
+  const [signatureDemonstration, setSignatureDemonstration] =
+    useState<SignatureTamperDemonstration | null>(null);
+  const [signatureCheckFailed, setSignatureCheckFailed] = useState(false);
+  const [isCheckingSignature, setCheckingSignature] = useState(false);
 
   const [tamperIntegrityCheck, dataGovernanceCheck] = definition?.knowledgeChecks ?? [];
 
@@ -43,6 +50,9 @@ export function VerifyAndTamperStage(): ReactNode {
     (transaction) =>
       transaction.transactionHash !== undefined &&
       typeof (transaction.commandPayload as { quantity?: unknown }).quantity === "number",
+  );
+  const signedTarget = Object.values(state.domain.transactionsById).find(
+    (transaction) => transaction.signatureEvidence !== undefined,
   );
 
   const runDemonstration = (): void => {
@@ -56,6 +66,21 @@ export function VerifyAndTamperStage(): ReactNode {
     // Asserted in tests too, but shown to the learner: the attempt they carry on
     // with is the one they had before pressing the button.
     setIsLedgerIntact(chainFingerprint(state.domain, sha256Hex) === fingerprintBefore);
+  };
+
+  const runSignatureDemonstration = async (): Promise<void> => {
+    if (signedTarget === undefined) return;
+    setCheckingSignature(true);
+    setSignatureCheckFailed(false);
+    try {
+      setSignatureDemonstration(
+        await demonstrateSignatureTamper(signedTarget.transactionId),
+      );
+    } catch {
+      setSignatureCheckFailed(true);
+    } finally {
+      setCheckingSignature(false);
+    }
   };
 
   const packagedLotId = scenario.runtime.assetRoles.primaryPackagedLotId;
@@ -125,7 +150,14 @@ export function VerifyAndTamperStage(): ReactNode {
                 A learner who assumes the broken chain was scripted has watched
                 a puppet show and learned nothing from it, so the claim is made
                 explicitly at the moment it carries weight. */}
-            <p className="muted">{t("stage.verifyAndTamper.hashesAreReal")}</p>
+            <p className="muted">
+              {t(
+                packageConfiguration?.configuration.technicalFeatures
+                  .digitalSignatures
+                  ? "stage.verifyAndTamper.hashesAndSignaturesAreReal"
+                  : "stage.verifyAndTamper.hashesAreReal",
+              )}
+            </p>
             {isLedgerIntact ? (
               <p>
                 <StatusPill tone="pass">{t("stage.verifyAndTamper.ledgerIntact")}</StatusPill>
@@ -134,6 +166,93 @@ export function VerifyAndTamperStage(): ReactNode {
           </>
         ) : null}
       </section>
+
+      {packageConfiguration?.configuration.technicalFeatures
+        .digitalSignatures ? (
+        <details className="card card--reference">
+          <summary>
+            {t("stage.verifyAndTamper.signatureDemoHeading")}
+          </summary>
+          <p>{t("stage.verifyAndTamper.signatureDemoIntro")}</p>
+          {signatureDemonstration === null ? (
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => void runSignatureDemonstration()}
+              disabled={signedTarget === undefined || isCheckingSignature}
+            >
+              {t("stage.verifyAndTamper.runSignatureDemo")}
+            </button>
+          ) : (
+            <div
+              className="signature-tamper-result stack"
+              role="status"
+              aria-live="polite"
+            >
+              <p>
+                <StatusPill
+                  tone={
+                    signatureDemonstration.originalSignatureValid
+                      ? "pass"
+                      : "fail"
+                  }
+                >
+                  {t(
+                    signatureDemonstration.originalSignatureValid
+                      ? "stage.verifyAndTamper.originalSignatureValid"
+                      : "stage.verifyAndTamper.originalSignatureInvalid",
+                  )}
+                </StatusPill>
+              </p>
+              <dl className="asset-card__grid">
+                <div className="asset-card__row">
+                  <dt>
+                    {t("stage.verifyAndTamper.originalProposalDigest")}
+                  </dt>
+                  <dd>
+                    <code className="hash">
+                      {signatureDemonstration.originalProposalDigest}
+                    </code>
+                  </dd>
+                </div>
+                <div className="asset-card__row">
+                  <dt>
+                    {t("stage.verifyAndTamper.modifiedProposalDigest")}
+                  </dt>
+                  <dd>
+                    <code className="hash">
+                      {signatureDemonstration.modifiedProposalDigest}
+                    </code>
+                  </dd>
+                </div>
+              </dl>
+              <p>
+                <StatusPill
+                  tone={
+                    signatureDemonstration
+                      .modifiedProposalSignatureValid
+                      ? "fail"
+                      : "pass"
+                  }
+                >
+                  {t(
+                    signatureDemonstration
+                      .modifiedProposalSignatureValid
+                      ? "stage.verifyAndTamper.modifiedSignatureUnexpectedlyValid"
+                      : "stage.verifyAndTamper.modifiedSignatureRejected",
+                  )}
+                </StatusPill>
+              </p>
+              <p>{t("stage.verifyAndTamper.signatureDemoConclusion")}</p>
+            </div>
+          )}
+          {signatureCheckFailed ? (
+            <p className="field__error" role="alert">
+              {t("stage.verifyAndTamper.signatureDemoFailed")}
+            </p>
+          ) : null}
+        </details>
+      ) : null}
 
       {tamperIntegrityCheck !== undefined ? (
         <KnowledgeCheckPanel check={tamperIntegrityCheck} />

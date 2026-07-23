@@ -30,6 +30,15 @@ import {
   tc3CodecSchema,
 } from "./command-journal";
 import { replayCommandJournal } from "./replay-journal";
+import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
+import { NobleEd25519Provider } from "../../crypto/signatures/noble-ed25519-provider";
+import { SignatureValidationRule } from "../../crypto/signatures/types";
+
+const cryptographicReplay = {
+  configurationHash: hashConfiguration(GUIDED_PRESET),
+  cryptographicRuntime: coffeeCryptographicRuntime,
+  signatureProvider: new NobleEd25519Provider(),
+} as const;
 
 const registries = {
   organizationsById: Object.fromEntries(
@@ -78,7 +87,63 @@ function initialSeededDomain() {
 }
 
 describe("deterministic consequential-command replay", () => {
-  it("regenerates a rejected overwrite as audit history without a ledger projection", () => {
+  it("regenerates byte-identical signature evidence for an audit-only certificate attempt", async () => {
+    const contextId =
+      coffeeScenario.runtime.commandContextByAction.SUSPICIOUS_CERTIFICATE;
+    if (contextId === undefined) {
+      throw new Error("Suspicious certificate context is missing");
+    }
+    const journal: readonly CompactCommandJournalEntry[] = [
+      {
+        commandSequence: 1,
+        opcode: JournalOpcode.SUSPICIOUS_CERTIFICATE,
+        contextIndex: contextIndexById(coffeeScenario, contextId),
+        values: [],
+      },
+    ];
+    const initialDomain = initialSeededDomain();
+    const replay = async () =>
+      replayCommandJournal({
+        snapshot: snapshot(journal, {
+          INT_SUSPICIOUS_CERTIFICATE_ATTEMPT: {
+            encodedValue: 0,
+            attemptCount: 1,
+          },
+        }),
+        initialDomain,
+        scenario: coffeeScenario,
+        configuration: GUIDED_PRESET,
+        ...cryptographicReplay,
+        registries,
+      });
+
+    const first = await replay();
+    const second = await replay();
+    const audit = first.runtime.attemptAuditEvents[0];
+
+    expect(first).toEqual(second);
+    expect(first.runtime.domain).toEqual(initialDomain);
+    expect(first.runtime.acceptedEvents).toEqual([]);
+    expect(first.runtime.attemptAuditEvents).toHaveLength(1);
+    expect(
+      Object.values(first.runtime.domain.transactionsById),
+    ).toHaveLength(Object.values(initialDomain.transactionsById).length);
+    expect(audit?.signatureEvidence?.signatureValid).toBe(true);
+    expect(audit?.validationFailures.map((failure) => failure.code)).toEqual(
+      expect.arrayContaining([
+        SignatureValidationRule.ORGANIZATION_NOT_AUTHORIZED,
+        SignatureValidationRule.ROLE_NOT_AUTHORIZED,
+      ]),
+    );
+    expect(
+      audit?.signatureEvidence?.signature.signatureBase64Url,
+    ).toBe(
+      second.runtime.attemptAuditEvents[0]?.signatureEvidence?.signature
+        .signatureBase64Url,
+    );
+  });
+
+  it("regenerates a rejected overwrite as audit history without a ledger projection", async () => {
     const stage5Context =
       coffeeScenario.runtime.initialContextByStage[
         ScenarioStageId.RECEIVE_AND_CORRECT
@@ -96,7 +161,7 @@ describe("deterministic consequential-command replay", () => {
       },
     ];
     const initialDomain = initialSeededDomain();
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       snapshot: snapshot(journal, {
         INT_CORRECTION_RECORDED: { encodedValue: 0, attemptCount: 1 },
         INT_DISCREPANCY_INITIAL_SUBMITTED: {
@@ -107,6 +172,7 @@ describe("deterministic consequential-command replay", () => {
       initialDomain,
       scenario: coffeeScenario,
       configuration: GUIDED_PRESET,
+      ...cryptographicReplay,
       registries,
     });
 
@@ -124,7 +190,7 @@ describe("deterministic consequential-command replay", () => {
     );
   });
 
-  it("retains a rejected overwrite and its bounded mitigation as two outcomes", () => {
+  it("retains a rejected overwrite and its bounded mitigation as two outcomes", async () => {
     const stage5Context =
       coffeeScenario.runtime.initialContextByStage[
         ScenarioStageId.RECEIVE_AND_CORRECT
@@ -148,7 +214,7 @@ describe("deterministic consequential-command replay", () => {
         values: [],
       },
     ];
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       snapshot: snapshot(journal, {
         INT_CORRECTION_RECORDED: { encodedValue: 1, attemptCount: 2 },
         INT_DISCREPANCY_INITIAL_SUBMITTED: {
@@ -163,6 +229,7 @@ describe("deterministic consequential-command replay", () => {
       initialDomain: initialSeededDomain(),
       scenario: coffeeScenario,
       configuration: GUIDED_PRESET,
+      ...cryptographicReplay,
       registries,
     });
 
@@ -227,11 +294,12 @@ describe("deterministic consequential-command replay", () => {
       encodeTc3Attempt(snapshot(journal, {}), schema),
       schema,
     );
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       snapshot: persisted,
       initialDomain: certified.getState(),
       scenario: coffeeScenario,
       configuration: GUIDED_PRESET,
+      ...cryptographicReplay,
       registries,
     });
 
@@ -316,11 +384,12 @@ describe("deterministic consequential-command replay", () => {
         attemptCount: 1,
       },
     };
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       snapshot: snapshot(journal, expectedDecisions),
       initialDomain,
       scenario: coffeeScenario,
       configuration: GUIDED_PRESET,
+      ...cryptographicReplay,
       registries,
     });
 

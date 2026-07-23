@@ -221,6 +221,12 @@ export const challengeAScenario: ScenarioDefinition = {
         sourceAssetId: primaryPackagedLotId,
       },
     },
+    commandContextByAction: {
+      ...transformed.runtime.commandContextByAction,
+      // Challenge A demonstrates a genuine signature from a
+      // scenario-controlled but unrecognized educational identity.
+      SUSPICIOUS_CERTIFICATE: "CTX_UNRECOGNIZED_CERTIFIER",
+    },
     mitigationCommandTemplates: {
       ANCHOR_CERTIFICATE: remediatedAnchor,
     },

@@ -34,7 +34,24 @@ vi.mock("../app/providers/locale-provider", () => ({
 }));
 
 vi.mock("../app/providers/scenario-provider", () => ({
-  useScenario: () => ({ scenario: { organizations: [] } }),
+  useScenario: () => ({
+    scenario: {
+      organizations: [],
+      runtime: {
+        commandContextByAction: {
+          CREATE_BATCH: "CTX_PRODUCER",
+        },
+        trustedContexts: [
+          {
+            contextId: "CTX_PRODUCER",
+            actorId: "ACT_PRODUCER_MANAGER",
+            organizationId: "ORG_PRODUCER_COOP",
+            roleId: "PRODUCER_MANAGER",
+          },
+        ],
+      },
+    },
+  }),
 }));
 
 describe("transaction submission failures", () => {

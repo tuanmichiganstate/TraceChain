@@ -109,11 +109,12 @@ proves the primitive against the FIPS 180-4 vectors.
 
 **Do not weaken any of that without changing the copy in the same commit.** What
 is real: block, transaction, asset-state and document-content hashes; the chain
-linkage; integrity verification; canonical serialization. What is simulated and
-labelled as such: signatures, endorsements, organization identity, the network
-and ordering service. Absent entirely: proof of work, mining, cryptocurrency,
-and any Merkle tree — a block commits to the flat list of its transaction
-digests.
+linkage; integrity verification; canonical serialization; Ed25519 signing and
+signature verification over canonical transaction proposals. What is simulated
+and labelled as such: organizational identity, educational key custody,
+certificate issuance, endorsements, the network and ordering service. Absent
+entirely: proof of work, mining, cryptocurrency, and any Merkle tree — a block
+commits to the flat list of its transaction digests.
 
 One subtlety if you touch hashing: a transaction's digest fixes its timestamp at
 **ordering**, not at sealing. Reconstruct the payload from `orderedAt ??

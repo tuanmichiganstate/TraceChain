@@ -232,6 +232,36 @@ export function AnchorCertificateStage(): ReactNode {
 
       {decisionResolved ? (
         <>
+          {packageConfiguration?.configuration.technicalFeatures
+            .digitalSignatures ? (
+            <TransactionAction
+              decisionId="INT_SUSPICIOUS_CERTIFICATE_ATTEMPT"
+              actionId="SUSPICIOUS_CERTIFICATE"
+              labelKey="stage.anchorCertificate.signatureInspectionAction"
+              summary={[
+                [
+                  "field.certificateId",
+                  <code key="c">{certificate.certificateId}</code>,
+                ],
+                [
+                  "signature.authorizationQuestionLabel",
+                  t("stage.anchorCertificate.signatureInspectionPurpose"),
+                ],
+              ]}
+              buildCommand={() =>
+                runtimeCommand<IssueCertificateCommand>(
+                  scenario,
+                  "SUSPICIOUS_CERTIFICATE",
+                )
+              }
+              context={commandContext(
+                scenario,
+                "SUSPICIOUS_CERTIFICATE",
+              )}
+              allowRejectedRetry={false}
+            />
+          ) : null}
+
           <TransactionAction
             decisionId="INT_CERTIFICATE_ANCHORED_TRANSACTION"
             actionId="ANCHOR_CERTIFICATE"

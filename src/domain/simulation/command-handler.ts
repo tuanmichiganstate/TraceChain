@@ -16,6 +16,7 @@ import type {
   SimulationRuntimeState,
   TrustedExecutionContext,
 } from "./types";
+import type { SignatureTrustEvidence } from "../../crypto/signatures/types";
 
 export function createSimulationRuntimeState(domain: DomainState): SimulationRuntimeState {
   return {
@@ -146,6 +147,7 @@ function rejectedOutcome(
   validation: SimulationCommandOutcome["validation"] = null,
   transaction: Extract<SimulationCommandOutcome, { readonly isAccepted: false }>["transaction"] =
     null,
+  signatureEvidence?: SignatureTrustEvidence,
 ): SimulationCommandOutcome {
   const auditEvent: AttemptAuditEvent = {
     kind: "COMMAND_REJECTED",
@@ -158,6 +160,7 @@ function rejectedOutcome(
     occurredAt: environment.clock.now(),
     submittedCommand: command,
     validationFailures: failures,
+    ...(signatureEvidence === undefined ? {} : { signatureEvidence }),
   };
   const processed = {
     isAccepted: false,
@@ -165,6 +168,7 @@ function rejectedOutcome(
     auditEvent,
     transaction,
     validation,
+    ...(signatureEvidence === undefined ? {} : { signatureEvidence }),
   } as const;
   const nextState: SimulationRuntimeState = {
     ...runtime,
@@ -184,17 +188,36 @@ export function handleSimulationCommand(options: {
   readonly ledger: SimulatedLedger;
   readonly registries: ValidationRegistries;
   readonly environment: SimulationEnvironment;
+  readonly signatureEvidence?: SignatureTrustEvidence;
+  readonly signatureFailures?: readonly AttemptValidationFailure[];
 }): SimulationCommandOutcome {
-  const { runtime, command, trustedContext, ledger, registries, environment } = options;
+  const {
+    runtime,
+    command,
+    trustedContext,
+    ledger,
+    registries,
+    environment,
+    signatureEvidence,
+  } = options;
   const duplicate = runtime.outcomesByCommandId[command.metadata.commandId];
   if (duplicate !== undefined) return { ...duplicate, state: runtime };
 
   const boundaryFailures = [
     ...contextFailures(command, trustedContext),
     ...versionFailures(command, runtime.domain),
+    ...(options.signatureFailures ?? []),
   ];
   if (boundaryFailures.length > 0) {
-    return rejectedOutcome(runtime, command, boundaryFailures, environment);
+    return rejectedOutcome(
+      runtime,
+      command,
+      boundaryFailures,
+      environment,
+      null,
+      null,
+      signatureEvidence,
+    );
   }
 
   const transaction = ledger.submitCommand(
@@ -205,6 +228,7 @@ export function handleSimulationCommand(options: {
       organizationId: trustedContext.organizationId,
     },
     registries,
+    signatureEvidence,
   );
 
   if (!transaction.isAccepted) {
@@ -221,6 +245,7 @@ export function handleSimulationCommand(options: {
       environment,
       transaction.validation,
       transaction.transaction,
+      signatureEvidence,
     );
   }
 
@@ -254,6 +279,7 @@ export function handleSimulationCommand(options: {
     transaction: transaction.transaction,
     events: [acceptedEvent],
     validation: transaction.validation,
+    ...(signatureEvidence === undefined ? {} : { signatureEvidence }),
   } as const;
   const finalState: SimulationRuntimeState = {
     ...nextState,

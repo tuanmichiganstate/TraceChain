@@ -4,16 +4,23 @@
 
 ```
 Learner action
-   → Command          intent; may be rejected
+   → Command request          intent; identity is not learner-entered
+   → Trusted context          scenario-controlled actor, organization, role
+   → Canonical proposal       scenario, session and state versions bound
+   → Ed25519 verification     cryptographic validity
+   → Authorization            identity, key, organization and role
    → Validation       every applicable rule, no short-circuit
-   → Event            a fact; applying it cannot fail
+   → Domain event or attempt-audit event
    → reduce()         pure, synchronous
    → Hashing          metadata, computed after the reducer
    → Block            sealed, linked to its predecessor
 ```
 
-A command is a *request*. Only an event changes world state, and only the
-reducer applies one. No component mutates state directly.
+A command is a *request*. Only an accepted domain event changes world state,
+and only the reducer applies one. A rejected signed or business command creates
+an attempt-audit event for replay, feedback, scoring and reporting; it never
+enters a block, changes an asset version or contributes to a transaction hash.
+No component mutates state directly.
 
 ## Core entities
 
@@ -82,8 +89,31 @@ At a stage boundary the queue drains into blocks of at most
 rather than hidden: ordering and commitment really are separate steps, and stage
 2 exists to let you watch the second one happen.
 
-A rejected transaction is still recorded — the learner must be able to see why
-it failed — but it never touches world state.
+A rejected attempt is still recorded in the separate attempt-audit history —
+the learner must be able to see why it failed — but it is not a ledger
+transaction and never touches world state.
+
+## Signatures and authorization
+
+`TransactionProposalV1` binds the configuration hash, scenario identity,
+session, command payload, expected asset versions, deterministic proposal ID
+and scenario time. Its canonical bytes are hashed with SHA-256. A
+domain-separated `SignatureStatementV1` binds that proposal digest to the
+scenario-controlled organization, role, key and signing time, then a fixed
+educational key signs the statement with Ed25519.
+
+Verification yields distinct facts:
+
+- whether the signature matches;
+- whether the educational identity is recognized;
+- whether the key is active at scenario time;
+- whether organization and role match trusted context; and
+- whether the scenario's authorization policy permits the command.
+
+None proves the source business claim is true. The key pairs, identity registry
+and certificate-issuance story are inspectable educational fixtures, not
+production PKI. TC3 stores only bounded replay inputs; signatures and the
+resulting evidence are regenerated rather than persisted.
 
 ## Validation
 

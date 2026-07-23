@@ -131,7 +131,6 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
       );
     }
     for (const unavailable of [
-      "digitalSignatures",
       "endorsementPolicies",
       "stateVersionConflicts",
       "merkleLab",
@@ -140,6 +139,15 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
       if (value.technicalFeatures[unavailable] === true) {
         issue(`technicalFeatures.${unavailable}`, "content is not available in this release");
       }
+    }
+    if (
+      value.technicalFeatures.endorsementPolicies === true &&
+      value.technicalFeatures.digitalSignatures !== true
+    ) {
+      issue(
+        "technicalFeatures.endorsementPolicies",
+        "requires digital signatures",
+      );
     }
   }
 

@@ -158,6 +158,36 @@ test.describe("reflow", () => {
     expect(report.scrolls).toBe(false);
   });
 
+  test("expanded signature evidence remains usable at 320 px", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.continue();
+    await activity.submitSoundCertificateDecision();
+    await activity.inspectUnauthorizedCertificateSignature();
+
+    const panel = activity.panel(
+      "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+    );
+    await panel
+      .getByText("Xem bằng chứng kỹ thuật", { exact: true })
+      .click();
+    await expect(
+      panel.getByRole("button", {
+        name: "Sao chép gói bằng chứng xác minh",
+      }),
+    ).toBeVisible();
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
   /**
    * The recall question is the only check whose options carry asset identifiers,
    * and a fieldset -- uniquely among elements -- refuses to shrink below its

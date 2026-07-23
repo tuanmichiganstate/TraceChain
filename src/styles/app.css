@@ -1277,3 +1277,41 @@
   background: var(--colour-warn-soft);
   color: var(--colour-text);
 }
+
+/* ---- Genuine educational signature evidence ---- */
+
+.signature-trust {
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-inline-start: 4px solid var(--colour-navy);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface-sunken);
+}
+
+.signature-trust > :first-child {
+  margin-top: 0;
+}
+
+.signature-trust > :last-child {
+  margin-bottom: 0;
+}
+
+.signature-trust__evidence {
+  margin-top: var(--space-3);
+}
+
+.signature-trust__evidence summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.signature-trust__versions {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.signature-trust .hash {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

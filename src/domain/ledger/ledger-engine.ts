@@ -45,6 +45,7 @@ import {
 import type { HashFunction } from "../../infrastructure/hashing/sha256";
 import { evaluateRules, type RuleEvaluation } from "../rules/registry";
 import type { ValidationRegistries } from "../rules/types";
+import type { SignatureTrustEvidence } from "../../crypto/signatures/types";
 import {
   type DomainState,
   formatBlockId,
@@ -89,6 +90,7 @@ export class SimulatedLedger {
     command: SupplyChainCommand,
     context: CommandContext,
     registries: ValidationRegistries,
+    signatureEvidence?: SignatureTrustEvidence,
   ): TransactionResult {
     const transactionId = formatTransactionId(state.nextTransactionSequence);
     const timestamp = command.scenarioTimestamp;
@@ -134,6 +136,7 @@ export class SimulatedLedger {
       proposedByActorId: context.actorId,
       proposedByOrganizationId: context.organizationId,
       simulatedSignature: signature,
+      ...(signatureEvidence === undefined ? {} : { signatureEvidence }),
       validationResults: validation.results,
       endorsementResults: [],
       createdAt: timestamp,

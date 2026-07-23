@@ -29,6 +29,8 @@ export const OrganizationId = {
 export const ActorId = {
   PRODUCER_MANAGER: "ACT_PRODUCER_MANAGER",
   CERTIFICATION_OFFICER: "ACT_CERTIFICATION_OFFICER",
+  UNRECOGNIZED_CERTIFICATION_OFFICER:
+    "ACT_UNRECOGNIZED_CERTIFICATION_OFFICER",
   LOGISTICS_COORDINATOR: "ACT_LOGISTICS_COORDINATOR",
   PROCESSING_MANAGER: "ACT_PROCESSING_MANAGER",
   DISTRIBUTION_MANAGER: "ACT_DISTRIBUTION_MANAGER",
@@ -142,6 +144,13 @@ export const actors: readonly Actor[] = [
     organizationId: OrganizationId.CERTIFICATION_BODY,
     displayNameKey: "actors.certificationOfficer.name",
     isAuthorized: true,
+  },
+  {
+    actorId: ActorId.UNRECOGNIZED_CERTIFICATION_OFFICER,
+    actorRole: ActorRole.CERTIFICATION_OFFICER,
+    organizationId: OrganizationId.UNRECOGNIZED_CERTIFIER,
+    displayNameKey: "actors.unrecognizedCertificationOfficer.name",
+    isAuthorized: false,
   },
   {
     actorId: ActorId.LOGISTICS_COORDINATOR,

@@ -26,6 +26,7 @@ import type {
 } from "./enums";
 import type { ValidationRuleId } from "./rule-ids";
 import type { DocumentMetadata } from "./document-metadata";
+import type { SignatureTrustEvidence } from "../../crypto/signatures/types";
 
 /** Business actions an organization may be authorized to perform. */
 export type SupplyChainAction = TransactionType;
@@ -139,6 +140,8 @@ export interface LedgerTransaction {
   proposedByActorId: string;
   proposedByOrganizationId: string;
   simulatedSignature: SimulatedSignature;
+  /** Present when the package performed a genuine educational Ed25519 signature. */
+  signatureEvidence?: SignatureTrustEvidence;
   validationResults: readonly ValidationResult[];
   endorsementResults: readonly EndorsementResult[];
   createdAt: string;

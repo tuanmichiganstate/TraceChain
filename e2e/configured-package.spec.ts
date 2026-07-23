@@ -4,6 +4,7 @@ import { installScormApi, peek } from "./scorm-harness";
 import { embedConfiguration, hashConfiguration } from "../src/config/hash";
 import { CHALLENGE_PRESET } from "../src/config/presets";
 import { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
+import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 
 async function installChallengeRuntime(page: Page): Promise<void> {
   await page.route("**/tracechain.config.json", async (route) => {
@@ -16,6 +17,22 @@ async function installChallengeRuntime(page: Page): Promise<void> {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(challengeAScenario),
+    });
+  });
+  await page.route("**/build-info.json", async (route) => {
+    const response = await route.fetch();
+    const buildInformation = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...buildInformation,
+        scenarioHash: sha256Hex(
+          `${JSON.stringify(challengeAScenario, null, 2)}\n`,
+        ),
+      }),
     });
   });
 }
@@ -66,6 +83,28 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await page
     .getByRole("button", { name: "Xem xét bằng chứng về đơn vị cấp" })
     .click();
+  const signatureInspection = activity.panel(
+    "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+  );
+  await signatureInspection
+    .getByRole("button", { name: "Gửi giao dịch lên mạng" })
+    .click();
+  await expect(
+    signatureInspection.getByText(
+      "Công ty Tư vấn Chất lượng Toàn Cầu (chưa được công nhận)",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    signatureInspection.getByText("Không được công nhận", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    signatureInspection.getByRole("button", {
+      name: "Ghi giao dịch vào khối",
+    }),
+  ).toHaveCount(0);
   await activity.submitAndSeal("Ghi nhận tài liệu lên chuỗi");
   await activity.submitAndSeal("Cấp chứng nhận cho lô hàng");
   await activity.continue();
@@ -103,6 +142,18 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await page
     .getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" })
     .click();
+  await page
+    .getByText("Kiểm tra khi nội dung đã ký bị thay đổi")
+    .click();
+  await page
+    .getByRole("button", { name: "Chạy kiểm tra chữ ký" })
+    .click();
+  await expect(page.getByText("Bản gốc: chữ ký hợp lệ")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Bản đã thay đổi: chữ ký ban đầu không còn khớp",
+    ),
+  ).toBeVisible();
   await activity.answer(/Blockchain không ngăn được việc sửa/);
   await activity.classifyGovernanceItems();
   await activity.continue();
@@ -112,6 +163,10 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await page
     .getByRole("button", { name: "Gửi giao dịch lên mạng" })
     .click();
+  await expect(page.getByText("Hợp lệ", { exact: true }).last()).toBeVisible();
+  await expect(
+    page.getByText("Không được phép thực hiện hành động này").last(),
+  ).toBeVisible();
   await expect(
     page.getByText(/vai trò này không có thẩm quyền cam kết lệnh thu hồi/),
   ).toBeVisible();

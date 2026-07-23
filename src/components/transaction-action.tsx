@@ -8,6 +8,9 @@ import { useSimulation } from "../app/providers/simulation-provider";
 import { TransactionPipeline } from "./transaction-pipeline";
 import { ValidationResults } from "./validation-results";
 import { ACTION_ACCEPTED } from "../domain/scenario/answer-codec";
+import type { AttemptAuditEvent } from "../domain/simulation/types";
+import { SignatureTrustSummary } from "./signature-trust-summary";
+import { useOptionalConfiguration } from "../app/providers/configuration-provider";
 
 /**
  * One transaction: submit it, watch the lifecycle, read the rules, seal it.
@@ -32,6 +35,7 @@ export function TransactionAction({
   context,
   isFirstOfType = false,
   recordDecision = true,
+  allowRejectedRetry = true,
   onCommitted,
 }: {
   /** Persisted action identifier; scoring is declared separately by the scenario. */
@@ -46,10 +50,19 @@ export function TransactionAction({
   isFirstOfType?: boolean;
   /** False when an earlier atomic consequential submission owns this score. */
   recordDecision?: boolean;
+  /** False for bounded audit demonstrations whose first result is retained. */
+  allowRejectedRetry?: boolean;
   onCommitted?: () => void;
 }): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
   const { state, submitCommand, sealPendingBlock } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
+  const trustedRoleId = scenario.runtime.trustedContexts.find(
+    (candidate) =>
+      candidate.contextId ===
+      scenario.runtime.commandContextByAction[actionId],
+  )?.roleId;
   const [transactionId, setTransactionId] = useState<string | null>(() => {
     if (
       recordDecision &&
@@ -71,6 +84,23 @@ export function TransactionAction({
     );
   });
   const [validationReceipt, setValidationReceipt] = useState<LedgerTransaction | null>(null);
+  const [auditReceipt, setAuditReceipt] = useState<AttemptAuditEvent | null>(
+    () => {
+      if (state.decisions[decisionId]?.encodedValue !== 0) return null;
+      const commandType = buildCommand().commandType;
+      return (
+        [...state.simulation.attemptAuditEvents]
+          .reverse()
+          .find(
+            (event) =>
+              event.submittedCommand.payload.commandType === commandType &&
+              event.actorId === context.actorId &&
+              event.organizationId === context.organizationId &&
+              event.roleId === trustedRoleId,
+          ) ?? null
+      );
+    },
+  );
   const [isSubmitting, setSubmitting] = useState(false);
   const [submissionFailed, setSubmissionFailed] = useState(false);
   const [isDetailOpen, setDetailOpen] = useState(isFirstOfType);
@@ -79,6 +109,7 @@ export function TransactionAction({
     validationReceipt ??
     (transactionId === null ? undefined : state.domain.transactionsById[transactionId]);
   const isRejected = transaction?.transactionStatus === TransactionStatus.REJECTED;
+  const rejected = isRejected || auditReceipt !== null;
   const isOrdered = transaction?.transactionStatus === TransactionStatus.ORDERED;
   const isCommitted = transaction?.transactionStatus === TransactionStatus.COMMITTED;
 
@@ -90,6 +121,7 @@ export function TransactionAction({
         recordDecision,
       });
       setValidationReceipt(outcome.transaction);
+      setAuditReceipt(outcome.isAccepted ? null : outcome.auditEvent);
       setTransactionId(
         outcome.isAccepted && outcome.transaction !== null
           ? outcome.transaction.transactionId
@@ -122,7 +154,14 @@ export function TransactionAction({
               </div>
             ))}
           </dl>
-          <p className="muted">{t("transaction.signatureNotice")}</p>
+          <p className="muted">
+            {t(
+              packageConfiguration?.configuration.technicalFeatures
+                .digitalSignatures
+                ? "transaction.signatureNoticeReal"
+                : "transaction.signatureNotice",
+            )}
+          </p>
         </>
       ) : (
         <button
@@ -134,7 +173,7 @@ export function TransactionAction({
         </button>
       )}
 
-      {transaction === undefined ? (
+      {transaction === undefined && auditReceipt === null ? (
         <button
           type="button"
           className="button button--primary"
@@ -151,6 +190,23 @@ export function TransactionAction({
         </p>
       ) : null}
 
+      {transaction?.signatureEvidence !== undefined ? (
+        <SignatureTrustSummary evidence={transaction.signatureEvidence} />
+      ) : auditReceipt?.signatureEvidence !== undefined ? (
+        <SignatureTrustSummary evidence={auditReceipt.signatureEvidence} />
+      ) : null}
+
+      {auditReceipt !== null && transaction === undefined ? (
+        <section className="validation-results" aria-live="polite">
+          <h4>{t("validation.heading")}</h4>
+          <ul>
+            {auditReceipt.validationFailures.map((failure) => (
+              <li key={failure.code}>{t(failure.messageKey)}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {transaction !== undefined ? (
         <>
           <TransactionPipeline
@@ -162,19 +218,20 @@ export function TransactionAction({
           />
           <ValidationResults
             results={transaction.validationResults}
-            isValid={!isRejected}
+            isValid={!rejected}
           />
 
           {transaction.endorsementResults.length > 0 ? (
             <EndorsementList transactionId={transaction.transactionId} />
           ) : null}
 
-          {isRejected ? (
+          {rejected ? (
             <button
               type="button"
               className="button button--secondary"
               onClick={() => {
                 setValidationReceipt(null);
+                setAuditReceipt(null);
                 setTransactionId(null);
               }}
             >
@@ -199,6 +256,18 @@ export function TransactionAction({
             </p>
           ) : null}
         </>
+      ) : null}
+
+      {transaction === undefined &&
+      auditReceipt !== null &&
+      allowRejectedRetry ? (
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={() => setAuditReceipt(null)}
+        >
+          {t("transaction.edit")}
+        </button>
       ) : null}
     </section>
   );

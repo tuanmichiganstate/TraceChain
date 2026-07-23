@@ -205,9 +205,18 @@ function TransactionDetail({
           </dd>
         </div>
         <div className="asset-card__row">
-          <dt>{t("transaction.signatureLabel")}</dt>
+          <dt>
+            {t(
+              transaction.signatureEvidence === undefined
+                ? "transaction.signatureLabel"
+                : "transaction.signatureLabelReal",
+            )}
+          </dt>
           <dd>
-            <span className="hash">{transaction.simulatedSignature.signedPayloadHash}</span>
+            <span className="hash">
+              {transaction.signatureEvidence?.proposalDigest ??
+                transaction.simulatedSignature.signedPayloadHash}
+            </span>
           </dd>
         </div>
       </dl>

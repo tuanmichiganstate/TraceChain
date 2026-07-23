@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
 import { App } from "./app";
@@ -10,8 +16,9 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../scenarios/challenge-a/scenario";
 import { ConfigurationProvider } from "./providers/configuration-provider";
-import { CHALLENGE_PRESET } from "../config/presets";
+import { CHALLENGE_PRESET, GUIDED_PRESET } from "../config/presets";
 import { hashConfiguration } from "../config/hash";
+import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
 
 /**
  * THE MILESTONE 5 EXIT CONDITION.
@@ -39,9 +46,28 @@ function ChallengeAppUnderTest(): React.ReactElement {
     <ConfigurationProvider
       configuration={CHALLENGE_PRESET}
       configurationHash={hashConfiguration(CHALLENGE_PRESET)}
+      cryptographicRuntime={coffeeCryptographicRuntime}
     >
       <LocaleProvider locale="vi">
         <ScenarioProvider scenario={challengeAScenario}>
+          <SimulationProvider>
+            <App />
+          </SimulationProvider>
+        </ScenarioProvider>
+      </LocaleProvider>
+    </ConfigurationProvider>
+  );
+}
+
+function GuidedSignatureAppUnderTest(): React.ReactElement {
+  return (
+    <ConfigurationProvider
+      configuration={GUIDED_PRESET}
+      configurationHash={hashConfiguration(GUIDED_PRESET)}
+      cryptographicRuntime={coffeeCryptographicRuntime}
+    >
+      <LocaleProvider locale="vi">
+        <ScenarioProvider scenario={coffeeScenario}>
           <SimulationProvider>
             <App />
           </SimulationProvider>
@@ -63,15 +89,21 @@ async function submitAndSeal(user: User, actionName: string): Promise<void> {
   const panel = (
     await screen.findByRole("heading", { name: actionName, level: 3 })
   ).closest("section") as HTMLElement;
-  await user.click(within(panel).getByRole("button", { name: "Gửi giao dịch lên mạng" }));
-  const livePanel = (
-    await screen.findByRole("heading", { name: actionName, level: 3 })
-  ).closest("section") as HTMLElement;
-  await user.click(
-    await within(livePanel).findByRole("button", {
+  const submit = within(panel).getByRole("button", {
+    name: "Gửi giao dịch lên mạng",
+  });
+  await waitFor(() => expect(submit).not.toBeDisabled());
+  await user.click(submit);
+  let seal: HTMLElement | undefined;
+  await waitFor(() => {
+    const submittedPanel = screen
+      .getByRole("heading", { name: actionName, level: 3 })
+      .closest("section") as HTMLElement;
+    seal = within(submittedPanel).getByRole("button", {
       name: "Ghi giao dịch vào khối",
-    }),
-  );
+    });
+  }, { timeout: 30_000 });
+  await user.click(seal as HTMLElement);
 }
 
 async function answer(user: User, optionPattern: RegExp): Promise<void> {
@@ -165,7 +197,10 @@ describe("the whole activity in the browser", () => {
     window.localStorage.clear();
   });
 
-  afterEach(() => uninstall());
+  afterEach(() => {
+    cleanup();
+    uninstall();
+  });
 
   it("carries a learner from orientation to a submitted result", async () => {
     const user = userEvent.setup();
@@ -329,6 +364,63 @@ describe("the whole activity in the browser", () => {
     expect(within(panel).getByText("Giao dịch chưa được chấp nhận. Vui lòng xem các quy tắc chưa thỏa mãn bên dưới.")).toBeInTheDocument();
   }, 60_000);
 
+  it("distinguishes a valid transporter signature from certificate authority", async () => {
+    const user = userEvent.setup();
+    render(<GuidedSignatureAppUnderTest />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }),
+    );
+    await answer(user, /Không\. Blockchain giúp xác định/);
+    await advance(user);
+    await submitAndSeal(user, "Thông tin lô hàng");
+    await advance(user);
+    await submitSoundCertificateDecision(user);
+
+    const inspection = (
+      await screen.findByRole("heading", {
+        name: "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+        level: 3,
+      })
+    ).closest("section") as HTMLElement;
+    await user.click(
+      within(inspection).getByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      }),
+    );
+
+    expect(
+      await within(inspection).findByText("Công ty Vận tải Liên Việt"),
+    ).toBeInTheDocument();
+    expect(within(inspection).getByText("Hợp lệ")).toBeInTheDocument();
+    expect(within(inspection).getByText("Được công nhận")).toBeInTheDocument();
+    expect(
+      within(inspection).getByText(
+        "Không được phép thực hiện hành động này",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(inspection).queryByRole("button", {
+        name: "Ghi giao dịch vào khối",
+      }),
+    ).toBeNull();
+    expect(
+      within(inspection).queryByRole("button", { name: "Chỉnh sửa" }),
+    ).toBeNull();
+
+    await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
+    await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
+    const authorized = (
+      screen.getByRole("heading", {
+        name: "Cấp chứng nhận cho lô hàng",
+        level: 3,
+      })
+    ).closest("section") as HTMLElement;
+    expect(
+      within(authorized).getByText("Được phép thực hiện hành động này"),
+    ).toBeInTheDocument();
+  }, 60_000);
+
   it("runs curated Challenge A with delayed feedback and a two-step trusted handoff", async () => {
     const user = userEvent.setup();
     render(<ChallengeAppUnderTest />);
@@ -377,6 +469,25 @@ describe("the whole activity in the browser", () => {
         name: "Xem xét bằng chứng về đơn vị cấp",
       }),
     );
+    const inspection = (
+      screen.getByRole("heading", {
+        name: "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+        level: 3,
+      })
+    ).closest("section") as HTMLElement;
+    await user.click(
+      within(inspection).getByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      }),
+    );
+    expect(
+      await within(inspection).findByText(
+        "Công ty Tư vấn Chất lượng Toàn Cầu (chưa được công nhận)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(inspection).getByText("Không được công nhận"),
+    ).toBeInTheDocument();
     await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
     await advance(user);
@@ -418,6 +529,20 @@ describe("the whole activity in the browser", () => {
     await user.click(
       screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }),
     );
+    await user.click(
+      screen.getByText("Kiểm tra khi nội dung đã ký bị thay đổi"),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Chạy kiểm tra chữ ký" }),
+    );
+    expect(
+      await screen.findByText("Bản gốc: chữ ký hợp lệ"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Bản đã thay đổi: chữ ký ban đầu không còn khớp",
+      ),
+    ).toBeInTheDocument();
     await answer(user, /Blockchain không ngăn được việc sửa/);
     await answerClassification(user);
     await advance(user);
@@ -438,6 +563,9 @@ describe("the whole activity in the browser", () => {
     await user.click(
       screen.getByRole("button", { name: "Gửi giao dịch lên mạng" }),
     );
+    await screen.findByText(
+      "Không được phép thực hiện hành động này",
+    );
     await user.click(
       await screen.findByRole("button", {
         name: "Yêu cầu xem xét sự cố nội bộ",
@@ -453,6 +581,9 @@ describe("the whole activity in the browser", () => {
         name: "Chuyển vụ việc đã xem xét ra bên ngoài",
       }),
     );
+    await screen.findByText(
+      "Thanh tra cơ quan quản lý của Cơ quan Quản lý An toàn Thực phẩm",
+    );
     await submitAndSeal(
       user,
       "Gửi lại lệnh thu hồi với thẩm quyền phù hợp",
@@ -465,6 +596,9 @@ describe("the whole activity in the browser", () => {
     expect(
       await screen.findByRole("heading", { name: "Kết quả hoạt động" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/chữ ký hợp lệ nhưng danh tính tổ chức không được công nhận/),
+    ).toBeInTheDocument();
   }, 120_000);
 });
 
@@ -476,7 +610,10 @@ describe("the reference panels", () => {
     window.localStorage.clear();
   });
 
-  afterEach(() => uninstall());
+  afterEach(() => {
+    cleanup();
+    uninstall();
+  });
 
   it("exposes the ledger, history, traceability and glossary as keyboard tabs", async () => {
     const user = userEvent.setup();

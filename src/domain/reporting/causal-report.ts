@@ -12,6 +12,7 @@ import {
 } from "../simulation/consequential-decisions";
 import { JournalOpcode } from "../simulation/command-journal";
 import type { SimulationRuntimeState } from "../simulation/types";
+import { TransactionStatus, TransactionType } from "../types/enums";
 
 export interface DiagnosticDimensions {
   readonly traceability: number;
@@ -151,6 +152,73 @@ export function buildCausalReport(options: {
         compliance -= 8;
       }
     }
+  }
+
+  const signatureAudits = options.runtime.attemptAuditEvents.filter(
+    (event) => event.signatureEvidence !== undefined,
+  );
+  if (
+    signatureAudits.some(
+      (event) => event.signatureEvidence?.signatureValid === false,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.signatureInvalidRejected",
+    });
+  }
+  if (
+    signatureAudits.some(
+      (event) =>
+        event.signatureEvidence?.signatureValid === true &&
+        event.signatureEvidence.authorization.recognizedIdentity === false,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.signatureUnknownRejected",
+    });
+  }
+  if (
+    signatureAudits.some(
+      (event) =>
+        event.signatureEvidence?.signatureValid === true &&
+        event.signatureEvidence.authorization.recognizedIdentity === true &&
+        event.signatureEvidence.authorization.authorized === false,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.signatureUnauthorizedRejected",
+    });
+  }
+  const signedTransactions = Object.values(
+    options.runtime.domain.transactionsById,
+  ).filter(
+    (transaction) =>
+      transaction.signatureEvidence !== undefined &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
+  );
+  if (
+    signedTransactions.some(
+      (transaction) =>
+        transaction.transactionType === TransactionType.ISSUE_CERTIFICATE &&
+        transaction.signatureEvidence?.signatureValid === true &&
+        transaction.signatureEvidence.authorization.authorized,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.certificateSignatureAccepted",
+    });
+  }
+  if (
+    signedTransactions.some(
+      (transaction) =>
+        transaction.transactionType === TransactionType.RECALL_BATCH &&
+        transaction.signatureEvidence?.signatureValid === true &&
+        transaction.signatureEvidence.authorization.authorized,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.recallSignatureAccepted",
+    });
   }
 
   const discrepancyEntry = options.journal.find(

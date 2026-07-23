@@ -11,3 +11,6 @@ export { validateConfiguration } from "../src/config/validation";
 export { validateScenario } from "../src/domain/scenario/validate-scenario";
 export { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 export { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
+export { coffeeCryptographicRuntime } from "../src/scenarios/coffee-traceability/cryptographic-runtime";
+export { validateCryptographicRuntime } from "../src/crypto/signatures/validation";
+export { NobleEd25519Provider } from "../src/crypto/signatures/noble-ed25519-provider";

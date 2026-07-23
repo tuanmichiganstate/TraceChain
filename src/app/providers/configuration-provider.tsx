@@ -1,9 +1,11 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { TraceChainConfiguration } from "../../config/types";
+import type { CryptographicRuntime } from "../../crypto/signatures/types";
 
 interface ConfigurationContextValue {
   readonly configuration: TraceChainConfiguration;
   readonly configurationHash: string;
+  readonly cryptographicRuntime: CryptographicRuntime | null;
 }
 
 const ConfigurationContext = createContext<ConfigurationContextValue | null>(null);
@@ -11,10 +13,16 @@ const ConfigurationContext = createContext<ConfigurationContextValue | null>(nul
 export function ConfigurationProvider({
   configuration,
   configurationHash,
+  cryptographicRuntime = null,
   children,
-}: ConfigurationContextValue & { readonly children: ReactNode }): ReactNode {
+}: Omit<ConfigurationContextValue, "cryptographicRuntime"> & {
+  readonly cryptographicRuntime?: CryptographicRuntime | null;
+  readonly children: ReactNode;
+}): ReactNode {
   return (
-    <ConfigurationContext.Provider value={{ configuration, configurationHash }}>
+    <ConfigurationContext.Provider
+      value={{ configuration, configurationHash, cryptographicRuntime }}
+    >
       {children}
     </ConfigurationContext.Provider>
   );

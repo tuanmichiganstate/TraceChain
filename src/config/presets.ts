@@ -8,7 +8,7 @@ const COMMON = {
   referenceWorkspace: "enabled",
   technicalFeatures: {
     hashInspection: true,
-    digitalSignatures: false,
+    digitalSignatures: true,
     endorsementPolicies: false,
     stateVersionConflicts: false,
     merkleLab: false,

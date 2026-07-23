@@ -83,6 +83,13 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
       OrganizationId.REGULATOR,
       "REGULATORY_AUDITOR",
     ),
+    // Append-only because TC3 persists trusted contexts by positional index.
+    context(
+      "CTX_UNRECOGNIZED_CERTIFIER",
+      ActorId.UNRECOGNIZED_CERTIFICATION_OFFICER,
+      OrganizationId.UNRECOGNIZED_CERTIFIER,
+      "CERTIFICATION_OFFICER",
+    ),
   ],
   initialContextByStage: {
     [ScenarioStageId.ORIENTATION]: "CTX_PRODUCER",
@@ -110,7 +117,10 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
     CREATE_BATCH: "CTX_PRODUCER",
     ANCHOR_CERTIFICATE: "CTX_CERTIFIER",
     ISSUE_CERTIFICATE: "CTX_CERTIFIER",
-    SUSPICIOUS_CERTIFICATE: "CTX_CERTIFIER",
+    // This authored context creates a genuine, recognized transporter
+    // signature that is cryptographically valid but unauthorized for issuing
+    // a quality certificate.
+    SUSPICIOUS_CERTIFICATE: "CTX_LOGISTICS",
     TRANSFER_CUSTODY: "CTX_PRODUCER",
     RECORD_TRANSPORT: "CTX_LOGISTICS",
     RECEIVE_BATCH: "CTX_PROCESSOR",
@@ -126,7 +136,7 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
     CREATE_BATCH: createBatchCommand(),
     ANCHOR_CERTIFICATE: anchorCertificateCommand(),
     ISSUE_CERTIFICATE: issueCertificateCommand(),
-    SUSPICIOUS_CERTIFICATE: anchorCertificateCommand(OrganizationId.UNRECOGNIZED_CERTIFIER),
+    SUSPICIOUS_CERTIFICATE: issueCertificateCommand(),
     TRANSFER_CUSTODY: transferCustodyCommand(false),
     RECORD_TRANSPORT: recordTransportConditionCommand(),
     RECEIVE_BATCH: receiveBatchCommand(),

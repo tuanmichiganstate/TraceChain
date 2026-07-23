@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- Genuine deterministic Ed25519 signing and verification for canonical
+  transaction proposals, behind one cross-browser provider and independently
+  verifiable with `npm run verify:signature-evidence`.
+- Scenario-authored identity, key-status and authorization checks at the
+  trusted command boundary. Rejected signed attempts remain audit history and
+  never enter the ledger.
+- Compact learner-facing trust evidence in stages 3 and 9, plus the optional
+  stage 8 signature-tamper demonstration. Educational identities, key custody
+  and certificate issuance remain explicitly simulated.
+- External, hashed identity, educational-key and authorization-policy runtime
+  files so Guided and Challenge continue sharing one static application build.
+
 ### Fixed
 
 - **A hint claimed to cost more than it could after a failed attempt.** The

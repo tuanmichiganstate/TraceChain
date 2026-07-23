@@ -26,6 +26,7 @@ import recallInvestigationImage from "../../assets/illustrations/recall-investig
 import { buildCausalReport } from "../../domain/reporting/causal-report";
 import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
+import { SignatureTrustSummary } from "../../components/signature-trust-summary";
 
 /**
  * Stage 9. Trace the contamination forward, recall exactly what it reached, and
@@ -84,6 +85,13 @@ export function RecallAndDebriefStage(): ReactNode {
     recallTransaction?.transactionStatus === TransactionStatus.COMMITTED;
   const recallOrdered =
     recallTransaction?.transactionStatus === TransactionStatus.ORDERED;
+  const rejectedRecallEvidence = [...state.simulation.attemptAuditEvents]
+    .reverse()
+    .find(
+      (event) =>
+        event.submittedCommand.payload.commandType ===
+        TransactionType.RECALL_BATCH,
+    )?.signatureEvidence;
   const activeContextId = activeTrustedContext.contextId;
   const availableHandoffs = scenario.runtime.roleHandoffs.filter(
     (handoff) =>
@@ -114,7 +122,11 @@ export function RecallAndDebriefStage(): ReactNode {
             type="button"
             className="button button--secondary"
             key={handoff.handoffId}
-            disabled={state.isReadOnly || handoffPending}
+            disabled={
+              state.isReadOnly ||
+              state.saveStatus === "SAVING" ||
+              handoffPending
+            }
             onClick={() => {
               setHandoffPending(true);
               void requestRoleHandoff(handoff.handoffId).finally(() =>
@@ -262,10 +274,17 @@ export function RecallAndDebriefStage(): ReactNode {
             />
           ) : !isAuthorizedContext ? (
             <>
+              {rejectedRecallEvidence !== undefined ? (
+                <SignatureTrustSummary evidence={rejectedRecallEvidence} />
+              ) : null}
               <p>{t("stage.recallAndDebrief.unauthorizedFeedback")}</p>
               <p className="muted">{t("stage.recallAndDebrief.handoffPrompt")}</p>
               {handoffControls}
             </>
+          ) : handoffPending ? (
+            <p className="muted" role="status">
+              {t("status.saving")}
+            </p>
           ) : (
             <TransactionAction
               decisionId="INT_RECALL_COMMITTED"

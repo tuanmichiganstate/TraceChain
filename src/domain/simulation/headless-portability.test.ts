@@ -44,6 +44,8 @@ import {
   compactDiscrepancyDecision,
 } from "./consequential-decisions";
 import { replayCommandJournal } from "./replay-journal";
+import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
+import { NobleEd25519Provider } from "../../crypto/signatures/noble-ed25519-provider";
 
 const scenario = coffeeScenario;
 const configuration = GUIDED_PRESET;
@@ -256,18 +258,24 @@ describe("future-portable headless attempt", () => {
       registries,
     ).state;
 
-    const replayed = replayCommandJournal({
+    const replayed = await replayCommandJournal({
       snapshot: restored,
       initialDomain,
       scenario,
       configuration,
+      configurationHash,
+      cryptographicRuntime: coffeeCryptographicRuntime,
+      signatureProvider: new NobleEd25519Provider(),
       registries,
     });
-    const repeated = replayCommandJournal({
+    const repeated = await replayCommandJournal({
       snapshot: restored,
       initialDomain,
       scenario,
       configuration,
+      configurationHash,
+      cryptographicRuntime: coffeeCryptographicRuntime,
+      signatureProvider: new NobleEd25519Provider(),
       registries,
     });
 

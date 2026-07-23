@@ -43,6 +43,60 @@ test.describe("saving and resuming", () => {
     await expect(page.getByText("100 kg", { exact: true }).last()).toBeVisible();
   });
 
+  test("replays a rejected signed proposal with byte-identical evidence", async ({
+    page,
+  }) => {
+    await installScormApi(page);
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.continue();
+    await activity.submitSoundCertificateDecision();
+    await activity.inspectUnauthorizedCertificateSignature();
+
+    const panel = activity.panel(
+      "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+    );
+    await panel
+      .getByText("Xem bằng chứng kỹ thuật", { exact: true })
+      .click();
+    const digest = await panel.locator("code.hash").first().innerText();
+    const saved = await peek(page, "cmi.suspend_data");
+    expect(saved).not.toBe("");
+
+    await installScormApi(page, {
+      initialValues: {
+        "cmi.suspend_data": saved,
+        "cmi.core.entry": "resume",
+      },
+    });
+    await page.goto("/");
+    await activity.resumePrevious();
+    await activity.expectStage(3);
+
+    const replayedPanel = activity.panel(
+      "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+    );
+    await expect(
+      replayedPanel.getByText("Không được phép thực hiện hành động này"),
+    ).toBeVisible();
+    await replayedPanel
+      .getByText("Xem bằng chứng kỹ thuật", { exact: true })
+      .click();
+    await expect(replayedPanel.locator("code.hash").first()).toHaveText(
+      digest,
+    );
+    await expect(
+      replayedPanel.getByRole("button", {
+        name: "Ghi giao dịch vào khối",
+      }),
+    ).toHaveCount(0);
+  });
+
   /**
    * A hint is persisted as one bit in the hint bitmap, and the credit it caps is
    * recomputed from the scenario's declared targets on load rather than stored.

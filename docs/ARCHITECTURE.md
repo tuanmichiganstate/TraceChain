@@ -5,7 +5,9 @@
 ```
 Presentation (React)
     ↓  commands only, never direct state mutation
-Application services (session reducer, providers)
+Application services (orchestrator, session reducer, providers)
+    ↓  canonical proposal, signature verification, authorization
+Cryptographic services                 ← no React or SCORM
     ↓
 Domain model and rule engine          ← pure, synchronous, no React
     ↓
@@ -35,6 +37,15 @@ SCORM session time and elapsed-time analytics.
 
 **Nothing is persisted that can be recomputed.** No asset snapshots, no
 transaction bodies, no hashes, no blocks. Only the learner's decisions.
+Ed25519 signature bytes and verification results are also reconstructed from
+the compact command journal, fixed educational keys, deterministic clock and
+trusted context.
+
+**Cryptographic validity is not business authority.** The signing provider
+proves that a fixed educational key approved one canonical proposal.
+Identity recognition, key status, organization permission and role permission
+are evaluated separately. Only the verification service can construct a
+verified command envelope; React never supplies a `verified` claim.
 
 **Components depend on the adapter interface, not on arrays.** That is what
 lets `ServerLedgerAdapter` and `FabricLedgerAdapter` drop in later. See
@@ -86,6 +97,21 @@ can re-litigate it with the facts rather than guess.
 verified against the published FIPS 180-4 vectors *and* differentially against
 Node's OpenSSL-backed implementation across block boundaries and multi-byte
 UTF-8. `TextEncoder`, unlike `crypto.subtle`, has no secure-context requirement.
+
+### 1a. Pinned Noble Ed25519 provider instead of native Web Crypto
+
+The capability spike imported one fixed Ed25519 key, signed one message,
+verified it, rejected a modified message and compared repeated signature bytes.
+Native Web Crypto did not pass the repository's existing WebKit and Mobile
+Safari projects reliably, so TraceChain uses pinned
+`@noble/ed25519@3.1.0` behind `SignatureProvider` in every environment. There
+is no browser-specific algorithm switch.
+
+The provider still performs genuine Ed25519. RFC 8032 known-answer vectors,
+the four-browser matrix, deterministic replay and a Node `crypto` verifier
+independently hold the boundary. Fixed private keys ship in an external
+educational fixture; package copy says plainly that they are inspectable and
+must never be used as production credentials.
 
 ### 2. Nine stages instead of ten (§8)
 
@@ -161,7 +187,9 @@ ledger*, is unchanged and is asserted by a test.
   `lesson_status` vocabulary, and the session-time format. A suspend-data
   overflow fails CI rather than surfacing in front of a class.
 - **Suspend-data budget test.** A pessimistic full attempt must encode to under
-  3800 characters. Currently ~180.
+  3800 characters. The current authored maxima are 1980 characters for Guided
+  and 1985 for Challenge A; actual completed Moodle acceptance attempts used
+  1041 and 1096 characters respectively.
 - **One `aria-live` announcement per transaction**, not seven. The animated
   pipeline indicator is `aria-hidden`; the steps are a static ordered list.
 

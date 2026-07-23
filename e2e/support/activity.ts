@@ -130,6 +130,28 @@ export class Activity {
       .click();
   }
 
+  async inspectUnauthorizedCertificateSignature(): Promise<void> {
+    const panel = this.panel(
+      "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+    );
+    await panel
+      .getByRole("button", { name: "Gửi giao dịch lên mạng" })
+      .click();
+    await expect(
+      panel.getByText("Công ty Vận tải Liên Việt", { exact: true }),
+    ).toBeVisible();
+    await expect(panel.getByText("Hợp lệ", { exact: true })).toBeVisible();
+    await expect(
+      panel.getByText("Được công nhận", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText("Không được phép thực hiện hành động này"),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("button", { name: "Ghi giao dịch vào khối" }),
+    ).toHaveCount(0);
+  }
+
   async submitSoundDiscrepancyDecision(): Promise<void> {
     await this.page
       .getByRole("combobox", { name: "Hành động đề xuất đối với bản ghi" })
@@ -159,6 +181,7 @@ export class Activity {
 
     await this.expectStage(3);
     await this.submitSoundCertificateDecision();
+    await this.inspectUnauthorizedCertificateSignature();
     await this.submitAndSeal("Ghi nhận tài liệu lên chuỗi");
     await this.submitAndSeal("Cấp chứng nhận cho lô hàng");
     await this.continue();
@@ -198,6 +221,20 @@ export class Activity {
     await this.continue();
     await this.expectStage(8);
     await this.page.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }).click();
+    await this.page
+      .getByText("Kiểm tra khi nội dung đã ký bị thay đổi")
+      .click();
+    await this.page
+      .getByRole("button", { name: "Chạy kiểm tra chữ ký" })
+      .click();
+    await expect(
+      this.page.getByText("Bản gốc: chữ ký hợp lệ"),
+    ).toBeVisible();
+    await expect(
+      this.page.getByText(
+        "Bản đã thay đổi: chữ ký ban đầu không còn khớp",
+      ),
+    ).toBeVisible();
     await this.answer(/Blockchain không ngăn được việc sửa/);
     await this.classifyGovernanceItems();
   }

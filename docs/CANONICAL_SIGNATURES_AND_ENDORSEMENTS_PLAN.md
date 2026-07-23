@@ -1,7 +1,8 @@
 # TraceChain implementation plan: real digital signatures, authorization, and endorsement policies
 
 Status: approved follow-on implementation specification
-Implementation state: not started
+Implementation state: Increment A complete; all Increment A acceptance gates
+are green as of 23 July 2026. Increment B has not started.
 Prerequisite: the configurable Guided and Challenge simulation boundary remains
 the foundation for this work
 
@@ -151,6 +152,11 @@ If native Ed25519 is not reliable across every supported project, use one
 pinned, reviewed, cross-platform Ed25519 library behind the same interface.
 
 Do not silently switch algorithms by browser.
+
+Implementation decision: the native capability spike did not pass the
+repository's WebKit and Mobile Safari authority. Increment A therefore uses
+`@noble/ed25519@3.1.0` behind `SignatureProvider` in every supported
+environment; the signed algorithm remains Ed25519.
 
 All supported environments must produce evidence that the same independent
 verifier can validate. The repository's actual Chromium, Firefox, WebKit, and
@@ -732,6 +738,23 @@ Complete all of the following before endorsement work begins:
 - Full `npm run quality` and Playwright matrix pass.
 
 Do not start endorsement integration with a red gate.
+
+Increment A gate record:
+
+- `npm run quality` passed, including 536 unit/integration tests and 131/131
+  SCORM package-verification checks.
+- The complete Playwright matrix passed with 87 tests and five documented
+  platform-specific skips across Chromium, Firefox, WebKit, and Mobile Safari.
+- Guided and Challenge A each passed a real Moodle new-attempt,
+  mid-signature-resume, authorization-handoff, final-report, completion, score,
+  and gradebook walkthrough. Their completed TC3 payloads were 1,041 and 1,096
+  characters.
+- The authored worst cases, which fill every permitted journal entry and
+  bounded text field, are 1,980 characters for Guided and 1,985 for Challenge
+  A, below the unchanged 3,800-character internal ceiling.
+- Both packages passed offline SCORM verification and share static application
+  build hash
+  `2f5fbbd021a350c50031885edf1580cb581f5b8271380a101260480d1b43a152`.
 
 # Endorsement increment
 

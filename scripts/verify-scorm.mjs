@@ -4,7 +4,13 @@
  * one byte-identical static application build.
  */
 
-import { createHash } from "node:crypto";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign,
+  verify,
+} from "node:crypto";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -31,7 +37,15 @@ const packageSpecificFiles = new Set([
   ...packagingFiles,
   "tracechain.config.json",
   "scenario.json",
+  "identity-registry.json",
+  "educational-signing-keys.json",
+  "authorization-policies.json",
 ]);
+const cryptographicRuntimeFileNames = [
+  "identity-registry.json",
+  "educational-signing-keys.json",
+  "authorization-policies.json",
+];
 
 function canonicalize(value) {
   if (value === null || typeof value !== "object") {
@@ -135,6 +149,287 @@ function hashStaticEntries(entries) {
       ]),
     ),
   };
+}
+
+function verifyCryptographicRuntime({
+  zip,
+  entries,
+  entryNames,
+  configuration,
+  scenario,
+  buildInformation,
+  check,
+}) {
+  const signaturesEnabled =
+    configuration?.technicalFeatures?.digitalSignatures === true;
+  const endorsementsEnabled =
+    configuration?.technicalFeatures?.endorsementPolicies === true;
+  check(
+    "Endorsement policies cannot be enabled without digital signatures",
+    !endorsementsEnabled || signaturesEnabled,
+  );
+  if (!signaturesEnabled) return;
+
+  for (const fileName of cryptographicRuntimeFileNames) {
+    check(
+      `${fileName} is present when signatures are enabled`,
+      entryNames.includes(fileName),
+    );
+  }
+  if (
+    cryptographicRuntimeFileNames.some(
+      (fileName) => !entryNames.includes(fileName),
+    )
+  ) {
+    return;
+  }
+
+  let identities = null;
+  let keys = null;
+  let policies = null;
+  try {
+    identities = JSON.parse(zip.readAsText("identity-registry.json"));
+  } catch {
+    // Individual checks below report malformed files.
+  }
+  try {
+    keys = JSON.parse(zip.readAsText("educational-signing-keys.json"));
+  } catch {
+    // Individual checks below report malformed files.
+  }
+  try {
+    policies = JSON.parse(zip.readAsText("authorization-policies.json"));
+  } catch {
+    // Individual checks below report malformed files.
+  }
+  check("Identity registry is valid JSON", identities !== null);
+  check("Educational signing-key fixture is valid JSON", keys !== null);
+  check("Authorization-policy registry is valid JSON", policies !== null);
+  if (identities === null || keys === null || policies === null) return;
+
+  check(
+    "Cryptographic evidence schema is recorded",
+    buildInformation?.cryptographicEvidenceSchemaVersion === "1",
+  );
+  const recordedHashes = buildInformation?.cryptographicRuntimeHashes;
+  check(
+    "Cryptographic runtime hashes are recorded",
+    typeof recordedHashes === "object" && recordedHashes !== null,
+  );
+  for (const fileName of cryptographicRuntimeFileNames) {
+    const calculated = createHash("sha256")
+      .update(zip.getEntry(fileName).getData())
+      .digest("hex");
+    check(
+      `${fileName} matches its recorded hash`,
+      recordedHashes?.[fileName] === calculated,
+    );
+  }
+  check(
+    "Build metadata distinguishes real cryptography from simulated identity and infrastructure",
+    buildInformation?.cryptographicMechanisms?.signatureAlgorithm ===
+      "Ed25519" &&
+      buildInformation?.cryptographicMechanisms?.signatureProvider ===
+        "@noble/ed25519@3.1.0" &&
+      buildInformation?.cryptographicMechanisms?.signatureComputation ===
+        "REAL" &&
+      buildInformation?.cryptographicMechanisms?.organizationalIdentity ===
+        "EDUCATIONAL_SIMULATION" &&
+      buildInformation?.cryptographicMechanisms?.keyCustody ===
+        "STATIC_EDUCATIONAL_FIXTURE" &&
+      buildInformation?.cryptographicMechanisms?.certificateIssuance ===
+        "EDUCATIONAL_SIMULATION" &&
+      buildInformation?.cryptographicMechanisms?.networkAndConsensus ===
+        "EDUCATIONAL_SIMULATION",
+  );
+
+  const identityList = Array.isArray(identities.identities)
+    ? identities.identities
+    : [];
+  const keyList = Array.isArray(keys.keys) ? keys.keys : [];
+  const policyList = Array.isArray(policies.policies)
+    ? policies.policies
+    : [];
+  check(
+    "Cryptographic runtime schemas are version 1",
+    identities.schemaVersion === "1" &&
+      keys.schemaVersion === "1" &&
+      policies.schemaVersion === "1",
+  );
+  check("Identity registry is nonempty", identityList.length > 0);
+  check("Educational key fixture is nonempty", keyList.length > 0);
+  check("Authorization policy registry is nonempty", policyList.length > 0);
+
+  const organizationIds = new Set(
+    (scenario?.organizations ?? []).map(
+      (organization) => organization.organizationId,
+    ),
+  );
+  const roleIds = new Set(
+    (scenario?.actors ?? []).map((actor) => actor.actorRole),
+  );
+  const identityIds = identityList.map((identity) => identity.organizationId);
+  const keyIds = keyList.map((key) => key.keyId);
+  check(
+    "Educational identities are unique and reference scenario organizations",
+    new Set(identityIds).size === identityIds.length &&
+      identityList.every(
+        (identity) =>
+          organizationIds.has(identity.organizationId) &&
+          typeof identity.recognized === "boolean" &&
+          Array.isArray(identity.activeKeyIds) &&
+          identity.activeKeyIds.length > 0,
+      ),
+  );
+  check(
+    "Educational key IDs are unique and every key is explicitly educational-only",
+    new Set(keyIds).size === keyIds.length &&
+      keyList.every(
+        (key) =>
+          key.algorithm === "Ed25519" &&
+          key.educationalOnly === true &&
+          organizationIds.has(key.organizationId),
+      ),
+  );
+  check(
+    "Every identity key belongs to that identity",
+    identityList.every((identity) =>
+      Array.isArray(identity.activeKeyIds) &&
+      identity.activeKeyIds.every((keyId) =>
+        keyList.some(
+          (key) =>
+            key.keyId === keyId &&
+            key.organizationId === identity.organizationId,
+        ),
+      ),
+    ),
+  );
+
+  let keyPairsMatch = true;
+  let deterministicSignatures = true;
+  for (const key of keyList) {
+    try {
+      const privateKey = createPrivateKey({
+        key: Buffer.from(key.privateKeyPkcs8Base64Url, "base64url"),
+        format: "der",
+        type: "pkcs8",
+      });
+      const publicKey = createPublicKey({
+        key: Buffer.from(key.publicKeySpkiBase64Url, "base64url"),
+        format: "der",
+        type: "spki",
+      });
+      const message = Buffer.from(
+        `TraceChain offline package verification:${key.keyId}`,
+        "utf8",
+      );
+      const first = sign(null, message, privateKey);
+      const second = sign(null, message, privateKey);
+      keyPairsMatch =
+        keyPairsMatch &&
+        privateKey.asymmetricKeyType === "ed25519" &&
+        publicKey.asymmetricKeyType === "ed25519" &&
+        verify(null, message, publicKey, first);
+      deterministicSignatures =
+        deterministicSignatures && first.equals(second);
+    } catch {
+      keyPairsMatch = false;
+      deterministicSignatures = false;
+    }
+  }
+  check(
+    "Every educational public/private key pair matches and verifies offline",
+    keyPairsMatch,
+  );
+  check(
+    "Every educational key produces deterministic Ed25519 signatures",
+    deterministicSignatures,
+  );
+
+  const knownCommandTypes = new Set([
+    ...(scenario?.organizations ?? []).flatMap(
+      (organization) => organization.authorizedActions ?? [],
+    ),
+    ...Object.values(
+      scenario?.runtime?.learnerCommandTemplates ?? {},
+    ).map((command) => command.commandType),
+    ...(scenario?.seedTransactions ?? []).map(
+      (seed) => seed.command.commandType,
+    ),
+    ...(scenario?.scriptedTransactions ?? []).map(
+      (script) => script.command.commandType,
+    ),
+  ]);
+  const policyIds = policyList.map(
+    (policy) => policy.authorizationPolicyId,
+  );
+  const allowedPolicyKeys = new Set([
+    "authorizationPolicyId",
+    "commandTypes",
+    "allowedOrganizationIds",
+    "allowedRoleIds",
+    "signerOrganizationMustMatchActorOrganization",
+    "localizationKey",
+  ]);
+  check(
+    "Authorization policies are constrained, unique, and reference known scenario vocabulary",
+    new Set(policyIds).size === policyIds.length &&
+      policyList.every(
+        (policy) =>
+          Object.keys(policy).every((key) => allowedPolicyKeys.has(key)) &&
+          Array.isArray(policy.commandTypes) &&
+          policy.commandTypes.length > 0 &&
+          policy.commandTypes.every((commandType) =>
+            knownCommandTypes.has(commandType),
+          ) &&
+          Array.isArray(policy.allowedOrganizationIds) &&
+          policy.allowedOrganizationIds.length > 0 &&
+          policy.allowedOrganizationIds.every((organizationId) =>
+            organizationIds.has(organizationId),
+          ) &&
+          Array.isArray(policy.allowedRoleIds) &&
+          policy.allowedRoleIds.length > 0 &&
+          policy.allowedRoleIds.every((roleId) => roleIds.has(roleId)) &&
+          typeof policy.signerOrganizationMustMatchActorOrganization ===
+            "boolean",
+      ),
+  );
+  const requiredCommandTypes = new Set(
+    Object.values(
+      scenario?.runtime?.learnerCommandTemplates ?? {},
+    ).map((command) => command.commandType),
+  );
+  check(
+    "Every learner command type has one unambiguous authorization policy",
+    [...requiredCommandTypes].every(
+      (commandType) =>
+        policyList.filter((policy) =>
+          Array.isArray(policy.commandTypes) &&
+          policy.commandTypes.includes(commandType),
+        ).length === 1,
+    ),
+  );
+
+  const privateKeyValues = keyList
+    .map((key) => key.privateKeyPkcs8Base64Url)
+    .filter((value) => typeof value === "string" && value.length > 0);
+  const learnerFacingFiles = entries.filter(
+    (entry) =>
+      entry.entryName.endsWith(".html") ||
+      entry.entryName.endsWith(".js") ||
+      entry.entryName.endsWith(".css"),
+  );
+  const privateKeyLeaks = learnerFacingFiles.flatMap((entry) => {
+    const source = zip.readAsText(entry);
+    return privateKeyValues.some((key) => source.includes(key))
+      ? [entry.entryName]
+      : [];
+  });
+  check(
+    "No educational private key appears in learner-facing HTML, JavaScript, or CSS",
+    privateKeyLeaks.length === 0,
+    privateKeyLeaks.join(", "),
+  );
 }
 
 function verifyPackage(zipPath) {
@@ -244,6 +539,13 @@ function verifyPackage(zipPath) {
     "Scenario identity matches configuration",
     scenario?.scenarioId === configuration?.scenarioId &&
       scenario?.scenarioVersion === configuration?.scenarioVersion,
+  );
+  check(
+    "Scenario content matches its recorded hash",
+    buildInformation?.scenarioHash ===
+      createHash("sha256")
+        .update(zip.getEntry("scenario.json").getData())
+        .digest("hex"),
   );
   check(
     "Scenario scoring matches configuration",
@@ -399,6 +701,16 @@ function verifyPackage(zipPath) {
     bundlesWithCdn.length === 0,
     bundlesWithCdn.join(", "),
   );
+
+  verifyCryptographicRuntime({
+    zip,
+    entries,
+    entryNames,
+    configuration,
+    scenario,
+    buildInformation,
+    check,
+  });
 
   const staticBuild = hashStaticEntries(entries);
   check(
