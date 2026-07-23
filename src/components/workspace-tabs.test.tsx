@@ -57,7 +57,7 @@ describe("the reference workspace opens on the panel its stage needs", () => {
     await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
     await user.click(screen.getByRole("button", { name: "Trả lời" }));
     await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await screen.findByRole("heading", { name: /Bước 2 - Tạo lô cà phê trên sổ cái/ });
+    await screen.findByRole("heading", { name: /Bước 2 – Tạo lô cà phê trên sổ cái/ });
 
     // Stage 2 has no panel of its own to prefer, so it opens on current state.
     await user.click(screen.getByRole("button", { name: "Bảng tra cứu" }));
@@ -75,7 +75,7 @@ describe("the reference workspace opens on the panel its stage needs", () => {
     // Moving on re-aims: stage 3 is about on-chain versus off-chain wording, so
     // it opens on the glossary. The workspace stays open across the change.
     await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await screen.findByRole("heading", { name: /Bước 3 - Ghi nhận chứng nhận/ });
+    await screen.findByRole("heading", { name: /Bước 3 – Ghi nhận chứng nhận/ });
     expect(selectedTabName()).toBe("Thuật ngữ");
   });
 

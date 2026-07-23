@@ -50,7 +50,7 @@ describe("the top bar follows the stage on screen", () => {
     render(<AppUnderTest />);
 
     await user.click(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" }));
-    await screen.findByRole("heading", { name: /Bước 1 - Làm quen với mạng blockchain/ });
+    await screen.findByRole("heading", { name: /Bước 1 – Làm quen với mạng blockchain/ });
 
     // Answering the diagnostic question satisfies stage 1's only condition, so
     // stage 2 unlocks. The learner has not advanced: the explanation of the
@@ -71,7 +71,7 @@ describe("the top bar follows the stage on screen", () => {
 
     // And it follows the learner forward when they do advance.
     await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    await screen.findByRole("heading", { name: /Bước 2 - Tạo lô cà phê trên sổ cái/ });
+    await screen.findByRole("heading", { name: /Bước 2 – Tạo lô cà phê trên sổ cái/ });
 
     expect(within(progress).getByText("Bước 2 trên 9")).toBeInTheDocument();
     expect(within(role).getByText(/Hợp tác xã Cà phê Cao nguyên/)).toBeInTheDocument();

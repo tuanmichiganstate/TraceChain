@@ -86,7 +86,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
 
     // ---- Stage 1: orientation ----------------------------------------
     expect(
-      await screen.findByRole("heading", { name: /Bước 1 - Làm quen với mạng blockchain/ }),
+      await screen.findByRole("heading", { name: /Bước 1 – Làm quen với mạng blockchain/ }),
     ).toBeInTheDocument();
     expect(screen.getByText("Vai trò hiện tại")).toBeInTheDocument();
 
@@ -103,7 +103,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     // ---- Stage 2: create the batch -----------------------------------
     await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
     expect(
-      await screen.findByRole("heading", { name: /Bước 2 - Tạo lô cà phê trên sổ cái/ }),
+      await screen.findByRole("heading", { name: /Bước 2 – Tạo lô cà phê trên sổ cái/ }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Gửi giao dịch lên mạng" }));

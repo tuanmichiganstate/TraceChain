@@ -39,7 +39,7 @@ export class Activity {
     await this.page.getByRole("button", { name: "Tiếp tục lần học trước" }).click();
   }
 
-  /** The stage heading currently on screen, e.g. "Bước 4 - ...". */
+  /** The stage heading currently on screen, e.g. "Bước 4 – ...". */
   stageHeading(): Locator {
     return this.page.getByRole("heading", { level: 2 }).first();
   }

@@ -24,14 +24,44 @@ const catalogues: Readonly<Record<LocaleCode, TranslationCatalogue>> = {
 
 export type TranslationParameters = Readonly<Record<string, string | number>>;
 
+/**
+ * A number written the way the reading language writes one.
+ *
+ * `String(1.2)` is "1.2" everywhere, but Vietnamese writes that with a comma --
+ * and the hint disclosure, which tells a learner how many points opening a hint
+ * can cost, is the one sentence in the activity that carries a decimal.
+ *
+ * Grouping stays off. Vietnamese groups thousands with a full stop, so turning
+ * it on would print "1.000 kg" next to the manifest panel's "1000 kg" -- the
+ * same trade already refused in `format-correction-value.ts`. With grouping off
+ * an integer formats identically to `String`, which confines this to decimals.
+ */
+const numberFormats = new Map<LocaleCode, Intl.NumberFormat>();
+
+function formatNumber(value: number, locale: LocaleCode): string {
+  let formatter = numberFormats.get(locale);
+  if (formatter === undefined) {
+    formatter = new Intl.NumberFormat(locale, { useGrouping: false });
+    numberFormats.set(locale, formatter);
+  }
+  return formatter.format(value);
+}
+
 /** Substitute `{name}` placeholders. Unknown placeholders are left in place. */
-function interpolate(template: string, parameters?: TranslationParameters): string {
+function interpolate(
+  template: string,
+  locale: LocaleCode,
+  parameters?: TranslationParameters,
+): string {
   if (parameters === undefined) {
     return template;
   }
   return template.replace(/\{(\w+)\}/g, (match, key: string) => {
     const value = parameters[key];
-    return value === undefined ? match : String(value);
+    if (value === undefined) {
+      return match;
+    }
+    return typeof value === "number" ? formatNumber(value, locale) : String(value);
   });
 }
 
@@ -54,7 +84,7 @@ export function createTranslator(locale: LocaleCode): Translator {
       }
       return key;
     }
-    return interpolate(template, parameters);
+    return interpolate(template, locale, parameters);
   };
 
   return Object.assign(translate, { locale }) as Translator;

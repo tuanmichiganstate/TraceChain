@@ -294,7 +294,7 @@ describe("the reference panels", () => {
     await screen.findByRole("heading", { name: /Bước 2/ });
 
     const panel = (
-      await screen.findByRole("heading", { name: "Việc cần hoàn thành ở bước này" })
+      await screen.findByRole("heading", { name: "Việc cần hoàn thành" })
     ).closest("section") as HTMLElement;
     const items = within(panel).getAllByRole("listitem");
 

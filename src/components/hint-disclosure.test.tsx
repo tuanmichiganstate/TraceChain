@@ -31,7 +31,7 @@ async function reachStageTwo(user: ReturnType<typeof userEvent.setup>): Promise<
   await user.click(screen.getByRole("radio", { name: /Không\. Blockchain giúp xác định/ }));
   await user.click(screen.getByRole("button", { name: "Trả lời" }));
   await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-  await screen.findByRole("heading", { name: /Bước 2 - Tạo lô cà phê trên sổ cái/ });
+  await screen.findByRole("heading", { name: /Bước 2 – Tạo lô cà phê trên sổ cái/ });
 }
 
 async function reachStageFour(user: ReturnType<typeof userEvent.setup>): Promise<void> {
@@ -84,12 +84,14 @@ describe("what a learner is told before opening a hint", () => {
 
     const notice = document.querySelector(".hint p.muted") as HTMLElement;
     // Stage 2's hint helps compose the create-batch transaction: 4 points,
-    // capped at 70%, so 1.2 points are at stake.
+    // capped at 70%, so 1.2 points are at stake -- written 1,2, because the
+    // sentence around it is Vietnamese.
     expect(notice.textContent).toContain("Tạo lô cà phê trên sổ cái");
     expect(notice.textContent).toContain("70%");
-    expect(notice.textContent).toContain("1.2");
+    expect(notice.textContent).toContain("1,2");
+    expect(notice.textContent).not.toContain("1.2");
     expect(notice.textContent).toMatch(/không bị ảnh hưởng/);
-    expect(notice.textContent).toMatch(/đã làm xong/);
+    expect(notice.textContent).toMatch(/đã hoàn thành/);
   });
 
   it("shows no internal identifier", async () => {
@@ -133,12 +135,12 @@ describe("what a learner is told before opening a hint", () => {
     };
 
     // Six points, first attempt still ahead: the cap can take 30%.
-    expect(notice()).toContain("1.8");
+    expect(notice()).toContain("1,8");
 
     // One wrong answer. The next success scores at 80%, so a 70% cap can only
     // take the difference.
     await answerWrongly();
-    expect(notice()).toContain("0.6");
+    expect(notice()).toContain("0,6");
 
     // Two wrong answers put the next success at 60%, already below the cap, so
     // the hint is free -- and must not be described as costing anything.
