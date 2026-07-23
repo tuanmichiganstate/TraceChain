@@ -27,6 +27,12 @@ export function LedgerExplorer({ state }: { state: DomainState }): ReactNode {
         </StatusPill>
       </p>
 
+      {/* Said where the digests are first met. The activity tells a learner
+          that the signatures are simulated, which invites them to assume the
+          same of everything else on screen -- and the hashing is the one part
+          that is not. */}
+      <p className="muted">{t("ledger.hashesAreReal")}</p>
+
       {state.blockOrder.length === 0 ? (
         <p className="muted">{t("ledger.empty")}</p>
       ) : (

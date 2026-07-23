@@ -121,6 +121,11 @@ export function VerifyAndTamperStage(): ReactNode {
         {demonstration !== null ? (
           <>
             <p>{t("stage.verifyAndTamper.conclusion")}</p>
+            {/* The demonstration only proves anything if the digests are real.
+                A learner who assumes the broken chain was scripted has watched
+                a puppet show and learned nothing from it, so the claim is made
+                explicitly at the moment it carries weight. */}
+            <p className="muted">{t("stage.verifyAndTamper.hashesAreReal")}</p>
             {isLedgerIntact ? (
               <p>
                 <StatusPill tone="pass">{t("stage.verifyAndTamper.ledgerIntact")}</StatusPill>
