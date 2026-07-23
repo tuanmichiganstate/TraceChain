@@ -25,12 +25,17 @@ export type ClassificationTone = "affected" | "unaffected";
  * pairs a distinct glyph with a text label, so the meaning survives greyscale,
  * colour blindness, and a screen reader -- which reads the label only, because
  * the glyph is decorative and hidden from it.
+ *
+ * Neutral has none, and that is the point rather than an omission: it is the
+ * absence of a verdict, so a mark there had nothing to say. The dot it used to
+ * carry said only "a glyph goes here", and read as a bullet on a screen already
+ * full of bulleted lists.
  */
-const VERDICT_GLYPH: Readonly<Record<StatusTone, string>> = {
+const VERDICT_GLYPH: Readonly<Record<StatusTone, string | null>> = {
   pass: "✓",
   warn: "⚠",
   fail: "✕",
-  neutral: "•",
+  neutral: null,
 };
 
 /** Filled versus hollow, so the pair also survives being read in one hue. */
@@ -45,12 +50,12 @@ function Pill({
   children,
 }: {
   tone: string;
-  glyph: string;
+  glyph: string | null;
   children: ReactNode;
 }): ReactNode {
   return (
     <span className={`status status--${tone}`}>
-      <span aria-hidden="true">{glyph}</span>
+      {glyph === null ? null : <span aria-hidden="true">{glyph}</span>}
       <span>{children}</span>
     </span>
   );

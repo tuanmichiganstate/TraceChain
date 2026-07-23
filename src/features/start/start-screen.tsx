@@ -73,6 +73,7 @@ export function StartScreen(): ReactNode {
           <div className="start__brief-heading">
             <h2>{t("start.heading")}</h2>
             <p className="start__duration">
+              <strong>{t("start.estimatedTimeLabel")}</strong>{" "}
               {t("start.estimatedTime", { minutes: scenario.estimatedMinutes })}
             </p>
           </div>
