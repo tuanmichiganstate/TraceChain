@@ -104,7 +104,10 @@ export function commandJournalDefinitions(
       "baseline",
       MAX_ATTEMPT_COUNT,
     ),
-    definition(JournalOpcode.RECORD_TRANSPORT, "baseline", 1),
+    // One historical attempt may already have been rejected before the
+    // custody handoff. The UI now gates that ordering mistake, while this
+    // second bounded slot lets an existing TC3 attempt recover and commit.
+    definition(JournalOpcode.RECORD_TRANSPORT, "baseline", 2),
     definition(JournalOpcode.RECEIVE_BATCH, "baseline", 1),
     definition(JournalOpcode.PURCHASE_ON_RECEIPT, "baseline", 1),
     definition(JournalOpcode.RECORD_CORRECTION, "stage5", 1, {

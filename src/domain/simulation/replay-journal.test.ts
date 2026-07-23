@@ -6,11 +6,19 @@ import type {
   CompactCommandJournalEntry,
   Tc3AttemptSnapshot,
 } from "../../infrastructure/persistence/tc3-codec";
+import {
+  decodeTc3Attempt,
+  encodeTc3Attempt,
+} from "../../infrastructure/persistence/tc3-codec";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type { RecallBatchCommand } from "../commands/commands";
 import { buildCausalReport } from "../reporting/causal-report";
 import { applyScenarioSeed } from "../scenario/seed-replay";
-import { ScenarioStageId, TransactionType } from "../types/enums";
+import {
+  ScenarioStageId,
+  TransactionStatus,
+  TransactionType,
+} from "../types/enums";
 import type { ScenarioDefinition } from "../types/scenario";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import {
@@ -19,6 +27,7 @@ import {
 import {
   contextIndex,
   JournalOpcode,
+  tc3CodecSchema,
 } from "./command-journal";
 import { replayCommandJournal } from "./replay-journal";
 
@@ -166,6 +175,79 @@ describe("deterministic consequential-command replay", () => {
     expect(
       replayed.consequentialDecisions.INT_CORRECTION_RECORDED,
     ).toEqual({ encodedValue: 1, attemptCount: 2 });
+  });
+
+  it("recovers from a pre-custody transport rejection with one persisted retry", async () => {
+    const certified = await runUpTo("certified", { withSeed: true });
+    const transportContext =
+      coffeeScenario.runtime.commandContextByAction.RECORD_TRANSPORT;
+    const custodyContext =
+      coffeeScenario.runtime.commandContextByAction.TRANSFER_CUSTODY;
+    if (transportContext === undefined || custodyContext === undefined) {
+      throw new Error("Stage 4 trusted contexts are missing");
+    }
+    const journal: readonly CompactCommandJournalEntry[] = [
+      {
+        commandSequence: 1,
+        opcode: JournalOpcode.RECORD_TRANSPORT,
+        contextIndex: contextIndexById(coffeeScenario, transportContext),
+        values: [],
+      },
+      {
+        commandSequence: 2,
+        opcode: JournalOpcode.TRANSFER_CUSTODY,
+        contextIndex: contextIndexById(coffeeScenario, custodyContext),
+        values: [0],
+      },
+      {
+        commandSequence: 3,
+        opcode: JournalOpcode.SEAL_PENDING_BLOCK,
+        contextIndex: contextIndexById(coffeeScenario, custodyContext),
+        values: [],
+      },
+      {
+        commandSequence: 4,
+        opcode: JournalOpcode.RECORD_TRANSPORT,
+        contextIndex: contextIndexById(coffeeScenario, transportContext),
+        values: [],
+      },
+      {
+        commandSequence: 5,
+        opcode: JournalOpcode.SEAL_PENDING_BLOCK,
+        contextIndex: contextIndexById(coffeeScenario, transportContext),
+        values: [],
+      },
+    ];
+    const schema = tc3CodecSchema({
+      configuration: GUIDED_PRESET,
+      configurationHash: hashConfiguration(GUIDED_PRESET),
+      scenario: coffeeScenario,
+    });
+    const persisted = decodeTc3Attempt(
+      encodeTc3Attempt(snapshot(journal, {}), schema),
+      schema,
+    );
+    const replayed = replayCommandJournal({
+      snapshot: persisted,
+      initialDomain: certified.getState(),
+      scenario: coffeeScenario,
+      configuration: GUIDED_PRESET,
+      registries,
+    });
+
+    expect(replayed.runtime.attemptAuditEvents).toHaveLength(1);
+    expect(
+      replayed.runtime.attemptAuditEvents[0]?.submittedCommand.payload,
+    ).toMatchObject({
+      commandType: TransactionType.RECORD_TRANSPORT_CONDITION,
+    });
+    expect(
+      Object.values(replayed.runtime.domain.transactionsById).find(
+        (transaction) =>
+          transaction.transactionType ===
+          TransactionType.RECORD_TRANSPORT_CONDITION,
+      )?.transactionStatus,
+    ).toBe(TransactionStatus.COMMITTED);
   });
 
   it("regenerates an unauthorized recall and later authorized resubmission", async () => {

@@ -72,6 +72,7 @@ export function TransactionAction({
   });
   const [validationReceipt, setValidationReceipt] = useState<LedgerTransaction | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
+  const [submissionFailed, setSubmissionFailed] = useState(false);
   const [isDetailOpen, setDetailOpen] = useState(isFirstOfType);
 
   const transaction =
@@ -83,6 +84,7 @@ export function TransactionAction({
 
   const submit = async (): Promise<void> => {
     setSubmitting(true);
+    setSubmissionFailed(false);
     try {
       const outcome = await submitCommand(actionId, decisionId, buildCommand(), {
         recordDecision,
@@ -93,6 +95,8 @@ export function TransactionAction({
           ? outcome.transaction.transactionId
           : null,
       );
+    } catch {
+      setSubmissionFailed(true);
     } finally {
       setSubmitting(false);
     }
@@ -139,6 +143,12 @@ export function TransactionAction({
         >
           {t("transaction.submit")}
         </button>
+      ) : null}
+
+      {submissionFailed ? (
+        <p className="field__error" role="alert">
+          {t("transaction.submissionFailed")}
+        </p>
       ) : null}
 
       {transaction !== undefined ? (

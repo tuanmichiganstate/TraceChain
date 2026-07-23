@@ -1,5 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { ScenarioStageId } from "../../domain/types/enums";
+import {
+  ScenarioStageId,
+  TransactionStatus,
+  TransactionType,
+} from "../../domain/types/enums";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
@@ -42,6 +46,13 @@ export function ShipAndMonitorStage(): ReactNode {
     "RECORD_TRANSPORT",
   );
   const asset = state.domain.assetsById[sourceBatchId];
+  const custodyCommitted = Object.values(
+    state.domain.transactionsById,
+  ).some(
+    (transaction) =>
+      transaction.transactionType === TransactionType.TRANSFER_CUSTODY &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
+  );
 
   return (
     <StageShell stageId={ScenarioStageId.SHIP_AND_MONITOR}>
@@ -117,21 +128,33 @@ export function ShipAndMonitorStage(): ReactNode {
 
       {transportCheck !== undefined ? <KnowledgeCheckPanel check={transportCheck} /> : null}
 
-      <TransactionAction
-        decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
-        actionId="RECORD_TRANSPORT"
-        labelKey="stage.shipAndMonitor.transportAction"
-        isFirstOfType
-        summary={[
-          ["field.assetId", <code key="a">{sourceBatchId}</code>],
-          ["field.humidity", `${sensorCommand.humidityPercent}%`],
-          ["field.complianceStatus", t("compliance.INSPECTION_REQUIRED")],
-        ]}
-        buildCommand={() =>
-          runtimeCommand<RecordTransportConditionCommand>(scenario, "RECORD_TRANSPORT")
-        }
-        context={commandContext(scenario, "RECORD_TRANSPORT")}
-      />
+      {custodyCommitted ? (
+        <TransactionAction
+          decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
+          actionId="RECORD_TRANSPORT"
+          labelKey="stage.shipAndMonitor.transportAction"
+          isFirstOfType
+          summary={[
+            ["field.assetId", <code key="a">{sourceBatchId}</code>],
+            ["field.humidity", `${sensorCommand.humidityPercent}%`],
+            ["field.complianceStatus", t("compliance.INSPECTION_REQUIRED")],
+          ]}
+          buildCommand={() =>
+            runtimeCommand<RecordTransportConditionCommand>(
+              scenario,
+              "RECORD_TRANSPORT",
+            )
+          }
+          context={commandContext(scenario, "RECORD_TRANSPORT")}
+        />
+      ) : (
+        <section className="card card--work">
+          <h3>{t("stage.shipAndMonitor.transportAction")}</h3>
+          <p className="muted">
+            {t("stage.shipAndMonitor.transportLocked")}
+          </p>
+        </section>
+      )}
     </StageShell>
   );
 }

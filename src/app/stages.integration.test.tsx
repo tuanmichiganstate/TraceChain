@@ -297,6 +297,18 @@ describe("the whole activity in the browser", () => {
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
     await advance(user);
 
+    const transportPanel = (
+      await screen.findByRole("heading", {
+        name: "Ghi nhận điều kiện vận chuyển",
+        level: 3,
+      })
+    ).closest("section") as HTMLElement;
+    expect(
+      within(transportPanel).queryByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      }),
+    ).not.toBeInTheDocument();
+
     // Answer the scope question wrongly: the transaction the learner then
     // submits is the one the rules refuse.
     await screen.findByRole("heading", { name: /Bước 4/ });

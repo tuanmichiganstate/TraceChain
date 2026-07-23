@@ -284,6 +284,57 @@ describe("TC3 attempt codec", () => {
     ).toThrow(PersistenceError);
   });
 
+  it("allows one bounded transport retry after an earlier rejected submission", () => {
+    const challengeSchema = tc3CodecSchema({
+      configuration: CHALLENGE_PRESET,
+      configurationHash: hashConfiguration(CHALLENGE_PRESET),
+      scenario: challengeAScenario,
+    });
+    const retryAttempt: Tc3AttemptSnapshot = {
+      sessionId: "SES_STAGE4_RETRY",
+      currentStageId: ScenarioStageId.SHIP_AND_MONITOR,
+      completedStageIds: [
+        ScenarioStageId.ORIENTATION,
+        ScenarioStageId.CREATE_BATCH,
+        ScenarioStageId.ANCHOR_CERTIFICATE,
+      ],
+      decisions: {},
+      hintsUsed: [],
+      journal: [
+        {
+          commandSequence: 1,
+          opcode: JournalOpcode.RECORD_TRANSPORT,
+          contextIndex: 2,
+          values: [],
+        },
+        {
+          commandSequence: 2,
+          opcode: JournalOpcode.TRANSFER_CUSTODY,
+          contextIndex: 0,
+          values: [0],
+        },
+        {
+          commandSequence: 3,
+          opcode: JournalOpcode.SEAL_PENDING_BLOCK,
+          contextIndex: 0,
+          values: [],
+        },
+        {
+          commandSequence: 4,
+          opcode: JournalOpcode.RECORD_TRANSPORT,
+          contextIndex: 2,
+          values: [],
+        },
+      ],
+      isCompleted: false,
+      isPassed: false,
+    };
+
+    expect(() =>
+      encodeTc3Attempt(retryAttempt, challengeSchema),
+    ).not.toThrow();
+  });
+
   it.each([
     ["guided", GUIDED_PRESET, coffeeScenario],
     ["challenge", CHALLENGE_PRESET, challengeAScenario],
