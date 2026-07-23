@@ -7,6 +7,7 @@ import { ScenarioProvider } from "./providers/scenario-provider";
 import { SimulationProvider } from "./providers/simulation-provider";
 import type React from "react";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 
 /**
  * The Milestone 0 exit condition, proven end to end: a learner starts the
@@ -22,7 +23,7 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
@@ -149,9 +150,8 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     // sits far inside the limit.
     const suspendData = api.peek("cmi.suspend_data");
     expect(suspendData).not.toBe("");
-    expect(suspendData.length).toBeLessThan(4096);
-    expect(suspendData.length).toBeLessThan(200);
-    expect(suspendData.startsWith("TC2.")).toBe(true);
+    expect(suspendData.length).toBeLessThanOrEqual(3_800);
+    expect(suspendData.startsWith("TC3.")).toBe(true);
 
     // The raw stage identifier, not a translated label (section 21.6).
     expect(api.peek("cmi.core.lesson_location")).toMatch(/^STG_0\d_[A-Z_]+$/);
@@ -213,8 +213,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     expect(
       await screen.findByRole("heading", { name: "Không khôi phục được tiến độ" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Bắt đầu lại hoạt động" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bắt đầu lại hoạt động" })).toBeNull();
   });
 });

@@ -7,14 +7,8 @@ import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { TransactionAction } from "../../components/transaction-action";
 import { ProvenanceViewer } from "../../components/provenance-viewer";
-import {
-  PROCESSOR_CONTEXT,
-  transformBatchCommand,
-} from "../../scenarios/coffee-traceability/commands";
-import {
-  GREEN_COFFEE_BATCH_ID,
-  ROASTED_COFFEE_BATCH_ID,
-} from "../../scenarios/coffee-traceability/stages";
+import { commandContext, runtimeCommand } from "../../domain/scenario/runtime";
+import type { TransformBatchCommand } from "../../domain/commands/commands";
 
 /**
  * Stage 6. One batch becomes another, and the link between them survives.
@@ -26,12 +20,16 @@ import {
  */
 export function TransformBatchStage(): ReactNode {
   const t = useTranslator();
-  const { stage } = useScenario();
+  const { stage, scenario } = useScenario();
   const { state } = useSimulation();
   const definition = stage(ScenarioStageId.TRANSFORM_BATCH);
   const provenanceCheck = definition?.knowledgeChecks[0];
 
-  const hasRoasted = state.domain.assetsById[ROASTED_COFFEE_BATCH_ID] !== undefined;
+  const command = runtimeCommand<TransformBatchCommand>(scenario, "TRANSFORM_BATCH");
+  const sourceBatchId = scenario.runtime.assetRoles.sourceBatchId;
+  const transformedBatchId = scenario.runtime.assetRoles.transformedBatchId;
+  const input = state.domain.assetsById[sourceBatchId];
+  const hasRoasted = state.domain.assetsById[transformedBatchId] !== undefined;
 
   return (
     <StageShell stageId={ScenarioStageId.TRANSFORM_BATCH}>
@@ -40,15 +38,15 @@ export function TransformBatchStage(): ReactNode {
         <dl className="asset-card__grid">
           <div className="asset-card__row">
             <dt>{t("stage.transformBatch.input")}</dt>
-            <dd>100 kg — {t("organizations.producerCoop.name")}</dd>
+            <dd>{input?.quantity ?? command.outputQuantity} kg — {t("organizations.producerCoop.name")}</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("stage.transformBatch.output")}</dt>
-            <dd>82 kg</dd>
+            <dd>{command.outputQuantity} kg</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("stage.transformBatch.lossLabel")}</dt>
-            <dd>18 kg (18%)</dd>
+            <dd>{Math.max(0, (input?.quantity ?? command.outputQuantity) - command.outputQuantity)} kg</dd>
           </div>
         </dl>
         <p className="muted">{t("stage.transformBatch.yieldNotice")}</p>
@@ -56,20 +54,21 @@ export function TransformBatchStage(): ReactNode {
 
       <TransactionAction
         decisionId="INT_TRANSFORM_BATCH"
+        actionId="TRANSFORM_BATCH"
         labelKey="stage.transformBatch.transformAction"
         isFirstOfType
         summary={[
-          ["stage.transformBatch.input", <code key="i">{GREEN_COFFEE_BATCH_ID}</code>],
-          ["stage.transformBatch.output", <code key="o">{ROASTED_COFFEE_BATCH_ID}</code>],
-          ["field.quantity", "82 kg"],
+          ["stage.transformBatch.input", <code key="i">{sourceBatchId}</code>],
+          ["stage.transformBatch.output", <code key="o">{transformedBatchId}</code>],
+          ["field.quantity", `${command.outputQuantity} kg`],
         ]}
-        buildCommand={transformBatchCommand}
-        context={PROCESSOR_CONTEXT}
+        buildCommand={() => runtimeCommand<TransformBatchCommand>(scenario, "TRANSFORM_BATCH")}
+        context={commandContext(scenario, "TRANSFORM_BATCH")}
       />
 
       {hasRoasted ? (
         <section className="card card--reference">
-          <ProvenanceViewer state={state.domain} rootAssetId={ROASTED_COFFEE_BATCH_ID} />
+          <ProvenanceViewer state={state.domain} rootAssetId={transformedBatchId} />
         </section>
       ) : null}
 

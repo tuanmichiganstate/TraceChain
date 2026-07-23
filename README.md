@@ -9,8 +9,9 @@ transferring custody and ownership separately, anchoring documents off-chain,
 correcting a committed error without deleting it, transforming and packaging,
 and tracing provenance forwards and backwards.
 
-The learner interface is **Vietnamese**. All code, identifiers, comments, tests
-and documentation are **English**.
+The shipped guided and Challenge A presets use **Vietnamese**; the same
+localization system also contains English. All code, identifiers, comments,
+tests and documentation are **English**.
 
 **It is a simulation.** No blockchain node, no network, no cryptocurrency, no
 mining. The interface says so on every screen.
@@ -19,23 +20,25 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Version 2 implements the complete nine-stage activity, including the committed
-shipping-manifest error and its append-only typed correction. Exact release
-evidence and the M3 acceptance decision are recorded in `docs/BASELINE.md`.
+Version 2 implements the complete nine-stage activity as configurable guided
+and curated Challenge A packages, including atomic consequential decisions,
+trusted role handoff, append-only correction, deterministic TC3 replay, and a
+causal final report.
 
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
-| Scenario | complete — 9 stages, 10 knowledge checks, scoring, completion |
+| Scenario | complete — one shared engine, standard coffee and curated Challenge A |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
-| Content review | deterministic 571-key bilingual pack; human Vietnamese review remains open |
-| SCORM package | builds reproducibly and verifies (23/23 checks) |
+| Content review | deterministic bilingual pack; human Vietnamese review remains open |
+| SCORM package | one-build guided/challenge generation with cross-package byte verification |
 | Moodle | Docker acceptance covers storage, grading, forced failure, and cleanup |
 
-Stage order, roles, completion conditions, knowledge checks, hints, scripted
-history, seeds, and scoring live in a `ScenarioDefinition`. A second scenario is
-a new data module and one changed provider prop; see `docs/CONTENT_AUTHORING.md`.
+Stage order, trusted contexts, role handoffs, completion conditions, knowledge
+checks, hints, scripted history, seeds, and scoring live in a
+`ScenarioDefinition`. Package configuration and scenario JSON are external to
+the shared application bundle.
 
 ---
 
@@ -51,12 +54,27 @@ npm run quality      # lint, typecheck, test, validators, build, package, verify
 
 ## Building the SCORM package
 
+For a clean release tree:
+
 ```bash
-npm run build && npm run build:scorm && npm run verify:scorm
+npm run package:scorm -- --preset guided
+npm run package:scorm -- --preset guided,challenge
 ```
 
-Produces `tracechain-scorm-v2.0.0.zip`. Upload it to Moodle as a SCORM package
-activity — see `docs/MOODLE_TESTING.md` for the recommended settings.
+For local verification of both presets from an existing build:
+
+```bash
+npm run build
+npm run build:scorm
+npm run verify:scorm
+```
+
+Strict release generation produces
+`TraceChain_Guided_StandardCoffee_vi_v2.1.0.zip` and
+`TraceChain_Challenge_ChallengeA_vi_v1.0.0.zip`. The local command appends
+`_NON_RELEASE` to both archive names and to the legacy guided deployment alias
+used by the Docker demo. Release packaging fails on a dirty tree;
+`--allow-dirty` output is marked non-release in its filename and metadata.
 
 ## Developer mode
 
@@ -70,6 +88,7 @@ domain behaviour, and is never visible to an ordinary learner.
 
 ```
 src/
+├── config/            typed configuration, presets, validation and hashing
 ├── domain/            pure, synchronous, no React
 │   ├── commands/      learner intent
 │   ├── events/        committed outcomes
@@ -78,6 +97,8 @@ src/
 │   ├── rules/         one file per concern + registry
 │   ├── scenario/      validation, seed replay, completion, interactions
 │   ├── scoring/       score engine
+│   ├── simulation/    trusted commands, events, audit history and replay
+│   ├── reporting/     deterministic causal and diagnostic projections
 │   ├── units/         gram normalization
 │   └── types/         enums, models, rule ids, scenario schema, scoring
 ├── infrastructure/
@@ -85,7 +106,9 @@ src/
 │   ├── persistence/   compact state codec, standalone adapter
 │   ├── scorm/         API discovery, SCORM 1.2 adapter
 │   └── time/          deterministic scenario clock
-├── scenarios/coffee-traceability/
+├── scenarios/
+│   ├── coffee-traceability/
+│   └── challenge-a/
 ├── features/          one folder per stage + the stage registry
 ├── components/        shared UI
 ├── locales/           vi.json (production), en.json (scaffold)
@@ -110,13 +133,16 @@ scripts/               locale + scenario validators, SCORM build + verify
 | `npm run validate:scenario` | Schema consistency plus executable cross-layer contracts |
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
-| `npm run build:scorm` | Assemble and zip the package |
-| `npm run verify:scorm` | 23 checks on the built package |
+| `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
+| `npm run build:scorm` | Build both local non-release preset packages |
+| `npm run verify:scorm` | Validate both packages and their shared static build |
 | `npm run quality` | All of the above, in order |
 
 ## Documentation
 
 - `AGENTS.md` — how to verify a change here, and the conventions one follows
+- `docs/CANONICAL_CONFIGURABLE_SCORM_PLAN.md` — the approved configurable
+  simulation boundary, exact scoring migration, TC3 budget, and delivery gates
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
@@ -140,5 +166,6 @@ scripts/               locale + scenario validators, SCORM build + verify
   `validate:locales` fails the build otherwise.
 - **No student identity may reach the ledger** — not an asset, transaction,
   block, hash, or suspend-data value.
-- **`cmi.suspend_data` is capped at 4096 characters.** A test asserts a
-  worst-case attempt stays under 3800.
+- **`cmi.suspend_data` is capped at 4096 characters.** TC3 enforces a
+  3,000-character authored budget and 3,800-character internal ceiling against
+  the actual worst case of both scenarios.

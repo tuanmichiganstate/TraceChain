@@ -32,7 +32,7 @@ fi
 # globbed: a stale zip from an older version sitting in the root must not make
 # the deploy either ambiguous or wrong.
 version="$(node -p "require('$root/package.json').version")"
-package="$root/tracechain-scorm-v$version.zip"
+package="$root/tracechain-scorm-v${version}_NON_RELEASE.zip"
 if [ ! -f "$package" ]; then
   echo "no package at $package -- run without --no-build" >&2
   exit 1

@@ -7,13 +7,11 @@ import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { TransactionAction } from "../../components/transaction-action";
 import { AssetCard } from "../../components/asset-card";
-import {
-  LOGISTICS_CONTEXT,
-  PRODUCER_CONTEXT,
-  recordTransportConditionCommand,
-  transferCustodyCommand,
-} from "../../scenarios/coffee-traceability/commands";
-import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
+import { commandContext, runtimeCommand } from "../../domain/scenario/runtime";
+import type {
+  RecordTransportConditionCommand,
+  TransferCustodyCommand,
+} from "../../domain/commands/commands";
 
 /**
  * Stage 4. The handover, and what travels with it.
@@ -30,7 +28,7 @@ import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stage
  */
 export function ShipAndMonitorStage(): ReactNode {
   const t = useTranslator();
-  const { stage } = useScenario();
+  const { stage, scenario } = useScenario();
   const { state } = useSimulation();
   const definition = stage(ScenarioStageId.SHIP_AND_MONITOR);
   const [scopeCheck, transportCheck] = definition?.knowledgeChecks ?? [];
@@ -38,7 +36,12 @@ export function ShipAndMonitorStage(): ReactNode {
   /** Set once the learner has answered; drives the command they then submit. */
   const [transfersOwnership, setTransfersOwnership] = useState<boolean | null>(null);
 
-  const asset = state.domain.assetsById[GREEN_COFFEE_BATCH_ID];
+  const sourceBatchId = scenario.runtime.assetRoles.sourceBatchId;
+  const sensorCommand = runtimeCommand<RecordTransportConditionCommand>(
+    scenario,
+    "RECORD_TRANSPORT",
+  );
+  const asset = state.domain.assetsById[sourceBatchId];
 
   return (
     <StageShell stageId={ScenarioStageId.SHIP_AND_MONITOR}>
@@ -63,10 +66,11 @@ export function ShipAndMonitorStage(): ReactNode {
       {transfersOwnership !== null ? (
         <TransactionAction
           decisionId="INT_CUSTODY_TRANSFERRED_TRANSACTION"
+          actionId="TRANSFER_CUSTODY"
           labelKey="stage.shipAndMonitor.custodyAction"
           isFirstOfType
           summary={[
-            ["field.assetId", <code key="a">{GREEN_COFFEE_BATCH_ID}</code>],
+            ["field.assetId", <code key="a">{sourceBatchId}</code>],
             ["field.custodian", t("organizations.logisticsProvider.name")],
             [
               "field.owner",
@@ -76,8 +80,12 @@ export function ShipAndMonitorStage(): ReactNode {
             ],
             ["field.location", t("locations.transitStation.name")],
           ]}
-          buildCommand={() => transferCustodyCommand(transfersOwnership)}
-          context={PRODUCER_CONTEXT}
+          buildCommand={() =>
+            runtimeCommand<TransferCustodyCommand>(scenario, "TRANSFER_CUSTODY", {
+              alsoTransfersOwnership: transfersOwnership,
+            })
+          }
+          context={commandContext(scenario, "TRANSFER_CUSTODY")}
         />
       ) : null}
 
@@ -88,16 +96,16 @@ export function ShipAndMonitorStage(): ReactNode {
           <div className="asset-card__row">
             <dt>{t("field.sensorId")}</dt>
             <dd>
-              <code>SENSOR_HUMIDITY_001</code>
+              <code>{sensorCommand.sensorId}</code>
             </dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("field.humidity")}</dt>
-            <dd>72%</dd>
+            <dd>{sensorCommand.humidityPercent}%</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("field.humidityLimit")}</dt>
-            <dd>70%</dd>
+            <dd>{sensorCommand.allowedMaximumHumidityPercent}%</dd>
           </div>
           <div className="asset-card__row">
             <dt>{t("field.location")}</dt>
@@ -111,15 +119,18 @@ export function ShipAndMonitorStage(): ReactNode {
 
       <TransactionAction
         decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
+        actionId="RECORD_TRANSPORT"
         labelKey="stage.shipAndMonitor.transportAction"
         isFirstOfType
         summary={[
-          ["field.assetId", <code key="a">{GREEN_COFFEE_BATCH_ID}</code>],
-          ["field.humidity", "72%"],
+          ["field.assetId", <code key="a">{sourceBatchId}</code>],
+          ["field.humidity", `${sensorCommand.humidityPercent}%`],
           ["field.complianceStatus", t("compliance.INSPECTION_REQUIRED")],
         ]}
-        buildCommand={recordTransportConditionCommand}
-        context={LOGISTICS_CONTEXT}
+        buildCommand={() =>
+          runtimeCommand<RecordTransportConditionCommand>(scenario, "RECORD_TRANSPORT")
+        }
+        context={commandContext(scenario, "RECORD_TRANSPORT")}
       />
     </StageShell>
   );

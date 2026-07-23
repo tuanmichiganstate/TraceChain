@@ -6,11 +6,9 @@ import { StageShell } from "../../components/stage-shell";
 import { TransactionAction } from "../../components/transaction-action";
 import { AssetCard } from "../../components/asset-card";
 import { LedgerExplorer } from "../../components/ledger-explorer";
-import {
-  PRODUCER_CONTEXT,
-  createBatchCommand,
-} from "../../scenarios/coffee-traceability/commands";
-import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stages";
+import { useScenario } from "../../app/providers/scenario-provider";
+import { commandContext, runtimeCommand } from "../../domain/scenario/runtime";
+import type { CreateBatchCommand } from "../../domain/commands/commands";
 
 /**
  * Stage 2. The first record, and the first block.
@@ -22,26 +20,30 @@ import { GREEN_COFFEE_BATCH_ID } from "../../scenarios/coffee-traceability/stage
  */
 export function CreateBatchStage(): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
   const { state } = useSimulation();
-  const asset = state.domain.assetsById[GREEN_COFFEE_BATCH_ID];
+  const command = runtimeCommand<CreateBatchCommand>(scenario, "CREATE_BATCH");
+  const sourceBatchId = scenario.runtime.assetRoles.sourceBatchId;
+  const asset = state.domain.assetsById[sourceBatchId];
   const hasBlock = state.domain.blockOrder.length > 0;
 
   return (
     <StageShell stageId={ScenarioStageId.CREATE_BATCH}>
       <TransactionAction
         decisionId="INT_CREATE_BATCH"
+        actionId="CREATE_BATCH"
         labelKey="stage.createBatch.formHeading"
         isFirstOfType
         summary={[
-          ["field.assetId", <code key="a">{GREEN_COFFEE_BATCH_ID}</code>],
-          ["field.productName", "Arabica"],
+          ["field.assetId", <code key="a">{sourceBatchId}</code>],
+          ["field.productName", command.productName],
           ["field.originLocation", t("locations.producerFarm.name")],
-          ["field.quantity", "100 kg"],
+          ["field.quantity", `${command.quantity} ${t(`unit.${command.quantityUnit}`)}`],
           ["field.owner", t("organizations.producerCoop.name")],
           ["field.custodian", t("organizations.producerCoop.name")],
         ]}
-        buildCommand={createBatchCommand}
-        context={PRODUCER_CONTEXT}
+        buildCommand={() => runtimeCommand<CreateBatchCommand>(scenario, "CREATE_BATCH")}
+        context={commandContext(scenario, "CREATE_BATCH")}
       />
 
       {asset !== undefined ? (

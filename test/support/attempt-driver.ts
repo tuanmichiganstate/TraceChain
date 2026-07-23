@@ -169,11 +169,28 @@ export class AttemptRecorder {
     return this;
   }
 
-  /** Mark every procedural action as completed successfully. */
+  /**
+   * Mark every procedural action and authored consequential-stage phase as
+   * completed successfully.
+   *
+   * Phase evidence is intentionally separate from scored actions: it proves
+   * that an initial decision was submitted and that its bounded mitigation was
+   * completed or unnecessary.
+   */
   completeEveryAction(): this {
     for (const stage of this.scenario.stages) {
       for (const action of stage.scoredActions) {
         this.recordAction(stage.stageId, action.decisionId, true);
+      }
+      for (const condition of stage.completionConditions) {
+        if (
+          condition.conditionType === "DECISION_RECORDED" &&
+          !this.log.some(
+            (interaction) => interaction.targetId === condition.decisionId,
+          )
+        ) {
+          this.recordAction(stage.stageId, condition.decisionId, true);
+        }
       }
     }
     return this;

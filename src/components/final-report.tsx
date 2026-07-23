@@ -8,6 +8,10 @@ import { StatusPill } from "./status-pill";
 import { allScoredActions } from "../domain/types/scenario";
 import { buildEffectiveValueView } from "../domain/scenario/effective-value-view";
 import { formatCorrectionValueLabel } from "../localization/format-correction-value";
+import { buildCausalReport } from "../domain/reporting/causal-report";
+import { useOptionalConfiguration } from "../app/providers/configuration-provider";
+import { GUIDED_PRESET } from "../config/presets";
+import { hashConfiguration } from "../config/hash";
 
 const COMPONENT_LABELS: Readonly<Record<ScoreComponent, string>> = {
   [ScoreComponent.TRANSACTION_ACCURACY]: "score.transactionAccuracy",
@@ -27,6 +31,15 @@ const COMPONENT_FIELDS = {
   [ScoreComponent.CONCEPTUAL_UNDERSTANDING]: "conceptualUnderstanding",
 } as const;
 
+const DIAGNOSTIC_LABELS = {
+  traceability: "report.diagnostic.traceability",
+  dataIntegrity: "report.diagnostic.dataIntegrity",
+  compliance: "report.diagnostic.compliance",
+  consumerSafety: "report.diagnostic.consumerSafety",
+  operationalEfficiency: "report.diagnostic.operationalEfficiency",
+  governanceQuality: "report.diagnostic.governanceQuality",
+} as const;
+
 /**
  * What the learner earned, and where.
  *
@@ -42,6 +55,7 @@ const COMPONENT_FIELDS = {
 export function FinalReport(): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
+  const embeddedConfiguration = useOptionalConfiguration();
   const { state, scoreBreakdown, isPassed, isCompleted, finish } = useSimulation();
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -58,6 +72,15 @@ export function FinalReport(): ReactNode {
     correctionEvidence === undefined
       ? null
       : buildEffectiveValueView(state.domain, correctionEvidence.target);
+  const causalReport = buildCausalReport({
+    scenario,
+    journal: state.commandJournal,
+    runtime: state.simulation,
+    hintsUsed: state.hintsUsed,
+    configurationIdentifier:
+      embeddedConfiguration?.configurationHash ??
+      hashConfiguration(GUIDED_PRESET),
+  });
 
   // Awaited rather than fired and forgotten: "the result has been sent" must
   // not appear until it has been.
@@ -111,6 +134,51 @@ export function FinalReport(): ReactNode {
         </section>
       ) : null}
 
+      {embeddedConfiguration?.configuration.scoring
+        .reportDiagnosticDimensions !== false ? (
+        <section aria-labelledby="report-diagnostic-heading">
+          <h4 id="report-diagnostic-heading">
+            {t("report.diagnosticHeading")}
+          </h4>
+          <p className="muted">{t("report.diagnosticNotice")}</p>
+          <dl className="asset-card__grid">
+            {(
+              Object.keys(DIAGNOSTIC_LABELS) as Array<
+                keyof typeof DIAGNOSTIC_LABELS
+              >
+            ).map((dimension) => (
+              <div className="asset-card__row" key={dimension}>
+                <dt>{t(DIAGNOSTIC_LABELS[dimension])}</dt>
+                <dd>{causalReport.dimensions[dimension]} / 100</dd>
+              </div>
+            ))}
+            <div className="asset-card__row">
+              <dt>{t("report.evidenceStrength")}</dt>
+              <dd>
+                {t(
+                  causalReport.evidenceStrength === "STRONG"
+                    ? "report.evidenceStrong"
+                    : causalReport.evidenceStrength === "MODERATE"
+                      ? "report.evidenceModerate"
+                      : "report.evidenceWeak",
+                )}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="report-causal-heading">
+        <h4 id="report-causal-heading">{t("report.causalHeading")}</h4>
+        <ol>
+          {causalReport.explanations.map((explanation, index) => (
+            <li key={`${explanation.messageKey}-${index}`}>
+              {t(explanation.messageKey, explanation.values)}
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {/* Counts, not competencies. Blocks sealed and transactions committed say
           how much machinery ran, never what the learner understood, so they sit
           below the breakdown rather than inside it -- mixed into one list they
@@ -133,6 +201,24 @@ export function FinalReport(): ReactNode {
           <div className="asset-card__row">
             <dt>{t("report.blocksSealed")}</dt>
             <dd>{state.domain.blockOrder.length}</dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.manualReviewRecords")}</dt>
+            <dd>{causalReport.manualReviewRecords}</dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.scenarioIdentifier")}</dt>
+            <dd>
+              <code>
+                {causalReport.scenarioId}@{causalReport.scenarioVersion}
+              </code>
+            </dd>
+          </div>
+          <div className="asset-card__row">
+            <dt>{t("report.configurationIdentifier")}</dt>
+            <dd>
+              <code>{causalReport.configurationIdentifier}</code>
+            </dd>
           </div>
         </dl>
       </section>

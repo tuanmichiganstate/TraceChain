@@ -7,6 +7,7 @@ import { LocaleProvider } from "../../app/providers/locale-provider";
 import { ScenarioProvider } from "../../app/providers/scenario-provider";
 import { SimulationProvider } from "../../app/providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 
 /**
  * The discrepancy panel classifies two figures; it does not judge them.
@@ -20,7 +21,7 @@ import { installMockScormApi, MockScorm12Api } from "../../../test/scorm-mock/mo
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
@@ -58,11 +59,31 @@ async function playToStageFive(user: User): Promise<void> {
   await advance();
   await submitAndSeal("Thông tin lô hàng");
   await advance();
-  await answer(/Lưu tệp ngoài chuỗi/);
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Nội dung và thời hạn chứng nhận",
+    }),
+    "VALID",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", {
+      name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+    }),
+    "RECOGNIZED_AUTHORIZED",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách lưu trữ tài liệu" }),
+    "HASH_OFF_CHAIN",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách xử lý lô hàng" }),
+    "CONTINUE",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
+  );
   await submitAndSeal("Ghi nhận tài liệu lên chuỗi");
   await submitAndSeal("Cấp chứng nhận cho lô hàng");
-  await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
-  await answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
   await advance();
   await answer(/Chỉ chuyển quyền lưu giữ/);
   await submitAndSeal("Bàn giao lô hàng cho đơn vị vận chuyển");
@@ -130,5 +151,58 @@ describe("the stage 5 discrepancy panel", () => {
       (element) => element.textContent?.trim() ?? "",
     );
     expect(values).toEqual(["1000 kg", "100 kg"]);
+  });
+
+  it("rejects an over-budget UTF-8 correction reason without truncating it", async () => {
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await playToStageFive(user);
+
+    const submitAndSeal = async (name: string): Promise<void> => {
+      const panel = (
+        await screen.findByRole("heading", { name, level: 3 })
+      ).closest("section") as HTMLElement;
+      await user.click(
+        within(panel).getByRole("button", {
+          name: "Gửi giao dịch lên mạng",
+        }),
+      );
+      await user.click(
+        within(panel).getByRole("button", {
+          name: "Ghi giao dịch vào khối",
+        }),
+      );
+    };
+
+    await submitAndSeal("Tiếp nhận lô hàng");
+    await submitAndSeal("Ghi nhận việc mua lô hàng");
+    await user.selectOptions(
+      screen.getByLabelText("Hành động đề xuất đối với bản ghi"),
+      "APPEND_CORRECTION",
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Nguyên nhân có khả năng nhất"),
+      "TYPING_ERROR",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Gửi quyết định xử lý chênh lệch",
+      }),
+    );
+
+    const reason = await screen.findByRole("textbox", {
+      name: "Lý do điều chỉnh",
+    });
+    const overBudgetReason = "ộ".repeat(121);
+    await user.clear(reason);
+    await user.type(reason, overBudgetReason);
+
+    expect(reason).toHaveValue(overBudgetReason);
+    expect(
+      screen.getByText(/không được vượt quá 240 byte UTF-8/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Gửi giao dịch lên mạng" }),
+    ).toBeNull();
   });
 });

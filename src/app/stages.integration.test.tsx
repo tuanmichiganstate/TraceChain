@@ -7,6 +7,11 @@ import { LocaleProvider } from "./providers/locale-provider";
 import { ScenarioProvider } from "./providers/scenario-provider";
 import { SimulationProvider } from "./providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
+import { challengeAScenario } from "../scenarios/challenge-a/scenario";
+import { ConfigurationProvider } from "./providers/configuration-provider";
+import { CHALLENGE_PRESET } from "../config/presets";
+import { hashConfiguration } from "../config/hash";
 
 /**
  * THE MILESTONE 5 EXIT CONDITION.
@@ -20,12 +25,29 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
       </ScenarioProvider>
     </LocaleProvider>
+  );
+}
+
+function ChallengeAppUnderTest(): React.ReactElement {
+  return (
+    <ConfigurationProvider
+      configuration={CHALLENGE_PRESET}
+      configurationHash={hashConfiguration(CHALLENGE_PRESET)}
+    >
+      <LocaleProvider locale="vi">
+        <ScenarioProvider scenario={challengeAScenario}>
+          <SimulationProvider>
+            <App />
+          </SimulationProvider>
+        </ScenarioProvider>
+      </LocaleProvider>
+    </ConfigurationProvider>
   );
 }
 
@@ -42,8 +64,14 @@ async function submitAndSeal(user: User, actionName: string): Promise<void> {
     await screen.findByRole("heading", { name: actionName, level: 3 })
   ).closest("section") as HTMLElement;
   await user.click(within(panel).getByRole("button", { name: "Gửi giao dịch lên mạng" }));
-  const seal = within(panel).queryByRole("button", { name: "Ghi giao dịch vào khối" });
-  if (seal !== null) await user.click(seal);
+  const livePanel = (
+    await screen.findByRole("heading", { name: actionName, level: 3 })
+  ).closest("section") as HTMLElement;
+  await user.click(
+    await within(livePanel).findByRole("button", {
+      name: "Ghi giao dịch vào khối",
+    }),
+  );
 }
 
 async function answer(user: User, optionPattern: RegExp): Promise<void> {
@@ -53,6 +81,50 @@ async function answer(user: User, optionPattern: RegExp): Promise<void> {
     .find((button) => !(button as HTMLButtonElement).disabled);
   if (submit === undefined) throw new Error("No enabled answer button");
   await user.click(submit);
+}
+
+async function submitSoundCertificateDecision(user: User): Promise<void> {
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Nội dung và thời hạn chứng nhận",
+    }),
+    "VALID",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", {
+      name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+    }),
+    "RECOGNIZED_AUTHORIZED",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách lưu trữ tài liệu" }),
+    "HASH_OFF_CHAIN",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách xử lý lô hàng" }),
+    "CONTINUE",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
+  );
+  await screen.findByRole("heading", { name: "Đã ghi nhận quyết định ban đầu" });
+}
+
+async function submitSoundDiscrepancyDecision(user: User): Promise<void> {
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Hành động đề xuất đối với bản ghi",
+    }),
+    "INVESTIGATE_THEN_CORRECT",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Nguyên nhân có khả năng nhất" }),
+    "TYPING_ERROR",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định xử lý chênh lệch" }),
+  );
+  await screen.findByRole("heading", { name: "Lập giao dịch điều chỉnh" });
 }
 
 /** Place every item of the data-governance classification correctly. */
@@ -111,19 +183,11 @@ describe("the whole activity in the browser", () => {
     expect(await screen.findByText("Tất cả quy tắc đều được thỏa mãn.")).toBeInTheDocument();
     await advance(user);
 
-    // ---- Stage 3: certificate, and an issuer with no standing --------
+    // ---- Stage 3: one atomic certificate decision --------------------
     await screen.findByRole("heading", { name: /Bước 3/ });
-    await answer(user, /Lưu tệp ngoài chuỗi/);
+    await submitSoundCertificateDecision(user);
     await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
-
-    // The suspicious certificate is refused, and the reason is legible.
-    await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
-    expect(
-      await screen.findByText(/chưa được công nhận trên mạng này/),
-    ).toBeInTheDocument();
-
-    await answer(user, /Từ chối, vì đơn vị cấp không có thẩm quyền/);
     await advance(user);
 
     // ---- Stage 4: custody moves, ownership stays ---------------------
@@ -138,6 +202,7 @@ describe("the whole activity in the browser", () => {
     await screen.findByRole("heading", { name: /Bước 5/ });
     await submitAndSeal(user, "Tiếp nhận lô hàng");
     await submitAndSeal(user, "Ghi nhận việc mua lô hàng");
+    await submitSoundDiscrepancyDecision(user);
     await submitAndSeal(user, "Gửi giao dịch điều chỉnh");
     await advance(user);
 
@@ -194,7 +259,12 @@ describe("the whole activity in the browser", () => {
       await screen.findByText(/Phạm vi thu hồi chính xác/),
     ).toBeInTheDocument();
 
-    // The recall filed is the scope the learner reasoned to, not the right one.
+    // A careful learner requests the scenario-controlled authority handoff
+    // before commitment and therefore keeps the full authorization mark.
+    await user.click(
+      screen.getByRole("button", { name: "Bàn giao cho cơ quan quản lý" }),
+    );
+    await screen.findByText(/Bước bàn giao tổ chức tin cậy đã hoàn tất/);
     await submitAndSeal(user, "Gửi lệnh thu hồi");
     await answer(user, /Khi nhiều tổ chức độc lập cần dùng chung bản ghi/);
 
@@ -202,7 +272,7 @@ describe("the whole activity in the browser", () => {
     const report = (
       await screen.findByRole("heading", { name: "Kết quả hoạt động" })
     ).closest("section") as HTMLElement;
-    expect(within(report).getByText(/Tổng điểm/)).toBeInTheDocument();
+    expect(within(report).getByText(/Tổng điểm: 100 \/ 100/)).toBeInTheDocument();
     expect(within(report).getByText(/Hiệu quả thu hồi/)).toBeInTheDocument();
 
     // Nothing reaches the LMS until the learner has seen the result.
@@ -210,7 +280,7 @@ describe("the whole activity in the browser", () => {
     await user.click(within(report).getByRole("button", { name: "Kết thúc và gửi kết quả" }));
     expect(await within(report).findByText(/Đã gửi kết quả/)).toBeInTheDocument();
     expect(api.peek("cmi.core.lesson_status")).toBe("passed");
-    expect(Number(api.peek("cmi.core.score.raw"))).toBeGreaterThanOrEqual(70);
+    expect(Number(api.peek("cmi.core.score.raw"))).toBe(100);
   }, 120_000);
 
   it("rejects a custody transfer that also moves ownership, and explains why", async () => {
@@ -222,11 +292,9 @@ describe("the whole activity in the browser", () => {
     await advance(user);
     await submitAndSeal(user, "Thông tin lô hàng");
     await advance(user);
-    await answer(user, /Lưu tệp ngoài chuỗi/);
+    await submitSoundCertificateDecision(user);
     await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
-    await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
-    await answer(user, /Từ chối, vì đơn vị cấp không có thẩm quyền/);
     await advance(user);
 
     // Answer the scope question wrongly: the transaction the learner then
@@ -248,6 +316,144 @@ describe("the whole activity in the browser", () => {
     ).toBeInTheDocument();
     expect(within(panel).getByText("Giao dịch chưa được chấp nhận. Vui lòng xem các quy tắc chưa thỏa mãn bên dưới.")).toBeInTheDocument();
   }, 60_000);
+
+  it("runs curated Challenge A with delayed feedback and a two-step trusted handoff", async () => {
+    const user = userEvent.setup();
+    render(<ChallengeAppUnderTest />);
+
+    expect(
+      await screen.findByRole("heading", { name: "TraceChain Thử thách A" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Bắt đầu mô phỏng" }));
+    await answer(user, /Không\. Blockchain giúp xác định/);
+    await advance(user);
+
+    await submitAndSeal(user, "Thông tin lô hàng");
+    await advance(user);
+
+    await user.selectOptions(
+      await screen.findByRole("combobox", {
+        name: "Nội dung và thời hạn chứng nhận",
+      }),
+      "VALID",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", {
+        name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+      }),
+      "UNRECOGNIZED",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Cách lưu trữ tài liệu" }),
+      "HASH_OFF_CHAIN",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Cách xử lý lô hàng" }),
+      "HOLD",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
+    );
+    expect(
+      await screen.findByText(
+        "Đã ghi nhận câu trả lời; phản hồi sẽ hiển thị vào thời điểm được cấu hình.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Quyết định phù hợp.")).toBeNull();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem xét bằng chứng về đơn vị cấp",
+      }),
+    );
+    await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
+    await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
+    await advance(user);
+
+    await answer(user, /Chỉ chuyển quyền lưu giữ/);
+    await submitAndSeal(user, "Bàn giao lô hàng cho đơn vị vận chuyển");
+    await answer(user, /Ghi nhận vượt ngưỡng/);
+    await submitAndSeal(user, "Ghi nhận điều kiện vận chuyển");
+    await advance(user);
+
+    await submitAndSeal(user, "Tiếp nhận lô hàng");
+    await submitAndSeal(user, "Ghi nhận việc mua lô hàng");
+    await user.selectOptions(
+      await screen.findByRole("combobox", {
+        name: "Hành động đề xuất đối với bản ghi",
+      }),
+      "INVESTIGATE_THEN_CORRECT",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Nguyên nhân có khả năng nhất" }),
+      "UNKNOWN",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Gửi quyết định xử lý chênh lệch",
+      }),
+    );
+    await submitAndSeal(user, "Gửi giao dịch điều chỉnh");
+    await advance(user);
+
+    await submitAndSeal(user, "Chuyển đổi lô hàng");
+    await answer(user, /Là một lô mới, có quan hệ nguồn gốc/);
+    await advance(user);
+    await submitAndSeal(user, "Đóng gói thành phẩm");
+    await submitAndSeal(user, "Chuyển quyền sở hữu cho nhà phân phối");
+    await submitAndSeal(user, "Giao hàng cho nhà bán lẻ");
+    await advance(user);
+
+    await user.click(
+      screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }),
+    );
+    await answer(user, /Blockchain không ngăn được việc sửa/);
+    await answerClassification(user);
+    await advance(user);
+
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: /BAT_PACKAGED_COFFEE_CA01/,
+      }),
+    );
+    await user.click(
+      screen
+        .getAllByRole("button", { name: "Trả lời" })
+        .find(
+          (button) => !(button as HTMLButtonElement).disabled,
+        ) as HTMLElement,
+    );
+    expect(screen.queryByText(/Phạm vi thu hồi chính xác/)).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Gửi giao dịch lên mạng" }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Yêu cầu xem xét sự cố nội bộ",
+      }),
+    );
+    expect(
+      screen.queryByRole("heading", {
+        name: "Gửi lại lệnh thu hồi với thẩm quyền phù hợp",
+      }),
+    ).toBeNull();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Chuyển vụ việc đã xem xét ra bên ngoài",
+      }),
+    );
+    await submitAndSeal(
+      user,
+      "Gửi lại lệnh thu hồi với thẩm quyền phù hợp",
+    );
+    await answer(user, /Khi nhiều tổ chức độc lập cần dùng chung bản ghi/);
+
+    expect(
+      await screen.findByText(/Phạm vi thu hồi chính xác/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Kết quả hoạt động" }),
+    ).toBeInTheDocument();
+  }, 120_000);
 });
 
 describe("the reference panels", () => {

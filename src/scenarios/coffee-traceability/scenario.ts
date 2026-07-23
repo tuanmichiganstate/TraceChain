@@ -16,6 +16,7 @@ import { coffeeSeedAssets, coffeeSeedProvenanceEdges } from "./seed-assets";
 import { SCENARIO_TIMELINE } from "./timeline";
 import { DECISION_IDS, HINT_IDS } from "./decisions";
 import { coffeeScriptedTransactions } from "./scripted-transactions";
+import { coffeeRuntime } from "./runtime";
 
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
@@ -51,4 +52,5 @@ export const coffeeScenario: ScenarioDefinition = {
 
   decisionIds: DECISION_IDS,
   hintIds: HINT_IDS,
+  runtime: coffeeRuntime,
 };

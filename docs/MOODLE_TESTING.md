@@ -14,7 +14,8 @@ Run the whole list for every release that changes learner-package inputs.
 npm run quality        # must pass end to end
 ```
 
-Produces `tracechain-scorm-v2.0.0.zip` in the project root.
+Produces guided and Challenge A ZIPs in the project root. The Docker demo uses
+the byte-identical guided compatibility alias.
 
 **Moodle activity settings to use:**
 
@@ -67,8 +68,9 @@ the browser keeps serving the previous build. See `docker-moodle/README.md`.
 
 **If resume fails, capture `cmi.suspend_data` before doing anything else** —
 Moodle admins can read it from the SCORM report, or `?debug=true` shows the
-decode error. Current saves start with `TC2.` (legacy `TC1` is still accepted)
-and should be a few hundred characters.
+decode error. Current saves start with `TC3.` and remain inside the authored
+budget. TC1/TC2 attempts are deliberately not migrated or cleared: the
+recovery screen instructs the learner to exit and begin a new LMS attempt.
 
 ## 4. Score and status reporting
 

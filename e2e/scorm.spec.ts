@@ -135,16 +135,46 @@ test.describe("a relaunch in review mode", () => {
 
 test.describe("suspend data that no longer decodes", () => {
   test("offers recovery instead of silently starting over", async ({ page }) => {
-    const corrupted = "TC1.61r.0021.0.0.deadbeef";
+    const corrupted = "TC2.61r.0021.0.0.deadbeef";
     await installScormApi(page, {
       initialValues: { "cmi.suspend_data": corrupted, "cmi.core.entry": "resume" },
     });
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Không khôi phục được tiến độ" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Bắt đầu lại hoạt động" })).toBeVisible();
-    // Nothing overwrote it before the learner chose what to do.
+    await expect(page.getByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Bắt đầu lại hoạt động" })).toHaveCount(0);
+    // TraceChain cannot create a new LMS attempt or destructively clear this
+    // one from inside the package.
     expect(await peek(page, "cmi.suspend_data")).toBe(corrupted);
+  });
+});
+
+test.describe("an invalid embedded package configuration", () => {
+  test("shows the localized failure screen instead of starting", async ({ page }) => {
+    await installScormApi(page);
+    await page.route("**/tracechain.config.json", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: {},
+          configurationHash: "invalid",
+        }),
+      });
+    });
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("heading", {
+        name: "Không thể khởi động gói TraceChain này",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Cấu hình hoặc kịch bản nhúng bị thiếu/),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Bắt đầu mô phỏng" }),
+    ).toHaveCount(0);
   });
 });
 

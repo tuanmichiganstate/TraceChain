@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { SupplyChainAsset } from "../domain/types/models";
 import { useTranslator } from "../app/providers/locale-provider";
-import { organizationsById, locationsById } from "../scenarios/coffee-traceability/organizations";
+import { useScenario } from "../app/providers/scenario-provider";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -14,6 +14,13 @@ import { StatusPill } from "./status-pill";
  */
 export function AssetCard({ asset }: { asset: SupplyChainAsset }): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
+  const organizationsById = Object.fromEntries(
+    scenario.organizations.map((organization) => [organization.organizationId, organization]),
+  );
+  const locationsById = Object.fromEntries(
+    scenario.locations.map((location) => [location.locationId, location]),
+  );
 
   const organizationName = (organizationId: string): string => {
     const organization = organizationsById[organizationId];

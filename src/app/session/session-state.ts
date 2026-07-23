@@ -15,10 +15,17 @@ import type { DomainState } from "../../domain/ledger/domain-state";
 import { createEmptyDomainState } from "../../domain/ledger/domain-state";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
 import type {
-  AttemptSnapshot,
   DecisionRecord,
 } from "../../infrastructure/persistence/state-codec";
 import type { LearnerInteraction } from "../../domain/types/scoring";
+import type {
+  CompactCommandJournalEntry,
+  Tc3AttemptSnapshot,
+} from "../../infrastructure/persistence/tc3-codec";
+import {
+  createSimulationRuntimeState,
+} from "../../domain/simulation/command-handler";
+import type { SimulationRuntimeState } from "../../domain/simulation/types";
 
 export type SessionPhase = "LOADING" | "START" | "RUNNING" | "RECOVERY";
 
@@ -44,6 +51,9 @@ export interface SessionState {
   readonly viewedStageId: ScenarioStageId;
   readonly completedStageIds: readonly ScenarioStageId[];
   readonly domain: DomainState;
+  readonly simulation: SimulationRuntimeState;
+  readonly sessionId: string;
+  readonly commandJournal: readonly CompactCommandJournalEntry[];
   readonly decisions: Readonly<Record<string, DecisionRecord>>;
   readonly hintsUsed: readonly string[];
   /** Full record for the final report. Not persisted; not used for scoring. */
@@ -61,6 +71,7 @@ export interface SessionState {
   readonly hasSavedAttempt: boolean;
   /** Set when stored progress could not be restored (section 21.11). */
   readonly recoveryMessageKey: string | null;
+  readonly recoveryRequiresNewLmsAttempt: boolean;
   /** Most recent transaction, so the pipeline knows what to display. */
   readonly lastTransactionId: string | null;
   /** Free-text command input needed to deterministically replay Stage 5. */
@@ -68,12 +79,16 @@ export interface SessionState {
 }
 
 export function createInitialSessionState(): SessionState {
+  const domain = createEmptyDomainState();
   return {
     phase: "LOADING",
     currentStageId: ScenarioStageId.ORIENTATION,
     viewedStageId: ScenarioStageId.ORIENTATION,
     completedStageIds: [],
-    domain: createEmptyDomainState(),
+    domain,
+    simulation: createSimulationRuntimeState(domain),
+    sessionId: "SES_000001",
+    commandJournal: [],
     decisions: {},
     hintsUsed: [],
     interactions: [],
@@ -82,21 +97,36 @@ export function createInitialSessionState(): SessionState {
     isReadOnly: false,
     hasSavedAttempt: false,
     recoveryMessageKey: null,
+    recoveryRequiresNewLmsAttempt: false,
     lastTransactionId: null,
     correctionReason: null,
   };
 }
 
 export type SessionAction =
+  | { type: "PUBLISH_STATE"; state: SessionState }
   | {
       type: "INITIALIZED";
       platformMode: PlatformMode;
       isReadOnly: boolean;
       hasSavedAttempt: boolean;
     }
-  | { type: "RECOVERY_FAILED"; messageKey: string }
-  | { type: "START_NEW"; domain: DomainState }
-  | { type: "RESUME"; snapshot: AttemptSnapshot; domain: DomainState }
+  | {
+      type: "RECOVERY_FAILED";
+      messageKey: string;
+      requiresNewLmsAttempt: boolean;
+    }
+  | {
+      type: "START_NEW";
+      simulation: SimulationRuntimeState;
+      sessionId: string;
+    }
+  | {
+      type: "RESUME";
+      snapshot: Tc3AttemptSnapshot;
+      simulation: SimulationRuntimeState;
+      lastTransactionId: string | null;
+    }
   | {
       type: "RECORD_DECISION";
       decisionId: string;
@@ -104,7 +134,12 @@ export type SessionAction =
       interaction: LearnerInteraction | null;
     }
   | { type: "USE_HINT"; hintId: string }
-  | { type: "LEDGER_UPDATED"; domain: DomainState; transactionId: string | null }
+  | {
+      type: "SIMULATION_UPDATED";
+      simulation: SimulationRuntimeState;
+      commandJournal: readonly CompactCommandJournalEntry[];
+      transactionId: string | null;
+    }
   | { type: "CORRECTION_REASON_RECORDED"; reason: string }
   | {
       type: "STAGE_PROGRESS";
@@ -116,6 +151,9 @@ export type SessionAction =
 
 export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
+    case "PUBLISH_STATE":
+      return action.state;
+
     case "INITIALIZED":
       return {
         ...state,
@@ -129,7 +167,12 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
 
     case "RECOVERY_FAILED":
       // Stored state is never silently discarded; the learner chooses.
-      return { ...state, phase: "RECOVERY", recoveryMessageKey: action.messageKey };
+      return {
+        ...state,
+        phase: "RECOVERY",
+        recoveryMessageKey: action.messageKey,
+        recoveryRequiresNewLmsAttempt: action.requiresNewLmsAttempt,
+      };
 
     case "START_NEW":
       return {
@@ -137,7 +180,9 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         phase: "RUNNING",
         platformMode: state.platformMode,
         isReadOnly: state.isReadOnly,
-        domain: action.domain,
+        domain: action.simulation.domain,
+        simulation: action.simulation,
+        sessionId: action.sessionId,
       };
 
     case "RESUME":
@@ -149,9 +194,16 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         completedStageIds: action.snapshot.completedStageIds,
         decisions: action.snapshot.decisions,
         hintsUsed: action.snapshot.hintsUsed,
-        domain: action.domain,
-        correctionReason: action.snapshot.replayData?.correctionReason ?? null,
+        domain: action.simulation.domain,
+        simulation: action.simulation,
+        sessionId: action.snapshot.sessionId,
+        commandJournal: action.snapshot.journal,
+        correctionReason:
+          (action.snapshot.journal.find((entry) => entry.opcode === 9)
+            ?.values[0] as string | undefined) ?? null,
         recoveryMessageKey: null,
+        recoveryRequiresNewLmsAttempt: false,
+        lastTransactionId: action.lastTransactionId,
       };
 
     case "RECORD_DECISION": {
@@ -179,8 +231,14 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         ? state
         : { ...state, hintsUsed: [...state.hintsUsed, action.hintId] };
 
-    case "LEDGER_UPDATED":
-      return { ...state, domain: action.domain, lastTransactionId: action.transactionId };
+    case "SIMULATION_UPDATED":
+      return {
+        ...state,
+        domain: action.simulation.domain,
+        simulation: action.simulation,
+        commandJournal: action.commandJournal,
+        lastTransactionId: action.transactionId,
+      };
 
     case "CORRECTION_REASON_RECORDED":
       return { ...state, correctionReason: action.reason };
@@ -221,16 +279,18 @@ export function stageNumber(stageId: ScenarioStageId): number {
   return SCENARIO_STAGE_ORDER.indexOf(stageId) + 1;
 }
 
-export function toAttemptSnapshot(state: SessionState, isPassed: boolean): AttemptSnapshot {
+export function toTc3AttemptSnapshot(
+  state: SessionState,
+  isPassed: boolean,
+): Tc3AttemptSnapshot {
   return {
+    sessionId: state.sessionId,
     currentStageId: state.currentStageId,
     completedStageIds: state.completedStageIds,
     decisions: state.decisions,
     hintsUsed: state.hintsUsed,
+    journal: state.commandJournal,
     isCompleted: state.completedStageIds.length === SCENARIO_STAGE_ORDER.length,
     isPassed,
-    ...(state.correctionReason === null
-      ? {}
-      : { replayData: { correctionReason: state.correctionReason } }),
   };
 }

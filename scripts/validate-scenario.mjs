@@ -66,6 +66,7 @@ try {
   const module = await import(pathToFileURL(bundlePath).href);
   const {
     coffeeScenario,
+    challengeAScenario,
     validateScenario,
     ALL_SCENARIO_DATES,
     TIMELINE_ORDERING_CONSTRAINTS,
@@ -76,13 +77,15 @@ try {
 
   // ---- The shared validator -------------------------------------------
 
-  const result = validateScenario(coffeeScenario);
-  checkedCount += result.checkedCount;
-
-  for (const issue of result.issues) {
-    const line = `${issue.path}: ${issue.message}`;
-    if (issue.severity === "ERROR") errors.push(line);
-    else warnings.push(line);
+  const scenarios = [coffeeScenario, challengeAScenario];
+  for (const scenario of scenarios) {
+    const result = validateScenario(scenario);
+    checkedCount += result.checkedCount;
+    for (const issue of result.issues) {
+      const line = `${scenario.scenarioId}.${issue.path}: ${issue.message}`;
+      if (issue.severity === "ERROR") errors.push(line);
+      else warnings.push(line);
+    }
   }
 
   // ---- Timeline ordering ----------------------------------------------
@@ -101,13 +104,13 @@ try {
 
   const locale = JSON.parse(readFileSync(join(projectRoot, "src", "locales", "vi.json"), "utf8"));
 
-  const referencedKeys = new Set([
-    coffeeScenario.titleKey,
-    coffeeScenario.descriptionKey,
-    ...coffeeScenario.organizations.map((o) => o.displayNameKey),
-    ...coffeeScenario.actors.map((a) => a.displayNameKey),
-    ...coffeeScenario.locations.map((l) => l.displayNameKey),
-    ...coffeeScenario.stages.flatMap((stage) => [
+  const referencedKeys = new Set(scenarios.flatMap((scenario) => [
+    scenario.titleKey,
+    scenario.descriptionKey,
+    ...scenario.organizations.map((o) => o.displayNameKey),
+    ...scenario.actors.map((a) => a.displayNameKey),
+    ...scenario.locations.map((l) => l.displayNameKey),
+    ...scenario.stages.flatMap((stage) => [
       stage.titleKey,
       stage.instructionKey,
       ...stage.requiredActions.map((action) => action.descriptionKey),
@@ -121,7 +124,7 @@ try {
         ...(knowledgeCheck.categories ?? []).map((category) => category.labelKey),
       ]),
     ]),
-  ]);
+  ]));
 
   const missingKeys = [...referencedKeys].filter((key) => !(key in locale));
   check(
@@ -132,7 +135,9 @@ try {
 
   // ---- Scenario and registry agreement ---------------------------------
 
-  const implementedStages = coffeeScenario.stages.filter((stage) => stage.isImplemented);
+  const implementedStages = scenarios.flatMap((scenario) =>
+    scenario.stages.filter((stage) => stage.isImplemented),
+  );
   const unregistered = implementedStages.filter(
     (stage) => STAGE_COMPONENTS[stage.stageId] === undefined,
   );
@@ -143,7 +148,10 @@ try {
   );
 
   const orphanComponents = Object.keys(STAGE_COMPONENTS).filter(
-    (stageId) => !implementedStages.some((stage) => stage.stageId === stageId),
+    (stageId) =>
+      !coffeeScenario.stages.some(
+        (stage) => stage.isImplemented && stage.stageId === stageId,
+      ),
   );
   check(
     "Every registered component belongs to a stage marked implemented",

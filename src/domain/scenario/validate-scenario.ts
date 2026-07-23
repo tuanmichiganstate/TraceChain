@@ -79,6 +79,7 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
   const organizationIds = new Set(scenario.organizations.map((o) => o.organizationId));
   const actorIds = new Set(scenario.actors.map((a) => a.actorId));
   const locationIds = new Set(scenario.locations.map((l) => l.locationId));
+  const actorsById = new Map(scenario.actors.map((actor) => [actor.actorId, actor]));
 
   check(
     organizationIds.size === scenario.organizations.length,
@@ -128,6 +129,246 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
       organizationIds.has(location.operatedByOrganizationId),
       `locations.${location.locationId}`,
       `Operated by unknown organization "${location.operatedByOrganizationId}"`,
+    );
+  }
+
+  // ---- Trusted execution contexts -------------------------------------
+
+  const trustedContextIds = new Set(
+    scenario.runtime.trustedContexts.map((context) => context.contextId),
+  );
+  check(
+    trustedContextIds.size === scenario.runtime.trustedContexts.length,
+    "runtime.trustedContexts",
+    "Trusted-context identifiers must be unique",
+  );
+
+  for (const context of scenario.runtime.trustedContexts) {
+    const path = `runtime.trustedContexts.${context.contextId}`;
+    const actor = actorsById.get(context.actorId);
+    check(actor !== undefined, path, `References unknown actor "${context.actorId}"`);
+    check(
+      organizationIds.has(context.organizationId),
+      path,
+      `References unknown organization "${context.organizationId}"`,
+    );
+    check(
+      actor?.organizationId === context.organizationId,
+      path,
+      "Trusted-context actor must belong to its organization",
+    );
+    check(
+      actor?.actorRole === context.roleId,
+      path,
+      "Trusted-context role must match the declared actor role",
+    );
+  }
+
+  for (const stageId of SCENARIO_STAGE_ORDER) {
+    const contextId = scenario.runtime.initialContextByStage[stageId];
+    check(
+      typeof contextId === "string" && trustedContextIds.has(contextId),
+      `runtime.initialContextByStage.${stageId}`,
+      `Must name a defined trusted context, found "${contextId ?? ""}"`,
+    );
+  }
+
+  const handoffIds = new Set(scenario.runtime.roleHandoffs.map((handoff) => handoff.handoffId));
+  check(
+    handoffIds.size === scenario.runtime.roleHandoffs.length,
+    "runtime.roleHandoffs",
+    "Role-handoff identifiers must be unique",
+  );
+  for (const handoff of scenario.runtime.roleHandoffs) {
+    const path = `runtime.roleHandoffs.${handoff.handoffId}`;
+    check(
+      SCENARIO_STAGE_ORDER.includes(handoff.stageId),
+      path,
+      `References unknown stage "${handoff.stageId}"`,
+    );
+    check(
+      trustedContextIds.has(handoff.fromContextId),
+      path,
+      `References unknown source context "${handoff.fromContextId}"`,
+    );
+    check(
+      trustedContextIds.has(handoff.toContextId),
+      path,
+      `References unknown target context "${handoff.toContextId}"`,
+    );
+    check(
+      handoff.fromContextId !== handoff.toContextId,
+      path,
+      "A role handoff must change the trusted context",
+    );
+    check(handoff.labelKey.length > 0, path, "A role handoff must have a label key");
+  }
+
+  const commandActions = Object.keys(scenario.runtime.commandContextByAction);
+  const templateActions = Object.keys(scenario.runtime.learnerCommandTemplates);
+  check(
+    commandActions.length === new Set(commandActions).size,
+    "runtime.commandContextByAction",
+    "Command action identifiers must be unique",
+  );
+  check(
+    templateActions.length === new Set(templateActions).size,
+    "runtime.learnerCommandTemplates",
+    "Command-template action identifiers must be unique",
+  );
+  for (const actionId of commandActions) {
+    const contextId = scenario.runtime.commandContextByAction[actionId] as string;
+    check(
+      trustedContextIds.has(contextId),
+      `runtime.commandContextByAction.${actionId}`,
+      `References unknown trusted context "${contextId}"`,
+    );
+    check(
+      scenario.runtime.learnerCommandTemplates[actionId] !== undefined,
+      `runtime.commandContextByAction.${actionId}`,
+      "Has no matching learner command template",
+    );
+  }
+  for (const actionId of templateActions) {
+    const command = scenario.runtime.learnerCommandTemplates[actionId];
+    check(
+      scenario.runtime.commandContextByAction[actionId] !== undefined,
+      `runtime.learnerCommandTemplates.${actionId}`,
+      "Has no matching scenario-controlled command context",
+    );
+    check(
+      command !== undefined &&
+        typeof command.scenarioTimestamp === "string" &&
+        Number.isFinite(Date.parse(command.scenarioTimestamp)),
+      `runtime.learnerCommandTemplates.${actionId}`,
+      "Must carry a valid scenario timestamp",
+    );
+  }
+  for (const [actionId, command] of Object.entries(
+    scenario.runtime.mitigationCommandTemplates ?? {},
+  )) {
+    check(
+      scenario.runtime.learnerCommandTemplates[actionId] !== undefined,
+      `runtime.mitigationCommandTemplates.${actionId}`,
+      "Has no matching initial command template",
+    );
+    check(
+      typeof command.scenarioTimestamp === "string" &&
+        Number.isFinite(Date.parse(command.scenarioTimestamp)),
+      `runtime.mitigationCommandTemplates.${actionId}`,
+      "Must carry a valid scenario timestamp",
+    );
+  }
+
+  const journalLimits = scenario.runtime.journalLimits;
+  check(
+    ["VALID", "EXPIRED", "CONTENT_INVALID"].includes(
+      scenario.runtime.consequentialCases.certificate.certificateAssessment,
+    ),
+    "runtime.consequentialCases.certificate.certificateAssessment",
+    "Must use an authored certificate assessment code",
+  );
+  check(
+    [
+      "RECOGNIZED_AUTHORIZED",
+      "RECOGNIZED_UNAUTHORIZED",
+      "UNRECOGNIZED",
+    ].includes(scenario.runtime.consequentialCases.certificate.issuerAssessment),
+    "runtime.consequentialCases.certificate.issuerAssessment",
+    "Must use an authored issuer assessment code",
+  );
+  check(
+    [
+      "TYPING_ERROR",
+      "UNIT_MISMATCH",
+      "PHYSICAL_LOSS",
+      "FRAUD",
+      "UNKNOWN",
+    ].includes(scenario.runtime.consequentialCases.discrepancy.authoredCauseCode),
+    "runtime.consequentialCases.discrepancy.authoredCauseCode",
+    "Must use an authored discrepancy cause code",
+  );
+  check(
+    scenario.runtime.consequentialCases.discrepancy.reasonSuggestionKey
+      .length > 0,
+    "runtime.consequentialCases.discrepancy.reasonSuggestionKey",
+    "Must name a localized correction-reason suggestion",
+  );
+  for (const [name, value] of Object.entries(journalLimits)) {
+    check(
+      Number.isInteger(value) && value >= 0,
+      `runtime.journalLimits.${name}`,
+      "Journal limits must be non-negative integers",
+    );
+  }
+  check(
+    journalLimits.maximumStage3Mitigations <= 3,
+    "runtime.journalLimits.maximumStage3Mitigations",
+    "Stage 3 mitigation count must remain within the authored TC3 budget",
+  );
+  check(
+    journalLimits.maximumStage5Mitigations <= 2,
+    "runtime.journalLimits.maximumStage5Mitigations",
+    "Stage 5 mitigation count must remain within the authored TC3 budget",
+  );
+  check(
+    journalLimits.maximumStage9Handoffs <= 2,
+    "runtime.journalLimits.maximumStage9Handoffs",
+    "Stage 9 handoff count must remain within the authored TC3 budget",
+  );
+  check(
+    journalLimits.maximumStage9Resubmissions <= 1,
+    "runtime.journalLimits.maximumStage9Resubmissions",
+    "Stage 9 resubmission count must remain within the authored TC3 budget",
+  );
+  check(
+    journalLimits.correctionReasonMaximumUtf8Bytes > 0 &&
+      journalLimits.correctionReasonMaximumUtf8Bytes <= 240,
+    "runtime.journalLimits.correctionReasonMaximumUtf8Bytes",
+    "Correction reasons must have an explicit ceiling of at most 240 UTF-8 bytes",
+  );
+
+  const recallStageId = ScenarioStageId.RECALL_AND_DEBRIEF;
+  const initialRecallContext =
+    scenario.runtime.initialContextByStage[recallStageId];
+  const authorizedRecallContext =
+    scenario.runtime.commandContextByAction["RECALL_BATCH"];
+  if (
+    typeof initialRecallContext === "string" &&
+    typeof authorizedRecallContext === "string"
+  ) {
+    check(
+      initialRecallContext !== authorizedRecallContext,
+      `runtime.initialContextByStage.${recallStageId}`,
+      "Stage 9 must begin outside the authorized recall context",
+    );
+
+    let frontier = new Set([initialRecallContext]);
+    const visited = new Set(frontier);
+    for (
+      let step = 0;
+      step < journalLimits.maximumStage9Handoffs;
+      step += 1
+    ) {
+      const next = new Set<string>();
+      for (const contextId of frontier) {
+        for (const handoff of scenario.runtime.roleHandoffs) {
+          if (
+            handoff.stageId === recallStageId &&
+            handoff.fromContextId === contextId &&
+            !visited.has(handoff.toContextId)
+          ) {
+            visited.add(handoff.toContextId);
+            next.add(handoff.toContextId);
+          }
+        }
+      }
+      frontier = next;
+    }
+    check(
+      visited.has(authorizedRecallContext),
+      "runtime.roleHandoffs",
+      "Stage 9 cannot reach the authorized recall context within its authored handoff limit",
     );
   }
 
@@ -286,6 +527,20 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     }
   }
 
+  for (const [role, assetId] of Object.entries(scenario.runtime.assetRoles)) {
+    check(
+      knownAssetIds.has(assetId),
+      `runtime.assetRoles.${role}`,
+      `References asset "${assetId}", which is neither seeded nor produced by a stage`,
+    );
+  }
+  check(
+    new Set(Object.values(scenario.runtime.documentRoles)).size ===
+      Object.values(scenario.runtime.documentRoles).length,
+    "runtime.documentRoles",
+    "Document roles must resolve to distinct anchors",
+  );
+
   for (const stage of scenario.stages) {
     const path = `stages.${stage.stageId}`;
 
@@ -330,6 +585,15 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
           path,
           `Completion condition references knowledge check "${condition.knowledgeCheckId}", ` +
             "which this stage does not define",
+          );
+      }
+      if (
+        condition.conditionType === "DECISION_RECORDED" &&
+        !scenario.decisionIds.includes(condition.decisionId)
+      ) {
+        error(
+          path,
+          `Completion condition references unknown decision "${condition.decisionId}"`,
         );
       }
     }

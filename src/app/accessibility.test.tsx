@@ -7,6 +7,7 @@ import { LocaleProvider } from "./providers/locale-provider";
 import { ScenarioProvider } from "./providers/scenario-provider";
 import { SimulationProvider } from "./providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 
 /**
  * Structural accessibility, asserted rather than audited once.
@@ -18,7 +19,7 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
@@ -93,11 +94,31 @@ async function playThroughStageFive(user: User): Promise<void> {
   await submitAndSeal("Thông tin lô hàng");
   await advance();
 
-  await answer(/Lưu tệp ngoài chuỗi/);
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Nội dung và thời hạn chứng nhận",
+    }),
+    "VALID",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", {
+      name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+    }),
+    "RECOGNIZED_AUTHORIZED",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách lưu trữ tài liệu" }),
+    "HASH_OFF_CHAIN",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách xử lý lô hàng" }),
+    "CONTINUE",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
+  );
   await submitAndSeal("Ghi nhận tài liệu lên chuỗi");
   await submitAndSeal("Cấp chứng nhận cho lô hàng");
-  await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
-  await answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
   await advance();
 
   await answer(/Chỉ chuyển quyền lưu giữ/);
@@ -109,6 +130,19 @@ async function playThroughStageFive(user: User): Promise<void> {
   await screen.findByRole("heading", { name: /Bước 5/ });
   await submitAndSeal("Tiếp nhận lô hàng");
   await submitAndSeal("Ghi nhận việc mua lô hàng");
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Hành động đề xuất đối với bản ghi",
+    }),
+    "INVESTIGATE_THEN_CORRECT",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Nguyên nhân có khả năng nhất" }),
+    "TYPING_ERROR",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định xử lý chênh lệch" }),
+  );
   await submitAndSeal("Gửi giao dịch điều chỉnh");
 }
 

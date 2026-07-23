@@ -17,7 +17,6 @@ import type { ScenarioDefinition, ScenarioStageDefinition } from "../../domain/t
 import { findStage } from "../../domain/types/scenario";
 import { validateScenario } from "../../domain/scenario/validate-scenario";
 import type { ScenarioStageId } from "../../domain/types/enums";
-import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { isDeveloperMode } from "../configuration";
 
 interface ScenarioContextValue {
@@ -28,10 +27,10 @@ interface ScenarioContextValue {
 const ScenarioContext = createContext<ScenarioContextValue | null>(null);
 
 export function ScenarioProvider({
-  scenario = coffeeScenario,
+  scenario,
   children,
 }: {
-  scenario?: ScenarioDefinition;
+  scenario: ScenarioDefinition;
   children: ReactNode;
 }): ReactNode {
   const value = useMemo<ScenarioContextValue>(() => {

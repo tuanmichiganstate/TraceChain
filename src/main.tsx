@@ -4,6 +4,9 @@ import { App } from "./app/app";
 import { LocaleProvider } from "./app/providers/locale-provider";
 import { ScenarioProvider } from "./app/providers/scenario-provider";
 import { SimulationProvider } from "./app/providers/simulation-provider";
+import { ConfigurationProvider } from "./app/providers/configuration-provider";
+import { loadRuntimePackage } from "./config/runtime-loader";
+import { createTranslator } from "./localization/i18n";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
@@ -13,14 +16,42 @@ if (container === null) {
   throw new Error("Root element #root is missing from index.html");
 }
 
-createRoot(container).render(
-  <StrictMode>
-    <LocaleProvider>
-      <ScenarioProvider>
-        <SimulationProvider>
-          <App />
-        </SimulationProvider>
-      </ScenarioProvider>
-    </LocaleProvider>
-  </StrictMode>,
+const root = createRoot(container);
+
+void loadRuntimePackage((path) => fetch(path)).then(
+  (runtime) => {
+    document.documentElement.lang = runtime.configuration.locale;
+    root.render(
+      <StrictMode>
+        <ConfigurationProvider
+          configuration={runtime.configuration}
+          configurationHash={runtime.configurationHash}
+        >
+          <LocaleProvider locale={runtime.configuration.locale}>
+            <ScenarioProvider scenario={runtime.scenario}>
+              <SimulationProvider>
+                <App />
+              </SimulationProvider>
+            </ScenarioProvider>
+          </LocaleProvider>
+        </ConfigurationProvider>
+      </StrictMode>,
+    );
+  },
+  (error: unknown) => {
+    const t = createTranslator("vi");
+    console.error(error);
+    root.render(
+      <StrictMode>
+        <main className="start" id="main-content">
+          <div className="start__inner">
+            <section className="card">
+              <h1>{t("errors.packageConfigurationHeading")}</h1>
+              <p>{t("errors.packageConfiguration")}</p>
+            </section>
+          </div>
+        </main>
+      </StrictMode>,
+    );
+  },
 );

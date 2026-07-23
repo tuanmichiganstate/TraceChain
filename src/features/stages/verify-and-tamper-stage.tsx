@@ -13,7 +13,6 @@ import {
   demonstrateTamper,
   type TamperDemonstration,
 } from "../../domain/ledger/integrity";
-import { PACKAGED_COFFEE_LOT_ID } from "../../scenarios/coffee-traceability/stages";
 
 /**
  * Stage 8. What the public can see, and what happens when someone edits history.
@@ -30,7 +29,7 @@ import { PACKAGED_COFFEE_LOT_ID } from "../../scenarios/coffee-traceability/stag
  */
 export function VerifyAndTamperStage(): ReactNode {
   const t = useTranslator();
-  const { stage } = useScenario();
+  const { stage, scenario } = useScenario();
   const { state } = useSimulation();
   const definition = stage(ScenarioStageId.VERIFY_AND_TAMPER);
   const [demonstration, setDemonstration] = useState<TamperDemonstration | null>(null);
@@ -59,14 +58,15 @@ export function VerifyAndTamperStage(): ReactNode {
     setIsLedgerIntact(chainFingerprint(state.domain, sha256Hex) === fingerprintBefore);
   };
 
-  const packagedLot = state.domain.assetsById[PACKAGED_COFFEE_LOT_ID];
+  const packagedLotId = scenario.runtime.assetRoles.primaryPackagedLotId;
+  const packagedLot = state.domain.assetsById[packagedLotId];
 
   return (
     <StageShell stageId={ScenarioStageId.VERIFY_AND_TAMPER}>
       <section className="card card--reference">
         <h3>{t("stage.verifyAndTamper.publicHeading")}</h3>
         {packagedLot !== undefined ? (
-          <ProvenanceViewer state={state.domain} rootAssetId={PACKAGED_COFFEE_LOT_ID} />
+          <ProvenanceViewer state={state.domain} rootAssetId={packagedLotId} />
         ) : null}
         <p className="muted">{t("stage.verifyAndTamper.publicNotice")}</p>
       </section>

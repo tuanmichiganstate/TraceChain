@@ -54,3 +54,17 @@ export class UnsupportedStateVersionError extends TraceChainError {
     super(message);
   }
 }
+
+/** A valid attempt belongs to another resolved package or scenario version. */
+export class IncompatibleAttemptError extends TraceChainError {
+  readonly messageKey = "errors.incompatibleAttempt";
+}
+
+/**
+ * TC2 data is intentionally not migrated. A SCORM package cannot create a new
+ * LMS attempt, so callers must leave the stored value untouched and explain
+ * that the learner needs to exit and start a new attempt in the LMS.
+ */
+export class LegacyAttemptError extends TraceChainError {
+  readonly messageKey = "errors.legacyAttempt";
+}

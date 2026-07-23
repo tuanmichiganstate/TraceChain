@@ -57,6 +57,16 @@ export const DECISION_IDS: readonly string[] = [
   "INT_TRANSPORT_RECORDED_TRANSACTION",
   "INT_OWNERSHIP_PURCHASED_TRANSACTION",
   "INT_SUSPICIOUS_CERTIFICATE_ATTEMPT",
+
+  // Consequential-stage phase evidence. These are unscored and let completion
+  // distinguish an initial submission, a required business commit, and a
+  // completed-or-unneeded mitigation phase.
+  "INT_CERTIFICATE_INITIAL_SUBMITTED",
+  "INT_CERTIFICATE_MITIGATION_COMPLETE",
+  "INT_DISCREPANCY_INITIAL_SUBMITTED",
+  "INT_DISCREPANCY_MITIGATION_COMPLETE",
+  "INT_RECALL_INITIAL_SUBMITTED",
+  "INT_RECALL_AUTHORIZATION_RESOLVED",
 ];
 
 export const HINT_IDS: readonly string[] = [

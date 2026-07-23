@@ -22,7 +22,7 @@ a resumed attempt exercises the compact codec's compatibility rules.
 
 ## Moodle acceptance pass
 
-Exercises Moodle's own storage and gradebook with current TC2 payloads —
+Exercises Moodle's own storage and gradebook with TC3-shaped payloads —
 suspend_data round trip, gradebook write, relaunch-without-clobbering, the
 4096-character boundary, and verified cleanup.
 

@@ -34,7 +34,7 @@ import {
   SHIPPING_MANIFEST_ANCHOR_ID,
   WEIGHED_QUANTITY_KG,
 } from "../../scenarios/coffee-traceability/facts";
-import { replayCoffeeAttempt } from "../../scenarios/coffee-traceability/replay-attempt";
+import { replayScenarioAttempt } from "./replay-attempt";
 
 const target = {
   kind: "DOCUMENT_METADATA_FIELD" as const,
@@ -225,7 +225,7 @@ describe("Stage 5 shipping-manifest repair", () => {
 
   it("resume replay restores the scripted manifest and learner correction", () => {
     const initial = applyScenarioSeed(coffeeScenario, sha256Hex, registries).state;
-    const resumed = replayCoffeeAttempt(
+    const resumed = replayScenarioAttempt(
       {
         currentStageId: ScenarioStageId.TRANSFORM_BATCH,
         completedStageIds: [
@@ -246,6 +246,7 @@ describe("Stage 5 shipping-manifest repair", () => {
       initial,
       new SimulatedLedger(sha256Hex, coffeeScenario.ledgerConfiguration),
       registries,
+      coffeeScenario,
     );
     const transactions = resumed.transactionOrder.map(
       (transactionId) => resumed.transactionsById[transactionId] as LedgerTransaction,
@@ -326,6 +327,14 @@ describe("Stage 5 shipping-manifest repair", () => {
     const ledger = await runUpTo("received");
     const decisions = {
       INT_CORRECTION_RECORDED: { encodedValue: ACTION_ACCEPTED, attemptCount: 1 },
+      INT_DISCREPANCY_INITIAL_SUBMITTED: {
+        encodedValue: ACTION_ACCEPTED,
+        attemptCount: 1,
+      },
+      INT_DISCREPANCY_MITIGATION_COMPLETE: {
+        encodedValue: ACTION_ACCEPTED,
+        attemptCount: 1,
+      },
     };
     expect(
       evaluateStageCompletion(stage5(), { state: ledger.getState(), decisions }).isComplete,

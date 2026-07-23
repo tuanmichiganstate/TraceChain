@@ -7,6 +7,7 @@ import { LocaleProvider } from "../app/providers/locale-provider";
 import { ScenarioProvider } from "../app/providers/scenario-provider";
 import { SimulationProvider } from "../app/providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 
 /**
  * A learner has to be able to weigh a hint before opening it, which means being
@@ -17,7 +18,7 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
@@ -43,14 +44,6 @@ async function reachStageFour(user: ReturnType<typeof userEvent.setup>): Promise
     const seal = within(panel).queryByRole("button", { name: "Ghi giao dịch vào khối" });
     if (seal !== null) await user.click(seal);
   };
-  const answer = async (option: RegExp): Promise<void> => {
-    await user.click(await screen.findByRole("radio", { name: option }));
-    const submit = screen
-      .getAllByRole("button", { name: "Trả lời" })
-      .find((button) => !(button as HTMLButtonElement).disabled);
-    if (submit === undefined) throw new Error("No enabled answer button");
-    await user.click(submit);
-  };
   const advance = async (): Promise<void> => {
     const buttons = await screen.findAllByRole("button", { name: "Tiếp tục" });
     await user.click(buttons[buttons.length - 1] as HTMLElement);
@@ -59,11 +52,31 @@ async function reachStageFour(user: ReturnType<typeof userEvent.setup>): Promise
   await reachStageTwo(user);
   await submitAndSeal("Thông tin lô hàng");
   await advance();
-  await answer(/Lưu tệp ngoài chuỗi/);
+  await user.selectOptions(
+    await screen.findByRole("combobox", {
+      name: "Nội dung và thời hạn chứng nhận",
+    }),
+    "VALID",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", {
+      name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+    }),
+    "RECOGNIZED_AUTHORIZED",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách lưu trữ tài liệu" }),
+    "HASH_OFF_CHAIN",
+  );
+  await user.selectOptions(
+    screen.getByRole("combobox", { name: "Cách xử lý lô hàng" }),
+    "CONTINUE",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
+  );
   await submitAndSeal("Ghi nhận tài liệu lên chuỗi");
   await submitAndSeal("Cấp chứng nhận cho lô hàng");
-  await user.click(screen.getByRole("button", { name: "Thử gửi chứng nhận này" }));
-  await answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
   await advance();
   await screen.findByRole("heading", { name: /Bước 4/ });
 }

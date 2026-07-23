@@ -106,7 +106,40 @@ export class Activity {
     const panel = this.panel(name);
     await panel.getByRole("button", { name: "Gửi giao dịch lên mạng" }).click();
     const seal = panel.getByRole("button", { name: "Ghi giao dịch vào khối" });
-    if ((await seal.count()) > 0) await seal.click();
+    await expect(seal).toBeVisible();
+    await seal.click();
+  }
+
+  async submitSoundCertificateDecision(): Promise<void> {
+    await this.page
+      .getByRole("combobox", { name: "Nội dung và thời hạn chứng nhận" })
+      .selectOption("VALID");
+    await this.page
+      .getByRole("combobox", {
+        name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+      })
+      .selectOption("RECOGNIZED_AUTHORIZED");
+    await this.page
+      .getByRole("combobox", { name: "Cách lưu trữ tài liệu" })
+      .selectOption("HASH_OFF_CHAIN");
+    await this.page
+      .getByRole("combobox", { name: "Cách xử lý lô hàng" })
+      .selectOption("CONTINUE");
+    await this.page
+      .getByRole("button", { name: "Gửi quyết định về chứng nhận" })
+      .click();
+  }
+
+  async submitSoundDiscrepancyDecision(): Promise<void> {
+    await this.page
+      .getByRole("combobox", { name: "Hành động đề xuất đối với bản ghi" })
+      .selectOption("INVESTIGATE_THEN_CORRECT");
+    await this.page
+      .getByRole("combobox", { name: "Nguyên nhân có khả năng nhất" })
+      .selectOption("TYPING_ERROR");
+    await this.page
+      .getByRole("button", { name: "Gửi quyết định xử lý chênh lệch" })
+      .click();
   }
 
   async continue(): Promise<void> {
@@ -125,11 +158,9 @@ export class Activity {
     await this.continue();
 
     await this.expectStage(3);
-    await this.answer(/Lưu tệp ngoài chuỗi/);
+    await this.submitSoundCertificateDecision();
     await this.submitAndSeal("Ghi nhận tài liệu lên chuỗi");
     await this.submitAndSeal("Cấp chứng nhận cho lô hàng");
-    await this.page.getByRole("button", { name: "Thử gửi chứng nhận này" }).click();
-    await this.answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
     await this.continue();
 
     await this.expectStage(4);
@@ -142,6 +173,7 @@ export class Activity {
     await this.expectStage(5);
     await this.submitAndSeal("Tiếp nhận lô hàng");
     await this.submitAndSeal("Ghi nhận việc mua lô hàng");
+    await this.submitSoundDiscrepancyDecision();
     await this.submitAndSeal("Gửi giao dịch điều chỉnh");
   }
 

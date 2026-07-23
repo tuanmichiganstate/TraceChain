@@ -72,11 +72,20 @@ export const certificateIssuerCheck: KnowledgeCheckDefinition = {
   checkType: KnowledgeCheckType.SINGLE_CHOICE,
   questionKey: "check.certificateIssuer.question",
   options: [
-    { optionId: "OPT_ACCEPT_HASH_VALID", labelKey: "check.certificateIssuer.optionAcceptHash" },
-    { optionId: "OPT_REJECT_NOT_AUTHORIZED", labelKey: "check.certificateIssuer.optionReject" },
-    { optionId: "OPT_ACCEPT_WITH_NOTE", labelKey: "check.certificateIssuer.optionAcceptNote" },
+    {
+      optionId: "OPT_ISSUER_RECOGNIZED_AUTHORIZED",
+      labelKey: "check.certificateIssuer.optionRecognizedAuthorized",
+    },
+    {
+      optionId: "OPT_ISSUER_RECOGNIZED_UNAUTHORIZED",
+      labelKey: "check.certificateIssuer.optionRecognizedUnauthorized",
+    },
+    {
+      optionId: "OPT_ISSUER_UNRECOGNIZED",
+      labelKey: "check.certificateIssuer.optionUnrecognized",
+    },
   ],
-  correctOptionIds: ["OPT_REJECT_NOT_AUTHORIZED"],
+  correctOptionIds: ["OPT_ISSUER_RECOGNIZED_AUTHORIZED"],
   feedbackKey: "check.certificateIssuer.feedback",
   scenarioConnectionKey: "check.certificateIssuer.connection",
   scoreComponent: ScoreComponent.DATA_GOVERNANCE,

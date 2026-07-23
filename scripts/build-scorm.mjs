@@ -1,85 +1,433 @@
 #!/usr/bin/env node
 /**
- * Build the SCORM 1.2 package (specification section 4.4).
- *
- * The manifest's file list is generated from the actual build output rather
- * than maintained by hand. A manifest that omits a file it ships, or lists one
- * it does not, is the most common reason an LMS refuses a package -- and the
- * hashed asset filenames change on every build, so a hand-written list would be
- * wrong immediately.
+ * Build one or more configured SCORM 1.2 packages from one static application
+ * build. Configuration and scenario data stay outside the JavaScript bundle.
  */
 
+import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join, posix, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, join, posix, relative, resolve, sep } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { build as bundle } from "esbuild";
+import {
+  classifyPackageBuild,
+  classifyPackageFileName,
+} from "./scorm-package-policy.mjs";
 
 const require = createRequire(import.meta.url);
 const AdmZip = require("adm-zip");
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
-const distDirectory = join(projectRoot, "dist");
-const packageDirectory = join(projectRoot, "dist-scorm");
+const packageJson = JSON.parse(
+  readFileSync(join(projectRoot, "package.json"), "utf8"),
+);
+const applicationVersion = packageJson.version;
+const packageGeneratorVersion = "1.0.0";
+const runtimeFileNames = new Set([
+  "tracechain.config.json",
+  "scenario.json",
+]);
+const packagingFileNames = new Set([
+  "imsmanifest.xml",
+  "build-info.json",
+  "version.json",
+  "README.txt",
+]);
+// ZIP stores local DOS timestamps. Supplying fixed local calendar fields makes
+// the archive metadata identical in every runner timezone.
+const zipEntryTime = new Date(2000, 0, 1, 0, 0, 0);
 
-const packageJson = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8"));
-const locale = JSON.parse(readFileSync(join(projectRoot, "src", "locales", "vi.json"), "utf8"));
-
-const VERSION = packageJson.version;
-const PACKAGE_NAME = `tracechain-scorm-v${VERSION}.zip`;
-const MASTERY_SCORE = 70;
-// ZIP stores local DOS timestamps. A fixed local value keeps byte output stable
-// across rebuilds and across runner timezones.
-const ZIP_ENTRY_TIME = new Date(2000, 0, 1, 0, 0, 0);
-
-if (!existsSync(distDirectory)) {
-  console.error("dist/ not found. Run `npm run build` first.");
-  process.exit(1);
+function usage() {
+  return [
+    "Usage:",
+    "  npm run package:scorm -- --preset guided",
+    "  npm run package:scorm -- --preset guided,challenge",
+    "  npm run package:scorm -- --config configs/package.json",
+    "",
+    "Options:",
+    "  --preset <id[,id]>  Fully resolved lecturer preset(s)",
+    "  --config <path>      Fully resolved configuration JSON",
+    "  --title <text>       Manifest title (only when generating one package)",
+    "  --no-build           Reuse the existing dist/ application build",
+    "  --allow-dirty        Permit a non-release local-development package",
+    "  --legacy-guided      Also write tracechain-scorm-v<app-version>.zip",
+    "  --help               Show this help",
+  ].join("\n");
 }
 
-/** Escape text for inclusion in XML character data or an attribute value. */
-function escapeXml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+function parseArguments(arguments_) {
+  const options = {
+    presetIds: [],
+    configurationPaths: [],
+    title: undefined,
+    noBuild: false,
+    allowDirty: false,
+    legacyGuided: false,
+    help: false,
+  };
+
+  for (let index = 0; index < arguments_.length; index += 1) {
+    const argument = arguments_[index];
+    const next = () => {
+      const value = arguments_[index + 1];
+      if (value === undefined || value.startsWith("--")) {
+        throw new Error(`${argument} requires a value`);
+      }
+      index += 1;
+      return value;
+    };
+
+    if (argument === "--preset") {
+      options.presetIds.push(
+        ...next()
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      );
+    } else if (argument === "--config") {
+      options.configurationPaths.push(next());
+    } else if (argument === "--title") {
+      options.title = next();
+    } else if (argument === "--no-build") {
+      options.noBuild = true;
+    } else if (argument === "--allow-dirty") {
+      options.allowDirty = true;
+    } else if (argument === "--legacy-guided") {
+      options.legacyGuided = true;
+    } else if (argument === "--help" || argument === "-h") {
+      options.help = true;
+    } else {
+      throw new Error(`Unknown argument: ${argument}`);
+    }
+  }
+
+  const inputCount =
+    options.presetIds.length + options.configurationPaths.length;
+  if (!options.help && inputCount === 0) {
+    throw new Error("Select at least one --preset or --config");
+  }
+  if (options.title !== undefined && inputCount !== 1) {
+    throw new Error("--title can only be used when generating one package");
+  }
+  if (
+    options.title !== undefined &&
+    (options.title.length < 1 ||
+      options.title.length > 120 ||
+      [...options.title].some((character) => {
+        const codePoint = character.codePointAt(0);
+        return codePoint !== undefined && (codePoint <= 31 || codePoint === 127);
+      }) ||
+      options.title.trim() !== options.title)
+  ) {
+    throw new Error("--title must be 1-120 printable characters without outer whitespace");
+  }
+
+  return options;
+}
+
+function runGit(arguments_, fallback = undefined) {
+  try {
+    return execFileSync("git", arguments_, {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return fallback;
+  }
+}
+
+function inspectRepository(options) {
+  const sourceCommit = runGit(["rev-parse", "HEAD"], "unknown");
+  const dirtyOutput = runGit(
+    ["status", "--porcelain=v1", "--untracked-files=normal"],
+    "__git-unavailable__",
+  );
+  const dirty = dirtyOutput !== "";
+  const classification = classifyPackageBuild({
+    dirty,
+    allowDirty: options.allowDirty,
+  });
+
+  const commitTimestamp = runGit(
+    ["show", "-s", "--format=%cI", "HEAD"],
+    "2000-01-01T00:00:00.000Z",
+  );
+  const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
+  let generatedAt;
+  if (sourceDateEpoch === undefined) {
+    generatedAt = new Date(commitTimestamp).toISOString();
+  } else if (/^\d+$/u.test(sourceDateEpoch)) {
+    generatedAt = new Date(Number(sourceDateEpoch) * 1000).toISOString();
+  } else {
+    throw new Error("SOURCE_DATE_EPOCH must contain whole Unix seconds");
+  }
+  if (!Number.isFinite(Date.parse(generatedAt))) {
+    throw new Error("Could not determine a deterministic package timestamp");
+  }
+
+  return {
+    sourceCommit,
+    dirty,
+    generatedAt,
+    releaseBuild: classification.releaseBuild,
+    reproducibleSource: classification.reproducibleSource,
+  };
 }
 
 function listFilesRecursively(directory, base = directory) {
   const found = [];
-  for (const entry of readdirSync(directory)) {
+  for (const entry of readdirSync(directory).sort((left, right) =>
+    left.localeCompare(right, "en"),
+  )) {
     const fullPath = join(directory, entry);
     if (statSync(fullPath).isDirectory()) {
       found.push(...listFilesRecursively(fullPath, base));
     } else {
-      // Manifest hrefs are always forward-slashed, regardless of build platform.
       found.push(relative(base, fullPath).split(sep).join(posix.sep));
     }
   }
-  return found.sort();
+  return found.sort((left, right) => {
+    const folded = left.toLowerCase().localeCompare(right.toLowerCase(), "en");
+    return folded === 0 ? left.localeCompare(right, "en") : folded;
+  });
 }
 
-// ---- Assemble the package directory ------------------------------------
-
-rmSync(packageDirectory, { recursive: true, force: true });
-mkdirSync(packageDirectory, { recursive: true });
-cpSync(distDirectory, packageDirectory, { recursive: true });
-
-const files = listFilesRecursively(packageDirectory);
-
-if (!files.includes("index.html")) {
-  console.error("The build output has no index.html at its root.");
-  process.exit(1);
+function hashStaticApplication(directory) {
+  const digest = createHash("sha256");
+  const files = listFilesRecursively(directory).filter(
+    (file) =>
+      !runtimeFileNames.has(file) &&
+      !packagingFileNames.has(file),
+  );
+  for (const file of files) {
+    digest.update(file, "utf8");
+    digest.update("\0");
+    digest.update(createHash("sha256").update(readFileSync(join(directory, file))).digest());
+    digest.update("\n");
+  }
+  return { hash: digest.digest("hex"), files };
 }
 
-// ---- imsmanifest.xml ---------------------------------------------------
+function escapeXml(text) {
+  return text
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;")
+    .replace(/"/gu, "&quot;")
+    .replace(/'/gu, "&apos;");
+}
 
-const title = escapeXml(locale["app.title"]);
-const description = escapeXml(locale["app.subtitle"]);
+async function loadPackageDefinitions() {
+  const cacheRoot = join(projectRoot, "node_modules", ".cache");
+  mkdirSync(cacheRoot, { recursive: true });
+  const temporaryDirectory = mkdtempSync(
+    join(cacheRoot, "tracechain-package-generator-"),
+  );
+  const bundlePath = join(temporaryDirectory, "package-entry.mjs");
 
-const manifest = `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="TRACECHAIN_SCN_COFFEE_001" version="${escapeXml(VERSION)}"
+  try {
+    await bundle({
+      entryPoints: [join(projectRoot, "scripts", "package-entry.ts")],
+      outfile: bundlePath,
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "node20",
+      logLevel: "silent",
+    });
+    return await import(`${pathToFileURL(bundlePath).href}?package-generator=1`);
+  } finally {
+    // Imported ESM is retained by Node after loading, so the temporary bundle
+    // can be removed before package assembly begins.
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+function loadConfigurationFile(configurationPath, definitions) {
+  const absolutePath = resolve(process.cwd(), configurationPath);
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(absolutePath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Could not read configuration "${configurationPath}": ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  const configuration =
+    parsed !== null &&
+    typeof parsed === "object" &&
+    "configuration" in parsed
+      ? parsed.configuration
+      : parsed;
+  const validation = definitions.validateConfiguration(configuration);
+  if (!validation.isValid) {
+    throw new Error(
+      `Configuration "${configurationPath}" is invalid:\n${validation.issues
+        .map((issue) => `  ${issue.path}: ${issue.message}`)
+        .join("\n")}`,
+    );
+  }
+
+  if (
+    parsed !== null &&
+    typeof parsed === "object" &&
+    "configurationHash" in parsed &&
+    parsed.configurationHash !== definitions.hashConfiguration(configuration)
+  ) {
+    throw new Error(
+      `Configuration hash in "${configurationPath}" does not match its content`,
+    );
+  }
+  return {
+    configuration: structuredClone(configuration),
+    sourceLabel: basename(configurationPath, ".json"),
+  };
+}
+
+function scenarioMap(definitions) {
+  return new Map([
+    [definitions.coffeeScenario.scenarioId, definitions.coffeeScenario],
+    [definitions.challengeAScenario.scenarioId, definitions.challengeAScenario],
+  ]);
+}
+
+function validatePackageInput(configuration, scenario, definitions) {
+  const configurationValidation =
+    definitions.validateConfiguration(configuration);
+  if (!configurationValidation.isValid) {
+    throw new Error(
+      `Resolved configuration is invalid:\n${configurationValidation.issues
+        .map((issue) => `  ${issue.path}: ${issue.message}`)
+        .join("\n")}`,
+    );
+  }
+  const scenarioValidation = definitions.validateScenario(scenario);
+  if (!scenarioValidation.isValid) {
+    throw new Error(
+      `Scenario ${scenario.scenarioId} is invalid:\n${scenarioValidation.issues
+        .filter((issue) => issue.severity === "ERROR")
+        .map((issue) => `  ${issue.path}: ${issue.message}`)
+        .join("\n")}`,
+    );
+  }
+  if (
+    scenario.scenarioId !== configuration.scenarioId ||
+    scenario.scenarioVersion !== configuration.scenarioVersion
+  ) {
+    throw new Error(
+      `Configuration requests ${configuration.scenarioId} ` +
+        `v${configuration.scenarioVersion}, but the selected scenario is ` +
+        `${scenario.scenarioId} v${scenario.scenarioVersion}`,
+    );
+  }
+  if (
+    scenario.scoringConfiguration.maxScore !==
+    configuration.scoring.maximumScore
+  ) {
+    throw new Error(
+      "Scenario maximum score does not match the resolved package configuration",
+    );
+  }
+}
+
+function safeFileSegment(value) {
+  return value
+    .normalize("NFKD")
+    .split("")
+    .filter((character) => character.charCodeAt(0) <= 127)
+    .join("")
+    .replace(/[^A-Za-z0-9]+/gu, "")
+    .slice(0, 48);
+}
+
+function defaultScenarioLabel(configuration) {
+  if (configuration.scenarioId === "SCN_COFFEE_001") return "StandardCoffee";
+  if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE_A") return "ChallengeA";
+  return safeFileSegment(configuration.scenarioId);
+}
+
+function packageFileName(configuration, releaseBuild) {
+  const mode =
+    configuration.mode.slice(0, 1).toUpperCase() +
+    configuration.mode.slice(1).replace(/-([a-z])/gu, (_, letter) =>
+      letter.toUpperCase(),
+    );
+  const releaseFileName = [
+    "TraceChain",
+    safeFileSegment(mode),
+    defaultScenarioLabel(configuration),
+    configuration.locale,
+    `v${configuration.scenarioVersion.replace(/[^A-Za-z0-9.-]/gu, "")}`,
+  ].join("_") + ".zip";
+  return classifyPackageFileName(releaseFileName, releaseBuild);
+}
+
+function resolvePackageText(configuration, scenario, titleOverride) {
+  const locale = JSON.parse(
+    readFileSync(
+      join(projectRoot, "src", "locales", `${configuration.locale}.json`),
+      "utf8",
+    ),
+  );
+  return {
+    title:
+      titleOverride ??
+      locale[scenario.titleKey] ??
+      `TraceChain ${configuration.mode}`,
+    description:
+      locale[scenario.descriptionKey] ??
+      locale["app.subtitle"] ??
+      "TraceChain supply-chain decision simulation",
+  };
+}
+
+function printPackageSummary({ configuration, scenario, text }) {
+  const inspections = Object.entries(configuration.technicalFeatures)
+    .filter(([, enabled]) => enabled)
+    .map(([feature]) => feature)
+    .join(", ");
+  console.log(
+    [
+      "Resolved package:",
+      `  package title: ${text.title}`,
+      `  mode: ${configuration.mode}`,
+      `  scenario: ${scenario.scenarioId} v${scenario.scenarioVersion}`,
+      `  feedback: ${configuration.feedbackTiming}`,
+      `  hints: ${configuration.hints}`,
+      `  reference workspace: ${configuration.referenceWorkspace}`,
+      `  technical inspection: ${inspections || "none"}`,
+      `  pass score: ${configuration.scoring.passScore}`,
+      `  language: ${configuration.locale}`,
+    ].join("\n"),
+  );
+}
+
+function manifestSource({
+  identifier,
+  version,
+  title,
+  description,
+  masteryScore,
+  files,
+}) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="${escapeXml(identifier)}" version="${escapeXml(version)}"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -94,15 +442,15 @@ const manifest = `<?xml version="1.0" encoding="UTF-8"?>
 
   <organizations default="TRACECHAIN_ORGANIZATION">
     <organization identifier="TRACECHAIN_ORGANIZATION" structure="hierarchical">
-      <title>${title}</title>
+      <title>${escapeXml(title)}</title>
       <item identifier="ITEM_TRACECHAIN" identifierref="RESOURCE_TRACECHAIN" isvisible="true">
-        <title>${title}</title>
-        <adlcp:masteryscore>${MASTERY_SCORE}</adlcp:masteryscore>
+        <title>${escapeXml(title)}</title>
+        <adlcp:masteryscore>${masteryScore}</adlcp:masteryscore>
         <adlcp:maxtimeallowed></adlcp:maxtimeallowed>
         <adlcp:datafromlms></adlcp:datafromlms>
       </item>
       <metadata>
-        <adlcp:location>${description}</adlcp:location>
+        <adlcp:location>${escapeXml(description)}</adlcp:location>
       </metadata>
     </organization>
   </organizations>
@@ -115,74 +463,270 @@ ${files.map((file) => `      <file href="${escapeXml(file)}" />`).join("\n")}
 
 </manifest>
 `;
-
-writeFileSync(join(packageDirectory, "imsmanifest.xml"), manifest, "utf8");
-
-// ---- Supporting files --------------------------------------------------
-
-writeFileSync(
-  join(packageDirectory, "version.json"),
-  `${JSON.stringify(
-    {
-      name: "tracechain",
-      version: VERSION,
-      scenarioId: "SCN_COFFEE_001",
-      scormVersion: "1.2",
-      packageFormatVersion: 1,
-      reproducibleBuild: true,
-      masteryScore: MASTERY_SCORE,
-    },
-    null,
-    2,
-  )}\n`,
-  "utf8",
-);
-
-writeFileSync(
-  join(packageDirectory, "README.txt"),
-  [
-    `TraceChain ${VERSION}`,
-    "A simulated permissioned blockchain for supply-chain traceability education.",
-    "",
-    "DEPLOYMENT",
-    "  Upload tracechain-scorm-v" + VERSION + ".zip to Moodle as a SCORM package activity.",
-    "  No server, database, blockchain node or network access is required at runtime.",
-    "",
-    "MOODLE ACTIVITY SETTINGS",
-    "  Grading method     Highest grade",
-    "  Maximum grade      100",
-    "  Attempts           As permitted by the course design",
-    "  Display            New window or embedded; both are supported.",
-    "",
-    "NOTES",
-    "  The learner interface is Vietnamese. The ledger is simulated: it is not",
-    "  connected to any real blockchain network, and no student identity is",
-    "  written to it.",
-    "",
-    "  Passing score is " + MASTERY_SCORE + " of 100, declared as adlcp:masteryscore",
-    "  in imsmanifest.xml.",
-    "",
-  ].join("\n"),
-  "utf8",
-);
-
-// ---- Zip ---------------------------------------------------------------
-
-const zip = new AdmZip();
-// Files are added individually so the archive has no wrapping directory: a
-// SCORM package must have imsmanifest.xml at the archive root.
-for (const file of listFilesRecursively(packageDirectory)) {
-  const directory = posix.dirname(file);
-  zip.addLocalFile(join(packageDirectory, file), directory === "." ? "" : directory);
-  const entry = zip.getEntry(file);
-  if (entry === null || entry === undefined) {
-    throw new Error(`Failed to add ${file} to the SCORM archive`);
-  }
-  entry.header.time = ZIP_ENTRY_TIME;
 }
 
-const zipPath = join(projectRoot, PACKAGE_NAME);
-zip.writeZip(zipPath);
+function addFilesToZip(packageDirectory, zipPath) {
+  const zip = new AdmZip();
+  for (const file of listFilesRecursively(packageDirectory)) {
+    const directory = posix.dirname(file);
+    zip.addLocalFile(
+      join(packageDirectory, file),
+      directory === "." ? "" : directory,
+    );
+    const entry = zip.getEntry(file);
+    if (entry === null || entry === undefined) {
+      throw new Error(`Failed to add ${file} to the SCORM archive`);
+    }
+    entry.header.time = zipEntryTime;
+  }
+  zip.writeZip(zipPath);
+}
 
-const sizeKilobytes = (statSync(zipPath).size / 1024).toFixed(1);
-console.log(`SCORM package written: ${PACKAGE_NAME} (${sizeKilobytes} kB, ${files.length + 3} files)`);
+function packageOne({
+  configuration,
+  sourceLabel,
+  scenario,
+  definitions,
+  provenance,
+  staticBuild,
+  text,
+}) {
+  const distDirectory = join(projectRoot, "dist");
+  const packageDirectory = join(
+    projectRoot,
+    "dist-scorm",
+    safeFileSegment(sourceLabel) || safeFileSegment(configuration.mode),
+  );
+  rmSync(packageDirectory, { recursive: true, force: true });
+  mkdirSync(packageDirectory, { recursive: true });
+  cpSync(distDirectory, packageDirectory, { recursive: true });
+
+  const embeddedConfiguration = definitions.embedConfiguration(configuration);
+  writeFileSync(
+    join(packageDirectory, "tracechain.config.json"),
+    `${JSON.stringify(embeddedConfiguration, null, 2)}\n`,
+    "utf8",
+  );
+  writeFileSync(
+    join(packageDirectory, "scenario.json"),
+    `${JSON.stringify(scenario, null, 2)}\n`,
+    "utf8",
+  );
+
+  const { title, description } = text;
+  const runtimeFiles = listFilesRecursively(packageDirectory).filter(
+    (file) => !packagingFileNames.has(file),
+  );
+  const identifier = `TRACECHAIN_${embeddedConfiguration.configurationHash
+    .slice(0, 20)
+    .toUpperCase()}`;
+
+  writeFileSync(
+    join(packageDirectory, "imsmanifest.xml"),
+    manifestSource({
+      identifier,
+      version: applicationVersion,
+      title,
+      description,
+      masteryScore: configuration.scoring.passScore,
+      files: runtimeFiles,
+    }),
+    "utf8",
+  );
+
+  const buildInformation = {
+    applicationVersion,
+    sourceCommit: provenance.sourceCommit,
+    packageGeneratorVersion,
+    configurationHash: embeddedConfiguration.configurationHash,
+    scenarioId: scenario.scenarioId,
+    scenarioVersion: scenario.scenarioVersion,
+    generatedAt: provenance.generatedAt,
+    applicationBuildHash: staticBuild.hash,
+    dirty: provenance.dirty,
+    release: provenance.releaseBuild,
+    releaseBuild: provenance.releaseBuild,
+    reproducibleSource: provenance.reproducibleSource,
+    normalizedArchiveMetadata: true,
+  };
+  writeFileSync(
+    join(packageDirectory, "build-info.json"),
+    `${JSON.stringify(buildInformation, null, 2)}\n`,
+    "utf8",
+  );
+  writeFileSync(
+    join(packageDirectory, "version.json"),
+    `${JSON.stringify(
+      {
+        name: "tracechain",
+        version: applicationVersion,
+        scenarioId: scenario.scenarioId,
+        scormVersion: "1.2",
+        packageFormatVersion: 2,
+        reproducibleBuild: provenance.releaseBuild,
+        masteryScore: configuration.scoring.passScore,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  writeFileSync(
+    join(packageDirectory, "README.txt"),
+    [
+      `${title} — TraceChain ${applicationVersion}`,
+      description,
+      "",
+      "DEPLOYMENT",
+      "  Upload this ZIP to the LMS as a SCORM 1.2 package activity.",
+      "  No server, database, blockchain node, or network access is required.",
+      "",
+      "LMS-OWNED SETTINGS",
+      "  Configure availability, attempts, access restrictions, gradebook",
+      "  aggregation, and completion handling in the LMS.",
+      "",
+      `PACKAGE MODE       ${configuration.mode}`,
+      `SCENARIO           ${scenario.scenarioId} v${scenario.scenarioVersion}`,
+      `CONFIGURATION      ${embeddedConfiguration.configurationHash}`,
+      `PASSING SCORE      ${configuration.scoring.passScore} of 100`,
+      `LANGUAGE           ${configuration.locale}`,
+      `RELEASE BUILD      ${provenance.releaseBuild ? "yes" : "no"}`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const outputName = packageFileName(
+    configuration,
+    provenance.releaseBuild,
+  );
+  const outputPath = join(projectRoot, outputName);
+  addFilesToZip(packageDirectory, outputPath);
+  return {
+    configuration,
+    configurationHash: embeddedConfiguration.configurationHash,
+    outputName,
+    outputPath,
+    packageDirectory,
+    title,
+  };
+}
+
+async function main() {
+  const options = parseArguments(process.argv.slice(2));
+  if (options.help) {
+    console.log(usage());
+    return;
+  }
+
+  const provenance = inspectRepository(options);
+  const definitions = await loadPackageDefinitions();
+  const scenarios = scenarioMap(definitions);
+  const requested = [];
+  const seenPresetIds = new Set();
+
+  for (const presetId of options.presetIds) {
+    if (seenPresetIds.has(presetId)) {
+      throw new Error(`Preset "${presetId}" was selected more than once`);
+    }
+    seenPresetIds.add(presetId);
+    const configuration = definitions.LECTURER_PRESETS[presetId];
+    if (configuration === undefined) {
+      throw new Error(
+        `Unknown preset "${presetId}". Available presets: ${Object.keys(
+          definitions.LECTURER_PRESETS,
+        ).join(", ")}`,
+      );
+    }
+    requested.push({
+      configuration: structuredClone(configuration),
+      sourceLabel: presetId,
+    });
+  }
+  for (const configurationPath of options.configurationPaths) {
+    requested.push(loadConfigurationFile(configurationPath, definitions));
+  }
+
+  const resolvedInputs = requested.map(({ configuration, sourceLabel }) => {
+    const scenario = scenarios.get(configuration.scenarioId);
+    if (scenario === undefined) {
+      throw new Error(
+        `No authored scenario is available for ${configuration.scenarioId}`,
+      );
+    }
+    validatePackageInput(configuration, scenario, definitions);
+    const text = resolvePackageText(configuration, scenario, options.title);
+    return { configuration, sourceLabel, scenario, text };
+  });
+
+  for (const input of resolvedInputs) {
+    printPackageSummary(input);
+  }
+
+  if (!options.noBuild) {
+    const npmExecutable = process.platform === "win32" ? "npm.cmd" : "npm";
+    const buildResult = spawnSync(npmExecutable, ["run", "build"], {
+      cwd: projectRoot,
+      stdio: "inherit",
+    });
+    if (buildResult.status !== 0) {
+      throw new Error("Application build failed; no SCORM package was generated");
+    }
+  }
+
+  const distDirectory = join(projectRoot, "dist");
+  if (!existsSync(join(distDirectory, "index.html"))) {
+    throw new Error("dist/index.html not found. Run the application build first.");
+  }
+  const staticBuild = hashStaticApplication(distDirectory);
+
+  const results = resolvedInputs.map(
+    ({ configuration, sourceLabel, scenario, text }) =>
+      packageOne({
+        configuration,
+        sourceLabel,
+        scenario,
+        definitions,
+        provenance,
+        staticBuild,
+        text,
+      }),
+  );
+
+  if (options.legacyGuided) {
+    const guided = results.find(
+      (result) => result.configuration.mode === "guided",
+    );
+    if (guided === undefined) {
+      throw new Error("--legacy-guided requires a guided package input");
+    }
+    const legacyFileName = classifyPackageFileName(
+      `tracechain-scorm-v${applicationVersion}.zip`,
+      provenance.releaseBuild,
+    );
+    cpSync(guided.outputPath, join(projectRoot, legacyFileName));
+  }
+
+  for (const result of results) {
+    const sizeKilobytes = (statSync(result.outputPath).size / 1024).toFixed(1);
+    console.log(
+      [
+        `SCORM package written: ${result.outputName}`,
+        `  title: ${result.title}`,
+        `  mode: ${result.configuration.mode}`,
+        `  scenario: ${result.configuration.scenarioId} v${result.configuration.scenarioVersion}`,
+        `  configuration: ${result.configurationHash}`,
+        `  application build: ${staticBuild.hash}`,
+        `  release: ${provenance.releaseBuild ? "yes" : "no"}`,
+        `  size: ${sizeKilobytes} kB`,
+      ].join("\n"),
+    );
+  }
+}
+
+main().catch((error) => {
+  console.error(`SCORM package generation failed: ${error.message}`);
+  console.error("");
+  console.error(usage());
+  process.exitCode = 1;
+});

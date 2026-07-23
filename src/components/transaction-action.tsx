@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { TransactionStatus } from "../domain/types/enums";
 import type { CommandContext, SupplyChainCommand } from "../domain/commands/commands";
+import type { LedgerTransaction } from "../domain/types/models";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
 import { useSimulation } from "../app/providers/simulation-provider";
@@ -24,27 +25,38 @@ import { ACTION_ACCEPTED } from "../domain/scenario/answer-codec";
  */
 export function TransactionAction({
   decisionId,
+  actionId,
   labelKey,
   summary,
   buildCommand,
   context,
   isFirstOfType = false,
+  recordDecision = true,
   onCommitted,
 }: {
   /** Persisted action identifier; scoring is declared separately by the scenario. */
   decisionId: string;
+  /** Scenario runtime action used for trusted context and compact replay. */
+  actionId: string;
   labelKey: string;
   /** Field label/value pairs shown in the detail panel. */
   summary: ReadonlyArray<readonly [string, ReactNode]>;
   buildCommand: () => SupplyChainCommand;
   context: CommandContext;
   isFirstOfType?: boolean;
+  /** False when an earlier atomic consequential submission owns this score. */
+  recordDecision?: boolean;
   onCommitted?: () => void;
 }): ReactNode {
   const t = useTranslator();
-  const { state, submitCommand, recordActionOutcome, sealPendingBlock } = useSimulation();
+  const { state, submitCommand, sealPendingBlock } = useSimulation();
   const [transactionId, setTransactionId] = useState<string | null>(() => {
-    if (state.decisions[decisionId]?.encodedValue !== ACTION_ACCEPTED) return null;
+    if (
+      recordDecision &&
+      state.decisions[decisionId]?.encodedValue !== ACTION_ACCEPTED
+    ) {
+      return null;
+    }
     const commandType = buildCommand().commandType;
     return (
       [...state.domain.transactionOrder]
@@ -58,23 +70,37 @@ export function TransactionAction({
         )?.transactionId ?? null
     );
   });
+  const [validationReceipt, setValidationReceipt] = useState<LedgerTransaction | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
   const [isDetailOpen, setDetailOpen] = useState(isFirstOfType);
 
   const transaction =
-    transactionId === null ? undefined : state.domain.transactionsById[transactionId];
+    validationReceipt ??
+    (transactionId === null ? undefined : state.domain.transactionsById[transactionId]);
   const isRejected = transaction?.transactionStatus === TransactionStatus.REJECTED;
   const isOrdered = transaction?.transactionStatus === TransactionStatus.ORDERED;
   const isCommitted = transaction?.transactionStatus === TransactionStatus.COMMITTED;
 
-  const submit = (): void => {
-    const outcome = submitCommand(buildCommand(), context);
-    setTransactionId(outcome.transaction.transactionId);
-    recordActionOutcome(decisionId, outcome.isAccepted);
+  const submit = async (): Promise<void> => {
+    setSubmitting(true);
+    try {
+      const outcome = await submitCommand(actionId, decisionId, buildCommand(), {
+        recordDecision,
+      });
+      setValidationReceipt(outcome.transaction);
+      setTransactionId(
+        outcome.isAccepted && outcome.transaction !== null
+          ? outcome.transaction.transactionId
+          : null,
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const seal = (): void => {
+  const seal = async (): Promise<void> => {
     if (transaction === undefined) return;
-    sealPendingBlock(transaction.createdAt);
+    await sealPendingBlock();
     onCommitted?.();
   };
 
@@ -108,8 +134,8 @@ export function TransactionAction({
         <button
           type="button"
           className="button button--primary"
-          onClick={submit}
-          disabled={state.isReadOnly}
+          onClick={() => void submit()}
+          disabled={state.isReadOnly || isSubmitting}
         >
           {t("transaction.submit")}
         </button>
@@ -137,7 +163,10 @@ export function TransactionAction({
             <button
               type="button"
               className="button button--secondary"
-              onClick={() => setTransactionId(null)}
+              onClick={() => {
+                setValidationReceipt(null);
+                setTransactionId(null);
+              }}
             >
               {t("transaction.edit")}
             </button>
@@ -147,7 +176,7 @@ export function TransactionAction({
             <button
               type="button"
               className="button button--primary"
-              onClick={seal}
+              onClick={() => void seal()}
               disabled={state.isReadOnly}
             >
               {t("stage.createBatch.sealBlock")}

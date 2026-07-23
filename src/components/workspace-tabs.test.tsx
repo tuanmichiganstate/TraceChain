@@ -7,6 +7,7 @@ import { LocaleProvider } from "../app/providers/locale-provider";
 import { ScenarioProvider } from "../app/providers/scenario-provider";
 import { SimulationProvider } from "../app/providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 
 /**
  * The reference workspace holds five panels behind one collapsed toggle, so the
@@ -19,7 +20,7 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>

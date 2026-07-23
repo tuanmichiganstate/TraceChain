@@ -3,10 +3,19 @@ import {
   KnowledgeCheckType,
   type KnowledgeCheckDefinition,
 } from "../domain/types/scenario";
-import { EMPTY_ANSWER, type Answer } from "../domain/scenario/answer-codec";
+import {
+  decodeAnswer,
+  EMPTY_ANSWER,
+  isAnswerCorrect,
+  type Answer,
+} from "../domain/scenario/answer-codec";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useSimulation } from "../app/providers/simulation-provider";
 import { StatusPill } from "./status-pill";
+import { useOptionalConfiguration } from "../app/providers/configuration-provider";
+import { useScenario } from "../app/providers/scenario-provider";
+import { shouldRevealDetailedFeedback } from "../app/feedback-visibility";
+import { MAX_ATTEMPT_COUNT } from "../infrastructure/persistence/state-codec";
 
 /**
  * Renders any knowledge check from its definition (specification section 20).
@@ -22,18 +31,47 @@ import { StatusPill } from "./status-pill";
 export function KnowledgeCheckPanel({
   check,
   onAnswered,
+  isLocked = false,
 }: {
   check: KnowledgeCheckDefinition;
   onAnswered?: (isCorrect: boolean) => void;
+  /** Consequential inputs become immutable once their command is submitted. */
+  isLocked?: boolean;
 }): ReactNode {
   const t = useTranslator();
-  const { state, answerCheck } = useSimulation();
-  const [answer, setAnswer] = useState<Answer>(EMPTY_ANSWER);
-  const [outcome, setOutcome] = useState<boolean | null>(null);
-
+  const { scenario } = useScenario();
+  const { state, answerCheck, isCompleted } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
   const previousAttempts = state.decisions[check.knowledgeCheckId]?.attemptCount ?? 0;
+  const previousDecision = state.decisions[check.knowledgeCheckId];
+  const attemptLimitReached = previousAttempts >= MAX_ATTEMPT_COUNT;
+  const restoredLockedAnswer =
+    isLocked && previousDecision !== undefined
+      ? decodeAnswer(check, previousDecision.encodedValue)
+      : null;
+  const [answer, setAnswer] = useState<Answer>(
+    restoredLockedAnswer ?? EMPTY_ANSWER,
+  );
+  const [outcome, setOutcome] = useState<boolean | null>(
+    restoredLockedAnswer === null
+      ? null
+      : isAnswerCorrect(check, restoredLockedAnswer),
+  );
   const hasAnswered = outcome !== null;
   const canSubmit = isAnswerComplete(check, answer);
+  const stageId = scenario.stages.find((stage) =>
+    stage.knowledgeChecks.some(
+      (candidate) => candidate.knowledgeCheckId === check.knowledgeCheckId,
+    ),
+  )?.stageId;
+  const feedbackTiming =
+    packageConfiguration?.configuration.feedbackTiming ?? "immediate";
+  const revealDetailedFeedback = shouldRevealDetailedFeedback({
+    timing: feedbackTiming,
+    stageId,
+    completedStageIds: state.completedStageIds,
+    simulationCompleted: isCompleted,
+  });
 
   const submit = (): void => {
     if (!canSubmit) return;
@@ -49,7 +87,12 @@ export function KnowledgeCheckPanel({
 
   return (
     <section className="card card--work knowledge-check">
-      <fieldset className="fieldset" disabled={hasAnswered || state.isReadOnly}>
+      <fieldset
+        className="fieldset"
+        disabled={
+          hasAnswered || isLocked || attemptLimitReached || state.isReadOnly
+        }
+      >
         <legend>
           <h3>{t(check.questionKey)}</h3>
         </legend>
@@ -65,15 +108,28 @@ export function KnowledgeCheckPanel({
         )}
       </fieldset>
 
-      {!hasAnswered ? (
+      {!hasAnswered && attemptLimitReached ? (
+        <p className="field__error" role="alert">
+          {t("check.attemptLimit", { count: MAX_ATTEMPT_COUNT })}
+        </p>
+      ) : !hasAnswered ? (
         <button
           type="button"
           className="button button--primary"
           onClick={submit}
-          disabled={!canSubmit || state.isReadOnly}
+          disabled={
+            !canSubmit ||
+            isLocked ||
+            attemptLimitReached ||
+            state.isReadOnly
+          }
         >
           {t("check.submit")}
         </button>
+      ) : !revealDetailedFeedback ? (
+        <div className="feedback" role="status">
+          <StatusPill tone="neutral">{t("check.recorded")}</StatusPill>
+        </div>
       ) : (
         <div className={`feedback${outcome ? "" : " feedback--incorrect"}`} role="status">
           <p>

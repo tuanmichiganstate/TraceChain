@@ -7,6 +7,7 @@ import { LocaleProvider } from "./providers/locale-provider";
 import { ScenarioProvider } from "./providers/scenario-provider";
 import { SimulationProvider } from "./providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
+import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 
 /**
  * THE MILESTONE 6 EXIT CONDITION.
@@ -18,7 +19,7 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 function AppUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <App />
         </SimulationProvider>
@@ -181,23 +182,22 @@ describe("suspend data that no longer decodes", () => {
   afterEach(() => uninstall?.());
 
   /**
-   * Section 21.11. Stored progress is never discarded silently: a learner who
-   * cannot be resumed is told so and offered a fresh start, rather than being
-   * dropped at stage 1 wondering where their work went.
+   * TC2 is not migrated or cleared. A package cannot create a new Moodle
+   * attempt, so the recovery screen must say that honestly and leave the LMS
+   * value untouched.
    */
   it("offers recovery rather than pretending the attempt is new", async () => {
     const api = new MockScorm12Api({
       initialValues: {
-        "cmi.suspend_data": "TC1.61r.0021.0.0.deadbeef",
+        "cmi.suspend_data": "TC2.61r.0021.0.0.deadbeef",
         "cmi.core.entry": "resume",
       },
     });
     uninstall = mount(api);
 
     expect(await screen.findByText("Không khôi phục được tiến độ")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bắt đầu lại hoạt động" })).toBeInTheDocument();
-    // The corrupted data is still there; nothing overwrote it before the
-    // learner chose what to do.
-    expect(api.peek("cmi.suspend_data")).toBe("TC1.61r.0021.0.0.deadbeef");
+    expect(screen.getByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bắt đầu lại hoạt động" })).toBeNull();
+    expect(api.peek("cmi.suspend_data")).toBe("TC2.61r.0021.0.0.deadbeef");
   });
 });

@@ -364,6 +364,116 @@ describe("scenario validation catches authoring mistakes", () => {
     expect(errorMessages(broken)).toMatch(/Active actor "ACT_NOBODY" is not defined/);
   });
 
+  it("rejects a trusted context whose role does not match its actor", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        trustedContexts: draft.runtime.trustedContexts.map((context, index) =>
+          index === 0 ? { ...context, roleId: "REGULATORY_AUDITOR" } : context,
+        ),
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(/role must match the declared actor role/);
+  });
+
+  it("rejects a stage whose initial trusted context is not defined", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        initialContextByStage: {
+          ...draft.runtime.initialContextByStage,
+          [ScenarioStageId.RECALL_AND_DEBRIEF]: "CTX_GHOST",
+        },
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(/initialContextByStage.*defined trusted context/);
+  });
+
+  it("rejects a role handoff to an unknown trusted context", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        roleHandoffs: draft.runtime.roleHandoffs.map((handoff, index) =>
+          index === 0 ? { ...handoff, toContextId: "CTX_GHOST" } : handoff,
+        ),
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(/unknown target context "CTX_GHOST"/);
+  });
+
+  it("rejects a Stage 9 handoff graph that cannot reach recall authority", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        roleHandoffs: [],
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(
+      /cannot reach the authorized recall context/,
+    );
+  });
+
+  it("rejects a Stage 9 that starts with recall authority already active", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        initialContextByStage: {
+          ...draft.runtime.initialContextByStage,
+          [ScenarioStageId.RECALL_AND_DEBRIEF]:
+            draft.runtime.commandContextByAction["RECALL_BATCH"] as string,
+        },
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(
+      /must begin outside the authorized recall context/,
+    );
+  });
+
+  it("rejects command templates without a scenario-controlled context", () => {
+    const broken = withScenario((draft) => {
+      const { CREATE_BATCH: _removed, ...contexts } =
+        draft.runtime.commandContextByAction;
+      return {
+        ...draft,
+        runtime: { ...draft.runtime, commandContextByAction: contexts },
+      };
+    });
+    expect(errorMessages(broken)).toMatch(/CREATE_BATCH.*matching scenario-controlled command context/);
+  });
+
+  it("rejects journal limits that exceed the authored TC3 budget", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        journalLimits: {
+          ...draft.runtime.journalLimits,
+          correctionReasonMaximumUtf8Bytes: 241,
+        },
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(/explicit ceiling of at most 240/);
+  });
+
+  it("rejects a runtime asset role that no stage can produce", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      runtime: {
+        ...draft.runtime,
+        assetRoles: {
+          ...draft.runtime.assetRoles,
+          recallSourceAssetId: "BAT_GHOST",
+        },
+      },
+    }));
+    expect(errorMessages(broken)).toMatch(/neither seeded nor produced/);
+  });
+
   it("reports every problem at once rather than stopping at the first", () => {
     const broken = withScenario((draft) => ({
       ...draft,

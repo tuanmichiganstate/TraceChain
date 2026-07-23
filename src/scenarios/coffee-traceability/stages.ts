@@ -134,6 +134,14 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     completionConditions: [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.ISSUE_CERTIFICATE },
       {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+      },
+      {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_CERTIFICATE_MITIGATION_COMPLETE",
+      },
+      {
         conditionType: "KNOWLEDGE_CHECK_ANSWERED",
         knowledgeCheckId: certificateStorageCheck.knowledgeCheckId,
       },
@@ -237,6 +245,14 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     // meets the mechanic rather than only those who fail to spot a typo.
     completionConditions: [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECEIVE_BATCH },
+      {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
+      },
+      {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_DISCREPANCY_MITIGATION_COMPLETE",
+      },
       {
         conditionType: "TRANSACTION_COMMITTED",
         transactionType: TransactionType.RECORD_CORRECTION,
@@ -441,7 +457,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     stageId: ScenarioStageId.RECALL_AND_DEBRIEF,
     titleKey: "stage.recallAndDebrief.title",
     instructionKey: "stage.recallAndDebrief.instruction",
-    activeActorIds: [ActorId.REGULATORY_AUDITOR],
+    activeActorIds: [ActorId.RETAIL_MANAGER, ActorId.REGULATORY_AUDITOR],
     requiredActions: [
       {
         actionId: "ACTION_DETERMINE_SCOPE",
@@ -461,6 +477,14 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     ],
     completionConditions: [
       { conditionType: "TRANSACTION_COMMITTED", transactionType: TransactionType.RECALL_BATCH },
+      {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_RECALL_INITIAL_SUBMITTED",
+      },
+      {
+        conditionType: "DECISION_RECORDED",
+        decisionId: "INT_RECALL_AUTHORIZATION_RESOLVED",
+      },
       {
         conditionType: "KNOWLEDGE_CHECK_ANSWERED",
         knowledgeCheckId: recallScopeCheck.knowledgeCheckId,

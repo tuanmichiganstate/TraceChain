@@ -7,6 +7,7 @@ import { ScenarioProvider } from "../../app/providers/scenario-provider";
 import { SimulationProvider } from "../../app/providers/simulation-provider";
 import { installMockScormApi, MockScorm12Api } from "../../../test/scorm-mock/mock-scorm-api";
 import { createTranslator } from "../../localization/i18n";
+import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 
 /**
  * The opening screen is the only place a learner is told what this is and how
@@ -18,7 +19,7 @@ import { createTranslator } from "../../localization/i18n";
 function StartUnderTest(): React.ReactElement {
   return (
     <LocaleProvider>
-      <ScenarioProvider>
+      <ScenarioProvider scenario={coffeeScenario}>
         <SimulationProvider>
           <StartScreen />
         </SimulationProvider>

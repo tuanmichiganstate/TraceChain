@@ -88,7 +88,7 @@ import {
   ROASTED_COFFEE_BATCH_ID,
 } from "./stages";
 import { applyScenarioSeed } from "../../domain/scenario/seed-replay";
-import { replayCoffeeAttempt } from "./replay-attempt";
+import { replayScenarioAttempt } from "../../domain/scenario/replay-attempt";
 import { SCENARIO_FACT_DATES, SCENARIO_TIMELINE } from "./timeline";
 
 export const STAGE5_MANIFEST_TARGET: CorrectionTarget = {
@@ -115,6 +115,12 @@ const SUPPORTING_ACTION_IDS = [
   "INT_CUSTODY_TRANSFERRED_TRANSACTION",
   "INT_TRANSPORT_RECORDED_TRANSACTION",
   "INT_OWNERSHIP_PURCHASED_TRANSACTION",
+  "INT_CERTIFICATE_INITIAL_SUBMITTED",
+  "INT_CERTIFICATE_MITIGATION_COMPLETE",
+  "INT_DISCREPANCY_INITIAL_SUBMITTED",
+  "INT_DISCREPANCY_MITIGATION_COMPLETE",
+  "INT_RECALL_INITIAL_SUBMITTED",
+  "INT_RECALL_AUTHORIZATION_RESOLVED",
 ] as const;
 
 export function canonicalContractSnapshot(): AttemptSnapshot {
@@ -205,11 +211,12 @@ export function buildCanonicalCoffeeContractFixture(): CoffeeContractFixture {
 
   const snapshot = canonicalContractSnapshot();
   const initial = applyScenarioSeed(coffeeScenario, sha256Hex, registries).state;
-  const replayedState = replayCoffeeAttempt(
+  const replayedState = replayScenarioAttempt(
     snapshot,
     initial,
     new SimulatedLedger(sha256Hex, coffeeScenario.ledgerConfiguration),
     registries,
+    coffeeScenario,
   );
   return { snapshot, liveState: driver.state(), replayedState };
 }
@@ -559,13 +566,28 @@ export function validateCoffeeScenarioContracts(): ScenarioContractValidationRes
       }).isComplete,
   );
 
-  // 11. Audit every DECISION_RECORDED condition for attempt-only completion.
+  // 11. Each consequential stage explicitly distinguishes its one initial
+  // submission and its completed-or-unneeded mitigation phase. The separate
+  // transaction conditions prove the business mutations.
   const decisionConditions = allCompletionConditions(coffeeScenario).filter(
     (candidate) => candidate.condition.conditionType === "DECISION_RECORDED",
   );
+  const consequentialCompletionIds = new Set([
+    "INT_CERTIFICATE_INITIAL_SUBMITTED",
+    "INT_CERTIFICATE_MITIGATION_COMPLETE",
+    "INT_DISCREPANCY_INITIAL_SUBMITTED",
+    "INT_DISCREPANCY_MITIGATION_COMPLETE",
+    "INT_RECALL_INITIAL_SUBMITTED",
+    "INT_RECALL_AUTHORIZATION_RESOLVED",
+  ]);
   recorder.check(
     "completion.decision-recorded-audit",
-    decisionConditions.length === 0,
+    decisionConditions.length === consequentialCompletionIds.size &&
+      decisionConditions.every(
+        (candidate) =>
+          candidate.condition.conditionType === "DECISION_RECORDED" &&
+          consequentialCompletionIds.has(candidate.condition.decisionId),
+      ),
     `${decisionConditions.length} attempt-backed completion condition(s) found`,
   );
 

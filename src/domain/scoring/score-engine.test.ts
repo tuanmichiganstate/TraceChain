@@ -355,6 +355,80 @@ describe("score engine", () => {
     });
   });
 
+  describe("consequential mitigation scoring contract", () => {
+    const scoredItem = (
+      decisionId: string,
+      attempts: number,
+      hintsUsed: readonly string[] = [],
+    ) =>
+      calculateScore(
+        withOverrides(
+          { [decisionId]: { attempts, correct: true } },
+          hintsUsed,
+        ),
+        coffeeScenario,
+      ).items.find((entry) => entry.decisionId === decisionId);
+
+    it("caps remediated certificate storage at the item-scoped hint ceiling", () => {
+      const withoutHint = scoredItem(
+        "INT_CERTIFICATE_STORAGE_CHOICE",
+        2,
+      );
+      const withHint = scoredItem(
+        "INT_CERTIFICATE_STORAGE_CHOICE",
+        2,
+        ["HINT_CERTIFICATE_STORAGE"],
+      );
+
+      expect(withoutHint?.pointsEarned).toBe(4);
+      expect(withHint?.pointsEarned).toBe(3.5);
+      expect(withHint?.wasHintUsed).toBe(true);
+      expect(
+        scoredItem("INT_CERTIFICATE_ISSUER_CHECK", 1, [
+          "HINT_CERTIFICATE_STORAGE",
+        ])?.pointsEarned,
+      ).toBe(5);
+    });
+
+    it("does not let discrepancy mitigation restore points removed by a hint", () => {
+      const withoutHint = scoredItem("INT_CORRECTION_RECORDED", 2);
+      const withHint = scoredItem(
+        "INT_CORRECTION_RECORDED",
+        2,
+        ["HINT_CORRECTION_MECHANISM"],
+      );
+
+      expect(withoutHint?.pointsEarned).toBe(8);
+      expect(withHint?.pointsEarned).toBe(7);
+      expect(withHint?.creditFraction).toBe(
+        configuration.afterHintCredit,
+      );
+    });
+
+    it("scores recall scope independently from authorization and resubmission", () => {
+      const breakdown = calculateScore(
+        withOverrides(
+          {
+            INT_RECALL_SCOPE: { attempts: 1, correct: true },
+            INT_RECALL_COMMITTED: { attempts: 2, correct: true },
+          },
+          ["HINT_RECALL_PROVENANCE"],
+        ),
+        coffeeScenario,
+      );
+      const scope = breakdown.items.find(
+        (entry) => entry.decisionId === "INT_RECALL_SCOPE",
+      );
+      const commitment = breakdown.items.find(
+        (entry) => entry.decisionId === "INT_RECALL_COMMITTED",
+      );
+
+      expect(scope?.pointsEarned).toBe(10.5);
+      expect(commitment?.pointsEarned).toBe(4);
+      expect(commitment?.wasHintUsed).toBe(false);
+    });
+  });
+
   /**
    * What the hint panel promises: the most opening a hint can *still* cost.
    *

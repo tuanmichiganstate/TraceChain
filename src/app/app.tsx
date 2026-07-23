@@ -9,10 +9,12 @@ import { StartScreen } from "../features/start/start-screen";
 import { STAGE_COMPONENTS } from "../features/stage-registry";
 import { WorkspaceTabs } from "../components/workspace-tabs";
 import { PlatformMode } from "../infrastructure/scorm/learning-platform-adapter";
+import { useOptionalConfiguration } from "./providers/configuration-provider";
 
 export function App(): ReactNode {
   const t = useTranslator();
   const { state } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
 
   useEffect(() => {
     if (state.phase !== "RUNNING") return;
@@ -70,7 +72,10 @@ export function App(): ReactNode {
 
       <main className="workspace" id="main-content">
         <StageRouter stageId={state.viewedStageId} />
-        <WorkspaceTabs />
+        {packageConfiguration?.configuration.referenceWorkspace !==
+        "disabled" ? (
+          <WorkspaceTabs />
+        ) : null}
       </main>
 
       {isDeveloperMode() ? <DeveloperPanel /> : null}
@@ -141,9 +146,13 @@ function RecoveryScreen(): ReactNode {
         <section className="card">
           <h1>{t("errors.recoveryHeading")}</h1>
           <p>{t(state.recoveryMessageKey ?? "errors.persistence")}</p>
-          <button type="button" className="button button--primary" onClick={startNew}>
-            {t("errors.recoveryRestart")}
-          </button>
+          {state.recoveryRequiresNewLmsAttempt ? (
+            <p>{t("errors.newLmsAttempt")}</p>
+          ) : (
+            <button type="button" className="button button--primary" onClick={startNew}>
+              {t("errors.recoveryRestart")}
+            </button>
+          )}
         </section>
       </div>
     </main>

@@ -40,6 +40,74 @@ import type { LedgerConfiguration } from "../ledger/ledger-engine";
 import { ScoreComponent } from "./scoring";
 import type { ScoringConfiguration } from "./scoring";
 
+export interface ScenarioTrustedContext {
+  readonly contextId: string;
+  readonly actorId: string;
+  readonly organizationId: string;
+  readonly roleId: string;
+}
+
+export interface ScenarioRoleHandoff {
+  readonly handoffId: string;
+  readonly stageId: ScenarioStageId;
+  readonly fromContextId: string;
+  readonly toContextId: string;
+  readonly labelKey: string;
+}
+
+/**
+ * Serializable runtime vocabulary consumed by the shared stage components.
+ * Package-specific identifiers and command facts live here rather than in the
+ * JavaScript bundle.
+ */
+export interface ScenarioRuntimeDefinition {
+  readonly assetRoles: {
+    readonly sourceBatchId: string;
+    readonly transformedBatchId: string;
+    readonly primaryPackagedLotId: string;
+    readonly recallSourceAssetId: string;
+  };
+  readonly documentRoles: {
+    readonly qualityCertificateAnchorId: string;
+    readonly shippingManifestAnchorId: string;
+  };
+  readonly trustedContexts: readonly ScenarioTrustedContext[];
+  readonly initialContextByStage: Readonly<Record<ScenarioStageId, string>>;
+  readonly roleHandoffs: readonly ScenarioRoleHandoff[];
+  readonly commandContextByAction: Readonly<Record<string, string>>;
+  readonly learnerCommandTemplates: Readonly<Record<string, SupplyChainCommand>>;
+  /** Optional scenario-authored replacement commands unlocked by mitigation. */
+  readonly mitigationCommandTemplates?: Readonly<
+    Record<string, SupplyChainCommand>
+  >;
+  readonly consequentialCases: {
+    readonly certificate: {
+      readonly certificateAssessment: "VALID" | "EXPIRED" | "CONTENT_INVALID";
+      readonly issuerAssessment:
+        | "RECOGNIZED_AUTHORIZED"
+        | "RECOGNIZED_UNAUTHORIZED"
+        | "UNRECOGNIZED";
+      readonly requiredStorageChoice: "HASH_OFF_CHAIN";
+    };
+    readonly discrepancy: {
+      readonly reasonSuggestionKey: string;
+      readonly authoredCauseCode:
+        | "TYPING_ERROR"
+        | "UNIT_MISMATCH"
+        | "PHYSICAL_LOSS"
+        | "FRAUD"
+        | "UNKNOWN";
+    };
+  };
+  readonly journalLimits: {
+    readonly maximumStage3Mitigations: number;
+    readonly maximumStage5Mitigations: number;
+    readonly maximumStage9Handoffs: number;
+    readonly maximumStage9Resubmissions: number;
+    readonly correctionReasonMaximumUtf8Bytes: number;
+  };
+}
+
 /** A pre-existing asset, present before the learner acts. */
 export interface SupplyChainAssetSeed {
   readonly assetId: string;
@@ -311,6 +379,7 @@ export interface ScenarioDefinition {
   /** Positional key for the compact state codec. Append-only. */
   readonly decisionIds: readonly string[];
   readonly hintIds: readonly string[];
+  readonly runtime: ScenarioRuntimeDefinition;
 }
 
 // ---- Lookup helpers ----------------------------------------------------

@@ -21,7 +21,7 @@ const SAVE_STATUS_KEY = {
  */
 export function TopBar(): ReactNode {
   const t = useTranslator();
-  const { state, scoreBreakdown } = useSimulation();
+  const { state, scoreBreakdown, activeTrustedContext } = useSimulation();
   const { scenario, stage } = useScenario();
 
   // The stage on screen, not the furthest one unlocked. Progression is derived,
@@ -32,12 +32,12 @@ export function TopBar(): ReactNode {
   const definition = stage(state.viewedStageId);
   const stageNumber = scenario.stages.findIndex((s) => s.stageId === state.viewedStageId) + 1;
 
-  // The first entry is the role the learner starts the stage in. Stages 4 and 7
-  // hand over to a second role partway through.
-  const activeActorId = definition?.activeActorIds[0];
-  const actor = scenario.actors.find((candidate) => candidate.actorId === activeActorId);
+  const actor = scenario.actors.find(
+    (candidate) => candidate.actorId === activeTrustedContext.actorId,
+  );
   const organization = scenario.organizations.find(
-    (candidate) => candidate.organizationId === actor?.organizationId,
+    (candidate) =>
+      candidate.organizationId === activeTrustedContext.organizationId,
   );
 
   // Orientation genuinely has no role: the learner is observing, not acting.

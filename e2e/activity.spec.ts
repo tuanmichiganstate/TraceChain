@@ -54,13 +54,21 @@ test.describe("the whole activity in a real browser", () => {
     await activity.selectLots(/BAT_PACKAGED_COFFEE_001/, /BAT_ROASTED_COFFEE_001/);
     await expect(page.getByText(/Phạm vi thu hồi chính xác/)).toBeVisible();
 
-    await activity.submitAndSeal("Gửi lệnh thu hồi");
+    // The handoff is available before commitment, so the strongest path does
+    // not have to manufacture an authorization failure.
+  await page
+    .getByRole("button", { name: "Bàn giao cho cơ quan quản lý" })
+    .click();
+  await expect(
+    page.getByText(/Bước bàn giao tổ chức tin cậy đã hoàn tất/),
+  ).toBeVisible();
+  await activity.submitAndSeal("Gửi lệnh thu hồi");
     await activity.answer(/Khi nhiều tổ chức độc lập cần dùng chung bản ghi/);
 
     const report = page.locator("section").filter({
       has: page.getByRole("heading", { name: "Kết quả hoạt động" }),
     });
-    await expect(report.getByText(/Tổng điểm/)).toBeVisible();
+    await expect(report.getByText(/Tổng điểm: 100 \/ 100/)).toBeVisible();
 
     // Nothing reaches the LMS until the learner has seen the result.
     expect(await peek(page, "cmi.core.lesson_status")).not.toBe("passed");
@@ -68,7 +76,7 @@ test.describe("the whole activity in a real browser", () => {
     await expect(report.getByText(/Đã gửi kết quả/)).toBeVisible();
 
     expect(await peek(page, "cmi.core.lesson_status")).toBe("passed");
-    expect(Number(await peek(page, "cmi.core.score.raw"))).toBeGreaterThanOrEqual(70);
+    expect(Number(await peek(page, "cmi.core.score.raw"))).toBe(100);
   });
 });
 
@@ -84,11 +92,9 @@ test.describe("rules the learner can feel", () => {
     await activity.continue();
     await activity.submitAndSeal("Thông tin lô hàng");
     await activity.continue();
-    await activity.answer(/Lưu tệp ngoài chuỗi/);
+    await activity.submitSoundCertificateDecision();
     await activity.submitAndSeal("Ghi nhận tài liệu lên chuỗi");
     await activity.submitAndSeal("Cấp chứng nhận cho lô hàng");
-    await page.getByRole("button", { name: "Thử gửi chứng nhận này" }).click();
-    await activity.answer(/Từ chối, vì đơn vị cấp không có thẩm quyền/);
     await activity.continue();
 
     // Answering the scope question wrongly builds the transaction the rules

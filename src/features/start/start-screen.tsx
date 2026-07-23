@@ -5,6 +5,7 @@ import { useScenario } from "../../app/providers/scenario-provider";
 import { allScorableItems } from "../../domain/types/scenario";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
 import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
+import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 
 const OBJECTIVE_KEYS = [
   "start.objective1",
@@ -29,8 +30,8 @@ export function StartScreen(): ReactNode {
           <div className="start__hero-copy">
             <p className="eyebrow">{t("start.storyEyebrow")}</p>
             <header className="start__header">
-              <h1>{t("app.title")}</h1>
-              <p className="start__subtitle">{t("app.subtitle")}</p>
+              <h1>{t(scenario.titleKey)}</h1>
+              <p className="start__subtitle">{t(scenario.descriptionKey)}</p>
             </header>
             <p className="start__story">{t("start.storyIntro")}</p>
           </div>
@@ -160,7 +161,11 @@ function EmphasisedTerm({ sentence, term }: { sentence: string; term: string }):
 function ScoringSummary(): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
+  const packageConfiguration = useOptionalConfiguration();
   const configuration = scenario.scoringConfiguration;
+  const passingScore =
+    packageConfiguration?.configuration.scoring.passScore ??
+    configuration.passingScore;
   const items = allScorableItems(scenario);
 
   const sum = (procedural: boolean): number =>
@@ -186,7 +191,7 @@ function ScoringSummary(): ReactNode {
         </li>
         <li>
           <strong>{t("start.scoringPassLabel")}</strong>{" "}
-          {t("start.scoringPass", { points: configuration.passingScore })}
+          {t("start.scoringPass", { points: passingScore })}
         </li>
       </ul>
       <p className="muted">

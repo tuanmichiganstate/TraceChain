@@ -10,6 +10,7 @@ import {
 import { allScorableItems, type ScenarioHint } from "../domain/types/scenario";
 import { hintPointsAtRisk } from "../domain/scoring/score-engine";
 import { StatusPill } from "./status-pill";
+import { useOptionalConfiguration } from "../app/providers/configuration-provider";
 
 /**
  * The frame every stage sits in: title, instruction, what still needs doing,
@@ -33,6 +34,7 @@ export function StageShell({
   const t = useTranslator();
   const { stage } = useScenario();
   const { state } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
   const definition = stage(stageId);
 
   if (definition === undefined) return null;
@@ -77,9 +79,11 @@ export function StageShell({
         </section>
       ) : null}
 
-      {definition.availableHints.map((hint) => (
-        <HintPanel key={hint.hintId} hint={hint} />
-      ))}
+      {packageConfiguration?.configuration.hints !== "disabled"
+        ? definition.availableHints.map((hint) => (
+            <HintPanel key={hint.hintId} hint={hint} />
+          ))
+        : null}
 
       {children}
 

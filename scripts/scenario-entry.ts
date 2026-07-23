@@ -8,6 +8,7 @@
  */
 
 export { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
+export { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
 export { validateScenario } from "../src/domain/scenario/validate-scenario";
 export {
   ALL_SCENARIO_DATES,

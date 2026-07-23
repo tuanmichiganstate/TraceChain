@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
-import { organizations } from "../../scenarios/coffee-traceability/organizations";
+import { useScenario } from "../../app/providers/scenario-provider";
 import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
 
 /**
@@ -13,8 +13,9 @@ import coffeeJourneyImage from "../../assets/illustrations/coffee-journey.webp";
  */
 export function SupplyChainDiagram(): ReactNode {
   const t = useTranslator();
+  const { scenario } = useScenario();
   // The regulator observes rather than sitting in the physical flow.
-  const flow = organizations.filter(
+  const flow = scenario.organizations.filter(
     (organization) =>
       organization.isActive && organization.organizationId !== "ORG_REGULATOR",
   );

@@ -6,8 +6,11 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/gradelib.php');
 require_once($CFG->libdir.'/enrollib.php');
 
-$FULL = 'TC2.8e7.002100110021002100210031001100110011002100110011001100212ts1009100110021001100110011001100110000.0.3.143616e206c616920746169206e6861206d61792063686f206b65742071756120313030206b672c206b686f6e6720706861692031303030206b67206e6875207472656e2076616e20646f6e2e.25eecd5c';
-$MID  = 'TC2.203.002100110000000000000000000000000000000000000000000000000000000000000000000000000000000000.0.0.0.be18ef63';
+// These exercise Moodle storage boundaries, not the player decoder. Their
+// framing and sizes represent TC3 while remaining independent of scenario
+// hashes that change between packages.
+$FULL = 'TC3.' . str_repeat('A', 512) . '.00000000';
+$MID  = 'TC3.' . str_repeat('B', 220) . '.00000000';
 
 $cmid = 2;
 [$course, $cm] = get_course_and_cm_from_cmid($cmid, 'scorm');
@@ -79,7 +82,7 @@ require_true((int)$scorm->grademethod === 1, 'SCORM activity is not configured f
 require_true($g && $g->grade !== null && (float)$g->grade === 100.0, 'worse relaunch attempt clobbered the grade');
 
 echo "--- 5. long payload at the boundary ---\n";
-$long = 'TC2.' . str_repeat('a', 4096 - 4);
+$long = 'TC3.' . str_repeat('a', 4096 - 4);
 track($user->id,$scorm->id,$sco->id,3,'cmi.suspend_data',$long);
 $got = readback($sco->id,$user->id,3,'cmi.suspend_data');
 printf("  4096 chars stored: %s (len %d)\n", $got === $long ? 'BYTE-IDENTICAL' : 'MISMATCH', strlen((string)$got));

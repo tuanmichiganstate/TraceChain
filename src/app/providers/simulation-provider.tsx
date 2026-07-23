@@ -1,14 +1,10 @@
 /**
- * Wires the session reducer to a learning platform adapter.
+ * Application orchestrator.
  *
- * This is the only place that knows whether the application is running inside
- * Moodle or standalone. Everything below it -- stages, components, the domain --
- * sees one interface.
- *
- * It also owns the three derivations that must never disagree with each other:
- * stage progression, the score, and what gets reported to the LMS. All three
- * are computed from the same decisions, so a resumed attempt cannot drift from
- * the one that was saved.
+ * The simulation core is platform-independent. This provider supplies trusted
+ * scenario context, turns learner submissions into metadata-bearing commands,
+ * journals the bounded replay inputs, and persists a prospective TC3 snapshot
+ * before publishing the resulting UI state.
  */
 
 import {
@@ -22,18 +18,26 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { SCENARIO_STAGE_ORDER, type ScenarioStageId } from "../../domain/types/enums";
-import { SimulatedLedger } from "../../domain/ledger/ledger-engine";
+import {
+  SCENARIO_STAGE_ORDER,
+  ScenarioStageId,
+  type TransactionStatus,
+} from "../../domain/types/enums";
+import { SimulatedLedger, type TransactionResult } from "../../domain/ledger/ledger-engine";
 import type { DomainState } from "../../domain/ledger/domain-state";
-import type { CommandContext, SupplyChainCommand } from "../../domain/commands/commands";
-import type { TransactionResult } from "../../domain/ledger/ledger-engine";
+import type { SupplyChainCommand } from "../../domain/commands/commands";
 import { KnowledgeCheckType, type KnowledgeCheckDefinition } from "../../domain/types/scenario";
 import { LearnerInteractionType } from "../../domain/types/scoring";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
-  decodeAttemptState,
-  encodeAttemptState,
-} from "../../infrastructure/persistence/state-codec";
+  decodeTc3Attempt,
+  encodeTc3Attempt,
+  type CompactCommandJournalEntry,
+} from "../../infrastructure/persistence/tc3-codec";
+import {
+  LearningPlatformPersistenceBridge,
+  type SimulationPersistence,
+} from "../../infrastructure/persistence/simulation-persistence";
 import { StandalonePersistenceAdapter } from "../../infrastructure/persistence/standalone-adapter";
 import { Scorm12Adapter } from "../../infrastructure/scorm/scorm12-adapter";
 import {
@@ -45,8 +49,6 @@ import {
 import { applyScenarioSeed } from "../../domain/scenario/seed-replay";
 import { applyEligibleScriptedTransactions } from "../../domain/scenario/scripted-transactions";
 import {
-  ACTION_ACCEPTED,
-  ACTION_REJECTED,
   deriveCorrectnessFromDecisions,
   encodeAnswer,
   isAnswerCorrect,
@@ -58,16 +60,63 @@ import {
   isPassing,
   type ScoreBreakdown,
 } from "../../domain/scoring/score-engine";
+import {
+  activeContextIdForStage,
+  commandJournalEntry,
+  contextAt,
+  contextIndex,
+  JournalOpcode,
+  tc3CodecSchema,
+  validateAndApplyHandoff,
+} from "../../domain/simulation/command-journal";
+import {
+  expectedStateVersionsFor,
+  handleSimulationCommand,
+  createSimulationRuntimeState,
+} from "../../domain/simulation/command-handler";
+import {
+  FixedClock,
+  SeededRandomSource,
+  SequenceIdGenerator,
+} from "../../domain/simulation/environment";
+import type {
+  ConsequentialDecisionCommand,
+  MitigationDecisionCommand,
+  DomainSimulationCommand,
+  SimulationCommandOutcome,
+  SimulationRuntimeState,
+  TrustedExecutionContext,
+  SubmitCertificateDecisionCommand,
+  SubmitDiscrepancyDecisionCommand,
+} from "../../domain/simulation/types";
+import { handleSimulationDecision } from "../../domain/simulation/decision-handler";
+import {
+  compactCertificateDecision,
+  compactDiscrepancyDecision,
+  expandCertificateDecision,
+  evaluateCertificateDecision,
+  evaluateDiscrepancyDecision,
+  type CertificateDecisionEvaluation,
+  type DiscrepancyDecisionEvaluation,
+} from "../../domain/simulation/consequential-decisions";
+import { replayCommandJournal } from "../../domain/simulation/replay-journal";
+import {
+  IncompatibleAttemptError,
+  LegacyAttemptError,
+  TraceChainError,
+} from "../../domain/errors";
 import { useScenario } from "./scenario-provider";
+import { useOptionalConfiguration } from "./configuration-provider";
+import { GUIDED_PRESET } from "../../config/presets";
+import { hashConfiguration } from "../../config/hash";
 import { APP_VERSION, defaultAppConfiguration } from "../configuration";
 import {
   createInitialSessionState,
   sessionReducer,
-  toAttemptSnapshot,
+  toTc3AttemptSnapshot,
   type SessionState,
   type SessionAction,
 } from "../session/session-state";
-import { replayCoffeeAttempt } from "../../scenarios/coffee-traceability/replay-attempt";
 
 interface SimulationContextValue {
   readonly state: SessionState;
@@ -75,42 +124,38 @@ interface SimulationContextValue {
   readonly scoreBreakdown: ScoreBreakdown;
   readonly isPassed: boolean;
   readonly isCompleted: boolean;
+  readonly activeTrustedContext: TrustedExecutionContext;
   startNew(): void;
   resume(): void;
   restart(): void;
-  /** Record a knowledge check answer. Correctness is derived, not passed in. */
   answerCheck(check: KnowledgeCheckDefinition, answer: Answer): boolean;
-  /** Named `revealHint` rather than `useHint`: a `use` prefix would read
-   *  as a React hook to both the linter and the next person. */
   revealHint(hintId: string): void;
-  submitCommand(command: SupplyChainCommand, context: CommandContext): TransactionResult;
-  /** Record the outcome of a scored procedural action. */
-  recordActionOutcome(decisionId: string, wasAccepted: boolean): void;
-  sealPendingBlock(createdAt: string): void;
+  submitCommand(
+    actionId: string,
+    decisionId: string,
+    command: SupplyChainCommand,
+    options?: { readonly recordDecision?: boolean },
+  ): Promise<SimulationCommandOutcome>;
+  sealPendingBlock(): Promise<void>;
+  requestRoleHandoff(handoffId: string): Promise<void>;
+  submitCertificateDecision(
+    command: SubmitCertificateDecisionCommand,
+  ): Promise<CertificateDecisionEvaluation>;
+  submitDiscrepancyDecision(
+    command: SubmitDiscrepancyDecisionCommand,
+  ): Promise<DiscrepancyDecisionEvaluation>;
+  recordMitigation(command: MitigationDecisionCommand): Promise<void>;
   viewStage(stageId: ScenarioStageId): void;
   save(): Promise<void>;
   finish(): Promise<void>;
 }
 
-/**
- * The SCORM 1.2 interaction type for a check.
- *
- * `matching` is the closest fit for the classification exercise: the learner
- * pairs each item with a category, which is what matching means in the data
- * model even though the interface is a set of labelled selects.
- */
 function scormInteractionType(
   checkType: KnowledgeCheckType,
 ): PlatformInteraction["type"] {
   return checkType === KnowledgeCheckType.CLASSIFICATION ? "matching" : "choice";
 }
 
-/**
- * The learner's answer in SCORM's response vocabulary.
- *
- * Identifiers, never translated labels: a report read in either language has to
- * mean the same thing, and CMIString255 has no room for prose.
- */
 function describeResponse(check: KnowledgeCheckDefinition, answer: Answer): string {
   const response =
     check.checkType === KnowledgeCheckType.CLASSIFICATION
@@ -121,10 +166,44 @@ function describeResponse(check: KnowledgeCheckDefinition, answer: Answer): stri
   return response.slice(0, 255);
 }
 
+function commandSequence(journal: readonly CompactCommandJournalEntry[]): number {
+  return (journal[journal.length - 1]?.commandSequence ?? 0) + 1;
+}
+
+function commandId(sequence: number): string {
+  return `CMD_${String(sequence).padStart(6, "0")}`;
+}
+
+function trustedPayload(
+  command: SupplyChainCommand,
+  context: TrustedExecutionContext,
+): SupplyChainCommand {
+  // Legacy ledger payloads still contain initiatedByActorId. It is overwritten
+  // at the trust boundary and can never be asserted by a learner-controlled
+  // form. Actor, organization and role authority live in command metadata.
+  return { ...command, initiatedByActorId: context.actorId };
+}
+
+function deriveProgress(state: SessionState, scenario: ReturnType<typeof useScenario>["scenario"]): SessionState {
+  const context = { state: state.domain, decisions: state.decisions };
+  return sessionReducer(state, {
+    type: "STAGE_PROGRESS",
+    completedStageIds: completedStages(scenario, context),
+    currentStageId: currentStage(scenario, context),
+  });
+}
+
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }): ReactNode {
   const { scenario } = useScenario();
+  const configuredPackage = useOptionalConfiguration();
+  if (configuredPackage === null && import.meta.env.PROD) {
+    throw new Error("SimulationProvider requires an embedded package configuration");
+  }
+  const configuration = configuredPackage?.configuration ?? GUIDED_PRESET;
+  const configurationHash =
+    configuredPackage?.configurationHash ?? hashConfiguration(GUIDED_PRESET);
   const [state, reactDispatch] = useReducer(
     sessionReducer,
     undefined,
@@ -132,8 +211,6 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   );
   const stateRef = useRef(state);
   const dispatch = useCallback((action: SessionAction): void => {
-    // Keep the imperative persistence view in lock-step with queued React
-    // updates. A save requested in the same click now sees that click.
     stateRef.current = sessionReducer(stateRef.current, action);
     reactDispatch(action);
   }, []);
@@ -143,8 +220,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     [scenario],
   );
   const codecSchema = useMemo(
-    () => ({ decisionIds: scenario.decisionIds, hintIds: scenario.hintIds }),
-    [scenario],
+    () => tc3CodecSchema({ configuration, configurationHash, scenario }),
+    [configuration, configurationHash, scenario],
   );
   const registries = useMemo(
     () => ({
@@ -155,14 +232,14 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     }),
     [scenario],
   );
-
-  /** The starting world: seeded background lots and their provenance. */
-  const seededState = useMemo(
+  const seededDomain = useMemo(
     () => applyScenarioSeed(scenario, sha256Hex, registries).state,
     [scenario, registries],
   );
 
   const adapterRef = useRef<LearningPlatformAdapter | null>(null);
+  const persistenceRef = useRef<SimulationPersistence | null>(null);
+  const persistenceQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const saveRef = useRef<() => Promise<void>>(async () => undefined);
   const diagnosticsRef = useRef<string[]>([]);
   const [diagnostics, setDiagnostics] = useState<readonly string[]>([]);
@@ -176,58 +253,133 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     setDiagnostics(diagnosticsRef.current);
   }, []);
 
-  // ---- Derivations, all from the same decisions ------------------------
-
-  const scoreBreakdown = useMemo(
-    () =>
+  const scoreFor = useCallback(
+    (candidate: SessionState): ScoreBreakdown =>
       calculateScore(
         {
-          decisions: state.decisions,
-          hintsUsed: state.hintsUsed,
+          decisions: candidate.decisions,
+          hintsUsed: candidate.hintsUsed,
           correctness: deriveCorrectnessFromDecisions(
-            state.decisions,
+            candidate.decisions,
             scenario,
-            state.domain,
+            candidate.domain,
           ),
         },
         scenario,
       ),
-    [state.decisions, state.hintsUsed, state.domain, scenario],
+    [scenario],
   );
 
-  const isPassed = isPassing(scoreBreakdown.score, scenario.scoringConfiguration);
+  const scoreBreakdown = useMemo(() => scoreFor(state), [scoreFor, state]);
+  const activeScoringConfiguration = useMemo(
+    () => ({
+      ...scenario.scoringConfiguration,
+      passingScore: configuration.scoring.passScore,
+    }),
+    [configuration.scoring.passScore, scenario.scoringConfiguration],
+  );
+  const isPassed = isPassing(
+    scoreBreakdown.score,
+    activeScoringConfiguration,
+  );
   const isCompleted = state.completedStageIds.length === SCENARIO_STAGE_ORDER.length;
 
-  /**
-   * Stage progression is recomputed whenever the ledger or the decisions move,
-   * rather than being advanced by a component. That is what lets a resumed
-   * attempt rebuild its own progress from replayed state.
-   */
   useEffect(() => {
     if (state.phase !== "RUNNING") return;
-    const context = { state: state.domain, decisions: state.decisions };
-    const completed = completedStages(scenario, context);
-    const current = currentStage(scenario, context);
-
+    const progressed = deriveProgress(state, scenario);
     const sameCompleted =
-      completed.length === state.completedStageIds.length &&
-      completed.every((stageId, index) => stageId === state.completedStageIds[index]);
-
-    if (!sameCompleted || current !== state.currentStageId) {
-      dispatch({ type: "STAGE_PROGRESS", completedStageIds: completed, currentStageId: current });
+      progressed.completedStageIds.length === state.completedStageIds.length &&
+      progressed.completedStageIds.every(
+        (stageId, index) => stageId === state.completedStageIds[index],
+      );
+    if (!sameCompleted || progressed.currentStageId !== state.currentStageId) {
+      dispatch({
+        type: "STAGE_PROGRESS",
+        completedStageIds: progressed.completedStageIds,
+        currentStageId: progressed.currentStageId,
+      });
       void saveRef.current();
     }
   }, [
-    state.phase,
-    state.domain,
-    state.decisions,
-    state.completedStageIds,
-    state.currentStageId,
-    scenario,
     dispatch,
+    scenario,
+    state,
   ]);
 
-  // ---- Platform ---------------------------------------------------------
+  const activeTrustedContext = useMemo(() => {
+    const contextId = activeContextIdForStage(
+      scenario,
+      state.viewedStageId,
+      state.commandJournal,
+    );
+    const index = contextIndex(scenario, contextId);
+    return contextAt(scenario, index);
+  }, [scenario, state.viewedStageId, state.commandJournal]);
+
+  const encodeState = useCallback(
+    (candidate: SessionState): string => {
+      const breakdown = scoreFor(candidate);
+      return encodeTc3Attempt(
+        toTc3AttemptSnapshot(
+          candidate,
+          isPassing(breakdown.score, activeScoringConfiguration),
+        ),
+        codecSchema,
+      );
+    },
+    [activeScoringConfiguration, codecSchema, scoreFor],
+  );
+
+  const writeProspectiveState = useCallback(
+    async (candidate: SessionState): Promise<void> => {
+      const adapter = adapterRef.current;
+      const persistence = persistenceRef.current;
+      if (adapter === null || persistence === null) {
+        throw new Error("Persistence adapter is not initialized");
+      }
+      const breakdown = scoreFor(candidate);
+      const encoded = encodeState(candidate);
+      await adapter.setLocation(candidate.currentStageId);
+      await adapter.setScore(breakdown.score.totalScore);
+      await persistence.persistAndCommit(encoded);
+    },
+    [encodeState, scoreFor],
+  );
+
+  const commitMutation = useCallback(
+    <T,>(
+      mutate: (base: SessionState) => { readonly state: SessionState; readonly result: T },
+    ): Promise<T> => {
+      const run = async (): Promise<T> => {
+        const base = stateRef.current;
+        dispatch({ type: "SAVE_STATUS", status: "SAVING" });
+        try {
+          const mutation = mutate(base);
+          const prospective = { ...mutation.state, saveStatus: "SAVED" as const };
+          await writeProspectiveState(prospective);
+          dispatch({ type: "PUBLISH_STATE", state: prospective });
+          return mutation.result;
+        } catch (error) {
+          addDiagnostic(
+            `Persisted mutation failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          dispatch({ type: "SAVE_STATUS", status: "FAILED" });
+          throw error;
+        }
+      };
+      const scheduled = persistenceQueueRef.current.then(run, run);
+      persistenceQueueRef.current = scheduled.then(
+        () => undefined,
+        () => undefined,
+      );
+      return scheduled;
+    },
+    [addDiagnostic, dispatch, writeProspectiveState],
+  );
+
+  // ---- Platform initialization ----------------------------------------
 
   useEffect(() => {
     let cancelled = false;
@@ -254,23 +406,45 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       }
 
       if (cancelled) return;
-
       adapterRef.current = adapter;
+      const persistence = new LearningPlatformPersistenceBridge(adapter);
+      persistenceRef.current = persistence;
       diagnosticsRef.current = collected;
       setDiagnostics(collected);
 
-      const stored = await adapter.loadAttemptState();
-      if (stored === null) {
-        dispatch({ type: "INITIALIZED", platformMode: mode, isReadOnly, hasSavedAttempt: false });
+      const stored = await persistence.load();
+      if (stored === null || stored.trim().length === 0) {
+        dispatch({
+          type: "INITIALIZED",
+          platformMode: mode,
+          isReadOnly,
+          hasSavedAttempt: false,
+        });
         return;
       }
 
       try {
-        const snapshot = decodeAttemptState(stored, codecSchema);
-        dispatch({ type: "INITIALIZED", platformMode: mode, isReadOnly, hasSavedAttempt: true });
+        const snapshot = decodeTc3Attempt(stored, codecSchema);
+        const replay = replayCommandJournal({
+          snapshot,
+          initialDomain: seededDomain,
+          scenario,
+          configuration,
+          registries,
+        });
+        dispatch({
+          type: "INITIALIZED",
+          platformMode: mode,
+          isReadOnly,
+          hasSavedAttempt: true,
+        });
         if (isReadOnly) {
-          const domain = replayCoffeeAttempt(snapshot, seededState, ledger, registries);
-          dispatch({ type: "RESUME", snapshot, domain });
+          dispatch({
+            type: "RESUME",
+            snapshot,
+            simulation: replay.runtime,
+            lastTransactionId: replay.lastTransactionId,
+          });
         }
       } catch (error) {
         addDiagnostic(
@@ -278,7 +452,16 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             error instanceof Error ? error.message : String(error)
           }`,
         );
-        dispatch({ type: "RECOVERY_FAILED", messageKey: "errors.persistence" });
+        const messageKey =
+          error instanceof TraceChainError ? error.messageKey : "errors.persistence";
+        dispatch({
+          type: "RECOVERY_FAILED",
+          messageKey,
+          requiresNewLmsAttempt:
+            mode === PlatformMode.SCORM_1_2 ||
+            error instanceof LegacyAttemptError ||
+            error instanceof IncompatibleAttemptError,
+        });
       }
     })();
 
@@ -288,48 +471,32 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   }, [
     addDiagnostic,
     codecSchema,
+    configuration,
     dispatch,
-    ledger,
     registries,
-    scenario.scenarioId,
-    seededState,
+    scenario,
+    seededDomain,
   ]);
 
+  // ---- Save lifecycle --------------------------------------------------
+
   const save = useCallback(async (): Promise<void> => {
-    const adapter = adapterRef.current;
-    if (adapter === null) return;
-
-    // A read-only launch has nothing to save. Running the cycle anyway would
-    // report "saved" on every tick for writes the adapter is suppressing.
-    if (stateRef.current.isReadOnly) return;
-
-    dispatch({ type: "SAVE_STATUS", status: "SAVING" });
-    try {
+    const run = async (): Promise<void> => {
       const current = stateRef.current;
-      const correctness = deriveCorrectnessFromDecisions(
-        current.decisions,
-        scenario,
-        current.domain,
-      );
-      const breakdown = calculateScore(
-        { decisions: current.decisions, hintsUsed: current.hintsUsed, correctness },
-        scenario,
-      );
-      const passed = isPassing(breakdown.score, scenario.scoringConfiguration);
-
-      await adapter.saveAttemptState(
-        encodeAttemptState(toAttemptSnapshot(current, passed), codecSchema),
-      );
-      await adapter.setLocation(current.currentStageId);
-      await adapter.setScore(breakdown.score.totalScore);
-
-      await adapter.commit();
-      dispatch({ type: "SAVE_STATUS", status: "SAVED" });
-    } catch (error) {
-      addDiagnostic(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
-      dispatch({ type: "SAVE_STATUS", status: "FAILED" });
-    }
-  }, [addDiagnostic, codecSchema, dispatch, scenario]);
+      if (current.isReadOnly || adapterRef.current === null) return;
+      dispatch({ type: "SAVE_STATUS", status: "SAVING" });
+      try {
+        await writeProspectiveState(current);
+        dispatch({ type: "SAVE_STATUS", status: "SAVED" });
+      } catch (error) {
+        addDiagnostic(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
+        dispatch({ type: "SAVE_STATUS", status: "FAILED" });
+      }
+    };
+    const scheduled = persistenceQueueRef.current.then(run, run);
+    persistenceQueueRef.current = scheduled;
+    await scheduled;
+  }, [addDiagnostic, dispatch, writeProspectiveState]);
 
   useEffect(() => {
     saveRef.current = save;
@@ -337,7 +504,6 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
   useEffect(() => {
     if (state.phase !== "RUNNING") return undefined;
-
     const interval = window.setInterval(
       () => void save(),
       defaultAppConfiguration.autoSaveIntervalMs,
@@ -346,16 +512,629 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       if (document.visibilityState === "hidden") void save();
     };
     const handlePageHide = (): void => void save();
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handlePageHide);
-
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
     };
   }, [state.phase, save]);
+
+  const submitCommand = useCallback(
+    (
+      actionId: string,
+      decisionId: string,
+      authoredCommand: SupplyChainCommand,
+      submissionOptions?: { readonly recordDecision?: boolean },
+    ): Promise<SimulationCommandOutcome> =>
+      commitMutation((base) => {
+        const sequence = commandSequence(base.commandJournal);
+        const contextId =
+          actionId === "RECALL_BATCH"
+            ? activeContextIdForStage(
+                scenario,
+                ScenarioStageId.RECALL_AND_DEBRIEF,
+                base.commandJournal,
+              )
+            : scenario.runtime.commandContextByAction[actionId];
+        if (contextId === undefined) {
+          throw new Error(`Scenario has no trusted context for action "${actionId}"`);
+        }
+        const trusted = contextAt(scenario, contextIndex(scenario, contextId));
+        const payload = trustedPayload(authoredCommand, trusted);
+        const entry = commandJournalEntry({
+          commandSequence: sequence,
+          actionId,
+          command: payload,
+          contextId,
+          scenario,
+        });
+
+        const scriptedBefore = applyEligibleScriptedTransactions(
+          base.simulation.domain,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
+        const runtimeBefore: SimulationRuntimeState = {
+          ...base.simulation,
+          domain: scriptedBefore,
+        };
+        const command: DomainSimulationCommand = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: payload.scenarioTimestamp,
+            expectedStateVersions: expectedStateVersionsFor(payload, scriptedBefore),
+          },
+          payload,
+        };
+        const outcome = handleSimulationCommand({
+          runtime: runtimeBefore,
+          command,
+          trustedContext: trusted,
+          ledger,
+          registries,
+          environment: {
+            clock: new FixedClock(payload.scenarioTimestamp),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: outcome.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId:
+            outcome.isAccepted && outcome.transaction !== null
+              ? outcome.transaction.transactionId
+              : base.lastTransactionId,
+        });
+        if (submissionOptions?.recordDecision !== false) {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId,
+            encodedValue: outcome.isAccepted ? 1 : 0,
+            interaction: {
+              interactionId: `INT_${String(base.interactions.length + 1).padStart(4, "0")}`,
+              stageId: base.viewedStageId,
+              interactionType: outcome.isAccepted
+                ? LearnerInteractionType.TRANSACTION_SUBMITTED
+                : LearnerInteractionType.TRANSACTION_REJECTED,
+              targetId: decisionId,
+              isCorrect: outcome.isAccepted,
+              attemptNumber: (base.decisions[decisionId]?.attemptCount ?? 0) + 1,
+              scenarioTimestamp: payload.scenarioTimestamp,
+            },
+          });
+        }
+        if (actionId === "RECALL_BATCH") {
+          if (
+            prospective.decisions["INT_RECALL_INITIAL_SUBMITTED"] ===
+            undefined
+          ) {
+            prospective = sessionReducer(prospective, {
+              type: "RECORD_DECISION",
+              decisionId: "INT_RECALL_INITIAL_SUBMITTED",
+              encodedValue: 1,
+              interaction: null,
+            });
+          }
+          if (
+            outcome.isAccepted &&
+            prospective.decisions["INT_RECALL_AUTHORIZATION_RESOLVED"] ===
+              undefined
+          ) {
+            prospective = sessionReducer(prospective, {
+              type: "RECORD_DECISION",
+              decisionId: "INT_RECALL_AUTHORIZATION_RESOLVED",
+              encodedValue: 1,
+              interaction: null,
+            });
+          }
+        }
+        if (actionId === "RECORD_CORRECTION" && outcome.isAccepted) {
+          prospective = sessionReducer(prospective, {
+            type: "CORRECTION_REASON_RECORDED",
+            reason: (payload as { readonly reason: string }).reason,
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: outcome,
+        };
+      }),
+    [commitMutation, configuration.scenarioSeed, ledger, registries, scenario],
+  );
+
+  const sealPendingBlock = useCallback(
+    (): Promise<void> =>
+      commitMutation((base) => {
+        const pendingId = base.domain.pendingTransactionIds[0];
+        const timestamp =
+          pendingId === undefined
+            ? undefined
+            : base.domain.transactionsById[pendingId]?.createdAt;
+        if (timestamp === undefined) throw new Error("No ordered transaction is pending");
+        const sealed = ledger.sealPendingTransactions(base.domain, timestamp);
+        const scripted = applyEligibleScriptedTransactions(
+          sealed,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          base.viewedStageId,
+          base.commandJournal,
+        );
+        const entry: CompactCommandJournalEntry = {
+          commandSequence: sequence,
+          opcode: JournalOpcode.SEAL_PENDING_BLOCK,
+          contextIndex: contextIndex(scenario, contextId),
+          values: [],
+        };
+        const simulation = { ...base.simulation, domain: scripted };
+        const prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+        return { state: deriveProgress(prospective, scenario), result: undefined };
+      }),
+    [commitMutation, ledger, registries, scenario],
+  );
+
+  const requestRoleHandoff = useCallback(
+    (handoffId: string): Promise<void> =>
+      commitMutation((base) => {
+        const applied = validateAndApplyHandoff({
+          scenario,
+          stageId: base.viewedStageId,
+          handoffId,
+          journal: base.commandJournal,
+        });
+        const sequence = commandSequence(base.commandJournal);
+        const entry: CompactCommandJournalEntry = {
+          commandSequence: sequence,
+          opcode: JournalOpcode.ROLE_HANDOFF,
+          contextIndex: contextIndex(scenario, applied.toContextId),
+          values: [applied.handoffIndex],
+        };
+        return {
+          state: {
+            ...base,
+            commandJournal: [...base.commandJournal, entry],
+          },
+          result: undefined,
+        };
+      }),
+    [commitMutation, scenario],
+  );
+
+  const submitCertificateDecision = useCallback(
+    (
+      payload: SubmitCertificateDecisionCommand,
+    ): Promise<CertificateDecisionEvaluation> =>
+      commitMutation((base) => {
+        if (
+          base.commandJournal.some(
+            (entry) => entry.opcode === JournalOpcode.SUBMIT_CERTIFICATE_DECISION,
+          )
+        ) {
+          throw new Error("The initial certificate decision is already recorded");
+        }
+        const evaluation = evaluateCertificateDecision(payload, scenario);
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          ScenarioStageId.ANCHOR_CERTIFICATE,
+          base.commandJournal,
+        );
+        const trusted = contextAt(scenario, contextIndex(scenario, contextId));
+        const submittedAt =
+          scenario.runtime.learnerCommandTemplates["ANCHOR_CERTIFICATE"]
+            ?.scenarioTimestamp ?? (scenario.timeline["certificateIssued"] as string);
+        const command: ConsequentialDecisionCommand = payload;
+        const wrapped = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt,
+            expectedStateVersions: {},
+          },
+          payload: command,
+        };
+        const outcome = handleSimulationDecision({
+          runtime: base.simulation,
+          command: wrapped,
+          trustedContext: trusted,
+          isAccepted: true,
+          decisionType: payload.commandType,
+          decisionPayload: payload,
+          environment: {
+            clock: new FixedClock(submittedAt),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const entry: CompactCommandJournalEntry = {
+          commandSequence: sequence,
+          opcode: JournalOpcode.SUBMIT_CERTIFICATE_DECISION,
+          contextIndex: contextIndex(scenario, contextId),
+          values: compactCertificateDecision(payload),
+        };
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: outcome.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+
+        const checks = scenario.stages
+          .flatMap((stage) => stage.knowledgeChecks);
+        const storageCheck = checks.find(
+          (check) => check.knowledgeCheckId === "INT_CERTIFICATE_STORAGE_CHOICE",
+        );
+        const issuerCheck = checks.find(
+          (check) => check.knowledgeCheckId === "INT_CERTIFICATE_ISSUER_CHECK",
+        );
+        if (storageCheck === undefined || issuerCheck === undefined) {
+          throw new Error("Certificate scoring checks are missing from the scenario");
+        }
+        const storageOption =
+          payload.storageChoice === "HASH_OFF_CHAIN"
+            ? "OPT_OFF_CHAIN_WITH_HASH"
+            : "OPT_WHOLE_FILE_ON_CHAIN";
+        const issuerOption = evaluation.issuerScorableCorrect
+          ? issuerCheck.correctOptionIds[0]
+          : issuerCheck.options.find(
+              (option) =>
+                !issuerCheck.correctOptionIds.includes(option.optionId),
+            )?.optionId;
+        if (issuerOption === undefined) {
+          throw new Error("Certificate issuer check has no scoreable options");
+        }
+        prospective = sessionReducer(prospective, {
+          type: "RECORD_DECISION",
+          decisionId: storageCheck.knowledgeCheckId,
+          encodedValue: encodeAnswer(storageCheck, {
+            selectedOptionIds: [storageOption],
+            categoryByItem: {},
+          }),
+          interaction: null,
+        });
+        prospective = sessionReducer(prospective, {
+          type: "RECORD_DECISION",
+          decisionId: issuerCheck.knowledgeCheckId,
+          encodedValue: encodeAnswer(issuerCheck, {
+            selectedOptionIds: [issuerOption],
+            categoryByItem: {},
+          }),
+          interaction: null,
+        });
+        prospective = sessionReducer(prospective, {
+          type: "RECORD_DECISION",
+          decisionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+          encodedValue: 1,
+          interaction: null,
+        });
+        if (evaluation.mitigationActions.length === 0) {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId: "INT_CERTIFICATE_MITIGATION_COMPLETE",
+            encodedValue: 1,
+            interaction: null,
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: evaluation,
+        };
+      }),
+    [commitMutation, configuration.scenarioSeed, scenario],
+  );
+
+  const submitDiscrepancyDecision = useCallback(
+    (
+      payload: SubmitDiscrepancyDecisionCommand,
+    ): Promise<DiscrepancyDecisionEvaluation> =>
+      commitMutation((base) => {
+        if (
+          base.commandJournal.some(
+            (entry) => entry.opcode === JournalOpcode.SUBMIT_DISCREPANCY_DECISION,
+          )
+        ) {
+          throw new Error("The initial discrepancy decision is already recorded");
+        }
+        const evaluation = evaluateDiscrepancyDecision(payload, scenario);
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          ScenarioStageId.RECEIVE_AND_CORRECT,
+          base.commandJournal,
+        );
+        const trusted = contextAt(scenario, contextIndex(scenario, contextId));
+        const submittedAt =
+          scenario.runtime.learnerCommandTemplates["RECORD_CORRECTION"]
+            ?.scenarioTimestamp ?? (scenario.timeline["correctionRecorded"] as string);
+        const wrapped = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt,
+            expectedStateVersions: {},
+          },
+          payload,
+        };
+        const outcome = handleSimulationDecision({
+          runtime: base.simulation,
+          command: wrapped,
+          trustedContext: trusted,
+          isAccepted: !evaluation.isRejectedAttempt,
+          decisionType: payload.commandType,
+          decisionPayload: payload,
+          rejectionFailures: [
+            {
+              code: "DOMAIN_RULE_FAILED",
+              messageKey: "validation.appendOnlyRequired",
+            },
+          ],
+          environment: {
+            clock: new FixedClock(submittedAt),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const entry: CompactCommandJournalEntry = {
+          commandSequence: sequence,
+          opcode: JournalOpcode.SUBMIT_DISCREPANCY_DECISION,
+          contextIndex: contextIndex(scenario, contextId),
+          values: compactDiscrepancyDecision(payload),
+        };
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: outcome.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+        prospective = sessionReducer(prospective, {
+          type: "RECORD_DECISION",
+          decisionId: "INT_CORRECTION_RECORDED",
+          encodedValue: evaluation.isScorableCorrect ? 1 : 0,
+          interaction: {
+            interactionId: `INT_${String(base.interactions.length + 1).padStart(4, "0")}`,
+            stageId: ScenarioStageId.RECEIVE_AND_CORRECT,
+            interactionType: evaluation.isRejectedAttempt
+              ? LearnerInteractionType.TRANSACTION_REJECTED
+              : LearnerInteractionType.TRANSACTION_SUBMITTED,
+            targetId: "INT_CORRECTION_RECORDED",
+            isCorrect: evaluation.isScorableCorrect,
+            attemptNumber: 1,
+            scenarioTimestamp: submittedAt,
+          },
+        });
+        prospective = sessionReducer(prospective, {
+          type: "RECORD_DECISION",
+          decisionId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
+          encodedValue: 1,
+          interaction: null,
+        });
+        if (!evaluation.requiresMitigation) {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId: "INT_DISCREPANCY_MITIGATION_COMPLETE",
+            encodedValue: 1,
+            interaction: null,
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: evaluation,
+        };
+      }),
+    [commitMutation, configuration.scenarioSeed, scenario],
+  );
+
+  const recordMitigation = useCallback(
+    (payload: MitigationDecisionCommand): Promise<void> =>
+      commitMutation((base) => {
+        const opcode = {
+          REVIEW_ISSUER: JournalOpcode.REVIEW_ISSUER,
+          REMEDIATE_STORAGE: JournalOpcode.REMEDIATE_STORAGE,
+          SUSPEND_LOT: JournalOpcode.SUSPEND_LOT,
+          INVESTIGATE_DISCREPANCY: JournalOpcode.INVESTIGATE_DISCREPANCY,
+        }[payload.commandType];
+        if (base.commandJournal.some((entry) => entry.opcode === opcode)) {
+          throw new Error(`Mitigation ${payload.commandType} is already recorded`);
+        }
+        const stageId =
+          payload.commandType === "INVESTIGATE_DISCREPANCY"
+            ? ScenarioStageId.RECEIVE_AND_CORRECT
+            : ScenarioStageId.ANCHOR_CERTIFICATE;
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          stageId,
+          base.commandJournal,
+        );
+        const trusted = contextAt(scenario, contextIndex(scenario, contextId));
+        const submittedAt =
+          stageId === ScenarioStageId.ANCHOR_CERTIFICATE
+            ? scenario.runtime.learnerCommandTemplates["ANCHOR_CERTIFICATE"]
+                ?.scenarioTimestamp
+            : scenario.runtime.learnerCommandTemplates["RECORD_CORRECTION"]
+                ?.scenarioTimestamp;
+        if (submittedAt === undefined) {
+          throw new Error("Scenario mitigation timestamp is missing");
+        }
+        const wrapped = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt,
+            expectedStateVersions: {},
+          },
+          payload,
+        };
+        const outcome = handleSimulationDecision({
+          runtime: base.simulation,
+          command: wrapped,
+          trustedContext: trusted,
+          isAccepted: true,
+          decisionType: payload.commandType,
+          decisionPayload: payload,
+          environment: {
+            clock: new FixedClock(submittedAt),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const entry: CompactCommandJournalEntry = {
+          commandSequence: sequence,
+          opcode,
+          contextIndex: contextIndex(scenario, contextId),
+          values: [],
+        };
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: outcome.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+
+        const checks = scenario.stages.flatMap((stage) => stage.knowledgeChecks);
+        const initialCertificateEntry = prospective.commandJournal.find(
+          (entry) =>
+            entry.opcode === JournalOpcode.SUBMIT_CERTIFICATE_DECISION,
+        );
+        if (initialCertificateEntry !== undefined) {
+          const initial = expandCertificateDecision(
+            initialCertificateEntry.values,
+          );
+          const evaluation = evaluateCertificateDecision(initial, scenario);
+          const has = (candidate: number): boolean =>
+            prospective.commandJournal.some(
+              (entry) => entry.opcode === candidate,
+            );
+          const storageResolved =
+            evaluation.storageChoiceCorrect ||
+            has(JournalOpcode.REMEDIATE_STORAGE);
+          const issuerResolved =
+            ((evaluation.certificateAssessmentCorrect &&
+              evaluation.issuerAssessmentCorrect) ||
+              has(JournalOpcode.REVIEW_ISSUER)) &&
+            (evaluation.lotDispositionCorrect ||
+              has(JournalOpcode.SUSPEND_LOT));
+          const storageCheck = checks.find(
+            (candidate) =>
+              candidate.knowledgeCheckId ===
+              "INT_CERTIFICATE_STORAGE_CHOICE",
+          );
+          const issuerCheck = checks.find(
+            (candidate) =>
+              candidate.knowledgeCheckId === "INT_CERTIFICATE_ISSUER_CHECK",
+          );
+          if (storageCheck !== undefined && storageResolved) {
+            const correctOption = storageCheck.correctOptionIds[0];
+            if (correctOption !== undefined) {
+              const encoded = encodeAnswer(storageCheck, {
+                selectedOptionIds: [correctOption],
+                categoryByItem: {},
+              });
+              if (
+                prospective.decisions[storageCheck.knowledgeCheckId]
+                  ?.encodedValue !== encoded
+              ) {
+                prospective = sessionReducer(prospective, {
+                  type: "RECORD_DECISION",
+                  decisionId: storageCheck.knowledgeCheckId,
+                  encodedValue: encoded,
+                  interaction: null,
+                });
+              }
+            }
+          }
+          if (issuerCheck !== undefined && issuerResolved) {
+            const correctOption = issuerCheck.correctOptionIds[0];
+            if (correctOption !== undefined) {
+              const encoded = encodeAnswer(issuerCheck, {
+                selectedOptionIds: [correctOption],
+                categoryByItem: {},
+              });
+              if (
+                prospective.decisions[issuerCheck.knowledgeCheckId]
+                  ?.encodedValue !== encoded
+              ) {
+                prospective = sessionReducer(prospective, {
+                  type: "RECORD_DECISION",
+                  decisionId: issuerCheck.knowledgeCheckId,
+                  encodedValue: encoded,
+                  interaction: null,
+                });
+              }
+            }
+          }
+          if (
+            storageResolved &&
+            issuerResolved &&
+            prospective.decisions[
+              "INT_CERTIFICATE_MITIGATION_COMPLETE"
+            ] === undefined
+          ) {
+            prospective = sessionReducer(prospective, {
+              type: "RECORD_DECISION",
+              decisionId: "INT_CERTIFICATE_MITIGATION_COMPLETE",
+              encodedValue: 1,
+              interaction: null,
+            });
+          }
+        }
+        if (payload.commandType === "INVESTIGATE_DISCREPANCY") {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId: "INT_CORRECTION_RECORDED",
+            encodedValue: 1,
+            interaction: null,
+          });
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId: "INT_DISCREPANCY_MITIGATION_COMPLETE",
+            encodedValue: 1,
+            interaction: null,
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: undefined,
+        };
+      }),
+    [commitMutation, configuration.scenarioSeed, scenario],
+  );
 
   const value = useMemo<SimulationContextValue>(
     () => ({
@@ -364,159 +1143,111 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       scoreBreakdown,
       isPassed,
       isCompleted,
+      activeTrustedContext,
 
-      startNew: () => dispatch({ type: "START_NEW", domain: seededState }),
+      startNew: () =>
+        dispatch({
+          type: "START_NEW",
+          simulation: createSimulationRuntimeState(seededDomain),
+          sessionId: "SES_000001",
+        }),
 
       resume: () => {
         void (async () => {
           const adapter = adapterRef.current;
-          if (adapter === null) return;
-          const stored = await adapter.loadAttemptState();
+          const persistence = persistenceRef.current;
+          if (adapter === null || persistence === null) return;
+          const stored = await persistence.load();
           if (stored === null) {
-            dispatch({ type: "START_NEW", domain: seededState });
+            dispatch({
+              type: "START_NEW",
+              simulation: createSimulationRuntimeState(seededDomain),
+              sessionId: "SES_000001",
+            });
             return;
           }
           try {
-            const snapshot = decodeAttemptState(stored, codecSchema);
-            const domain = replayCoffeeAttempt(snapshot, seededState, ledger, registries);
-            dispatch({ type: "RESUME", snapshot, domain });
+            const snapshot = decodeTc3Attempt(stored, codecSchema);
+            const replay = replayCommandJournal({
+              snapshot,
+              initialDomain: seededDomain,
+              scenario,
+              configuration,
+              registries,
+            });
+            dispatch({
+              type: "RESUME",
+              snapshot,
+              simulation: replay.runtime,
+              lastTransactionId: replay.lastTransactionId,
+            });
           } catch (error) {
             addDiagnostic(
               `Attempt replay failed: ${error instanceof Error ? error.message : String(error)}`,
             );
-            dispatch({ type: "RECOVERY_FAILED", messageKey: "errors.persistence" });
+            dispatch({
+              type: "RECOVERY_FAILED",
+              messageKey:
+                error instanceof TraceChainError ? error.messageKey : "errors.persistence",
+              requiresNewLmsAttempt: stateRef.current.platformMode === PlatformMode.SCORM_1_2,
+            });
           }
         })();
       },
 
       restart: () => {
         const adapter = adapterRef.current;
-        if (adapter instanceof StandalonePersistenceAdapter) {
-          adapter.clear();
-        }
-        dispatch({ type: "START_NEW", domain: seededState });
-        void save();
+        if (adapter instanceof StandalonePersistenceAdapter) adapter.clear();
+        dispatch({
+          type: "START_NEW",
+          simulation: createSimulationRuntimeState(seededDomain),
+          sessionId: "SES_000001",
+        });
+        void saveRef.current();
       },
 
       answerCheck: (check, answer) => {
         const encodedValue = encodeAnswer(check, answer);
-        const isCorrect = isAnswerCorrect(check, answer);
+        const correct = isAnswerCorrect(check, answer);
         dispatch({
           type: "RECORD_DECISION",
           decisionId: check.knowledgeCheckId,
           encodedValue,
           interaction: {
             interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
-            /*
-             * The stage on screen, which is where the interaction happened.
-             *
-             * In the current scenario this matches the furthest-unlocked stage
-             * everywhere it can be reached -- every stage's last interaction is
-             * also the one that completes it -- so this is not a fix for an
-             * observable defect. It removes the possibility of one: the two
-             * fields diverge as soon as a stage offers work after its
-             * conditions are met, or once anything navigates backwards, and
-             * "where was the learner" has exactly one right answer.
-             */
             stageId: stateRef.current.viewedStageId,
             interactionType: LearnerInteractionType.KNOWLEDGE_CHECK_ANSWERED,
             targetId: check.knowledgeCheckId,
             selectedValue: String(encodedValue),
-            isCorrect,
+            isCorrect: correct,
             attemptNumber:
               (stateRef.current.decisions[check.knowledgeCheckId]?.attemptCount ?? 0) + 1,
             scenarioTimestamp: scenario.timeline["batchCreated"] as string,
           },
         });
-        // Section 21.7. Reported to the LMS for the instructor's benefit only:
-        // SCORM 1.2 interactions are write-only, so nothing here can ever be
-        // read back, and the attempt is rebuilt from suspend_data alone.
         void adapterRef.current?.recordInteraction({
           interactionId: check.knowledgeCheckId,
           type: scormInteractionType(check.checkType),
           learnerResponse: describeResponse(check, answer),
-          isCorrect,
+          isCorrect: correct,
           scenarioTimestamp: scenario.timeline["batchCreated"] as string,
         });
-
-        void save();
-        return isCorrect;
-      },
-
-      recordActionOutcome: (decisionId, wasAccepted) => {
-        dispatch({
-          type: "RECORD_DECISION",
-          decisionId,
-          encodedValue: wasAccepted ? ACTION_ACCEPTED : ACTION_REJECTED,
-          interaction: {
-            interactionId: `INT_${String(stateRef.current.interactions.length + 1).padStart(4, "0")}`,
-            stageId: stateRef.current.viewedStageId,
-            interactionType: wasAccepted
-              ? LearnerInteractionType.TRANSACTION_SUBMITTED
-              : LearnerInteractionType.TRANSACTION_REJECTED,
-            targetId: decisionId,
-            isCorrect: wasAccepted,
-            attemptNumber: (stateRef.current.decisions[decisionId]?.attemptCount ?? 0) + 1,
-            scenarioTimestamp: scenario.timeline["batchCreated"] as string,
-          },
-        });
-        void save();
+        void saveRef.current();
+        return correct;
       },
 
       revealHint: (hintId) => {
         dispatch({ type: "USE_HINT", hintId });
-        void save();
+        void saveRef.current();
       },
 
-      submitCommand: (command, context) => {
-        const scriptedBefore = applyEligibleScriptedTransactions(
-          stateRef.current.domain,
-          scenario.scriptedTransactions,
-          ledger,
-          registries,
-        ).state;
-        const result = ledger.submitCommand(
-          scriptedBefore,
-          command,
-          context,
-          registries,
-        );
-        const domain = applyEligibleScriptedTransactions(
-          result.state,
-          scenario.scriptedTransactions,
-          ledger,
-          registries,
-        ).state;
-        if (command.commandType === "RECORD_CORRECTION" && result.isAccepted) {
-          dispatch({ type: "CORRECTION_REASON_RECORDED", reason: command.reason });
-        }
-        dispatch({
-          type: "LEDGER_UPDATED",
-          domain,
-          transactionId: result.transaction.transactionId,
-        });
-        void save();
-        return result;
-      },
-
-      sealPendingBlock: (createdAt) => {
-        const sealed = ledger.sealPendingTransactions(stateRef.current.domain, createdAt);
-        const domain = applyEligibleScriptedTransactions(
-          sealed,
-          scenario.scriptedTransactions,
-          ledger,
-          registries,
-        ).state;
-        dispatch({
-          type: "LEDGER_UPDATED",
-          domain,
-          transactionId: stateRef.current.lastTransactionId,
-        });
-        void save();
-      },
-
+      submitCommand,
+      sealPendingBlock,
+      requestRoleHandoff,
+      submitCertificateDecision,
+      submitDiscrepancyDecision,
+      recordMitigation,
       viewStage: (stageId) => dispatch({ type: "VIEW_STAGE", stageId }),
-
       save,
 
       finish: async () => {
@@ -525,17 +1256,9 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         if (adapter === null) return;
         const current = stateRef.current;
         if (current.completedStageIds.length === SCENARIO_STAGE_ORDER.length) {
-          const correctness = deriveCorrectnessFromDecisions(
-            current.decisions,
-            scenario,
-            current.domain,
-          );
-          const breakdown = calculateScore(
-            { decisions: current.decisions, hintsUsed: current.hintsUsed, correctness },
-            scenario,
-          );
+          const breakdown = scoreFor(current);
           await adapter.setCompletion(
-            isPassing(breakdown.score, scenario.scoringConfiguration)
+            isPassing(breakdown.score, activeScoringConfiguration)
               ? CompletionStatus.PASSED
               : CompletionStatus.COMPLETED,
           );
@@ -545,19 +1268,28 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       },
     }),
     [
-      state,
-      save,
-      diagnostics,
-      scoreBreakdown,
-      isPassed,
-      isCompleted,
-      ledger,
-      codecSchema,
-      registries,
-      seededState,
-      scenario,
+      activeTrustedContext,
+      activeScoringConfiguration,
       addDiagnostic,
+      codecSchema,
+      configuration,
+      diagnostics,
       dispatch,
+      isCompleted,
+      isPassed,
+      registries,
+      save,
+      scenario,
+      scoreBreakdown,
+      scoreFor,
+      sealPendingBlock,
+      seededDomain,
+      state,
+      submitCommand,
+      requestRoleHandoff,
+      submitCertificateDecision,
+      submitDiscrepancyDecision,
+      recordMitigation,
     ],
   );
 
@@ -573,4 +1305,4 @@ export function useSimulation(): SimulationContextValue {
 }
 
 export { SCENARIO_STAGE_ORDER };
-export type { DomainState, ScenarioStageId };
+export type { DomainState, ScenarioStageId, TransactionResult, TransactionStatus };
