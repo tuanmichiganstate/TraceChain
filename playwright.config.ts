@@ -49,8 +49,8 @@ export default defineConfig({
     timezoneId: "Asia/Ho_Chi_Minh",
   },
 
-  // Every ordinary test has a 90s budget. Only the two full WebKit-family
-  // walkthroughs opt into 240s inside activity.spec.ts; a hung short Safari
+  // Every ordinary test has a 90s budget. Full WebKit-family walkthroughs opt
+  // into 240s in their specs; a hung short Safari
   // test therefore fails on the normal budget instead of inheriting a broad
   // project-level exception.
   projects: [

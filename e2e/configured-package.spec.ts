@@ -22,7 +22,9 @@ async function installChallengeRuntime(page: Page): Promise<void> {
 
 test("loads Challenge A and preserves mitigation history through its causal report", async ({
   page,
+  browserName,
 }) => {
+  if (browserName === "webkit") test.setTimeout(240_000);
   await installScormApi(page);
   await installChallengeRuntime(page);
   await page.goto("/");
