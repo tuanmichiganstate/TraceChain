@@ -116,6 +116,7 @@ scripts/               locale + scenario validators, SCORM build + verify
 
 ## Documentation
 
+- `AGENTS.md` — how to verify a change here, and the conventions one follows
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
