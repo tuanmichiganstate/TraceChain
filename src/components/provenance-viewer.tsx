@@ -96,7 +96,14 @@ function ProvenanceNode({
     <li className={`provenance__node${isCurrent ? " provenance__node--current" : ""}`}>
       {incoming !== undefined ? (
         <span className="provenance__edge">
-          <span aria-hidden="true">↑ </span>
+          {/* Down, because every relationship label ends in "into" and the
+              thing it goes into is the asset printed on the next line. An
+              upward arrow pointed at the source instead, contradicting the
+              sentence it sat in -- and both chains run oldest to newest down
+              the page, the same direction correction-lineage already marks
+              with a downward arrow. Decorative: the label carries the meaning
+              for a screen reader. */}
+          <span aria-hidden="true">↓ </span>
           {t(`provenance.${incoming.relationshipType}`)}
         </span>
       ) : null}
