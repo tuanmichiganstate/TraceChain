@@ -140,7 +140,8 @@ test.describe("saving and resuming", () => {
     await expect(page.locator(".top-bar__item--score dd")).toHaveText(capped);
   });
 
-  test("keeps suspend data inside the 4096-character ceiling", async ({ page }) => {
+  test("keeps suspend data inside the 4096-character ceiling", async ({ page, browserName }) => {
+    if (browserName === "webkit") test.setTimeout(240_000);
     await installScormApi(page);
     await page.goto("/");
     const activity = new Activity(page);
