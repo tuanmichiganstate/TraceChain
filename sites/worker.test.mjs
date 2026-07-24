@@ -531,7 +531,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.match(publication.contentHash, /^[a-f0-9]{64}$/u);
 
     const next = structuredClone(pack);
-    next.version = "1.5.0";
+    next.version = "1.6.0";
     next.manifest.domain = "supply-chain-governance";
     const nextImport = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -546,7 +546,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
       apiRequest(
         `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
           `/compare?fromVersion=${encodeURIComponent(pack.version)}` +
-          "&toVersion=1.5.0",
+          "&toVersion=1.6.0",
         { email: "author@example.edu" },
       ),
       env,
@@ -1125,6 +1125,9 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           },
           justification:
             "The signed evidence is intact, but transaction authorization must be evaluated separately.",
+          citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+          confidenceRating: 4,
+          adverseEventProbabilityPercent: 20,
         },
       }),
       env,

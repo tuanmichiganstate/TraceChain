@@ -195,6 +195,37 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("rejects inconsistent structured decision response bounds", () => {
+    const invalid = structuredClone(packJson);
+    const decisionNode = invalid.scenarios[0]?.nodes.find(
+      (node) =>
+        node.nodeType === "DECISION" &&
+        node.decisionId === "INT_CERTIFICATE_INITIAL_SUBMITTED",
+    );
+    if (
+      decisionNode === undefined ||
+      decisionNode.nodeType !== "DECISION" ||
+      decisionNode.structuredResponse === undefined
+    ) {
+      throw new Error("Expected structured certificate decision.");
+    }
+    decisionNode.structuredResponse.evidenceCitations.minimumItems = 2;
+    decisionNode.structuredResponse.evidenceCitations.maximumItems = 1;
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INVALID_DECISION_RESPONSE_RANGE",
+          path:
+            "$.scenarios[0].nodes[2].structuredResponse.evidenceCitations",
+        }),
+      );
+    }
+  });
+
   it("rejects unknown competency references", () => {
     const invalid = structuredClone(packJson) as {
       scenarios: {

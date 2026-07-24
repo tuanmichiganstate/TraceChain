@@ -39,6 +39,13 @@ The projection contains the business, ledger, information, policy, and
 workflow records visible to the active simulation role at that event. It does
 not contain `actualState`.
 
+The instructor interface places the selected event payload beside that
+role-filtered projection. For structured decisions, the payload includes the
+submitted rationale, cited evidence identifiers, confidence, and risk estimate
+when those fields were authored. This allows review of what the learner said
+against what the active role could see at the time, without revealing hidden
+outcomes.
+
 ## Determinism and integrity
 
 For a selected sequence, the service:
@@ -66,5 +73,8 @@ Replay never:
 
 Each timeline row offers a keyboard-accessible replay control. The compact
 result shows the selected event, replay position, active role, workflow node,
-visible evidence count, and permitted actions. This keeps the first instructor
-workspace useful without introducing a second simulation screen.
+visible evidence count, permitted actions, selected event response, and
+expandable role-visible evidence. Supporting-event links in competency
+profiles load and focus the exact timeline row before replay. This keeps the
+first instructor workspace useful without introducing a second simulation
+screen.

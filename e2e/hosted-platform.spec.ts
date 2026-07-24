@@ -9,9 +9,9 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     assignmentId: "ASSIGNMENT_BROWSER_001",
     title: "Hosted coffee governance",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
-    packVersion: "1.4.0",
+    packVersion: "1.5.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-    scenarioVersion: "1.4.0",
+    scenarioVersion: "1.5.0",
     mode: "tutorial",
     runConfiguration: {
       mode: "tutorial",
@@ -68,6 +68,28 @@ test("runs an assigned hosted learner action from role-filtered server state", a
   const decisionProjection = {
     ...initialProjection,
     version: 4,
+    policyState: [
+      {
+        recordId: "DECISION_RESPONSE_REQUIREMENTS",
+        value: {
+          evidenceCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
+          confidenceRating: {
+            required: true,
+            minimum: 1,
+            maximum: 5,
+          },
+          adverseEventProbabilityPercent: {
+            required: true,
+            minimum: 0,
+            maximum: 100,
+          },
+        },
+      },
+    ],
     workflowState: {
       currentNodeId: "certificate-decision",
       completedNodeIds: ["certificate-evidence"],
@@ -147,6 +169,32 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     runId: "RUN_BROWSER_001",
     expectedRunVersion: 2,
     evidenceId: "EVID_CERTIFICATE_RECORD",
+  });
+  expect(submittedCommand).not.toHaveProperty("actorId");
+  expect(submittedCommand).not.toHaveProperty("organizationId");
+  expect(submittedCommand).not.toHaveProperty("roleId");
+
+  await action
+    .getByLabel("Decision justification")
+    .fill("The certificate evidence supports this decision.");
+  await action
+    .getByRole("checkbox", {
+      name: "Cite Quality certificate record",
+    })
+    .check();
+  await action.getByLabel("Confidence").selectOption("4");
+  await action
+    .getByLabel("Estimated probability of an adverse event (%)")
+    .fill("20");
+  await action.getByRole("button", { name: "Submit" }).click();
+
+  expect(submittedCommand).toMatchObject({
+    commandType: "SUBMIT_CERTIFICATE_DECISION",
+    runId: "RUN_BROWSER_001",
+    expectedRunVersion: 4,
+    citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+    confidenceRating: 4,
+    adverseEventProbabilityPercent: 20,
   });
   expect(submittedCommand).not.toHaveProperty("actorId");
   expect(submittedCommand).not.toHaveProperty("organizationId");
@@ -383,7 +431,17 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
               organizationId: "ORG_CERTIFIER",
               roleId: "CERTIFICATION_OFFICER",
               causationId: "COMMAND_MONITOR_004",
-              payload: {},
+              payload: {
+                decision: {
+                  certificateAssessment: "VALID",
+                  issuerAssessment: "RECOGNIZED_AUTHORIZED",
+                },
+                justification:
+                  "The certificate and issuer evidence support continuation.",
+                citedEvidenceIds: ["EVID_CERTIFICATE_MONITOR"],
+                confidenceRating: 4,
+                adverseEventProbabilityPercent: 15,
+              },
             },
           ],
         },
@@ -408,6 +466,62 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
           assignment,
           ratings: [],
           moderationResolutions: [],
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/runs/RUN_MONITOR_001/replay") {
+      await route.fulfill({
+        json: {
+          replay: {
+            schemaVersion: "1.0.0",
+            runId: "RUN_MONITOR_001",
+            assignmentId,
+            learnerUserId: "USER_MONITOR_LEARNER",
+            packId: assignment.packId,
+            packVersion: assignment.packVersion,
+            scenarioId: assignment.scenarioId,
+            scenarioVersion: assignment.scenarioVersion,
+            throughSequenceNumber: 4,
+            totalEventCount: 4,
+            selectedEvent: {
+              sequenceNumber: 4,
+              eventId: "HEVT_MONITOR_004",
+              eventType: "COMPETENCY_EVIDENCE_RECORDED",
+              occurredAt: "2026-07-24T08:04:00.000Z",
+              authenticatedUserId: "USER_MONITOR_LEARNER",
+              simulationActorId: "ACT_CERTIFICATION_OFFICER",
+              organizationId: "ORG_CERTIFIER",
+              roleId: "CERTIFICATION_OFFICER",
+              causationId: "COMMAND_MONITOR_004",
+              resultingStateHash: "a".repeat(64),
+            },
+            projection: {
+              schemaVersion: "1.0.0",
+              runId: "RUN_MONITOR_001",
+              version: 4,
+              roleId: "CERTIFICATION_OFFICER",
+              businessState: [],
+              ledgerState: {},
+              informationState: [
+                {
+                  recordId: "EVID_CERTIFICATE_MONITOR",
+                  value: {
+                    evidenceType: "certificate",
+                    inspected: true,
+                  },
+                },
+              ],
+              policyState: [],
+              workflowState: {
+                currentNodeId: "certificate-decision",
+                completedNodeIds: ["certificate-evidence"],
+                permittedActionIds: [
+                  "SUBMIT_CERTIFICATE_DECISION",
+                ],
+              },
+            },
+          },
         },
       });
       return;
@@ -453,6 +567,26 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   const targetedEvent = page.locator('tr[aria-current="true"]');
   await expect(targetedEvent).toContainText("HEVT_MONITOR_004");
   await expect(targetedEvent).toBeFocused();
+  await targetedEvent
+    .getByRole("button", { name: "Replay after event 4" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Selected event response" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      /The certificate and issuer evidence support continuation\./,
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/"confidenceRating": 4/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Evidence available at this point",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("EVID_CERTIFICATE_MONITOR", { exact: true }),
+  ).toBeVisible();
   expect(monitorRequests).toBe(1);
 
   await page.getByRole("button", { name: "Refresh status" }).click();

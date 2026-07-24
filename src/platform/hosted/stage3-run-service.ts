@@ -36,6 +36,7 @@ import type { JsonObject, JsonValue } from "../contracts/json";
 import { isJsonObject } from "../contracts/json";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
+  DecisionNodeV1,
   ScenarioPackV1,
   WeightedCategoricalOutcomeModelV1,
 } from "../contracts/scenario-pack";
@@ -200,6 +201,13 @@ function requiredStringArray(
   return value as readonly string[];
 }
 
+function optionalStringArray(
+  value: unknown,
+  path: string,
+): readonly string[] {
+  return value === undefined ? [] : requiredStringArray(value, path);
+}
+
 function requiredBoolean(value: unknown, path: string): boolean {
   if (typeof value !== "boolean") {
     throw new HostedRunCommandError(
@@ -218,6 +226,13 @@ function requiredNumber(value: unknown, path: string): number {
     );
   }
   return value;
+}
+
+function optionalNumber(
+  value: unknown,
+  path: string,
+): number | null {
+  return value === undefined ? null : requiredNumber(value, path);
 }
 
 function isCaseVariant(value: string): value is Stage3CaseVariant {
@@ -295,6 +310,18 @@ function decisionFromPayload(payload: JsonObject): HostedStage3Decision {
   return {
     decision,
     justification,
+    citedEvidenceIds: optionalStringArray(
+      payload.citedEvidenceIds,
+      "citedEvidenceIds",
+    ),
+    confidenceRating: optionalNumber(
+      payload.confidenceRating,
+      "confidenceRating",
+    ),
+    adverseEventProbabilityPercent: optionalNumber(
+      payload.adverseEventProbabilityPercent,
+      "adverseEventProbabilityPercent",
+    ),
     isAuthoredCorrect:
       evaluation.certificateAssessmentCorrect &&
       evaluation.issuerAssessmentCorrect &&
@@ -1086,6 +1113,15 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "certificate-decision");
         {
           this.validateDecision(command);
+          this.validateStructuredDecisionResponse(
+            {
+              citedEvidenceIds: command.citedEvidenceIds ?? [],
+              confidenceRating: command.confidenceRating ?? null,
+              adverseEventProbabilityPercent:
+                command.adverseEventProbabilityPercent ?? null,
+            },
+            state,
+          );
           const decision = {
             commandType: "SUBMIT_CERTIFICATE_DECISION" as const,
             ...command.decision,
@@ -1111,6 +1147,22 @@ export class HostedStage3RunService {
             payload: {
               decision,
               justification: command.justification,
+              ...(command.citedEvidenceIds === undefined
+                ? {}
+                : {
+                    citedEvidenceIds: command.citedEvidenceIds,
+                  }),
+              ...(command.confidenceRating === undefined
+                ? {}
+                : {
+                    confidenceRating: command.confidenceRating,
+                  }),
+              ...(command.adverseEventProbabilityPercent === undefined
+                ? {}
+                : {
+                    adverseEventProbabilityPercent:
+                      command.adverseEventProbabilityPercent,
+                  }),
             },
           });
           built.push(submitted);
@@ -3217,6 +3269,7 @@ export class HostedStage3RunService {
           );
         }
         const decision = decisionFromPayload(event.payload);
+        this.validateStructuredDecisionResponse(decision, state);
         const decisionCommand = {
           metadata: {
             commandId: event.causationId,
@@ -3238,6 +3291,10 @@ export class HostedStage3RunService {
           decisionPayload: {
             decision: decision.decision,
             justification: decision.justification,
+            citedEvidenceIds: decision.citedEvidenceIds,
+            confidenceRating: decision.confidenceRating,
+            adverseEventProbabilityPercent:
+              decision.adverseEventProbabilityPercent,
           },
           environment: {
             clock: new FixedClock(event.serverTimestampUtc),
@@ -4026,6 +4083,151 @@ export class HostedStage3RunService {
     }
   }
 
+  private certificateDecisionNode(): DecisionNodeV1 {
+    const node = this.hostedScenario().nodes.find(
+      (candidate) =>
+        candidate.nodeType === "DECISION" &&
+        candidate.decisionId ===
+          "INT_CERTIFICATE_INITIAL_SUBMITTED",
+    );
+    if (node === undefined || node.nodeType !== "DECISION") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Hosted coffee scenario has no certificate decision node.",
+      );
+    }
+    return node;
+  }
+
+  private validateStructuredDecisionResponse(
+    response: Pick<
+      HostedStage3Decision,
+      | "citedEvidenceIds"
+      | "confidenceRating"
+      | "adverseEventProbabilityPercent"
+    >,
+    state: HostedStage3RunState,
+  ): void {
+    const configuration =
+      this.certificateDecisionNode().structuredResponse;
+    if (configuration === undefined) {
+      if (
+        response.citedEvidenceIds.length > 0 ||
+        response.confidenceRating !== null ||
+        response.adverseEventProbabilityPercent !== null
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "The scenario does not configure additional certificate response fields.",
+        );
+      }
+      return;
+    }
+
+    const citationConfiguration =
+      configuration.evidenceCitations;
+    if (citationConfiguration === undefined) {
+      if (response.citedEvidenceIds.length > 0) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "The scenario does not configure evidence citations for this decision.",
+        );
+      }
+    } else {
+      const uniqueEvidenceIds = new Set(
+        response.citedEvidenceIds,
+      );
+      if (
+        uniqueEvidenceIds.size !==
+        response.citedEvidenceIds.length
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "Decision evidence citations must be unique.",
+        );
+      }
+      if (
+        response.citedEvidenceIds.length <
+          citationConfiguration.minimumItems ||
+        response.citedEvidenceIds.length >
+          citationConfiguration.maximumItems ||
+        (citationConfiguration.required &&
+          response.citedEvidenceIds.length === 0)
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          `Decision evidence citations must contain ${String(
+            citationConfiguration.minimumItems,
+          )}-${String(
+            citationConfiguration.maximumItems,
+          )} items.`,
+        );
+      }
+      for (const evidenceId of response.citedEvidenceIds) {
+        if (!state.inspectedEvidenceIds.includes(evidenceId)) {
+          throw new HostedRunCommandError(
+            "INVALID_COMMAND",
+            `Cited evidence ${evidenceId} was not inspected in this run.`,
+          );
+        }
+      }
+    }
+
+    this.validateNumericDecisionResponse(
+      "confidenceRating",
+      response.confidenceRating,
+      configuration.confidenceRating,
+    );
+    this.validateNumericDecisionResponse(
+      "adverseEventProbabilityPercent",
+      response.adverseEventProbabilityPercent,
+      configuration.adverseEventProbabilityPercent,
+    );
+  }
+
+  private validateNumericDecisionResponse(
+    fieldName: string,
+    value: number | null,
+    configuration:
+      | {
+          readonly required: boolean;
+          readonly minimum: number;
+          readonly maximum: number;
+        }
+      | undefined,
+  ): void {
+    if (configuration === undefined) {
+      if (value !== null) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          `The scenario does not configure ${fieldName}.`,
+        );
+      }
+      return;
+    }
+    if (value === null) {
+      if (configuration.required) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          `${fieldName} is required by the scenario.`,
+        );
+      }
+      return;
+    }
+    if (
+      !Number.isInteger(value) ||
+      value < configuration.minimum ||
+      value > configuration.maximum
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        `${fieldName} must be an integer from ${String(
+          configuration.minimum,
+        )} to ${String(configuration.maximum)}.`,
+      );
+    }
+  }
+
   private validateDiscrepancyDecision(
     command: Extract<
       HostedStage3Command,
@@ -4182,7 +4384,19 @@ export class HostedStage3RunService {
           content: item.content,
         } satisfies JsonValue,
       }));
+    const decisionResponseConfiguration =
+      this.certificateDecisionNode().structuredResponse;
     const policyRecords = [
+      ...(decisionResponseConfiguration === undefined
+        ? []
+        : [
+            {
+              recordId: "DECISION_RESPONSE_REQUIREMENTS",
+              visibleToRoleIds: [roleId],
+              value:
+                decisionResponseConfiguration as unknown as JsonValue,
+            },
+          ]),
       ...state.transactions.map((transaction, index) => ({
         recordId: `POLICY_RESULT_${String(index + 1)}`,
         visibleToRoleIds: [roleId],

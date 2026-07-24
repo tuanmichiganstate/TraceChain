@@ -469,7 +469,10 @@ describe("instructor review screen", () => {
         informationState: [
           {
             recordId: "EVID_CERTIFICATE_RECORD",
-            value: {},
+            value: {
+              evidenceType: "certificate",
+              inspected: true,
+            },
           },
         ],
         policyState: [],
@@ -529,7 +532,17 @@ describe("instructor review screen", () => {
             organizationId: "ORG_LOGISTICS_PROVIDER",
             roleId: "LOGISTICS_COORDINATOR",
             causationId: "CMD_SUBMIT",
-            payload: {},
+            payload: {
+              decision: {
+                certificateAssessment: "VALID",
+                issuerAssessment: "RECOGNIZED_UNAUTHORIZED",
+              },
+              justification:
+                "The signer is recognized but cannot issue this certificate.",
+              citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+              confidenceRating: 4,
+              adverseEventProbabilityPercent: 35,
+            },
           },
         ],
         competencies: [
@@ -610,6 +623,28 @@ describe("instructor review screen", () => {
     expect(
       screen.getByText("SUBMIT_CERTIFICATE_TRANSACTION"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Selected event response",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The signer is recognized but cannot issue this certificate\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"confidenceRating": 4/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"EVID_CERTIFICATE_RECORD"/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Evidence available at this point",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("EVID_CERTIFICATE_RECORD")).toBeInTheDocument();
 
     const criterionRow = screen
       .getByText("CRITERION_AUTHORIZATION_JUDGMENT")

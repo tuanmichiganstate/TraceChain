@@ -73,6 +73,28 @@ describe("hosted learner workspace", () => {
     const submit = vi.fn().mockResolvedValue({
       ...projection("SUBMIT_CERTIFICATE_DECISION"),
       version: 4,
+      policyState: [
+        {
+          recordId: "DECISION_RESPONSE_REQUIREMENTS",
+          value: {
+            evidenceCitations: {
+              required: true,
+              minimumItems: 1,
+              maximumItems: 1,
+            },
+            confidenceRating: {
+              required: true,
+              minimum: 1,
+              maximum: 5,
+            },
+            adverseEventProbabilityPercent: {
+              required: true,
+              minimum: 0,
+              maximum: 100,
+            },
+          },
+        },
+      ],
       workflowState: {
         currentNodeId: "certificate-decision",
         completedNodeIds: ["certificate-evidence"],
@@ -125,6 +147,43 @@ describe("hosted learner workspace", () => {
         "Certificate content and validity",
       ),
     ).toBeInTheDocument();
+    await user.type(
+      within(actionSection).getByLabelText("Decision justification"),
+      "The certificate record supports this decision.",
+    );
+    await user.click(
+      within(actionSection).getByRole("checkbox", {
+        name: "Cite Quality certificate record",
+      }),
+    );
+    await user.selectOptions(
+      within(actionSection).getByLabelText("Confidence"),
+      "4",
+    );
+    await user.clear(
+      within(actionSection).getByLabelText(
+        "Estimated probability of an adverse event (%)",
+      ),
+    );
+    await user.type(
+      within(actionSection).getByLabelText(
+        "Estimated probability of an adverse event (%)",
+      ),
+      "20",
+    );
+    await user.click(
+      within(actionSection).getByRole("button", { name: "Submit" }),
+    );
+
+    expect(submit).toHaveBeenLastCalledWith(
+      "RUN_LEARNER_001",
+      expect.objectContaining({
+        commandType: "SUBMIT_CERTIFICATE_DECISION",
+        citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 20,
+      }),
+    );
   });
 
   it("preserves an incorrect discrepancy choice in the submitted command", async () => {

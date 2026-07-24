@@ -1684,6 +1684,10 @@ function RunReview({
                 </dd>
               </div>
             </dl>
+            <DecisionTimeReview
+              replay={replay}
+              timeline={review.timeline}
+            />
           </div>
         )}
       </section>
@@ -1759,6 +1763,57 @@ function RunReview({
             </tbody>
           </table>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function DecisionTimeReview({
+  replay,
+  timeline,
+}: {
+  readonly replay: InstructorRunReplayV1;
+  readonly timeline: readonly InstructorTimelineItem[];
+}): ReactNode {
+  const t = useTranslator();
+  const selectedEvent = timeline.find(
+    (item) => item.eventId === replay.selectedEvent.eventId,
+  );
+  return (
+    <div className="instructor-review__decision-time-review">
+      <section>
+        <h4>{t("instructorReview.selectedResponseHeading")}</h4>
+        <p>{t("instructorReview.selectedResponseHelp")}</p>
+        <p>
+          <code>{replay.selectedEvent.eventId}</code>
+          {" — "}
+          <code>{replay.selectedEvent.eventType}</code>
+        </p>
+        <pre className="instructor-review__json-evidence">
+          <code>
+            {JSON.stringify(selectedEvent?.payload ?? {}, null, 2)}
+          </code>
+        </pre>
+      </section>
+      <section>
+        <h4>{t("instructorReview.availableEvidenceHeading")}</h4>
+        <p>{t("instructorReview.availableEvidenceHelp")}</p>
+        {replay.projection.informationState.length === 0 ? (
+          <p>{t("instructorReview.noVisibleEvidence")}</p>
+        ) : (
+          <div className="instructor-review__visible-evidence">
+            {replay.projection.informationState.map((record) => (
+              <details key={record.recordId}>
+                <summary>
+                  <code>{record.recordId}</code>
+                </summary>
+                <pre className="instructor-review__json-evidence">
+                  <code>{JSON.stringify(record.value, null, 2)}</code>
+                </pre>
+              </details>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

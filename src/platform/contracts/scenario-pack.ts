@@ -162,6 +162,25 @@ export interface DecisionFieldV1 {
   readonly options: readonly DecisionOptionV1[];
 }
 
+export interface DecisionEvidenceCitationConfigurationV1 {
+  readonly required: boolean;
+  readonly minimumItems: number;
+  readonly maximumItems: number;
+}
+
+export interface DecisionNumericResponseConfigurationV1 {
+  readonly required: boolean;
+  readonly minimum: number;
+  readonly maximum: number;
+}
+
+export interface StructuredDecisionResponseConfigurationV1 {
+  readonly evidenceCitations?: DecisionEvidenceCitationConfigurationV1;
+  readonly confidenceRating?: DecisionNumericResponseConfigurationV1;
+  readonly adverseEventProbabilityPercent?:
+    DecisionNumericResponseConfigurationV1;
+}
+
 export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
   readonly nodeType: "DECISION";
   readonly decisionId: string;
@@ -171,6 +190,8 @@ export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
     readonly required: boolean;
     readonly maximumLength: number;
   };
+  readonly structuredResponse?:
+    StructuredDecisionResponseConfigurationV1;
 }
 
 export interface TransactionProposalNodeV1 extends ScenarioNodeBaseV1 {

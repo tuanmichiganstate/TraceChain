@@ -2,7 +2,7 @@
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
   "schemaVersion": "1.0.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -680,7 +680,7 @@
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
@@ -1221,6 +1221,23 @@
           "justification": {
             "required": true,
             "maximumLength": 1000
+          },
+          "structuredResponse": {
+            "evidenceCitations": {
+              "required": true,
+              "minimumItems": 1,
+              "maximumItems": 1
+            },
+            "confidenceRating": {
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            "adverseEventProbabilityPercent": {
+              "required": true,
+              "minimum": 0,
+              "maximum": 100
+            }
           },
           "transitions": [
             {

@@ -13,6 +13,11 @@ import type {
   ApplicationRole,
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
+import type {
+  DecisionEvidenceCitationConfigurationV1,
+  DecisionNumericResponseConfigurationV1,
+  StructuredDecisionResponseConfigurationV1,
+} from "../contracts/scenario-pack";
 
 interface LearnerSession {
   readonly userId: string;
@@ -675,6 +680,101 @@ function stringField(
   return "";
 }
 
+function numericResponseConfiguration(
+  value: unknown,
+): DecisionNumericResponseConfigurationV1 | undefined {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return undefined;
+  }
+  const candidate = value as Readonly<Record<string, unknown>>;
+  if (
+    typeof candidate.required !== "boolean" ||
+    typeof candidate.minimum !== "number" ||
+    typeof candidate.maximum !== "number"
+  ) {
+    return undefined;
+  }
+  return {
+    required: candidate.required,
+    minimum: candidate.minimum,
+    maximum: candidate.maximum,
+  };
+}
+
+function citationConfiguration(
+  value: unknown,
+): DecisionEvidenceCitationConfigurationV1 | undefined {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return undefined;
+  }
+  const candidate = value as Readonly<Record<string, unknown>>;
+  if (
+    typeof candidate.required !== "boolean" ||
+    typeof candidate.minimumItems !== "number" ||
+    typeof candidate.maximumItems !== "number"
+  ) {
+    return undefined;
+  }
+  return {
+    required: candidate.required,
+    minimumItems: candidate.minimumItems,
+    maximumItems: candidate.maximumItems,
+  };
+}
+
+function structuredDecisionResponseConfiguration(
+  projection: LearnerRunProjectionV1,
+): StructuredDecisionResponseConfigurationV1 | undefined {
+  const value = projection.policyState.find(
+    (record) =>
+      record.recordId === "DECISION_RESPONSE_REQUIREMENTS",
+  )?.value;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return undefined;
+  }
+  const candidate = value as Readonly<Record<string, unknown>>;
+  const evidenceCitations = citationConfiguration(
+    candidate.evidenceCitations,
+  );
+  const confidenceRating = numericResponseConfiguration(
+    candidate.confidenceRating,
+  );
+  const adverseEventProbabilityPercent =
+    numericResponseConfiguration(
+      candidate.adverseEventProbabilityPercent,
+    );
+  if (
+    evidenceCitations === undefined &&
+    confidenceRating === undefined &&
+    adverseEventProbabilityPercent === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    ...(evidenceCitations === undefined
+      ? {}
+      : { evidenceCitations }),
+    ...(confidenceRating === undefined
+      ? {}
+      : { confidenceRating }),
+    ...(adverseEventProbabilityPercent === undefined
+      ? {}
+      : { adverseEventProbabilityPercent }),
+  };
+}
+
 function ActionControl({
   action,
   projection,
@@ -704,7 +804,13 @@ function ActionControl({
     );
   }
   if (action === "SUBMIT_CERTIFICATE_DECISION") {
-    return <CertificateDecisionForm busy={busy} onSubmit={onSubmit} />;
+    return (
+      <CertificateDecisionForm
+        projection={projection}
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    );
   }
   if (action === "CREATE_CUSTODY_TRANSFER_PROPOSAL") {
     return <CustodyProposalForm busy={busy} onSubmit={onSubmit} />;
@@ -841,16 +947,56 @@ function SelectActionForm({
 }
 
 function CertificateDecisionForm({
+  projection,
   busy,
   onSubmit,
-}: ActionFormProps): ReactNode {
+}: ActionFormProps & {
+  readonly projection: LearnerRunProjectionV1;
+}): ReactNode {
   const t = useTranslator();
+  const responseConfiguration =
+    structuredDecisionResponseConfiguration(projection);
   const [certificateAssessment, setCertificate] = useState("VALID");
   const [issuerAssessment, setIssuer] =
     useState("RECOGNIZED_AUTHORIZED");
   const [storageChoice, setStorage] = useState("HASH_OFF_CHAIN");
   const [lotDisposition, setDisposition] = useState("CONTINUE");
   const [justification, setJustification] = useState("");
+  const [citedEvidenceIds, setCitedEvidenceIds] = useState<
+    readonly string[]
+  >([]);
+  const [confidenceRating, setConfidenceRating] = useState("");
+  const [
+    adverseEventProbabilityPercent,
+    setAdverseEventProbabilityPercent,
+  ] = useState("");
+  const citations =
+    responseConfiguration?.evidenceCitations;
+  const confidence =
+    responseConfiguration?.confidenceRating;
+  const adverseProbability =
+    responseConfiguration?.adverseEventProbabilityPercent;
+  const citationsValid =
+    citations === undefined ||
+    (citedEvidenceIds.length >= citations.minimumItems &&
+      citedEvidenceIds.length <= citations.maximumItems);
+  const confidenceValid =
+    confidence === undefined ||
+    (!confidence.required && confidenceRating === "") ||
+    (confidenceRating !== "" &&
+      Number.isInteger(Number(confidenceRating)) &&
+      Number(confidenceRating) >= confidence.minimum &&
+      Number(confidenceRating) <= confidence.maximum);
+  const adverseProbabilityValid =
+    adverseProbability === undefined ||
+    (!adverseProbability.required &&
+      adverseEventProbabilityPercent === "") ||
+    (adverseEventProbabilityPercent !== "" &&
+      Number.isInteger(Number(adverseEventProbabilityPercent)) &&
+      Number(adverseEventProbabilityPercent) >=
+        adverseProbability.minimum &&
+      Number(adverseEventProbabilityPercent) <=
+        adverseProbability.maximum);
   return (
     <form
       onSubmit={(event) => {
@@ -864,6 +1010,23 @@ function CertificateDecisionForm({
             lotDisposition,
           },
           justification,
+          ...(citations === undefined
+            ? {}
+            : { citedEvidenceIds }),
+          ...(confidence === undefined ||
+          confidenceRating === ""
+            ? {}
+            : {
+                confidenceRating: Number(confidenceRating),
+              }),
+          ...(adverseProbability === undefined ||
+          adverseEventProbabilityPercent === ""
+            ? {}
+            : {
+                adverseEventProbabilityPercent: Number(
+                  adverseEventProbabilityPercent,
+                ),
+              }),
         });
       }}
     >
@@ -912,10 +1075,139 @@ function CertificateDecisionForm({
           required
         />
       </div>
-      <button className="button button--primary" disabled={busy}>
+      {citations === undefined ? null : (
+        <fieldset className="hosted-decision__citations">
+          <legend>{t("hostedLearner.evidenceCitations")}</legend>
+          <p className="field__hint">
+            {t("hostedLearner.evidenceCitationHelp", {
+              minimum: citations.minimumItems,
+              maximum: citations.maximumItems,
+            })}
+          </p>
+          {projection.informationState.map((record) => {
+            const checked = citedEvidenceIds.includes(record.recordId);
+            const citationLabel = t(
+              evidenceLocalizationKeys[record.recordId] ??
+                "hostedLearner.evidenceUnknown",
+              { evidenceId: record.recordId },
+            );
+            return (
+              <label key={record.recordId}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={
+                    !checked &&
+                    citedEvidenceIds.length >=
+                      citations.maximumItems
+                  }
+                  onChange={(event) =>
+                    setCitedEvidenceIds((current) =>
+                      event.target.checked
+                        ? [...current, record.recordId]
+                        : current.filter(
+                            (item) => item !== record.recordId,
+                          ),
+                    )
+                  }
+                />{" "}
+                {t("hostedLearner.citeEvidence", {
+                  evidence: citationLabel,
+                })}
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
+      {confidence === undefined ? null : (
+        <NumericDecisionField
+          id="certificate-confidence"
+          label={t("hostedLearner.confidence")}
+          configuration={confidence}
+          value={confidenceRating}
+          onChange={setConfidenceRating}
+          kind="select"
+        />
+      )}
+      {adverseProbability === undefined ? null : (
+        <NumericDecisionField
+          id="certificate-adverse-probability"
+          label={t("hostedLearner.adverseEventProbability")}
+          configuration={adverseProbability}
+          value={adverseEventProbabilityPercent}
+          onChange={setAdverseEventProbabilityPercent}
+          kind="number"
+        />
+      )}
+      <button
+        className="button button--primary"
+        disabled={
+          busy ||
+          !citationsValid ||
+          !confidenceValid ||
+          !adverseProbabilityValid
+        }
+      >
         {t("hostedLearner.submit")}
       </button>
     </form>
+  );
+}
+
+function NumericDecisionField({
+  id,
+  label,
+  configuration,
+  value,
+  onChange,
+  kind,
+}: {
+  readonly id: string;
+  readonly label: string;
+  readonly configuration: DecisionNumericResponseConfigurationV1;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly kind: "number" | "select";
+}): ReactNode {
+  const values = Array.from(
+    {
+      length:
+        configuration.maximum - configuration.minimum + 1,
+    },
+    (_, index) => configuration.minimum + index,
+  );
+  return (
+    <div className="field">
+      <label className="field__label" htmlFor={id}>{label}</label>
+      {kind === "select" ? (
+        <select
+          className="field__control"
+          id={id}
+          value={value}
+          required={configuration.required}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="" />
+          {values.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          className="field__control"
+          id={id}
+          type="number"
+          min={configuration.minimum}
+          max={configuration.maximum}
+          step={1}
+          required={configuration.required}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+    </div>
   );
 }
 

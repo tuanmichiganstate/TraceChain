@@ -181,6 +181,14 @@ Each command carries a client-generated `commandId`, `runId`, and expected run
 version. The server obtains authenticated user identity and scenario-controlled
 simulation context independently.
 
+`SUBMIT_CERTIFICATE_DECISION` is one atomic professional response. In the
+current 1.5 coffee pack it requires one inspected evidence citation, a
+confidence value from 1 through 5, an adverse-event probability estimate from
+0 through 100 percent, and the existing bounded justification. The exact
+ranges come from the decision node's `structuredResponse`; they are not
+learner-selected defaults. Those values are retained in the decision event and
+reproduced by replay without changing the existing scoring contract.
+
 ## Replay and audit separation
 
 Every event records previous and resulting state hashes. Replay re-executes the

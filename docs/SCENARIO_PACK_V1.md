@@ -95,6 +95,15 @@ node must be reachable.
 Every authored free-text input declares a maximum length. Decision fields use
 stable option IDs and JSON-compatible authored values.
 
+A decision may also declare a bounded `structuredResponse`. V1 supports
+scenario-controlled evidence-citation counts, a numeric confidence range, and
+an adverse-event probability percentage range. Each field independently
+declares whether it is required. Runtime validation rejects empty definitions,
+inverted ranges, and a required citation field with a zero-item minimum.
+Hosted command validation then confirms that cited records were actually
+inspected in that run. These fields remain part of the atomic decision event;
+they do not create a second score.
+
 ## Competencies and rubrics
 
 The coffee pack seeds BC1–BC8 and PC1–PC10 as data. The pharmaceutical starter

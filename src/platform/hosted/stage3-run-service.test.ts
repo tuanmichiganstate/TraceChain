@@ -182,6 +182,9 @@ async function progressToTransaction(
           },
     justification:
       "The certificate evidence, issuer status, storage choice, and lot disposition were reviewed together.",
+    citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+    confidenceRating: 4,
+    adverseEventProbabilityPercent: 20,
   });
   const submitted = await service.submit(learner, {
     commandType: "SUBMIT_CERTIFICATE_TRANSACTION",
@@ -1422,6 +1425,60 @@ describe("server-authoritative hosted Stage 3 run", () => {
           "RULE_UNAUTHORIZED_CERTIFICATE_RECOGNIZED",
       ),
     ).toBe(true);
+  });
+
+  it("requires the scenario-authored certificate response evidence fields", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const ready = await progressToDecision(
+      service,
+      "authorized-certifier",
+      "RUN_STRUCTURED_RESPONSE",
+    );
+    const baseCommand = {
+      commandType: "SUBMIT_CERTIFICATE_DECISION" as const,
+      runId: ready.runId,
+      expectedRunVersion: ready.version,
+      decision: {
+        certificateAssessment: "VALID" as const,
+        issuerAssessment: "RECOGNIZED_AUTHORIZED" as const,
+        storageChoice: "HASH_OFF_CHAIN" as const,
+        lotDisposition: "CONTINUE" as const,
+      },
+      justification: "The cited certificate supports this decision.",
+    };
+
+    await expect(
+      service.submit(learner, {
+        ...baseCommand,
+        commandId: "COMMAND_STRUCTURED_RESPONSE_MISSING",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
+
+    const submitted = await service.submit(learner, {
+      ...baseCommand,
+      commandId: "COMMAND_STRUCTURED_RESPONSE_VALID",
+      citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 20,
+    });
+    expect(submitted.state.decision).toMatchObject({
+      citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 20,
+    });
+    const events = await store.load(ready.runId);
+    expect(
+      events.find(
+        (event) =>
+          event.causationId ===
+          "COMMAND_STRUCTURED_RESPONSE_VALID",
+      )?.payload,
+    ).toMatchObject({
+      citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 20,
+    });
   });
 
   it("records an initial professional judgment without requiring the answer to be replaced", async () => {

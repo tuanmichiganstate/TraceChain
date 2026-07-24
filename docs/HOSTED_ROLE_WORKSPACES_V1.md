@@ -40,6 +40,13 @@ Learner command bodies contain the decision payload, command ID, run ID, and
 expected run version. Simulation actor, organization, and role are created by
 the orchestrator from the scenario-controlled trusted context.
 
+The certificate vertical slice also projects its authored response
+requirements into the learner's role-visible policy state. The learner submits
+the business judgment, bounded rationale, inspected-evidence citations,
+confidence, and adverse-event probability estimate atomically. The server
+validates those fields against the exact scenario version before appending the
+decision event.
+
 The API returns `LearnerRunProjectionV1`, which excludes actual state,
 scenario seeds, outcome draws, authored correctness, and unreleased feedback.
 

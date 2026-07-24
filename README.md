@@ -48,7 +48,10 @@ one-way feedback release, moderation, assignment reports, replay-derived live
 learner status, and graphical SCORM package jobs. The `/learner` route lists
 only the signed-in learner's
 assignments and runs the complete bounded coffee command path from
-role-filtered server state. The `/author` route imports bounded JSON, YAML, or
+role-filtered server state. The certificate decision now records the
+scenario-required rationale, cited evidence, confidence, and adverse-event
+probability estimate as one atomic submission. The `/author` route imports
+bounded JSON, YAML, or
 ZIP packs, provides a compact visual draft editor and pharmaceutical
 cold-chain starter, validates and previews roles and modes, compares versions,
 and controls publication and retirement. Course and roster provisioning remain
@@ -60,10 +63,11 @@ expose expandable per-learner profiles with evidence recency, current rubric
 comments, and direct supporting-event review, without inferring stable
 competence from one run. Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
-at that point. The assignment monitor uses the same replay boundary for current
-stage and pending actions, and reports a technical issue when a run cannot be
-reconstructed. It does not expose hidden outcomes. The hosted work does not
-alter the current SCORM activity.
+at that point, with the submitted response beside the evidence available at
+that decision time. The assignment monitor uses the same replay boundary for
+current stage and pending actions, and reports a technical issue when a run
+cannot be reconstructed. It does not expose hidden outcomes. The hosted work
+does not alter the current SCORM activity.
 
 | | |
 |---|---|

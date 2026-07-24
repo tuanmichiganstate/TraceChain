@@ -4,6 +4,11 @@
 
 ### Added
 
+- Scenario-configured professional response fields for the hosted certificate
+  decision: inspected-evidence citations, confidence, adverse-event probability,
+  and the existing bounded rationale are committed atomically and replayed.
+- Instructor decision-time review places an event's submitted response beside
+  the role-visible evidence available at that exact sequence.
 - Genuine deterministic Ed25519 signing and verification for canonical
   transaction proposals, behind one cross-browser provider and independently
   verifiable with `npm run verify:signature-evidence`.
