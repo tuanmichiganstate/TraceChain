@@ -1087,6 +1087,7 @@
   "errors.unsupportedStateVersion": "Tiến độ đã lưu thuộc phiên bản cũ và không còn tương thích. Bạn có thể bắt đầu lại hoạt động.",
   "errors.incompatibleAttempt": "Tiến độ này thuộc về một gói TraceChain khác.",
   "errors.legacyAttempt": "Hoạt động này dùng định dạng gói mới. Hãy thoát và bắt đầu một lượt học mới trong LMS; lượt đã lưu chưa bị thay đổi.",
+  "errors.legacyStandaloneAttempt": "Hoạt động này dùng định dạng tiến độ mới. Tiến độ cũ chỉ được lưu trong trình duyệt này; bạn có thể xóa tiến độ đó và bắt đầu lại.",
   "errors.newLmsAttempt": "Hãy thoát khỏi hoạt động này và dùng LMS để bắt đầu một lượt học mới. TraceChain không thể tạo lượt học LMS từ bên trong gói.",
   "errors.packageConfigurationHeading": "Không thể khởi động gói TraceChain này",
   "errors.packageConfiguration": "Cấu hình hoặc kịch bản nhúng bị thiếu, không hợp lệ hoặc không tương thích. Hãy yêu cầu giảng viên cung cấp gói đã được kiểm tra.",

@@ -1087,6 +1087,7 @@
   "errors.unsupportedStateVersion": "Your saved progress belongs to an older version and is no longer compatible. You can start the activity again.",
   "errors.incompatibleAttempt": "This progress belongs to a different TraceChain package.",
   "errors.legacyAttempt": "This activity uses a new package format. Exit and begin a new LMS attempt; the saved attempt has not been changed.",
+  "errors.legacyStandaloneAttempt": "This activity uses a new progress format. The old progress is stored only in this browser; you can clear it and start again.",
   "errors.newLmsAttempt": "Exit this activity and use the LMS to begin a new attempt. TraceChain cannot create an LMS attempt from inside the package.",
   "errors.packageConfigurationHeading": "This TraceChain package cannot start",
   "errors.packageConfiguration": "The embedded configuration or scenario is missing, invalid, or incompatible. Ask your lecturer for a verified package.",

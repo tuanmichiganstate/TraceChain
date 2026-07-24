@@ -104,7 +104,6 @@ import {
 } from "../../domain/simulation/consequential-decisions";
 import { replayCommandJournal } from "../../domain/simulation/replay-journal";
 import {
-  IncompatibleAttemptError,
   LegacyAttemptError,
   TraceChainError,
 } from "../../domain/errors";
@@ -142,6 +141,27 @@ const DEVELOPMENT_FALLBACK_CONFIGURATION = {
     endorsementPolicies: false,
   },
 } as const;
+
+function recoveryDetails(
+  error: unknown,
+  platformMode: PlatformMode,
+): {
+  readonly messageKey: string;
+  readonly requiresNewLmsAttempt: boolean;
+} {
+  const messageKey =
+    platformMode === PlatformMode.STANDALONE &&
+    error instanceof LegacyAttemptError
+      ? "errors.legacyStandaloneAttempt"
+      : error instanceof TraceChainError
+        ? error.messageKey
+        : "errors.persistence";
+
+  return {
+    messageKey,
+    requiresNewLmsAttempt: platformMode === PlatformMode.SCORM_1_2,
+  };
+}
 
 interface SimulationContextValue {
   readonly state: SessionState;
@@ -522,15 +542,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             error instanceof Error ? error.message : String(error)
           }`,
         );
-        const messageKey =
-          error instanceof TraceChainError ? error.messageKey : "errors.persistence";
+        const recovery = recoveryDetails(error, mode);
         dispatch({
           type: "RECOVERY_FAILED",
-          messageKey,
-          requiresNewLmsAttempt:
-            mode === PlatformMode.SCORM_1_2 ||
-            error instanceof LegacyAttemptError ||
-            error instanceof IncompatibleAttemptError,
+          ...recovery,
         });
       }
     })();
@@ -1737,11 +1752,13 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
             addDiagnostic(
               `Attempt replay failed: ${error instanceof Error ? error.message : String(error)}`,
             );
+            const recovery = recoveryDetails(
+              error,
+              stateRef.current.platformMode,
+            );
             dispatch({
               type: "RECOVERY_FAILED",
-              messageKey:
-                error instanceof TraceChainError ? error.messageKey : "errors.persistence",
-              requiresNewLmsAttempt: stateRef.current.platformMode === PlatformMode.SCORM_1_2,
+              ...recovery,
             });
           }
         })();

@@ -139,7 +139,7 @@ function DeveloperPanel(): ReactNode {
 
 function RecoveryScreen(): ReactNode {
   const t = useTranslator();
-  const { state, startNew } = useSimulation();
+  const { state, restart } = useSimulation();
   return (
     <main className="start" id="main-content">
       <div className="start__inner">
@@ -149,7 +149,7 @@ function RecoveryScreen(): ReactNode {
           {state.recoveryRequiresNewLmsAttempt ? (
             <p>{t("errors.newLmsAttempt")}</p>
           ) : (
-            <button type="button" className="button button--primary" onClick={startNew}>
+            <button type="button" className="button button--primary" onClick={restart}>
               {t("errors.recoveryRestart")}
             </button>
           )}

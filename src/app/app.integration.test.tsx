@@ -8,6 +8,7 @@ import { SimulationProvider } from "./providers/simulation-provider";
 import type React from "react";
 import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-scorm-api";
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
+import { APP_VERSION } from "./configuration";
 
 /**
  * The Milestone 0 exit condition, proven end to end: a learner starts the
@@ -197,6 +198,36 @@ describe("TraceChain end to end, stages 1 to 2", () => {
 
     expect(await screen.findByRole("button", { name: "Bắt đầu mô phỏng" })).toBeInTheDocument();
     expect(screen.getByText(/Chế độ chạy độc lập/)).toBeInTheDocument();
+  });
+
+  it("clears legacy browser progress and starts again outside an LMS", async () => {
+    const user = userEvent.setup();
+    uninstall();
+    const storageKey = `tracechain:${APP_VERSION}:${coffeeScenario.scenarioId}`;
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        encodedState: "TC2.61r.0021.0.0.deadbeef",
+        location: "STG_03_ANCHOR_CERTIFICATE",
+        score: null,
+        status: "incomplete",
+      }),
+    );
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Không khôi phục được tiến độ" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/chỉ được lưu trong trình duyệt này/i)).toBeInTheDocument();
+    expect(screen.queryByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Bắt đầu lại hoạt động" }));
+
+    expect(
+      await screen.findByRole("heading", { name: /Bước 1 – Làm quen với mạng blockchain/ }),
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem(storageKey) ?? "").not.toContain("TC2.");
   });
 
   it("recovers rather than crashing when stored state is corrupt", async () => {
