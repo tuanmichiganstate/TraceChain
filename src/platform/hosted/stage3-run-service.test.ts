@@ -183,6 +183,7 @@ async function progressToTransaction(
     justification:
       "The certificate evidence, issuer status, storage choice, and lot disposition were reviewed together.",
     citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+    citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
     confidenceRating: 4,
     adverseEventProbabilityPercent: 20,
   });
@@ -1454,16 +1455,48 @@ describe("server-authoritative hosted Stage 3 run", () => {
         commandId: "COMMAND_STRUCTURED_RESPONSE_MISSING",
       }),
     ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
+    await expect(
+      service.submit(learner, {
+        ...baseCommand,
+        commandId: "COMMAND_STRUCTURED_RESPONSE_POLICY_MISSING",
+        citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 20,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
+    await expect(
+      service.submit(learner, {
+        ...baseCommand,
+        commandId: "COMMAND_STRUCTURED_RESPONSE_POLICY_INVALID",
+        citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+        citedPolicyIds: ["AUTH_RECALL"],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 20,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
+
+    const projection = await service.learnerProjection(
+      learner,
+      ready.runId,
+    );
+    expect(projection.policyState).toContainEqual({
+      recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+      value: expect.objectContaining({
+        policyId: "AUTH_ISSUE_CERTIFICATE",
+      }),
+    });
 
     const submitted = await service.submit(learner, {
       ...baseCommand,
       commandId: "COMMAND_STRUCTURED_RESPONSE_VALID",
       citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
       confidenceRating: 4,
       adverseEventProbabilityPercent: 20,
     });
     expect(submitted.state.decision).toMatchObject({
       citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
       confidenceRating: 4,
       adverseEventProbabilityPercent: 20,
     });
@@ -1476,6 +1509,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
       )?.payload,
     ).toMatchObject({
       citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
       confidenceRating: 4,
       adverseEventProbabilityPercent: 20,
     });

@@ -168,6 +168,12 @@ export interface DecisionEvidenceCitationConfigurationV1 {
   readonly maximumItems: number;
 }
 
+export interface DecisionPolicyCitationConfigurationV1 {
+  readonly required: boolean;
+  readonly minimumItems: number;
+  readonly maximumItems: number;
+}
+
 export interface DecisionNumericResponseConfigurationV1 {
   readonly required: boolean;
   readonly minimum: number;
@@ -176,6 +182,7 @@ export interface DecisionNumericResponseConfigurationV1 {
 
 export interface StructuredDecisionResponseConfigurationV1 {
   readonly evidenceCitations?: DecisionEvidenceCitationConfigurationV1;
+  readonly policyCitations?: DecisionPolicyCitationConfigurationV1;
   readonly confidenceRating?: DecisionNumericResponseConfigurationV1;
   readonly adverseEventProbabilityPercent?:
     DecisionNumericResponseConfigurationV1;

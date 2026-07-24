@@ -48,6 +48,7 @@ export interface HostedStage3Decision {
   readonly decision: SubmitCertificateDecisionCommand;
   readonly justification: string;
   readonly citedEvidenceIds: readonly string[];
+  readonly citedPolicyIds: readonly string[];
   readonly confidenceRating: number | null;
   readonly adverseEventProbabilityPercent: number | null;
   readonly isAuthoredCorrect: boolean;
@@ -265,6 +266,7 @@ export interface SubmitHostedStage3DecisionCommand
   >;
   readonly justification: string;
   readonly citedEvidenceIds?: readonly string[];
+  readonly citedPolicyIds?: readonly string[];
   readonly confidenceRating?: number;
   readonly adverseEventProbabilityPercent?: number;
 }

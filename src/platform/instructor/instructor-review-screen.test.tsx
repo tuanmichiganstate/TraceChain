@@ -482,7 +482,17 @@ describe("instructor review screen", () => {
             },
           },
         ],
-        policyState: [],
+        policyState: [
+          {
+            recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+            value: {
+              policyId: "AUTH_ISSUE_CERTIFICATE",
+              policyType: "LEGACY_POLICY",
+              titleKey:
+                "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
+            },
+          },
+        ],
         workflowState: {
           currentNodeId: "certificate-transaction",
           completedNodeIds: ["certificate-decision"],
@@ -547,6 +557,7 @@ describe("instructor review screen", () => {
               justification:
                 "The signer is recognized but cannot issue this certificate.",
               citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+              citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
               confidenceRating: 4,
               adverseEventProbabilityPercent: 35,
             },
@@ -663,6 +674,18 @@ describe("instructor review screen", () => {
     }
     expect(citedEvidence).toHaveTextContent("Cited");
     expect(uncitedEvidence).toHaveTextContent("Available, not cited");
+    expect(
+      screen.getByRole("heading", {
+        name: "Policies available at this point",
+      }),
+    ).toBeInTheDocument();
+    const citedPolicy = screen
+      .getByText("AUTH_ISSUE_CERTIFICATE")
+      .closest("summary");
+    if (citedPolicy === null) {
+      throw new Error("Expected replay policy summary.");
+    }
+    expect(citedPolicy).toHaveTextContent("Cited");
 
     const criterionRow = screen
       .getByText("CRITERION_AUTHORIZATION_JUDGMENT")

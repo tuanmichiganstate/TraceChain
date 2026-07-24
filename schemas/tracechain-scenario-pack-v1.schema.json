@@ -572,6 +572,28 @@
                 }
               }
             },
+            "policyCitations": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "required",
+                "minimumItems",
+                "maximumItems"
+              ],
+              "properties": {
+                "required": { "type": "boolean" },
+                "minimumItems": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 20
+                },
+                "maximumItems": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
             "confidenceRating": {
               "$ref": "#/$defs/decisionNumericResponse"
             },

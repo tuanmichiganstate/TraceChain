@@ -82,6 +82,11 @@ describe("hosted learner workspace", () => {
               minimumItems: 1,
               maximumItems: 1,
             },
+            policyCitations: {
+              required: true,
+              minimumItems: 1,
+              maximumItems: 1,
+            },
             confidenceRating: {
               required: true,
               minimum: 1,
@@ -92,6 +97,15 @@ describe("hosted learner workspace", () => {
               minimum: 0,
               maximum: 100,
             },
+          },
+        },
+        {
+          recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+          value: {
+            policyId: "AUTH_ISSUE_CERTIFICATE",
+            policyType: "LEGACY_POLICY",
+            titleKey:
+              "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
           },
         },
       ],
@@ -156,6 +170,11 @@ describe("hosted learner workspace", () => {
         name: "Cite Quality certificate record",
       }),
     );
+    await user.click(
+      within(actionSection).getByRole("checkbox", {
+        name: "Cite Certificate-issuer authorization",
+      }),
+    );
     await user.selectOptions(
       within(actionSection).getByLabelText("Confidence"),
       "4",
@@ -180,6 +199,7 @@ describe("hosted learner workspace", () => {
       expect.objectContaining({
         commandType: "SUBMIT_CERTIFICATE_DECISION",
         citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+        citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
         confidenceRating: 4,
         adverseEventProbabilityPercent: 20,
       }),

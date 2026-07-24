@@ -1782,7 +1782,42 @@ function DecisionTimeReview({
   const citedEvidenceIds =
     selectedEvent === undefined
       ? null
-      : citedEvidenceIdsFromPayload(selectedEvent.payload);
+      : citedIdsFromPayload(
+          selectedEvent.payload,
+          "citedEvidenceIds",
+        );
+  const citedPolicyIds =
+    selectedEvent === undefined
+      ? null
+      : citedIdsFromPayload(
+          selectedEvent.payload,
+          "citedPolicyIds",
+        );
+  const availablePolicies =
+    replay.projection.policyState.flatMap((record) => {
+      if (
+        typeof record.value !== "object" ||
+        record.value === null ||
+        Array.isArray(record.value)
+      ) {
+        return [];
+      }
+      const candidate = record.value as Readonly<
+        Record<string, unknown>
+      >;
+      return typeof candidate.policyId === "string"
+        ? [
+            {
+              record,
+              policyId: candidate.policyId,
+              titleKey:
+                typeof candidate.titleKey === "string"
+                  ? candidate.titleKey
+                  : null,
+            },
+          ]
+        : [];
+    });
   return (
     <div className="instructor-review__decision-time-review">
       <section>
@@ -1839,24 +1874,75 @@ function DecisionTimeReview({
           </div>
         )}
       </section>
+      {availablePolicies.length === 0 &&
+      citedPolicyIds === null ? null : (
+        <section>
+          <h4>{t("instructorReview.availablePoliciesHeading")}</h4>
+          <p>{t("instructorReview.availablePoliciesHelp")}</p>
+          {citedPolicyIds === null ? null : (
+            <p>{t("instructorReview.policyUseHelp")}</p>
+          )}
+          {availablePolicies.length === 0 ? (
+            <p>{t("instructorReview.noVisiblePolicies")}</p>
+          ) : (
+            <div className="instructor-review__visible-evidence">
+              {availablePolicies.map(
+                ({ record, policyId, titleKey }) => {
+                  const wasCited =
+                    citedPolicyIds?.has(policyId) ?? null;
+                  return (
+                    <details key={record.recordId}>
+                      <summary>
+                        <span>
+                          <code>{policyId}</code>
+                          {titleKey === null
+                            ? null
+                            : ` — ${t(titleKey)}`}
+                          {wasCited === null ? null : (
+                            <span
+                              className={`instructor-review__evidence-use instructor-review__evidence-use--${wasCited ? "cited" : "not-cited"}`}
+                            >
+                              {t(
+                                wasCited
+                                  ? "instructorReview.evidenceCited"
+                                  : "instructorReview.evidenceNotCited",
+                              )}
+                            </span>
+                          )}
+                        </span>
+                      </summary>
+                      <pre className="instructor-review__json-evidence">
+                        <code>
+                          {JSON.stringify(record.value, null, 2)}
+                        </code>
+                      </pre>
+                    </details>
+                  );
+                },
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
 
-function citedEvidenceIdsFromPayload(
+function citedIdsFromPayload(
   payload: Readonly<Record<string, unknown>>,
+  fieldName: "citedEvidenceIds" | "citedPolicyIds",
 ): ReadonlySet<string> | null {
   if (
-    !Object.prototype.hasOwnProperty.call(payload, "citedEvidenceIds") ||
-    !Array.isArray(payload.citedEvidenceIds)
+    !Object.prototype.hasOwnProperty.call(payload, fieldName) ||
+    !Array.isArray(payload[fieldName])
   ) {
     return null;
   }
-  const citedEvidenceIds = new Set<string>();
-  for (const value of payload.citedEvidenceIds) {
-    if (typeof value === "string") citedEvidenceIds.add(value);
+  const citedIds = new Set<string>();
+  for (const value of payload[fieldName]) {
+    if (typeof value === "string") citedIds.add(value);
   }
-  return citedEvidenceIds;
+  return citedIds;
 }
 
 function RubricRatingRow({

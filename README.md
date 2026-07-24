@@ -49,9 +49,9 @@ learner status, and graphical SCORM package jobs. The `/learner` route lists
 only the signed-in learner's
 assignments and runs the complete bounded coffee command path from
 role-filtered server state. The certificate decision now records the
-scenario-required rationale, cited evidence, confidence, and adverse-event
-probability estimate as one atomic submission. The `/author` route imports
-bounded JSON, YAML, or
+scenario-required rationale, cited evidence, cited policy, confidence, and
+adverse-event probability estimate as one atomic submission. The `/author`
+route imports bounded JSON, YAML, or
 ZIP packs, provides a compact visual draft editor and pharmaceutical
 cold-chain starter, validates and previews roles and modes, compares versions,
 and controls publication and retirement. Course and roster provisioning remain

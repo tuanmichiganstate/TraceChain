@@ -4,6 +4,10 @@
 
 ### Added
 
+- Scenario-controlled policy citation for the hosted certificate decision. The
+  learner cites the applicable rule alongside inspected evidence, and
+  instructor replay distinguishes a cited policy from one that was available
+  but not cited.
 - Scenario-configured professional response fields for the hosted certificate
   decision: inspected-evidence citations, confidence, adverse-event probability,
   and the existing bounded rationale are committed atomically and replayed.

@@ -1199,6 +1199,7 @@ function validateNodeContent(
             structuredResponse,
             [
               "evidenceCitations",
+              "policyCitations",
               "confidenceRating",
               "adverseEventProbabilityPercent",
             ],
@@ -1210,38 +1211,44 @@ function validateNodeContent(
             `${path}.structuredResponse`,
             "must configure at least one response field",
           );
-          if (structuredResponse.evidenceCitations !== undefined) {
+          for (const citationFieldName of [
+            "evidenceCitations",
+            "policyCitations",
+          ] as const) {
+            if (structuredResponse[citationFieldName] === undefined) {
+              continue;
+            }
             const citations = context.object(
-              structuredResponse.evidenceCitations,
-              `${path}.structuredResponse.evidenceCitations`,
+              structuredResponse[citationFieldName],
+              `${path}.structuredResponse.${citationFieldName}`,
             );
             if (citations !== null) {
               context.allowedKeys(
                 citations,
                 ["required", "minimumItems", "maximumItems"],
-                `${path}.structuredResponse.evidenceCitations`,
+                `${path}.structuredResponse.${citationFieldName}`,
               );
               context.check(
                 typeof citations.required === "boolean",
                 "EXPECTED_BOOLEAN",
-                `${path}.structuredResponse.evidenceCitations.required`,
+                `${path}.structuredResponse.${citationFieldName}.required`,
                 "must be a boolean",
               );
               const minimumItems = context.number(
                 citations.minimumItems,
-                `${path}.structuredResponse.evidenceCitations.minimumItems`,
+                `${path}.structuredResponse.${citationFieldName}.minimumItems`,
                 { integer: true, minimum: 0, maximum: 20 },
               );
               const maximumItems = context.number(
                 citations.maximumItems,
-                `${path}.structuredResponse.evidenceCitations.maximumItems`,
+                `${path}.structuredResponse.${citationFieldName}.maximumItems`,
                 { integer: true, minimum: 1, maximum: 20 },
               );
               if (minimumItems !== null && maximumItems !== null) {
                 context.check(
                   minimumItems <= maximumItems,
                   "INVALID_DECISION_RESPONSE_RANGE",
-                  `${path}.structuredResponse.evidenceCitations`,
+                  `${path}.structuredResponse.${citationFieldName}`,
                   "minimumItems must not exceed maximumItems",
                 );
               }
@@ -1249,7 +1256,7 @@ function validateNodeContent(
                 context.check(
                   minimumItems >= 1,
                   "REQUIRED_DECISION_RESPONSE_WITHOUT_MINIMUM",
-                  `${path}.structuredResponse.evidenceCitations.minimumItems`,
+                  `${path}.structuredResponse.${citationFieldName}.minimumItems`,
                   "must be at least 1 when citations are required",
                 );
               }

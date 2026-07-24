@@ -314,6 +314,10 @@ function decisionFromPayload(payload: JsonObject): HostedStage3Decision {
       payload.citedEvidenceIds,
       "citedEvidenceIds",
     ),
+    citedPolicyIds: optionalStringArray(
+      payload.citedPolicyIds,
+      "citedPolicyIds",
+    ),
     confidenceRating: optionalNumber(
       payload.confidenceRating,
       "confidenceRating",
@@ -1116,6 +1120,7 @@ export class HostedStage3RunService {
           this.validateStructuredDecisionResponse(
             {
               citedEvidenceIds: command.citedEvidenceIds ?? [],
+              citedPolicyIds: command.citedPolicyIds ?? [],
               confidenceRating: command.confidenceRating ?? null,
               adverseEventProbabilityPercent:
                 command.adverseEventProbabilityPercent ?? null,
@@ -1151,6 +1156,11 @@ export class HostedStage3RunService {
                 ? {}
                 : {
                     citedEvidenceIds: command.citedEvidenceIds,
+                  }),
+              ...(command.citedPolicyIds === undefined
+                ? {}
+                : {
+                    citedPolicyIds: command.citedPolicyIds,
                   }),
               ...(command.confidenceRating === undefined
                 ? {}
@@ -3292,6 +3302,7 @@ export class HostedStage3RunService {
             decision: decision.decision,
             justification: decision.justification,
             citedEvidenceIds: decision.citedEvidenceIds,
+            citedPolicyIds: decision.citedPolicyIds,
             confidenceRating: decision.confidenceRating,
             adverseEventProbabilityPercent:
               decision.adverseEventProbabilityPercent,
@@ -4099,10 +4110,31 @@ export class HostedStage3RunService {
     return node;
   }
 
+  private certificateDecisionPolicyIds(): readonly string[] {
+    const decisionId = this.certificateDecisionNode().decisionId;
+    const proposal = this.hostedScenario().nodes.find(
+      (candidate) =>
+        candidate.nodeType === "TRANSACTION_PROPOSAL" &&
+        candidate.sourceDecisionId === decisionId,
+    );
+    if (
+      proposal === undefined ||
+      proposal.nodeType !== "TRANSACTION_PROPOSAL" ||
+      proposal.policyIds.length === 0
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Hosted coffee scenario has no policy-bound certificate proposal.",
+      );
+    }
+    return proposal.policyIds;
+  }
+
   private validateStructuredDecisionResponse(
     response: Pick<
       HostedStage3Decision,
       | "citedEvidenceIds"
+      | "citedPolicyIds"
       | "confidenceRating"
       | "adverseEventProbabilityPercent"
     >,
@@ -4113,6 +4145,7 @@ export class HostedStage3RunService {
     if (configuration === undefined) {
       if (
         response.citedEvidenceIds.length > 0 ||
+        response.citedPolicyIds.length > 0 ||
         response.confidenceRating !== null ||
         response.adverseEventProbabilityPercent !== null
       ) {
@@ -4122,6 +4155,53 @@ export class HostedStage3RunService {
         );
       }
       return;
+    }
+
+    const policyCitationConfiguration =
+      configuration.policyCitations;
+    if (policyCitationConfiguration === undefined) {
+      if (response.citedPolicyIds.length > 0) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "The scenario does not configure policy citations for this decision.",
+        );
+      }
+    } else {
+      const uniquePolicyIds = new Set(response.citedPolicyIds);
+      if (uniquePolicyIds.size !== response.citedPolicyIds.length) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "Decision policy citations must be unique.",
+        );
+      }
+      if (
+        response.citedPolicyIds.length <
+          policyCitationConfiguration.minimumItems ||
+        response.citedPolicyIds.length >
+          policyCitationConfiguration.maximumItems ||
+        (policyCitationConfiguration.required &&
+          response.citedPolicyIds.length === 0)
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          `Decision policy citations must contain ${String(
+            policyCitationConfiguration.minimumItems,
+          )}-${String(
+            policyCitationConfiguration.maximumItems,
+          )} items.`,
+        );
+      }
+      const applicablePolicyIds = new Set(
+        this.certificateDecisionPolicyIds(),
+      );
+      for (const policyId of response.citedPolicyIds) {
+        if (!applicablePolicyIds.has(policyId)) {
+          throw new HostedRunCommandError(
+            "INVALID_COMMAND",
+            `Cited policy ${policyId} is not applicable to this decision.`,
+          );
+        }
+      }
     }
 
     const citationConfiguration =
@@ -4386,6 +4466,29 @@ export class HostedStage3RunService {
       }));
     const decisionResponseConfiguration =
       this.certificateDecisionNode().structuredResponse;
+    const decisionPolicyRecords =
+      decisionResponseConfiguration?.policyCitations === undefined
+        ? []
+        : this.certificateDecisionPolicyIds().map((policyId) => {
+            const policy = scenario.policies.find(
+              (candidate) => candidate.policyId === policyId,
+            );
+            if (policy === undefined) {
+              throw new HostedRunCommandError(
+                "PACK_CONTRACT_MISMATCH",
+                `Certificate decision policy ${policyId} is missing.`,
+              );
+            }
+            return {
+              recordId: `DECISION_POLICY_${policy.policyId}`,
+              visibleToRoleIds: [roleId],
+              value: {
+                policyId: policy.policyId,
+                policyType: policy.policyType,
+                titleKey: policy.title.localizationKey,
+              } satisfies JsonValue,
+            };
+          });
     const policyRecords = [
       ...(decisionResponseConfiguration === undefined
         ? []
@@ -4397,6 +4500,7 @@ export class HostedStage3RunService {
                 decisionResponseConfiguration as unknown as JsonValue,
             },
           ]),
+      ...decisionPolicyRecords,
       ...state.transactions.map((transaction, index) => ({
         recordId: `POLICY_RESULT_${String(index + 1)}`,
         visibleToRoleIds: [roleId],

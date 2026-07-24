@@ -16,6 +16,7 @@ import type {
 import type {
   DecisionEvidenceCitationConfigurationV1,
   DecisionNumericResponseConfigurationV1,
+  DecisionPolicyCitationConfigurationV1,
   StructuredDecisionResponseConfigurationV1,
 } from "../contracts/scenario-pack";
 
@@ -707,7 +708,10 @@ function numericResponseConfiguration(
 
 function citationConfiguration(
   value: unknown,
-): DecisionEvidenceCitationConfigurationV1 | undefined {
+):
+  | DecisionEvidenceCitationConfigurationV1
+  | DecisionPolicyCitationConfigurationV1
+  | undefined {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -748,6 +752,9 @@ function structuredDecisionResponseConfiguration(
   const evidenceCitations = citationConfiguration(
     candidate.evidenceCitations,
   );
+  const policyCitations = citationConfiguration(
+    candidate.policyCitations,
+  );
   const confidenceRating = numericResponseConfiguration(
     candidate.confidenceRating,
   );
@@ -757,6 +764,7 @@ function structuredDecisionResponseConfiguration(
     );
   if (
     evidenceCitations === undefined &&
+    policyCitations === undefined &&
     confidenceRating === undefined &&
     adverseEventProbabilityPercent === undefined
   ) {
@@ -766,6 +774,9 @@ function structuredDecisionResponseConfiguration(
     ...(evidenceCitations === undefined
       ? {}
       : { evidenceCitations }),
+    ...(policyCitations === undefined
+      ? {}
+      : { policyCitations }),
     ...(confidenceRating === undefined
       ? {}
       : { confidenceRating }),
@@ -773,6 +784,37 @@ function structuredDecisionResponseConfiguration(
       ? {}
       : { adverseEventProbabilityPercent }),
   };
+}
+
+interface DecisionPolicyReference {
+  readonly policyId: string;
+  readonly titleKey: string;
+}
+
+function decisionPolicyReferences(
+  projection: LearnerRunProjectionV1,
+): readonly DecisionPolicyReference[] {
+  return projection.policyState.flatMap((record) => {
+    if (
+      typeof record.value !== "object" ||
+      record.value === null ||
+      Array.isArray(record.value)
+    ) {
+      return [];
+    }
+    const candidate = record.value as Readonly<
+      Record<string, unknown>
+    >;
+    return typeof candidate.policyId === "string" &&
+      typeof candidate.titleKey === "string"
+      ? [
+          {
+            policyId: candidate.policyId,
+            titleKey: candidate.titleKey,
+          },
+        ]
+      : [];
+  });
 }
 
 function ActionControl({
@@ -965,6 +1007,9 @@ function CertificateDecisionForm({
   const [citedEvidenceIds, setCitedEvidenceIds] = useState<
     readonly string[]
   >([]);
+  const [citedPolicyIds, setCitedPolicyIds] = useState<
+    readonly string[]
+  >([]);
   const [confidenceRating, setConfidenceRating] = useState("");
   const [
     adverseEventProbabilityPercent,
@@ -972,6 +1017,10 @@ function CertificateDecisionForm({
   ] = useState("");
   const citations =
     responseConfiguration?.evidenceCitations;
+  const policyCitations =
+    responseConfiguration?.policyCitations;
+  const availablePolicies =
+    decisionPolicyReferences(projection);
   const confidence =
     responseConfiguration?.confidenceRating;
   const adverseProbability =
@@ -980,6 +1029,10 @@ function CertificateDecisionForm({
     citations === undefined ||
     (citedEvidenceIds.length >= citations.minimumItems &&
       citedEvidenceIds.length <= citations.maximumItems);
+  const policyCitationsValid =
+    policyCitations === undefined ||
+    (citedPolicyIds.length >= policyCitations.minimumItems &&
+      citedPolicyIds.length <= policyCitations.maximumItems);
   const confidenceValid =
     confidence === undefined ||
     (!confidence.required && confidenceRating === "") ||
@@ -1013,6 +1066,9 @@ function CertificateDecisionForm({
           ...(citations === undefined
             ? {}
             : { citedEvidenceIds }),
+          ...(policyCitations === undefined
+            ? {}
+            : { citedPolicyIds }),
           ...(confidence === undefined ||
           confidenceRating === ""
             ? {}
@@ -1119,6 +1175,45 @@ function CertificateDecisionForm({
           })}
         </fieldset>
       )}
+      {policyCitations === undefined ? null : (
+        <fieldset className="hosted-decision__citations">
+          <legend>{t("hostedLearner.policyCitations")}</legend>
+          <p className="field__hint">
+            {t("hostedLearner.policyCitationHelp", {
+              minimum: policyCitations.minimumItems,
+              maximum: policyCitations.maximumItems,
+            })}
+          </p>
+          {availablePolicies.map((policy) => {
+            const checked = citedPolicyIds.includes(policy.policyId);
+            return (
+              <label key={policy.policyId}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={
+                    !checked &&
+                    citedPolicyIds.length >=
+                      policyCitations.maximumItems
+                  }
+                  onChange={(event) =>
+                    setCitedPolicyIds((current) =>
+                      event.target.checked
+                        ? [...current, policy.policyId]
+                        : current.filter(
+                            (item) => item !== policy.policyId,
+                          ),
+                    )
+                  }
+                />{" "}
+                {t("hostedLearner.citePolicy", {
+                  policy: t(policy.titleKey),
+                })}
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
       {confidence === undefined ? null : (
         <NumericDecisionField
           id="certificate-confidence"
@@ -1144,6 +1239,7 @@ function CertificateDecisionForm({
         disabled={
           busy ||
           !citationsValid ||
+          !policyCitationsValid ||
           !confidenceValid ||
           !adverseProbabilityValid
         }

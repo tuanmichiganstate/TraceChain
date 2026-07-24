@@ -9,9 +9,9 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     assignmentId: "ASSIGNMENT_BROWSER_001",
     title: "Hosted coffee governance",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
-    packVersion: "1.5.0",
+    packVersion: "1.6.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-    scenarioVersion: "1.5.0",
+    scenarioVersion: "1.6.0",
     mode: "tutorial",
     runConfiguration: {
       mode: "tutorial",
@@ -77,6 +77,11 @@ test("runs an assigned hosted learner action from role-filtered server state", a
             minimumItems: 1,
             maximumItems: 1,
           },
+          policyCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
           confidenceRating: {
             required: true,
             minimum: 1,
@@ -87,6 +92,15 @@ test("runs an assigned hosted learner action from role-filtered server state", a
             minimum: 0,
             maximum: 100,
           },
+        },
+      },
+      {
+        recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+        value: {
+          policyId: "AUTH_ISSUE_CERTIFICATE",
+          policyType: "LEGACY_POLICY",
+          titleKey:
+            "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
         },
       },
     ],
@@ -182,6 +196,11 @@ test("runs an assigned hosted learner action from role-filtered server state", a
       name: "Cite Quality certificate record",
     })
     .check();
+  await action
+    .getByRole("checkbox", {
+      name: "Cite Certificate-issuer authorization",
+    })
+    .check();
   await action.getByLabel("Confidence").selectOption("4");
   await action
     .getByLabel("Estimated probability of an adverse event (%)")
@@ -193,6 +212,7 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     runId: "RUN_BROWSER_001",
     expectedRunVersion: 4,
     citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+    citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
     confidenceRating: 4,
     adverseEventProbabilityPercent: 20,
   });
@@ -439,6 +459,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                 justification:
                   "The certificate and issuer evidence support continuation.",
                 citedEvidenceIds: ["EVID_CERTIFICATE_MONITOR"],
+                citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
                 confidenceRating: 4,
                 adverseEventProbabilityPercent: 15,
               },
@@ -519,7 +540,17 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                   },
                 },
               ],
-              policyState: [],
+              policyState: [
+                {
+                  recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+                  value: {
+                    policyId: "AUTH_ISSUE_CERTIFICATE",
+                    policyType: "LEGACY_POLICY",
+                    titleKey:
+                      "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
+                  },
+                },
+              ],
               workflowState: {
                 currentNodeId: "certificate-decision",
                 completedNodeIds: ["certificate-evidence"],
@@ -604,6 +635,15 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await expect(uncitedEvidence.locator("summary")).toContainText(
     "Available, not cited",
   );
+  await expect(
+    page.getByRole("heading", {
+      name: "Policies available at this point",
+    }),
+  ).toBeVisible();
+  const citedPolicy = page
+    .locator("details")
+    .filter({ hasText: "AUTH_ISSUE_CERTIFICATE" });
+  await expect(citedPolicy.locator("summary")).toContainText("Cited");
   expect(monitorRequests).toBe(1);
 
   await page.getByRole("button", { name: "Refresh status" }).click();

@@ -182,11 +182,13 @@ version. The server obtains authenticated user identity and scenario-controlled
 simulation context independently.
 
 `SUBMIT_CERTIFICATE_DECISION` is one atomic professional response. In the
-current 1.5 coffee pack it requires one inspected evidence citation, a
-confidence value from 1 through 5, an adverse-event probability estimate from
-0 through 100 percent, and the existing bounded justification. The exact
-ranges come from the decision node's `structuredResponse`; they are not
-learner-selected defaults. Those values are retained in the decision event and
+current 1.6 coffee pack it requires one inspected evidence citation, the
+applicable certificate-issuer policy citation, a confidence value from 1
+through 5, an adverse-event probability estimate from 0 through 100 percent,
+and the existing bounded justification. The exact ranges come from the decision
+node's `structuredResponse`; they are not learner-selected defaults. The
+applicable policy comes from the scenario's proposal binding rather than a
+learner-entered identifier. Those values are retained in the decision event and
 reproduced by replay without changing the existing scoring contract.
 
 ## Replay and audit separation
