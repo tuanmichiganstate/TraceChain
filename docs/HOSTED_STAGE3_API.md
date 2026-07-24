@@ -124,5 +124,8 @@ instructor timeline.
 - The APIs exist, but dedicated learner and instructor portal screens do not.
 - Manual ratings, feedback release, class reports, exports, and graphical
   package jobs are not implemented.
-- Cryptographic endorsement policies remain a separate required increment.
+- Cryptographic endorsement policies are complete in the reusable
+  Guided/Challenge simulation engine. The hosted Stage 3 compatibility endpoint
+  does not yet expose the later custody-transfer or correction endorsement
+  flows.
 - SCORM continues to use TC3 and is unchanged by hosted D1 persistence.

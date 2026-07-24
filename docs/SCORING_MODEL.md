@@ -127,8 +127,11 @@ one capped, so a resumed attempt can only score the same or higher; no learner
 loses a mark they had already been awarded, and a test asserts that across every
 combination of hints. A grade already written to the LMS is untouched: it lives
 in the gradebook, not in suspend data, and a relaunch of a completed attempt is
-read-only, so nothing can overwrite it. The scenario version moves to 2.1.0 to
-record the content change; it is not part of any storage key.
+read-only, so nothing can overwrite it. The scenario version moved to 2.1.0 to
+record the content change; it is not part of any storage key. The later 2.2.0
+endorsement increment keeps this score contract unchanged: genuine signatures
+and required multi-organization approval determine whether the existing
+custody and correction actions commit, but add no scorable item or point.
 
 ## Two provisions that keep exploration safe
 

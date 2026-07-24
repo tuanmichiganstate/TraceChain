@@ -106,6 +106,20 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
   },
   roleHandoffs: [
     {
+      handoffId: "HANDOFF_PRODUCER_TO_LOGISTICS_CUSTODY",
+      stageId: ScenarioStageId.SHIP_AND_MONITOR,
+      fromContextId: "CTX_PRODUCER",
+      toContextId: "CTX_LOGISTICS",
+      labelKey: "endorsement.handoff.custodyReceiver",
+    },
+    {
+      handoffId: "HANDOFF_PROCESSOR_TO_PRODUCER_CORRECTION",
+      stageId: ScenarioStageId.RECEIVE_AND_CORRECT,
+      fromContextId: "CTX_PROCESSOR",
+      toContextId: "CTX_PRODUCER",
+      labelKey: "endorsement.handoff.correctionProducer",
+    },
+    {
       handoffId: "HANDOFF_RETAILER_TO_REGULATOR",
       stageId: ScenarioStageId.RECALL_AND_DEBRIEF,
       fromContextId: "CTX_RETAILER",
@@ -164,6 +178,8 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
     maximumStage5Mitigations: 1,
     maximumStage9Handoffs: 2,
     maximumStage9Resubmissions: 1,
+    maximumEndorsementHandoffs: 2,
+    maximumEndorsementDeclines: 2,
     correctionReasonMaximumUtf8Bytes: 240,
   },
 };

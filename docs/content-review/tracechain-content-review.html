@@ -22,7 +22,7 @@
 <li><a href="#group-common"><span>common</span><b>1</b></a></li>
 <li><a href="#group-compliance"><span>compliance</span><b>5</b></a></li>
 <li><a href="#group-documentType"><span>documentType</span><b>4</b></a></li>
-<li><a href="#group-endorsement"><span>endorsement</span><b>4</b></a></li>
+<li><a href="#group-endorsement"><span>endorsement</span><b>30</b></a></li>
 <li><a href="#group-errors"><span>errors</span><b>18</b></a></li>
 <li><a href="#group-field"><span>field</span><b>30</b></a></li>
 <li><a href="#group-hint"><span>hint</span><b>10</b></a></li>
@@ -38,10 +38,10 @@
 <li><a href="#group-platformPack"><span>platformPack</span><b>107</b></a></li>
 <li><a href="#group-provenance"><span>provenance</span><b>2</b></a></li>
 <li><a href="#group-recall"><span>recall</span><b>1</b></a></li>
-<li><a href="#group-report"><span>report</span><b>50</b></a></li>
+<li><a href="#group-report"><span>report</span><b>55</b></a></li>
 <li><a href="#group-sale"><span>sale</span><b>3</b></a></li>
 <li><a href="#group-score"><span>score</span><b>6</b></a></li>
-<li><a href="#group-signature"><span>signature</span><b>41</b></a></li>
+<li><a href="#group-signature"><span>signature</span><b>43</b></a></li>
 <li><a href="#group-stage"><span>stage</span><b>6</b></a></li>
 <li><a href="#group-stage.anchorCertificate"><span>stage.anchorCertificate</span><b>34</b></a></li>
 <li><a href="#group-stage.challenge"><span>stage.challenge</span><b>10</b></a></li>
@@ -69,7 +69,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>873/873</b>chuỗi song ngữ</li>
+    <li><b>906/906</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -681,11 +681,96 @@
 </article>
 </section>
 <section id="group-endorsement">
-  <h2>endorsement <span>4 chuỗi</span></h2>
+  <h2>endorsement <span>30 chuỗi</span></h2>
+  <article class="entry" data-locale-key="endorsement.awaiting">
+  <header><code>endorsement.awaiting</code></header>
+  <p class="vi" lang="vi">Đang chờ phê duyệt</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Awaiting approval</p></details>
+</article>
   <article class="entry" data-locale-key="endorsement.byOrganization">
   <header><code>endorsement.byOrganization</code></header>
   <p class="vi" lang="vi">{organization} - Phê duyệt mô phỏng</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{organization} - simulated endorsement</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.commit">
+  <header><code>endorsement.commit</code></header>
+  <p class="vi" lang="vi">Cam kết giao dịch đã được phê duyệt</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Commit endorsed transaction</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.decline">
+  <header><code>endorsement.decline</code></header>
+  <p class="vi" lang="vi">Từ chối đề xuất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Decline proposal</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.declineRetained">
+  <header><code>endorsement.declineRetained</code></header>
+  <p class="vi" lang="vi">Lần từ chối trước vẫn được giữ trong lịch sử mô phỏng. Bạn có thể phê duyệt đề xuất không đổi sau khi hoàn tất việc xem xét.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The earlier decline remains in simulation history. You may approve the unchanged proposal after completing the review.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.endorse">
+  <header><code>endorsement.endorse</code></header>
+  <p class="vi" lang="vi">Ký và phê duyệt đề xuất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Sign and endorse proposal</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.evidenceHeading">
+  <header><code>endorsement.evidenceHeading</code></header>
+  <p class="vi" lang="vi">Chữ ký tổ chức đã được xác minh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Verified organization signatures</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.duplicateEndorser">
+  <header><code>endorsement.failure.duplicateEndorser</code></header>
+  <p class="vi" lang="vi">Một tổ chức không thể được tính nhiều lần để đáp ứng chính sách.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">One organization cannot satisfy the policy more than once.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.endorserNotAuthorized">
+  <header><code>endorsement.failure.endorserNotAuthorized</code></header>
+  <p class="vi" lang="vi">Tổ chức hoặc vai trò đang hoạt động không có quyền phê duyệt đề xuất này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The active organization or role is not authorized to endorse this proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.policyNotSatisfied">
+  <header><code>endorsement.failure.policyNotSatisfied</code></header>
+  <p class="vi" lang="vi">Các tổ chức bắt buộc chưa cùng phê duyệt một đề xuất.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The required organizations have not all approved the same proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.proposalMismatch">
+  <header><code>endorsement.failure.proposalMismatch</code></header>
+  <p class="vi" lang="vi">Phê duyệt tham chiếu đến nội dung giao dịch khác.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The endorsement refers to different transaction content.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.signatureInvalid">
+  <header><code>endorsement.failure.signatureInvalid</code></header>
+  <p class="vi" lang="vi">Một chữ ký phê duyệt không hợp lệ.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">An endorsement signature is invalid.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.failure.stateVersionStale">
+  <header><code>endorsement.failure.stateVersionStale</code></header>
+  <p class="vi" lang="vi">Phiên bản tài sản đã phê duyệt không còn mới nhất. Hãy sửa đề xuất và thu thập lại phê duyệt.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The endorsed asset version is stale. Revise the proposal and collect new approvals.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.handoff.correctionProducer">
+  <header><code>endorsement.handoff.correctionProducer</code></header>
+  <p class="vi" lang="vi">Bàn giao cho nhà sản xuất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Hand off to the producer</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.handoff.custodyReceiver">
+  <header><code>endorsement.handoff.custodyReceiver</code></header>
+  <p class="vi" lang="vi">Bàn giao cho bên tiếp nhận lưu giữ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Hand off to the receiving custodian</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.handoffChallenge">
+  <header><code>endorsement.handoffChallenge</code></header>
+  <p class="vi" lang="vi">Yêu cầu tổ chức khác xem xét</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Request additional organizational review</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.handoffChallengePrompt">
+  <header><code>endorsement.handoffChallengePrompt</code></header>
+  <p class="vi" lang="vi">Cần thêm phê duyệt của tổ chức. Hãy chọn bước tiếp theo được phép mà không thay đổi đề xuất.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Additional organizational approval is required. Choose the permitted next step without changing the proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.handoffGuidedPrompt">
+  <header><code>endorsement.handoffGuidedPrompt</code></header>
+  <p class="vi" lang="vi">Dùng bước bàn giao do kịch bản kiểm soát để tổ chức bắt buộc xem xét chính xác đề xuất này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Use the scenario-controlled handoff to let the required organization review this exact proposal.</p></details>
 </article>
   <article class="entry" data-locale-key="endorsement.heading">
   <header><code>endorsement.heading</code></header>
@@ -696,6 +781,51 @@
   <header><code>endorsement.notice</code></header>
   <p class="vi" lang="vi">Trong mạng thật, mỗi tổ chức tự phê duyệt bằng hệ thống của mình. Ở đây hệ thống tạo phê duyệt thay cho các bên còn lại để bạn có thể tự học một mình.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">In a real network each organization endorses using its own system. Here the system endorses on behalf of the other parties so that you can work through this alone.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policy.correction">
+  <header><code>endorsement.policy.correction</code></header>
+  <p class="vi" lang="vi">Nhà sản xuất và đơn vị chế biến phải phê duyệt cùng một đề xuất điều chỉnh nối tiếp.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The producer and processor must approve the same append-only correction proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policy.custody">
+  <header><code>endorsement.policy.custody</code></header>
+  <p class="vi" lang="vi">Bên đang lưu giữ và bên tiếp nhận phải phê duyệt cùng một đề xuất chuyển giao quyền lưu giữ.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The current custodian and receiving custodian must approve the same custody-transfer proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policyExpression">
+  <header><code>endorsement.policyExpression</code></header>
+  <p class="vi" lang="vi">Biểu thức chính sách</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Policy expression</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policyHeading">
+  <header><code>endorsement.policyHeading</code></header>
+  <p class="vi" lang="vi">Phê duyệt bắt buộc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Required approval</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policyProgress">
+  <header><code>endorsement.policyProgress</code></header>
+  <p class="vi" lang="vi">{signed} trên {required} tổ chức bắt buộc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{signed} of {required} required organizations</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policySatisfied">
+  <header><code>endorsement.policySatisfied</code></header>
+  <p class="vi" lang="vi">Đã đáp ứng yêu cầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Requirements satisfied</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.policyStatus">
+  <header><code>endorsement.policyStatus</code></header>
+  <p class="vi" lang="vi">Trạng thái chính sách</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Policy status</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.reviewExactProposal">
+  <header><code>endorsement.reviewExactProposal</code></header>
+  <p class="vi" lang="vi">Hãy xem xét chính xác đề xuất và các phiên bản trạng thái đã ký trước khi quyết định.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Review the exact proposal and its signed state versions before deciding.</p></details>
+</article>
+  <article class="entry" data-locale-key="endorsement.signedVerified">
+  <header><code>endorsement.signedVerified</code></header>
+  <p class="vi" lang="vi">Đã ký và xác minh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signed and verified</p></details>
 </article>
   <article class="entry" data-locale-key="endorsement.simulatedCounterparty">
   <header><code>endorsement.simulatedCounterparty</code></header>
@@ -1984,7 +2114,7 @@
 </article>
 </section>
 <section id="group-report">
-  <h2>report <span>50 chuỗi</span></h2>
+  <h2>report <span>55 chuỗi</span></h2>
   <article class="entry" data-locale-key="report.activityHeading">
   <header><code>report.activityHeading</code></header>
   <p class="vi" lang="vi">Tóm tắt hoạt động mô phỏng</p>
@@ -2020,6 +2150,11 @@
   <p class="vi" lang="vi">Ở Bước 3, các vấn đề về chứng nhận hoặc đơn vị cấp chưa được giải quyết. Ở Bước 9, chứng nhận vẫn là bằng chứng thu hồi yếu.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 3, certificate or issuer concerns were left unresolved. At Stage 9, the certificate remained weak recall evidence.</p></details>
 </article>
+  <article class="entry" data-locale-key="report.causal.correctionEndorsed">
+  <header><code>report.causal.correctionEndorsed</code></header>
+  <p class="vi" lang="vi">Giao dịch điều chỉnh số lượng chỉ được cam kết sau khi đơn vị chế biến và nhà sản xuất cùng ký và xác minh một đề xuất điều chỉnh chỉ ghi thêm.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The quantity correction committed only after the processor and producer signed and verified the same append-only correction proposal.</p></details>
+</article>
   <article class="entry" data-locale-key="report.causal.correctionInvestigated">
   <header><code>report.causal.correctionInvestigated</code></header>
   <p class="vi" lang="vi">Ở Bước 5, cách xử lý ban đầu cần điều tra. Giao dịch điều chỉnh chỉ ghi thêm sau đó bảo toàn bản ghi gốc nhưng làm phát sinh kiểm tra thủ công và chậm trễ.</p>
@@ -2034,6 +2169,26 @@
   <header><code>report.causal.correctionStrong</code></header>
   <p class="vi" lang="vi">Ở Bước 5, bạn xác định đúng nguyên nhân trong kịch bản và dùng giao dịch điều chỉnh chỉ ghi thêm. Ở Bước 9, cả vận đơn gốc lẫn giá trị có hiệu lực đều có thể được kiểm toán.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">At Stage 5, you identified the authored cause and used an append-only correction. At Stage 9, both the original manifest and the effective value remained auditable.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.custodyEndorsed">
+  <header><code>report.causal.custodyEndorsed</code></header>
+  <p class="vi" lang="vi">Giao dịch chuyển quyền lưu giữ chỉ được cam kết sau khi bên đang lưu giữ và bên nhận lưu giữ cùng ký và xác minh một đề xuất với cùng phiên bản trạng thái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The custody transfer committed only after the current custodian and receiving custodian signed and verified the same proposal and state version.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.endorsedProposalStale">
+  <header><code>report.causal.endorsedProposalStale</code></header>
+  <p class="vi" lang="vi">Các xác nhận cần thiết đều hợp lệ, nhưng trạng thái tài sản đã thay đổi trước khi cam kết. Đề xuất đã được xác nhận trở nên lỗi thời và không đi vào sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The required endorsements were valid, but the asset state changed before commitment. The endorsed proposal became stale and did not enter the ledger.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.endorsementDeclined">
+  <header><code>report.causal.endorsementDeclined</code></header>
+  <p class="vi" lang="vi">Một tổ chức có thẩm quyền đã từ chối đề xuất. Quyết định nghiệp vụ đó được giữ lại trong lịch sử mô phỏng và không được trình bày như một xác nhận.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">An authorized organization declined the proposal. That business decision remains in the simulation history and is not presented as an endorsement.</p></details>
+</article>
+  <article class="entry" data-locale-key="report.causal.endorsementProposalMismatch">
+  <header><code>report.causal.endorsementProposalMismatch</code></header>
+  <p class="vi" lang="vi">Các tổ chức tạo chữ ký hợp lệ cho những nội dung đề xuất khác nhau. Chính sách xác nhận không được thỏa mãn và không có đề xuất không khớp nào đi vào sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The organizations produced valid signatures over different proposal contents. The endorsement policy was not satisfied, and no mismatched proposal entered the ledger.</p></details>
 </article>
   <article class="entry" data-locale-key="report.causal.recallAuthorizedAfterHandoff">
   <header><code>report.causal.recallAuthorizedAfterHandoff</code></header>
@@ -2288,7 +2443,7 @@
 </article>
 </section>
 <section id="group-signature">
-  <h2>signature <span>41 chuỗi</span></h2>
+  <h2>signature <span>43 chuỗi</span></h2>
   <article class="entry" data-locale-key="signature.algorithmLabel">
   <header><code>signature.algorithmLabel</code></header>
   <p class="vi" lang="vi">Thuật toán</p>
@@ -2358,6 +2513,16 @@
   <header><code>signature.endorsementLabel</code></header>
   <p class="vi" lang="vi">Chính sách xác nhận</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement policy</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.endorsementPending">
+  <header><code>signature.endorsementPending</code></header>
+  <p class="vi" lang="vi">Đang chờ các phê duyệt bắt buộc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Required approvals pending</p></details>
+</article>
+  <article class="entry" data-locale-key="signature.endorsementSatisfied">
+  <header><code>signature.endorsementSatisfied</code></header>
+  <p class="vi" lang="vi">Đã xác minh các phê duyệt bắt buộc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Required approvals verified</p></details>
 </article>
   <article class="entry" data-locale-key="signature.failure.contextMismatch">
   <header><code>signature.failure.contextMismatch</code></header>
@@ -4589,7 +4754,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>f4edfad16c42012f3c32cc0858132aedc5ecc47b</code> · SHA-256 nguồn: <code>fbce36921189eabce0956e06bbc0e313d50b805bad1262cebd67655817826fea</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>17369a83c115428a1aac259704883040876a38c3</code> · SHA-256 nguồn: <code>e31cb272855f8aecdeabc674511b9df6693f9a9bfa79b726b98c2a38f15c9e24</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

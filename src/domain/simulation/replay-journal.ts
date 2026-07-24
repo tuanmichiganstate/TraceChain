@@ -15,6 +15,7 @@ import type { ScenarioDefinition } from "../types/scenario";
 import type { ValidationRegistries } from "../rules/types";
 import {
   activeContextIdForStage,
+  commandFromEndorsedProposalJournal,
   commandFromJournal,
   contextAt,
   JournalOpcode,
@@ -58,6 +59,12 @@ import {
   signAndVerifyCommand,
   signatureAttemptFailures,
 } from "../../crypto/signatures/signing-service";
+import {
+  commitPendingProposal,
+  createEndorsedProposal,
+  declinePendingProposal,
+  endorsePendingProposal,
+} from "./endorsement-workflow";
 
 export interface JournalReplayResult {
   readonly runtime: SimulationRuntimeState;
@@ -146,6 +153,20 @@ function consequentialStage(
     return ScenarioStageId.RECEIVE_AND_CORRECT;
   }
   return null;
+}
+
+function endorsementStage(
+  actionId: string,
+): ScenarioStageId {
+  if (actionId === "TRANSFER_CUSTODY") {
+    return ScenarioStageId.SHIP_AND_MONITOR;
+  }
+  if (actionId === "RECORD_CORRECTION") {
+    return ScenarioStageId.RECEIVE_AND_CORRECT;
+  }
+  throw new ScenarioConfigurationError(
+    `Action "${actionId}" has no authored endorsement stage`,
+  );
 }
 
 function mitigationPayload(
@@ -262,6 +283,264 @@ export async function replayCommandJournal(options: {
 
     if (entry.opcode === JournalOpcode.SEAL_PENDING_BLOCK) {
       runtime = sealPending(runtime, ledger, options.scenario, options.registries);
+      processed.push(entry);
+      continue;
+    }
+
+    if (
+      entry.opcode ===
+        JournalOpcode.CREATE_ENDORSED_PROPOSAL ||
+      entry.opcode ===
+        JournalOpcode.CREATE_ENDORSED_CORRECTION_PROPOSAL
+    ) {
+      if (
+        !options.configuration.technicalFeatures
+          .endorsementPolicies
+      ) {
+        throw new ScenarioConfigurationError(
+          "Journal contains an endorsement proposal while endorsements are disabled",
+        );
+      }
+      const reconstructed =
+        commandFromEndorsedProposalJournal(
+          entry,
+          options.scenario,
+          runtime.domain,
+        );
+      ensurePermittedContext({
+        scenario: options.scenario,
+        entry,
+        actionId: reconstructed.actionId,
+        priorJournal: processed,
+      });
+      const trusted = contextAt(
+        options.scenario,
+        entry.contextIndex,
+      );
+      const payload = withTrustedInitiator(
+        reconstructed.command,
+        trusted.actorId,
+      );
+      const stateWithScripts = applyEligibleScriptedTransactions(
+        runtime.domain,
+        options.scenario.scriptedTransactions,
+        ledger,
+        options.registries,
+      ).state;
+      runtime = { ...runtime, domain: stateWithScripts };
+      const command: DomainSimulationCommand = {
+        metadata: {
+          commandId: commandId(entry.commandSequence),
+          sessionId: options.snapshot.sessionId,
+          actorId: trusted.actorId,
+          organizationId: trusted.organizationId,
+          roleId: trusted.roleId,
+          submittedAt: payload.scenarioTimestamp,
+          expectedStateVersions: expectedStateVersionsFor(
+            payload,
+            runtime.domain,
+          ),
+        },
+        payload,
+      };
+      const cryptographicRuntime =
+        options.cryptographicRuntime ??
+        (() => {
+          throw new ScenarioConfigurationError(
+            "Endorsement replay requires the cryptographic runtime",
+          );
+        })();
+      const provider =
+        options.signatureProvider ??
+        (() => {
+          throw new ScenarioConfigurationError(
+            "Endorsement replay requires a signature provider",
+          );
+        })();
+      const configurationHash =
+        options.configurationHash ??
+        (() => {
+          throw new ScenarioConfigurationError(
+            "Endorsement replay requires the configuration hash",
+          );
+        })();
+      const signed = await signAndVerifyCommand({
+        command,
+        trustedContext: trusted,
+        configurationHash,
+        scenarioId: options.scenario.scenarioId,
+        scenarioVersion: options.scenario.scenarioVersion,
+        runtime: cryptographicRuntime,
+        provider,
+      });
+      const workflow = createEndorsedProposal({
+        runtime,
+        actionId: reconstructed.actionId,
+        command,
+        trustedContext: trusted,
+        signatureEvidence: signed.evidence,
+        signatureFailures: signatureAttemptFailures(
+          signed.failureRuleIds,
+        ),
+        policies:
+          cryptographicRuntime.endorsementPolicies.policies,
+        registries: options.registries,
+        environment: {
+          clock: new FixedClock(payload.scenarioTimestamp),
+          random: new SeededRandomSource(
+            `${options.configuration.scenarioSeed}:${entry.commandSequence}`,
+          ),
+          ids: new SequenceIdGenerator(
+            entry.commandSequence,
+          ),
+        },
+      });
+      runtime = workflow.state;
+      processed.push(entry);
+      continue;
+    }
+
+    if (
+      entry.opcode ===
+        JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL ||
+      entry.opcode ===
+        JournalOpcode.DECLINE_TRANSACTION_PROPOSAL ||
+      entry.opcode ===
+        JournalOpcode.COMMIT_ENDORSED_TRANSACTION
+    ) {
+      if (
+        !options.configuration.technicalFeatures
+          .endorsementPolicies
+      ) {
+        throw new ScenarioConfigurationError(
+          "Journal contains an endorsement action while endorsements are disabled",
+        );
+      }
+      const proposalSequence = entry.values[0];
+      if (typeof proposalSequence !== "number") {
+        throw new ScenarioConfigurationError(
+          "Endorsement journal entry has no proposal sequence",
+        );
+      }
+      const proposalId = commandId(proposalSequence);
+      const pending =
+        runtime.pendingProposalsById[proposalId];
+      if (pending === undefined) {
+        throw new ScenarioConfigurationError(
+          `Endorsement action refers to unknown proposal "${proposalId}"`,
+        );
+      }
+      const stageId = endorsementStage(pending.actionId);
+      const expectedContextId = activeContextIdForStage(
+        options.scenario,
+        stageId,
+        processed,
+      );
+      const trusted = contextAt(
+        options.scenario,
+        entry.contextIndex,
+      );
+      if (trusted.contextId !== expectedContextId) {
+        throw new ScenarioConfigurationError(
+          `Endorsement action used inactive trusted context "${trusted.contextId}"`,
+        );
+      }
+      const metadata = {
+        commandId: commandId(entry.commandSequence),
+        sessionId: options.snapshot.sessionId,
+        actorId: trusted.actorId,
+        organizationId: trusted.organizationId,
+        roleId: trusted.roleId,
+        submittedAt: pending.command.metadata.submittedAt,
+        expectedStateVersions: {},
+      };
+      const environment = {
+        clock: new FixedClock(
+          pending.command.metadata.submittedAt,
+        ),
+        random: new SeededRandomSource(
+          `${options.configuration.scenarioSeed}:${entry.commandSequence}`,
+        ),
+        ids: new SequenceIdGenerator(entry.commandSequence),
+      };
+
+      if (
+        entry.opcode ===
+        JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL
+      ) {
+        const cryptographicRuntime =
+          options.cryptographicRuntime ??
+          (() => {
+            throw new ScenarioConfigurationError(
+              "Endorsement replay requires the cryptographic runtime",
+            );
+          })();
+        const provider =
+          options.signatureProvider ??
+          (() => {
+            throw new ScenarioConfigurationError(
+              "Endorsement replay requires a signature provider",
+            );
+          })();
+        const workflow = await endorsePendingProposal({
+          runtime,
+          command: {
+            metadata,
+            payload: {
+              commandType:
+                "ENDORSE_TRANSACTION_PROPOSAL",
+              proposalId,
+            },
+          },
+          trustedContext: trusted,
+          cryptographicRuntime,
+          provider,
+          environment,
+        });
+        runtime = workflow.state;
+      } else if (
+        entry.opcode ===
+        JournalOpcode.DECLINE_TRANSACTION_PROPOSAL
+      ) {
+        const workflow = declinePendingProposal({
+          runtime,
+          command: {
+            metadata,
+            payload: {
+              commandType:
+                "DECLINE_TRANSACTION_PROPOSAL",
+              proposalId,
+            },
+          },
+          trustedContext: trusted,
+          environment,
+        });
+        runtime = workflow.state;
+      } else {
+        const result = commitPendingProposal({
+          runtime,
+          command: {
+            metadata,
+            payload: {
+              commandType:
+                "COMMIT_ENDORSED_TRANSACTION",
+              proposalId,
+            },
+          },
+          trustedContext: trusted,
+          ledger,
+          registries: options.registries,
+          environment,
+        });
+        runtime = result.workflow.state;
+        if (
+          result.transactionOutcome?.isAccepted === true &&
+          result.transactionOutcome.transaction !== null
+        ) {
+          lastTransactionId =
+            result.transactionOutcome.transaction.transactionId;
+        }
+      }
       processed.push(entry);
       continue;
     }
@@ -566,6 +845,16 @@ export async function replayCommandJournal(options: {
           "ANCHOR_CERTIFICATE",
         ),
       };
+    }
+    if (
+      options.configuration.technicalFeatures
+        .endorsementPolicies &&
+      (reconstructed.actionId === "TRANSFER_CUSTODY" ||
+        reconstructed.actionId === "RECORD_CORRECTION")
+    ) {
+      throw new IncompatibleAttemptError(
+        `Direct journal action "${reconstructed.actionId}" bypasses the required endorsement workflow`,
+      );
     }
     ensurePermittedContext({
       scenario: options.scenario,

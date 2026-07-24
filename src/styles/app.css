@@ -636,6 +636,58 @@
   font-size: var(--size-small);
 }
 
+.endorsement-policy {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--colour-border);
+}
+
+.endorsement-policy__organizations {
+  list-style: none;
+  padding: 0;
+}
+
+.endorsement-policy__evidence-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.endorsement-policy__evidence-list > li {
+  border-block-start: 1px solid var(--colour-border);
+  padding-block-start: var(--space-3);
+}
+
+.endorsement-policy__organizations li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.endorsement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.endorsement-actions p {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+
+.technical-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* ---- Developer panel ---- */
 
 .developer-panel {

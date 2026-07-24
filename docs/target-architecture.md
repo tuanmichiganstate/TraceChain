@@ -19,8 +19,10 @@ multi-learner runs.
 As of 24 July 2026, the authenticated Stage 3 vertical slice implements the
 memory and D1 event stores, D1 pack publication, server-authoritative commands,
 role-filtered learner projection, exact replay, and instructor evidence APIs.
-The portals, full coffee migration, assignments, ratings, exports, hosted
-package jobs, and endorsement increment remain later gates.
+The portals, full coffee migration, assignments, ratings, exports, and hosted
+package jobs remain later gates. The SCORM Guided and Challenge application now
+has genuine Ed25519 endorsements for custody transfer and quantity correction;
+the hosted compatibility adapter has not yet migrated those complete flows.
 
 ## Target layers
 
@@ -317,7 +319,8 @@ competency result, and optional overall score are distinct records.
 ### Product expansion
 
 10. Migrate the complete coffee scenario into the pack envelope.
-11. Complete cryptographic endorsement Increment B.
+11. Complete cryptographic endorsement Increment B. (Complete for the
+    Guided/Challenge SCORM engine; hosted flow migration remains in item 10.)
 12. Add assignments, ratings, feedback release, reports, replay, and exports.
 13. Extract the Node package generator into a hosted job service and build the
     graphical builder.

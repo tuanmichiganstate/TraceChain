@@ -1,8 +1,10 @@
 import { TransactionType } from "../../domain/types/enums";
 import type { ScenarioDefinition } from "../../domain/types/scenario";
 import { encodeBase64Url } from "./base64url";
+import { endorsementAuthorizationCommandType } from "../endorsements/policy-evaluator";
 import type {
   CryptographicRuntime,
+  EndorsementPolicyExpression,
   SignatureProvider,
 } from "./types";
 
@@ -35,6 +37,9 @@ export async function validateCryptographicRuntime(options: {
   if (runtime.authorizationPolicies.schemaVersion !== "1") {
     issue("authorizationPolicies.schemaVersion", "must be 1");
   }
+  if (runtime.endorsementPolicies.schemaVersion !== "1") {
+    issue("endorsementPolicies.schemaVersion", "must be 1");
+  }
 
   const organizationIds = new Set(
     scenario.organizations.map((organization) => organization.organizationId),
@@ -42,7 +47,11 @@ export async function validateCryptographicRuntime(options: {
   const roleIds = new Set<string>(
     scenario.actors.map((actor) => actor.actorRole),
   );
-  const commandTypes = new Set<string>(Object.values(TransactionType));
+  const domainCommandTypes = new Set<string>(Object.values(TransactionType));
+  const commandTypes = new Set<string>([
+    ...domainCommandTypes,
+    ...[...domainCommandTypes].map(endorsementAuthorizationCommandType),
+  ]);
   const identityIds = new Set<string>();
   const keyIds = new Set<string>();
 
@@ -164,7 +173,7 @@ export async function validateCryptographicRuntime(options: {
     }
   }
 
-  for (const commandType of commandTypes) {
+  for (const commandType of domainCommandTypes) {
     if (
       !runtime.authorizationPolicies.policies.some((policy) =>
         policy.commandTypes.includes(commandType),
@@ -173,6 +182,167 @@ export async function validateCryptographicRuntime(options: {
       issue(
         "authorizationPolicies.policies",
         `has no applicable rule for "${commandType}"`,
+      );
+    }
+  }
+
+  const activeExpressions = new Set<object>();
+  const expressionOrganizations = (
+    expression: EndorsementPolicyExpression,
+    path: string,
+  ): readonly string[] => {
+    if (activeExpressions.has(expression)) {
+      issue(path, "must not contain cyclic policy expressions");
+      return [];
+    }
+    activeExpressions.add(expression);
+    try {
+      switch (expression.kind) {
+        case "SIGNED_BY":
+          if (!organizationIds.has(expression.organizationId)) {
+            issue(
+              `${path}.organizationId`,
+              `references unknown organization "${expression.organizationId}"`,
+            );
+          }
+          return [expression.organizationId];
+        case "ALL_OF":
+        case "ANY_OF": {
+          if (expression.policies.length === 0) {
+            issue(`${path}.policies`, "must not be empty");
+          }
+          return expression.policies.flatMap(
+            (policyExpression, index) =>
+              expressionOrganizations(
+                policyExpression,
+                `${path}.policies[${index}]`,
+              ),
+          );
+        }
+        case "THRESHOLD": {
+          const uniqueOrganizations = new Set(
+            expression.organizationIds,
+          );
+          if (
+            !Number.isInteger(expression.required) ||
+            expression.required < 1 ||
+            expression.required > uniqueOrganizations.size
+          ) {
+            issue(
+              `${path}.required`,
+              "must be between 1 and the unique organization count",
+            );
+          }
+          if (
+            uniqueOrganizations.size !==
+            expression.organizationIds.length
+          ) {
+            issue(
+              `${path}.organizationIds`,
+              "must not contain duplicates",
+            );
+          }
+          for (const organizationId of expression.organizationIds) {
+            if (!organizationIds.has(organizationId)) {
+              issue(
+                `${path}.organizationIds`,
+                `references unknown organization "${organizationId}"`,
+              );
+            }
+          }
+          return expression.organizationIds;
+        }
+      }
+    } finally {
+      activeExpressions.delete(expression);
+    }
+  };
+
+  const endorsementPolicyIds = new Set<string>();
+  const endorsementPolicyCommandTypes = new Map<string, number>();
+  for (
+    const [index, endorsementPolicy] of
+    runtime.endorsementPolicies.policies.entries()
+  ) {
+    const path = `endorsementPolicies.policies[${index}]`;
+    if (
+      endorsementPolicyIds.has(
+        endorsementPolicy.endorsementPolicyId,
+      )
+    ) {
+      issue(`${path}.endorsementPolicyId`, "is duplicated");
+    }
+    endorsementPolicyIds.add(
+      endorsementPolicy.endorsementPolicyId,
+    );
+    if (endorsementPolicy.appliesToCommandTypes.length === 0) {
+      issue(`${path}.appliesToCommandTypes`, "must not be empty");
+    }
+    const expressionOrganizationIds =
+      expressionOrganizations(
+        endorsementPolicy.expression,
+        `${path}.expression`,
+      );
+    const policyOrganizations = new Set(
+      expressionOrganizationIds,
+    );
+    if (
+      policyOrganizations.size !==
+      expressionOrganizationIds.length
+    ) {
+      issue(
+        `${path}.expression`,
+        "must not repeat an organization",
+      );
+    }
+    for (
+      const commandType of
+      endorsementPolicy.appliesToCommandTypes
+    ) {
+      if (!domainCommandTypes.has(commandType)) {
+        issue(
+          `${path}.appliesToCommandTypes`,
+          `contains unknown command "${commandType}"`,
+        );
+      }
+      endorsementPolicyCommandTypes.set(
+        commandType,
+        (endorsementPolicyCommandTypes.get(commandType) ?? 0) + 1,
+      );
+      const endorsementAction =
+        endorsementAuthorizationCommandType(commandType);
+      for (const organizationId of policyOrganizations) {
+        const contexts = scenario.runtime.trustedContexts.filter(
+          (context) => context.organizationId === organizationId,
+        );
+        const canSatisfy = contexts.some((context) =>
+          runtime.authorizationPolicies.policies.some(
+            (authorizationPolicy) =>
+              authorizationPolicy.commandTypes.includes(
+                endorsementAction,
+              ) &&
+              authorizationPolicy.allowedOrganizationIds.includes(
+                organizationId,
+              ) &&
+              authorizationPolicy.allowedRoleIds.includes(
+                context.roleId,
+              ),
+          ),
+        );
+        if (!canSatisfy) {
+          issue(
+            `${path}.expression`,
+            `organization "${organizationId}" has no permitted trusted role for "${commandType}"`,
+          );
+        }
+      }
+    }
+  }
+  for (const [commandType, count] of endorsementPolicyCommandTypes) {
+    if (count > 1) {
+      issue(
+        "endorsementPolicies.policies",
+        `has ${count} ambiguous policies for "${commandType}"`,
       );
     }
   }

@@ -40,11 +40,13 @@ const packageSpecificFiles = new Set([
   "identity-registry.json",
   "educational-signing-keys.json",
   "authorization-policies.json",
+  "endorsement-policies.json",
 ]);
 const cryptographicRuntimeFileNames = [
   "identity-registry.json",
   "educational-signing-keys.json",
   "authorization-policies.json",
+  "endorsement-policies.json",
 ];
 
 function canonicalize(value) {
@@ -187,6 +189,7 @@ function verifyCryptographicRuntime({
   let identities = null;
   let keys = null;
   let policies = null;
+  let endorsementPolicies = null;
   try {
     identities = JSON.parse(zip.readAsText("identity-registry.json"));
   } catch {
@@ -202,14 +205,33 @@ function verifyCryptographicRuntime({
   } catch {
     // Individual checks below report malformed files.
   }
+  try {
+    endorsementPolicies = JSON.parse(
+      zip.readAsText("endorsement-policies.json"),
+    );
+  } catch {
+    // Individual checks below report malformed files.
+  }
   check("Identity registry is valid JSON", identities !== null);
   check("Educational signing-key fixture is valid JSON", keys !== null);
   check("Authorization-policy registry is valid JSON", policies !== null);
-  if (identities === null || keys === null || policies === null) return;
+  check(
+    "Endorsement-policy registry is valid JSON",
+    endorsementPolicies !== null,
+  );
+  if (
+    identities === null ||
+    keys === null ||
+    policies === null ||
+    endorsementPolicies === null
+  ) {
+    return;
+  }
 
   check(
     "Cryptographic evidence schema is recorded",
-    buildInformation?.cryptographicEvidenceSchemaVersion === "1",
+    buildInformation?.cryptographicEvidenceSchemaVersion ===
+      (endorsementsEnabled ? "2" : "1"),
   );
   const recordedHashes = buildInformation?.cryptographicRuntimeHashes;
   check(
@@ -233,6 +255,14 @@ function verifyCryptographicRuntime({
         "@noble/ed25519@3.1.0" &&
       buildInformation?.cryptographicMechanisms?.signatureComputation ===
         "REAL" &&
+      buildInformation?.cryptographicMechanisms
+        ?.endorsementSignatureComputation ===
+        (endorsementsEnabled ? "REAL" : "DISABLED") &&
+      buildInformation?.cryptographicMechanisms
+        ?.endorsementPolicyEvaluation ===
+        (endorsementsEnabled
+          ? "CONSTRAINED_SERIALIZABLE_POLICY_TREE"
+          : "DISABLED") &&
       buildInformation?.cryptographicMechanisms?.organizationalIdentity ===
         "EDUCATIONAL_SIMULATION" &&
       buildInformation?.cryptographicMechanisms?.keyCustody ===
@@ -250,15 +280,25 @@ function verifyCryptographicRuntime({
   const policyList = Array.isArray(policies.policies)
     ? policies.policies
     : [];
+  const endorsementPolicyList = Array.isArray(
+    endorsementPolicies.policies,
+  )
+    ? endorsementPolicies.policies
+    : [];
   check(
     "Cryptographic runtime schemas are version 1",
     identities.schemaVersion === "1" &&
       keys.schemaVersion === "1" &&
-      policies.schemaVersion === "1",
+      policies.schemaVersion === "1" &&
+      endorsementPolicies.schemaVersion === "1",
   );
   check("Identity registry is nonempty", identityList.length > 0);
   check("Educational key fixture is nonempty", keyList.length > 0);
   check("Authorization policy registry is nonempty", policyList.length > 0);
+  check(
+    "Endorsement policy registry is nonempty when endorsements are enabled",
+    !endorsementsEnabled || endorsementPolicyList.length > 0,
+  );
 
   const organizationIds = new Set(
     (scenario?.organizations ?? []).map(
@@ -360,6 +400,9 @@ function verifyCryptographicRuntime({
       (script) => script.command.commandType,
     ),
   ]);
+  for (const commandType of [...knownCommandTypes]) {
+    knownCommandTypes.add(`ENDORSE:${commandType}`);
+  }
   const policyIds = policyList.map(
     (policy) => policy.authorizationPolicyId,
   );
@@ -408,6 +451,134 @@ function verifyCryptographicRuntime({
           policy.commandTypes.includes(commandType),
         ).length === 1,
     ),
+  );
+
+  const endorsementPolicyIds = endorsementPolicyList.map(
+    (policy) => policy.endorsementPolicyId,
+  );
+  const endorsementPolicyAllowedKeys = new Set([
+    "endorsementPolicyId",
+    "appliesToCommandTypes",
+    "expression",
+    "localizationKey",
+  ]);
+  const expressionOrganizations = (expression) => {
+    if (
+      expression === null ||
+      typeof expression !== "object" ||
+      Array.isArray(expression)
+    ) {
+      return null;
+    }
+    if (expression.kind === "SIGNED_BY") {
+      return organizationIds.has(expression.organizationId)
+        ? [expression.organizationId]
+        : null;
+    }
+    if (
+      expression.kind === "ALL_OF" ||
+      expression.kind === "ANY_OF"
+    ) {
+      if (
+        !Array.isArray(expression.policies) ||
+        expression.policies.length === 0
+      ) {
+        return null;
+      }
+      const nested = expression.policies.map(
+        expressionOrganizations,
+      );
+      return nested.every((value) => value !== null)
+        ? nested.flat()
+        : null;
+    }
+    if (expression.kind === "THRESHOLD") {
+      if (
+        !Array.isArray(expression.organizationIds) ||
+        new Set(expression.organizationIds).size !==
+          expression.organizationIds.length ||
+        !Number.isInteger(expression.required) ||
+        expression.required < 1 ||
+        expression.required >
+          expression.organizationIds.length ||
+        !expression.organizationIds.every((organizationId) =>
+          organizationIds.has(organizationId),
+        )
+      ) {
+        return null;
+      }
+      return expression.organizationIds;
+    }
+    return null;
+  };
+  const endorsementCommandCounts = new Map();
+  let endorsementPoliciesValid =
+    new Set(endorsementPolicyIds).size ===
+    endorsementPolicyIds.length;
+  for (const policy of endorsementPolicyList) {
+    const organizationsForPolicy =
+      expressionOrganizations(policy.expression);
+    const policyOrganizationIds =
+      organizationsForPolicy ?? [];
+    endorsementPoliciesValid =
+      endorsementPoliciesValid &&
+      Object.keys(policy).every((key) =>
+        endorsementPolicyAllowedKeys.has(key),
+      ) &&
+      Array.isArray(policy.appliesToCommandTypes) &&
+      policy.appliesToCommandTypes.length > 0 &&
+      policy.appliesToCommandTypes.every((commandType) =>
+        knownCommandTypes.has(commandType),
+      ) &&
+      organizationsForPolicy !== null &&
+      new Set(policyOrganizationIds).size ===
+        policyOrganizationIds.length &&
+      typeof policy.localizationKey === "string" &&
+      policy.localizationKey.length > 0;
+    for (const commandType of policy.appliesToCommandTypes ?? []) {
+      endorsementCommandCounts.set(
+        commandType,
+        (endorsementCommandCounts.get(commandType) ?? 0) + 1,
+      );
+      for (const organizationId of organizationsForPolicy ?? []) {
+        const scenarioRoles = (scenario?.runtime?.trustedContexts ?? [])
+          .filter(
+            (context) =>
+              context.organizationId === organizationId,
+          )
+          .map((context) => context.roleId);
+        const authorizationAction = `ENDORSE:${commandType}`;
+        const satisfiable = policyList.some(
+          (authorizationPolicy) =>
+            authorizationPolicy.commandTypes?.includes(
+              authorizationAction,
+            ) &&
+            authorizationPolicy.allowedOrganizationIds?.includes(
+              organizationId,
+            ) &&
+            scenarioRoles.some((roleId) =>
+              authorizationPolicy.allowedRoleIds?.includes(roleId),
+            ),
+        );
+        endorsementPoliciesValid =
+          endorsementPoliciesValid && satisfiable;
+      }
+    }
+  }
+  endorsementPoliciesValid =
+    endorsementPoliciesValid &&
+    [...endorsementCommandCounts.values()].every(
+      (count) => count === 1,
+    );
+  check(
+    "Endorsement policies are constrained, unambiguous, and satisfiable by trusted roles",
+    endorsementPoliciesValid,
+  );
+  check(
+    "Enabled endorsement content covers custody transfer and quantity correction",
+    !endorsementsEnabled ||
+      (endorsementCommandCounts.get("TRANSFER_CUSTODY") === 1 &&
+        endorsementCommandCounts.get("RECORD_CORRECTION") === 1),
   );
 
   const privateKeyValues = keyList

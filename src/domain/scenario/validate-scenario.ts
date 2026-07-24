@@ -322,6 +322,16 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     "Stage 9 resubmission count must remain within the authored TC3 budget",
   );
   check(
+    journalLimits.maximumEndorsementHandoffs <= 2,
+    "runtime.journalLimits.maximumEndorsementHandoffs",
+    "Endorsement handoff count must remain within the authored TC3 budget",
+  );
+  check(
+    journalLimits.maximumEndorsementDeclines <= 2,
+    "runtime.journalLimits.maximumEndorsementDeclines",
+    "Endorsement decline count must remain within the authored TC3 budget",
+  );
+  check(
     journalLimits.correctionReasonMaximumUtf8Bytes > 0 &&
       journalLimits.correctionReasonMaximumUtf8Bytes <= 240,
     "runtime.journalLimits.correctionReasonMaximumUtf8Bytes",

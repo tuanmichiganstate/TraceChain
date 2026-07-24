@@ -9,6 +9,7 @@ import { useSimulation } from "../../app/providers/simulation-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
 import { StageShell } from "../../components/stage-shell";
 import { TransactionAction } from "../../components/transaction-action";
+import { EndorsedTransactionAction } from "../../components/endorsed-transaction-action";
 import { AssetCard } from "../../components/asset-card";
 import { CorrectionLineage } from "../../components/correction-lineage";
 import type {
@@ -544,6 +545,7 @@ function CorrectionPanel({
   const t = useTranslator();
   const { scenario } = useScenario();
   const { state } = useSimulation();
+  const packageConfiguration = useOptionalConfiguration();
   const [reason, setReason] = useState(
     state.correctionReason ??
       t(
@@ -565,6 +567,11 @@ function CorrectionPanel({
       transaction.transactionType === TransactionType.RECORD_CORRECTION &&
       transaction.transactionStatus !== TransactionStatus.REJECTED,
   );
+  const CorrectionTransactionAction =
+    packageConfiguration?.configuration.technicalFeatures
+      .endorsementPolicies === true
+      ? EndorsedTransactionAction
+      : TransactionAction;
 
   return (
     <section className="card card--work">
@@ -597,7 +604,7 @@ function CorrectionPanel({
       </div>
 
       {isReasonUsable ? (
-        <TransactionAction
+        <CorrectionTransactionAction
           decisionId="INT_CORRECTION_RECORDED"
           actionId="RECORD_CORRECTION"
           labelKey="stage.receiveAndCorrect.correctionAction"

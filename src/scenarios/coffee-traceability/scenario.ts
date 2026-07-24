@@ -21,12 +21,13 @@ import { coffeeRuntime } from "./runtime";
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
   /*
-   * 2.1.0: hints cap only the scorable items they declare, rather than every
-   * item in their stage. The saved-state format is untouched -- HINT_IDS did
-   * not move and the codec is unchanged -- so this is a content version, not a
-   * schema one, and no stored attempt needs migrating. See docs/SCORING_MODEL.md.
+   * 2.2.0: custody transfer and quantity correction use genuine Ed25519
+   * approvals from the exact organizations required by constrained policies.
+   * The configuration hash and scenario version intentionally form a new TC3
+   * compatibility boundary because the command journal gained pending-proposal
+   * and endorsement actions.
    */
-  scenarioVersion: "2.1.0",
+  scenarioVersion: "2.2.0",
   titleKey: "app.title",
   descriptionKey: "app.subtitle",
   // Nine stages rather than ten, to protect this budget (section 2.4).

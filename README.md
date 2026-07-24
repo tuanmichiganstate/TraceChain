@@ -23,9 +23,11 @@ mining. The interface says so on every screen.
 Version 2 implements the complete nine-stage activity as configurable guided
 and curated Challenge A packages, including atomic consequential decisions,
 trusted role handoff, append-only correction, deterministic TC3 replay, and a
-causal final report. The current follow-on increment adds genuine Ed25519
-signing and verification plus scenario-authored authorization; organizational
-identity and key custody remain explicitly educational simulations.
+causal final report. Genuine Ed25519 proposal and endorsement signatures,
+scenario-authored authorization, and constrained endorsement-policy evaluation
+are integrated into custody transfer and append-only quantity correction.
+Organizational identity and key custody remain explicitly educational
+simulations.
 
 The additive instructor-platform vertical slice now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -40,7 +42,7 @@ alter the current SCORM activity.
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
 | Scenario | complete — one shared engine, standard coffee and curated Challenge A |
-| Cryptographic evidence | real Ed25519 proposal signatures; simulated educational identities and key custody |
+| Cryptographic evidence | real Ed25519 proposal and endorsement signatures; simulated educational identities and key custody |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
 | Content review | deterministic bilingual pack; human Vietnamese review remains open |
@@ -82,8 +84,8 @@ npm run verify:scorm
 ```
 
 Strict release generation produces
-`TraceChain_Guided_StandardCoffee_vi_v2.1.0.zip` and
-`TraceChain_Challenge_ChallengeA_vi_v1.0.0.zip`. The local command appends
+`TraceChain_Guided_StandardCoffee_vi_v2.2.0.zip` and
+`TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip`. The local command appends
 `_NON_RELEASE` to both archive names and to the legacy guided deployment alias
 used by the Docker demo. Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
@@ -101,7 +103,7 @@ domain behaviour, and is never visible to an ordinary learner.
 ```
 src/
 ├── config/            typed configuration, presets, validation and hashing
-├── crypto/            Ed25519 provider, proposals, authorization and evidence
+├── crypto/            Ed25519, proposals, authorization, endorsements and evidence
 ├── domain/            pure, synchronous, no React
 │   ├── commands/      learner intent
 │   ├── events/        committed outcomes

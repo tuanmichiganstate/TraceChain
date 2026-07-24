@@ -16,6 +16,8 @@ function cryptographicFiles(): Readonly<Record<string, unknown>> {
       coffeeCryptographicRuntime.signingKeys,
     "authorization-policies.json":
       coffeeCryptographicRuntime.authorizationPolicies,
+    "endorsement-policies.json":
+      coffeeCryptographicRuntime.endorsementPolicies,
   };
   return {
     "./identity-registry.json": values["identity-registry.json"],
@@ -23,11 +25,13 @@ function cryptographicFiles(): Readonly<Record<string, unknown>> {
       values["educational-signing-keys.json"],
     "./authorization-policies.json":
       values["authorization-policies.json"],
+    "./endorsement-policies.json":
+      values["endorsement-policies.json"],
     "./build-info.json": {
       scenarioHash: sha256Hex(
         `${JSON.stringify(coffeeScenario, null, 2)}\n`,
       ),
-      cryptographicEvidenceSchemaVersion: "1",
+      cryptographicEvidenceSchemaVersion: "2",
       cryptographicRuntimeHashes: Object.fromEntries(
         Object.entries(values).map(([fileName, value]) => [
           fileName,
@@ -129,6 +133,7 @@ describe("TraceChain configuration", () => {
       technicalFeatures: {
         ...GUIDED_PRESET.technicalFeatures,
         digitalSignatures: false,
+        endorsementPolicies: false,
       },
     };
     const requested: string[] = [];

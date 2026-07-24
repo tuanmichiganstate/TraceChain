@@ -6,7 +6,9 @@ import type {
   AuthorizationPolicy,
   CryptographicRuntime,
   EducationalKeyRecord,
+  EndorsementPolicyDefinition,
 } from "../../crypto/signatures/types";
+import { endorsementAuthorizationCommandType } from "../../crypto/endorsements/policy-evaluator";
 import { OrganizationId } from "./organizations";
 
 const key = (
@@ -96,7 +98,7 @@ const keys: readonly EducationalKeyRecord[] = [
 
 const policy = (
   authorizationPolicyId: string,
-  commandTypes: readonly TransactionType[],
+  commandTypes: readonly string[],
   allowedOrganizationIds: readonly string[],
   allowedRoleIds: readonly ActorRole[],
 ): AuthorizationPolicy => ({
@@ -205,6 +207,77 @@ const authorizationPolicies: readonly AuthorizationPolicy[] = [
     [OrganizationId.REGULATOR],
     [ActorRole.REGULATORY_AUDITOR],
   ),
+  policy(
+    "AUTH_ENDORSE_CUSTODY_TRANSFER",
+    [
+      endorsementAuthorizationCommandType(
+        TransactionType.TRANSFER_CUSTODY,
+      ),
+    ],
+    [
+      OrganizationId.PRODUCER_COOP,
+      OrganizationId.LOGISTICS_PROVIDER,
+    ],
+    [
+      ActorRole.PRODUCER_MANAGER,
+      ActorRole.LOGISTICS_COORDINATOR,
+    ],
+  ),
+  policy(
+    "AUTH_ENDORSE_QUANTITY_CORRECTION",
+    [
+      endorsementAuthorizationCommandType(
+        TransactionType.RECORD_CORRECTION,
+      ),
+    ],
+    [
+      OrganizationId.COFFEE_PROCESSOR,
+      OrganizationId.PRODUCER_COOP,
+    ],
+    [
+      ActorRole.PROCESSING_MANAGER,
+      ActorRole.PRODUCER_MANAGER,
+    ],
+  ),
+];
+
+const endorsementPolicies: readonly EndorsementPolicyDefinition[] = [
+  {
+    endorsementPolicyId: "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+    appliesToCommandTypes: [TransactionType.TRANSFER_CUSTODY],
+    expression: {
+      kind: "ALL_OF",
+      policies: [
+        {
+          kind: "SIGNED_BY",
+          organizationId: OrganizationId.PRODUCER_COOP,
+        },
+        {
+          kind: "SIGNED_BY",
+          organizationId: OrganizationId.LOGISTICS_PROVIDER,
+        },
+      ],
+    },
+    localizationKey: "endorsement.policy.custody",
+  },
+  {
+    endorsementPolicyId: "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+    appliesToCommandTypes: [TransactionType.RECORD_CORRECTION],
+    expression: {
+      kind: "ALL_OF",
+      policies: [
+        {
+          kind: "SIGNED_BY",
+          organizationId: OrganizationId.PRODUCER_COOP,
+        },
+        {
+          kind: "SIGNED_BY",
+          organizationId: OrganizationId.COFFEE_PROCESSOR,
+        },
+      ],
+    },
+    localizationKey: "endorsement.policy.correction",
+  },
 ];
 
 export const coffeeCryptographicRuntime: CryptographicRuntime = {
@@ -268,5 +341,9 @@ export const coffeeCryptographicRuntime: CryptographicRuntime = {
   authorizationPolicies: {
     schemaVersion: "1",
     policies: authorizationPolicies,
+  },
+  endorsementPolicies: {
+    schemaVersion: "1",
+    policies: endorsementPolicies,
   },
 };

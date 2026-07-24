@@ -31,13 +31,19 @@ import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cry
  */
 function AppUnderTest(): React.ReactElement {
   return (
-    <LocaleProvider>
-      <ScenarioProvider scenario={coffeeScenario}>
-        <SimulationProvider>
-          <App />
-        </SimulationProvider>
-      </ScenarioProvider>
-    </LocaleProvider>
+    <ConfigurationProvider
+      configuration={GUIDED_PRESET}
+      configurationHash={hashConfiguration(GUIDED_PRESET)}
+      cryptographicRuntime={coffeeCryptographicRuntime}
+    >
+      <LocaleProvider>
+        <ScenarioProvider scenario={coffeeScenario}>
+          <SimulationProvider>
+            <App />
+          </SimulationProvider>
+        </ScenarioProvider>
+      </LocaleProvider>
+    </ConfigurationProvider>
   );
 }
 
@@ -104,6 +110,47 @@ async function submitAndSeal(user: User, actionName: string): Promise<void> {
     });
   }, { timeout: 30_000 });
   await user.click(seal as HTMLElement);
+}
+
+async function submitEndorsedAndSeal(
+  user: User,
+  actionName: string,
+  handoffName: string,
+): Promise<void> {
+  const panel = (
+    await screen.findByRole("heading", {
+      name: actionName,
+      level: 3,
+    })
+  ).closest("section") as HTMLElement;
+  await user.click(
+    within(panel).getByRole("button", {
+      name: "Gửi giao dịch lên mạng",
+    }),
+  );
+  await within(panel).findByRole("heading", {
+    name: "Phê duyệt bắt buộc",
+  });
+  await user.click(
+    within(panel).getByRole("button", {
+      name: handoffName,
+    }),
+  );
+  await user.click(
+    await within(panel).findByRole("button", {
+      name: "Ký và phê duyệt đề xuất",
+    }),
+  );
+  await within(panel).findByText("Đã đáp ứng yêu cầu");
+  await user.click(
+    within(panel).getByRole("button", {
+      name: "Cam kết giao dịch đã được phê duyệt",
+    }),
+  );
+  const seal = await within(panel).findByRole("button", {
+    name: "Ghi giao dịch vào khối",
+  });
+  await user.click(seal);
 }
 
 async function answer(user: User, optionPattern: RegExp): Promise<void> {
@@ -228,7 +275,11 @@ describe("the whole activity in the browser", () => {
     // ---- Stage 4: custody moves, ownership stays ---------------------
     await screen.findByRole("heading", { name: /Bước 4/ });
     await answer(user, /Chỉ chuyển quyền lưu giữ/);
-    await submitAndSeal(user, "Bàn giao lô hàng cho đơn vị vận chuyển");
+    await submitEndorsedAndSeal(
+      user,
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+      "Bàn giao cho bên tiếp nhận lưu giữ",
+    );
     await answer(user, /Ghi nhận vượt ngưỡng/);
     await submitAndSeal(user, "Ghi nhận điều kiện vận chuyển");
     await advance(user);
@@ -238,7 +289,11 @@ describe("the whole activity in the browser", () => {
     await submitAndSeal(user, "Tiếp nhận lô hàng");
     await submitAndSeal(user, "Ghi nhận việc mua lô hàng");
     await submitSoundDiscrepancyDecision(user);
-    await submitAndSeal(user, "Gửi giao dịch điều chỉnh");
+    await submitEndorsedAndSeal(
+      user,
+      "Gửi giao dịch điều chỉnh",
+      "Bàn giao cho nhà sản xuất",
+    );
     await advance(user);
 
     // ---- Stage 6: roast ----------------------------------------------
@@ -493,7 +548,11 @@ describe("the whole activity in the browser", () => {
     await advance(user);
 
     await answer(user, /Chỉ chuyển quyền lưu giữ/);
-    await submitAndSeal(user, "Bàn giao lô hàng cho đơn vị vận chuyển");
+    await submitEndorsedAndSeal(
+      user,
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+      "Yêu cầu tổ chức khác xem xét",
+    );
     await answer(user, /Ghi nhận vượt ngưỡng/);
     await submitAndSeal(user, "Ghi nhận điều kiện vận chuyển");
     await advance(user);
@@ -515,7 +574,11 @@ describe("the whole activity in the browser", () => {
         name: "Gửi quyết định xử lý chênh lệch",
       }),
     );
-    await submitAndSeal(user, "Gửi giao dịch điều chỉnh");
+    await submitEndorsedAndSeal(
+      user,
+      "Gửi giao dịch điều chỉnh",
+      "Yêu cầu tổ chức khác xem xét",
+    );
     await advance(user);
 
     await submitAndSeal(user, "Chuyển đổi lô hàng");

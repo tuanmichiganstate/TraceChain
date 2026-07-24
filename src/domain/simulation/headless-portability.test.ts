@@ -36,6 +36,8 @@ import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import {
   commandJournalEntry,
   contextIndex,
+  endorsedProposalJournalEntry,
+  endorsementWorkflowJournalEntry,
   JournalOpcode,
   tc3CodecSchema,
 } from "./command-journal";
@@ -142,6 +144,84 @@ function flawlessJournal(): readonly CompactCommandJournalEntry[] {
     actionId: string,
     commandOverride: Partial<SupplyChainCommand> = {},
   ): void => {
+    if (
+      actionId === "TRANSFER_CUSTODY" ||
+      actionId === "RECORD_CORRECTION"
+    ) {
+      const contextId =
+        scenario.runtime.commandContextByAction[actionId];
+      const template =
+        scenario.runtime.learnerCommandTemplates[actionId];
+      if (contextId === undefined || template === undefined) {
+        throw new Error(`Missing endorsed action "${actionId}"`);
+      }
+      const command = {
+        ...structuredClone(template),
+        ...commandOverride,
+      } as SupplyChainCommand;
+      const proposalSequence = sequence;
+      journal.push(
+        endorsedProposalJournalEntry({
+          commandSequence: sequence,
+          actionId,
+          command,
+          contextId,
+          scenario,
+        }),
+      );
+      sequence += 1;
+      const stageId =
+        actionId === "TRANSFER_CUSTODY"
+          ? ScenarioStageId.SHIP_AND_MONITOR
+          : ScenarioStageId.RECEIVE_AND_CORRECT;
+      const handoffIndex =
+        scenario.runtime.roleHandoffs.findIndex(
+          (handoff) =>
+            handoff.stageId === stageId &&
+            handoff.fromContextId === contextId,
+        );
+      const handoff =
+        scenario.runtime.roleHandoffs[handoffIndex];
+      if (handoff === undefined) {
+        throw new Error(
+          `Missing endorsement handoff for "${actionId}"`,
+        );
+      }
+      journal.push({
+        commandSequence: sequence,
+        opcode: JournalOpcode.ROLE_HANDOFF,
+        contextIndex: contextIndex(
+          scenario,
+          handoff.toContextId,
+        ),
+        values: [handoffIndex],
+      });
+      sequence += 1;
+      journal.push(
+        endorsementWorkflowJournalEntry({
+          commandSequence: sequence,
+          opcode:
+            JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL,
+          contextId: handoff.toContextId,
+          proposalCommandSequence: proposalSequence,
+          scenario,
+        }),
+      );
+      sequence += 1;
+      journal.push(
+        endorsementWorkflowJournalEntry({
+          commandSequence: sequence,
+          opcode:
+            JournalOpcode.COMMIT_ENDORSED_TRANSACTION,
+          contextId: handoff.toContextId,
+          proposalCommandSequence: proposalSequence,
+          scenario,
+        }),
+      );
+      sequence += 1;
+      appendSeal(handoff.toContextId);
+      return;
+    }
     appendSeal(appendAction(actionId, commandOverride));
   };
 

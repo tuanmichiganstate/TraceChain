@@ -118,6 +118,7 @@ function maximumEncodedDecisionValues(
 
 function maximumJournal(
   scenario: ScenarioDefinition,
+  configuration: TraceChainConfiguration,
 ): readonly CompactCommandJournalEntry[] {
   const recallOptions =
     scenario.stages
@@ -133,14 +134,56 @@ function maximumJournal(
     scenario.runtime.roleHandoffs.length - 1,
   );
   let sequence = 1;
-  return commandJournalDefinitions(scenario).flatMap((definition) =>
+  return commandJournalDefinitions(
+    scenario,
+    configuration.technicalFeatures.endorsementPolicies,
+  ).flatMap((definition) =>
     Array.from({ length: definition.maxOccurrences }, () => {
-      const textLimit = definition.textValueByteLimits?.[0];
       let values: readonly (number | readonly number[] | string)[] = [];
-      if (textLimit !== undefined) {
-        values = ["a".repeat(textLimit)];
+      const textLimits = Object.entries(
+        definition.textValueByteLimits ?? {},
+      ).map(([index, limit]) => [
+        Number.parseInt(index, 10),
+        limit,
+      ] as const);
+      if (textLimits.length > 0) {
+        const maximumTextIndex = Math.max(
+          ...textLimits.map(([index]) => index),
+        );
+        const boundedValues: Array<number | string> = Array.from(
+          { length: maximumTextIndex + 1 },
+          () => 0,
+        );
+        if (
+          definition.opcode ===
+          JournalOpcode.CREATE_ENDORSED_CORRECTION_PROPOSAL
+        ) {
+          boundedValues[0] =
+            JournalOpcode.RECORD_CORRECTION;
+        }
+        for (const [index, limit] of textLimits) {
+          boundedValues[index] = "a".repeat(limit);
+        }
+        values = boundedValues;
       } else if (definition.opcode === JournalOpcode.TRANSFER_CUSTODY) {
         values = [1];
+      } else if (
+        definition.opcode ===
+        JournalOpcode.CREATE_ENDORSED_PROPOSAL
+      ) {
+        values = [
+          JournalOpcode.TRANSFER_CUSTODY,
+          1,
+        ];
+      } else if (
+        definition.opcode ===
+          JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL ||
+        definition.opcode ===
+          JournalOpcode.DECLINE_TRANSACTION_PROPOSAL ||
+        definition.opcode ===
+          JournalOpcode.COMMIT_ENDORSED_TRANSACTION
+      ) {
+        values = [99];
       } else if (
         definition.opcode === JournalOpcode.SUBMIT_CERTIFICATE_DECISION
       ) {
@@ -285,9 +328,18 @@ describe("TC3 attempt codec", () => {
   });
 
   it("allows one bounded transport retry after an earlier rejected submission", () => {
+    const signatureOnlyChallenge = {
+      ...CHALLENGE_PRESET,
+      technicalFeatures: {
+        ...CHALLENGE_PRESET.technicalFeatures,
+        endorsementPolicies: false,
+      },
+    };
     const challengeSchema = tc3CodecSchema({
-      configuration: CHALLENGE_PRESET,
-      configurationHash: hashConfiguration(CHALLENGE_PRESET),
+      configuration: signatureOnlyChallenge,
+      configurationHash: hashConfiguration(
+        signatureOnlyChallenge,
+      ),
       scenario: challengeAScenario,
     });
     const retryAttempt: Tc3AttemptSnapshot = {
@@ -352,7 +404,7 @@ describe("TC3 attempt codec", () => {
         completedStageIds: SCENARIO_STAGE_ORDER,
         decisions: maximumEncodedDecisionValues(scenario),
         hintsUsed: scenario.hintIds,
-        journal: maximumJournal(scenario),
+        journal: maximumJournal(scenario, configuration),
         isCompleted: true,
         isPassed: true,
       };

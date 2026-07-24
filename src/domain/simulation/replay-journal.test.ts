@@ -39,6 +39,13 @@ const cryptographicReplay = {
   cryptographicRuntime: coffeeCryptographicRuntime,
   signatureProvider: new NobleEd25519Provider(),
 } as const;
+const signatureOnlyConfiguration = {
+  ...GUIDED_PRESET,
+  technicalFeatures: {
+    ...GUIDED_PRESET.technicalFeatures,
+    endorsementPolicies: false,
+  },
+} as const;
 
 const registries = {
   organizationsById: Object.fromEntries(
@@ -87,6 +94,156 @@ function initialSeededDomain() {
 }
 
 describe("deterministic consequential-command replay", () => {
+  it("replays one genuine two-organization custody endorsement before ledger commitment", async () => {
+    const certified = await runUpTo("certified", {
+      withSeed: true,
+    });
+    const configuration = {
+      ...GUIDED_PRESET,
+      technicalFeatures: {
+        ...GUIDED_PRESET.technicalFeatures,
+        endorsementPolicies: true,
+      },
+    };
+    const producerContext =
+      coffeeScenario.runtime.commandContextByAction
+        .TRANSFER_CUSTODY;
+    const handoffIndex =
+      coffeeScenario.runtime.roleHandoffs.findIndex(
+        (handoff) =>
+          handoff.stageId ===
+            ScenarioStageId.SHIP_AND_MONITOR &&
+          handoff.fromContextId === producerContext &&
+          coffeeScenario.runtime.trustedContexts.find(
+            (context) =>
+              context.contextId === handoff.toContextId,
+          )?.organizationId === "ORG_LOGISTICS_PROVIDER",
+      );
+    const handoff =
+      coffeeScenario.runtime.roleHandoffs[handoffIndex];
+    if (
+      producerContext === undefined ||
+      handoff === undefined
+    ) {
+      throw new Error("Custody endorsement handoff is missing");
+    }
+    const journal: readonly CompactCommandJournalEntry[] = [
+      {
+        commandSequence: 1,
+        opcode: JournalOpcode.CREATE_ENDORSED_PROPOSAL,
+        contextIndex: contextIndexById(
+          coffeeScenario,
+          producerContext,
+        ),
+        values: [JournalOpcode.TRANSFER_CUSTODY, 0],
+      },
+      {
+        commandSequence: 2,
+        opcode: JournalOpcode.ROLE_HANDOFF,
+        contextIndex: contextIndexById(
+          coffeeScenario,
+          handoff.toContextId,
+        ),
+        values: [handoffIndex],
+      },
+      {
+        commandSequence: 3,
+        opcode:
+          JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL,
+        contextIndex: contextIndexById(
+          coffeeScenario,
+          handoff.toContextId,
+        ),
+        values: [1],
+      },
+      {
+        commandSequence: 4,
+        opcode:
+          JournalOpcode.COMMIT_ENDORSED_TRANSACTION,
+        contextIndex: contextIndexById(
+          coffeeScenario,
+          handoff.toContextId,
+        ),
+        values: [1],
+      },
+      {
+        commandSequence: 5,
+        opcode: JournalOpcode.SEAL_PENDING_BLOCK,
+        contextIndex: contextIndexById(
+          coffeeScenario,
+          handoff.toContextId,
+        ),
+        values: [],
+      },
+    ];
+    const replay = () =>
+      replayCommandJournal({
+        snapshot: snapshot(journal, {}),
+        initialDomain: certified.getState(),
+        scenario: coffeeScenario,
+        configuration,
+        configurationHash: hashConfiguration(configuration),
+        cryptographicRuntime: coffeeCryptographicRuntime,
+        signatureProvider: new NobleEd25519Provider(),
+        registries,
+      });
+
+    const first = await replay();
+    const second = await replay();
+    const transfer = Object.values(
+      first.runtime.domain.transactionsById,
+    ).find(
+      (transaction) =>
+        transaction.transactionType ===
+        TransactionType.TRANSFER_CUSTODY,
+    );
+
+    expect(first).toEqual(second);
+    expect(transfer?.transactionStatus).toBe(
+      TransactionStatus.COMMITTED,
+    );
+    expect(transfer?.endorsementResults).toHaveLength(2);
+    expect(
+      transfer?.endorsementResults.every(
+        (result) =>
+          result.isSimulatedCounterparty === false &&
+          result.signatureEvidence?.signatureValid === true,
+      ),
+    ).toBe(true);
+    expect(
+      new Set(
+        transfer?.endorsementResults.map(
+          (result) => result.proposalDigest,
+        ),
+      ).size,
+    ).toBe(1);
+    expect(
+      first.runtime.acceptedEvents.map((event) =>
+        event.kind === "SIMULATION_DECISION"
+          ? event.decisionType
+          : event.kind,
+      ),
+    ).toEqual([
+      "TRANSACTION_PROPOSAL_CREATED",
+      "TRANSACTION_PROPOSAL_ENDORSED",
+      "LEDGER_MUTATION",
+      "ENDORSED_TRANSACTION_COMMITTED",
+    ]);
+    expect(
+      buildCausalReport({
+        scenario: coffeeScenario,
+        journal,
+        runtime: first.runtime,
+        hintsUsed: [],
+        configurationIdentifier: hashConfiguration(
+          configuration,
+        ),
+      }).explanations.map(
+        (explanation) => explanation.messageKey,
+      ),
+    ).toContain("report.causal.custodyEndorsed");
+  });
+
   it("regenerates byte-identical signature evidence for an audit-only certificate attempt", async () => {
     const contextId =
       coffeeScenario.runtime.commandContextByAction.SUSPICIOUS_CERTIFICATE;
@@ -286,8 +443,10 @@ describe("deterministic consequential-command replay", () => {
       },
     ];
     const schema = tc3CodecSchema({
-      configuration: GUIDED_PRESET,
-      configurationHash: hashConfiguration(GUIDED_PRESET),
+      configuration: signatureOnlyConfiguration,
+      configurationHash: hashConfiguration(
+        signatureOnlyConfiguration,
+      ),
       scenario: coffeeScenario,
     });
     const persisted = decodeTc3Attempt(
@@ -298,8 +457,12 @@ describe("deterministic consequential-command replay", () => {
       snapshot: persisted,
       initialDomain: certified.getState(),
       scenario: coffeeScenario,
-      configuration: GUIDED_PRESET,
-      ...cryptographicReplay,
+      configuration: signatureOnlyConfiguration,
+      configurationHash: hashConfiguration(
+        signatureOnlyConfiguration,
+      ),
+      cryptographicRuntime: coffeeCryptographicRuntime,
+      signatureProvider: new NobleEd25519Provider(),
       registries,
     });
 

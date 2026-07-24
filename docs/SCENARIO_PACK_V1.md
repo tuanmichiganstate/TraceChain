@@ -124,7 +124,7 @@ nodes. Its compatibility block points to:
 
 ```text
 adapter: tracechain-coffee-v2
-scenario: SCN_COFFEE_001@2.1.0
+scenario: SCN_COFFEE_001@2.2.0
 stage: STG_03_ANCHOR_CERTIFICATE
 ```
 

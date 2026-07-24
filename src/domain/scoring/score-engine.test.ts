@@ -63,6 +63,19 @@ describe("score engine", () => {
       expect(score.maxScore).toBe(100);
     });
 
+    it("preserves the published 39 operational / 61 knowledge split", () => {
+      const operational = items
+        .filter((item) => item.isProcedural)
+        .reduce((total, item) => total + item.points, 0);
+      const knowledge = items
+        .filter((item) => !item.isProcedural)
+        .reduce((total, item) => total + item.points, 0);
+
+      expect(operational).toBe(39);
+      expect(knowledge).toBe(61);
+      expect(operational + knowledge).toBe(100);
+    });
+
     it("fills every component to its declared budget", () => {
       const { score } = calculateScore(perfectAttempt(), coffeeScenario);
       const points = configuration.componentPoints;

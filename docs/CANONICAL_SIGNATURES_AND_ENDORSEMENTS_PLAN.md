@@ -1,8 +1,8 @@
 # TraceChain implementation plan: real digital signatures, authorization, and endorsement policies
 
 Status: approved follow-on implementation specification
-Implementation state: Increment A complete; all Increment A acceptance gates
-are green as of 23 July 2026. Increment B has not started.
+Implementation state: Increments A and B complete; all acceptance gates are
+green as of 24 July 2026.
 Prerequisite: the configurable Guided and Challenge simulation boundary remains
 the foundation for this work
 
@@ -1362,6 +1362,31 @@ Stop if any gate is red.
 14. Run full quality, browser, SCORM, and Moodle gates.
 
 Do not start a policy-authoring interface.
+
+Increment B gate record:
+
+- `npm run quality` passed, including 573 unit/integration tests and 143/143
+  SCORM package-verification checks.
+- The complete Playwright matrix passed with 91 tests and five documented
+  platform-specific skips across Chromium, Firefox, WebKit, and Mobile Safari.
+- Guided 2.2.0 and Challenge A 1.1.0 each passed a real Moodle new-attempt,
+  mid-endorsement-resume, trusted role-handoff, genuine endorsement,
+  policy-satisfaction, final-validation, and ledger-commit walkthrough. The
+  common Moodle acceptance harness also passed byte-identical resume, score and
+  status persistence, gradebook reporting, highest-attempt preservation, and a
+  4,096-character storage-boundary round trip for each deployed package.
+- The actual authored worst cases, which fill every permitted endorsement
+  journal entry and bounded text field, are 2,281 characters for Guided and
+  2,287 for Challenge A, below the unchanged 3,800-character internal ceiling.
+- The exact 100-point contract remains unchanged: 39 operational points and 61
+  knowledge points, with no new scorable item, hint target, or mitigation
+  ceiling.
+- Both offline-verified development packages share static application build
+  hash
+  `12b5420460403eb5d35aac1187e2ee5b6bfdbac2c8dbdcdc1180a762fc29c1f4`.
+  Because the source tree was intentionally uncommitted during acceptance,
+  their filenames carry `_NON_RELEASE` and their metadata marks them dirty,
+  non-release artifacts.
 
 ## 34. Final acceptance criteria
 

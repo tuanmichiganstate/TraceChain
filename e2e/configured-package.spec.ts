@@ -110,7 +110,9 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await activity.continue();
 
   await activity.answer(/Chỉ chuyển quyền lưu giữ/);
-  await activity.submitAndSeal("Bàn giao lô hàng cho đơn vị vận chuyển");
+  await activity.submitEndorsedAndSeal(
+    "Bàn giao lô hàng cho đơn vị vận chuyển",
+  );
   await activity.answer(/Ghi nhận vượt ngưỡng/);
   await activity.submitAndSeal("Ghi nhận điều kiện vận chuyển");
   await activity.continue();
@@ -128,7 +130,9 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await page
     .getByRole("button", { name: "Gửi quyết định xử lý chênh lệch" })
     .click();
-  await activity.submitAndSeal("Gửi giao dịch điều chỉnh");
+  await activity.submitEndorsedAndSeal(
+    "Gửi giao dịch điều chỉnh",
+  );
   await activity.continue();
 
   await activity.submitAndSeal("Chuyển đổi lô hàng");
@@ -196,7 +200,7 @@ test("loads Challenge A and preserves mitigation history through its causal repo
     report.getByText(/Lần gửi lệnh thu hồi đầu tiên dùng vai trò không có thẩm quyền/),
   ).toBeVisible();
   await expect(
-    report.getByText("SCN_COFFEE_CHALLENGE_A@1.0.0"),
+    report.getByText("SCN_COFFEE_CHALLENGE_A@1.1.0"),
   ).toBeVisible();
   await expect(
     report.getByText(hashConfiguration(CHALLENGE_PRESET)),

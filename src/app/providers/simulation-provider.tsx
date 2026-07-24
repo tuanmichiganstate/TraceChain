@@ -63,6 +63,8 @@ import {
 import {
   activeContextIdForStage,
   commandJournalEntry,
+  endorsedProposalJournalEntry,
+  endorsementWorkflowJournalEntry,
   contextAt,
   contextIndex,
   JournalOpcode,
@@ -88,6 +90,7 @@ import type {
   TrustedExecutionContext,
   SubmitCertificateDecisionCommand,
   SubmitDiscrepancyDecisionCommand,
+  EndorsementWorkflowOutcome,
 } from "../../domain/simulation/types";
 import { handleSimulationDecision } from "../../domain/simulation/decision-handler";
 import {
@@ -124,12 +127,19 @@ import {
   signatureAttemptFailures,
 } from "../../crypto/signatures/signing-service";
 import type { SignatureTamperDemonstration } from "../../crypto/signatures/types";
+import {
+  commitPendingProposal as commitPendingProposalCore,
+  createEndorsedProposal as createEndorsedProposalCore,
+  declinePendingProposal as declinePendingProposalCore,
+  endorsePendingProposal as endorsePendingProposalCore,
+} from "../../domain/simulation/endorsement-workflow";
 
 const DEVELOPMENT_FALLBACK_CONFIGURATION = {
   ...GUIDED_PRESET,
   technicalFeatures: {
     ...GUIDED_PRESET.technicalFeatures,
     digitalSignatures: false,
+    endorsementPolicies: false,
   },
 } as const;
 
@@ -151,6 +161,26 @@ interface SimulationContextValue {
     command: SupplyChainCommand,
     options?: { readonly recordDecision?: boolean },
   ): Promise<SimulationCommandOutcome>;
+  createEndorsedProposal(
+    actionId: string,
+    decisionId: string,
+    command: SupplyChainCommand,
+    options?: { readonly recordDecision?: boolean },
+  ): Promise<EndorsementWorkflowOutcome>;
+  endorsePendingProposal(
+    proposalId: string,
+  ): Promise<EndorsementWorkflowOutcome>;
+  declinePendingProposal(
+    proposalId: string,
+  ): Promise<EndorsementWorkflowOutcome>;
+  commitEndorsedProposal(
+    proposalId: string,
+    decisionId: string,
+    options?: { readonly recordDecision?: boolean },
+  ): Promise<{
+    readonly workflow: EndorsementWorkflowOutcome;
+    readonly transactionOutcome: SimulationCommandOutcome | null;
+  }>;
   sealPendingBlock(): Promise<void>;
   requestRoleHandoff(handoffId: string): Promise<void>;
   submitCertificateDecision(
@@ -190,6 +220,14 @@ function commandSequence(journal: readonly CompactCommandJournalEntry[]): number
 
 function commandId(sequence: number): string {
   return `CMD_${String(sequence).padStart(6, "0")}`;
+}
+
+function commandSequenceFromId(value: string): number {
+  const match = /^CMD_(\d{6})$/u.exec(value);
+  if (match?.[1] === undefined) {
+    throw new Error(`Invalid deterministic command identifier "${value}"`);
+  }
+  return Number.parseInt(match[1], 10);
 }
 
 function trustedPayload(
@@ -564,6 +602,15 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       submissionOptions?: { readonly recordDecision?: boolean },
     ): Promise<SimulationCommandOutcome> =>
       commitMutation(async (base) => {
+        if (
+          configuration.technicalFeatures.endorsementPolicies &&
+          (actionId === "TRANSFER_CUSTODY" ||
+            actionId === "RECORD_CORRECTION")
+        ) {
+          throw new Error(
+            `Action "${actionId}" must use the endorsement workflow`,
+          );
+        }
         const sequence = commandSequence(base.commandJournal);
         const contextId =
           actionId === "RECALL_BATCH"
@@ -716,12 +763,421 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       commitMutation,
       configuration.scenarioSeed,
       configuration.technicalFeatures.digitalSignatures,
+      configuration.technicalFeatures.endorsementPolicies,
       configurationHash,
       configuredPackage,
       ledger,
       registries,
       scenario,
       signatureProvider,
+    ],
+  );
+
+  const createEndorsedProposal = useCallback(
+    (
+      actionId: string,
+      decisionId: string,
+      authoredCommand: SupplyChainCommand,
+      submissionOptions?: { readonly recordDecision?: boolean },
+    ): Promise<EndorsementWorkflowOutcome> =>
+      commitMutation(async (base) => {
+        const cryptographicRuntime =
+          configuredPackage?.cryptographicRuntime;
+        if (cryptographicRuntime === null || cryptographicRuntime === undefined) {
+          throw new Error(
+            "Endorsement policies require a cryptographic runtime",
+          );
+        }
+        const sequence = commandSequence(base.commandJournal);
+        const contextId =
+          scenario.runtime.commandContextByAction[actionId];
+        if (contextId === undefined) {
+          throw new Error(
+            `Scenario has no trusted context for action "${actionId}"`,
+          );
+        }
+        const trusted = contextAt(
+          scenario,
+          contextIndex(scenario, contextId),
+        );
+        const payload = trustedPayload(authoredCommand, trusted);
+        const entry = endorsedProposalJournalEntry({
+          commandSequence: sequence,
+          actionId,
+          command: payload,
+          contextId,
+          scenario,
+        });
+        const scriptedBefore = applyEligibleScriptedTransactions(
+          base.simulation.domain,
+          scenario.scriptedTransactions,
+          ledger,
+          registries,
+        ).state;
+        const runtimeBefore: SimulationRuntimeState = {
+          ...base.simulation,
+          domain: scriptedBefore,
+        };
+        const command: DomainSimulationCommand = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: payload.scenarioTimestamp,
+            expectedStateVersions: expectedStateVersionsFor(
+              payload,
+              scriptedBefore,
+            ),
+          },
+          payload,
+        };
+        const signed = await signAndVerifyCommand({
+          command,
+          trustedContext: trusted,
+          configurationHash,
+          scenarioId: scenario.scenarioId,
+          scenarioVersion: scenario.scenarioVersion,
+          runtime: cryptographicRuntime,
+          provider: signatureProvider,
+        });
+        const workflow = createEndorsedProposalCore({
+          runtime: runtimeBefore,
+          actionId,
+          command,
+          trustedContext: trusted,
+          signatureEvidence: signed.evidence,
+          signatureFailures: signatureAttemptFailures(
+            signed.failureRuleIds,
+          ),
+          policies: cryptographicRuntime.endorsementPolicies.policies,
+          registries,
+          environment: {
+            clock: new FixedClock(payload.scenarioTimestamp),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: workflow.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+        if (
+          !workflow.isAccepted &&
+          submissionOptions?.recordDecision !== false
+        ) {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId,
+            encodedValue: 0,
+            interaction: {
+              interactionId: `INT_${String(base.interactions.length + 1).padStart(4, "0")}`,
+              stageId: base.viewedStageId,
+              interactionType:
+                LearnerInteractionType.TRANSACTION_REJECTED,
+              targetId: decisionId,
+              isCorrect: false,
+              attemptNumber:
+                (base.decisions[decisionId]?.attemptCount ?? 0) + 1,
+              scenarioTimestamp: payload.scenarioTimestamp,
+            },
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: workflow,
+        };
+      }),
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      configurationHash,
+      configuredPackage,
+      ledger,
+      registries,
+      scenario,
+      signatureProvider,
+    ],
+  );
+
+  const endorsePendingProposal = useCallback(
+    (proposalId: string): Promise<EndorsementWorkflowOutcome> =>
+      commitMutation(async (base) => {
+        const cryptographicRuntime =
+          configuredPackage?.cryptographicRuntime;
+        if (cryptographicRuntime === null || cryptographicRuntime === undefined) {
+          throw new Error(
+            "Endorsement policies require a cryptographic runtime",
+          );
+        }
+        const pending =
+          base.simulation.pendingProposalsById[proposalId];
+        if (pending === undefined) {
+          throw new Error(`Unknown pending proposal "${proposalId}"`);
+        }
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          base.viewedStageId,
+          base.commandJournal,
+        );
+        const trusted = contextAt(
+          scenario,
+          contextIndex(scenario, contextId),
+        );
+        const entry = endorsementWorkflowJournalEntry({
+          commandSequence: sequence,
+          opcode: JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL,
+          contextId,
+          proposalCommandSequence:
+            commandSequenceFromId(proposalId),
+          scenario,
+        });
+        const command = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: pending.command.metadata.submittedAt,
+            expectedStateVersions: {},
+          },
+          payload: {
+            commandType: "ENDORSE_TRANSACTION_PROPOSAL" as const,
+            proposalId,
+          },
+        };
+        const workflow = await endorsePendingProposalCore({
+          runtime: base.simulation,
+          command,
+          trustedContext: trusted,
+          cryptographicRuntime,
+          provider: signatureProvider,
+          environment: {
+            clock: new FixedClock(
+              pending.command.metadata.submittedAt,
+            ),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: workflow.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: workflow,
+        };
+      }),
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      configuredPackage,
+      scenario,
+      signatureProvider,
+    ],
+  );
+
+  const declinePendingProposal = useCallback(
+    (proposalId: string): Promise<EndorsementWorkflowOutcome> =>
+      commitMutation((base) => {
+        const pending =
+          base.simulation.pendingProposalsById[proposalId];
+        if (pending === undefined) {
+          throw new Error(`Unknown pending proposal "${proposalId}"`);
+        }
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          base.viewedStageId,
+          base.commandJournal,
+        );
+        const trusted = contextAt(
+          scenario,
+          contextIndex(scenario, contextId),
+        );
+        const entry = endorsementWorkflowJournalEntry({
+          commandSequence: sequence,
+          opcode: JournalOpcode.DECLINE_TRANSACTION_PROPOSAL,
+          contextId,
+          proposalCommandSequence:
+            commandSequenceFromId(proposalId),
+          scenario,
+        });
+        const command = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: pending.command.metadata.submittedAt,
+            expectedStateVersions: {},
+          },
+          payload: {
+            commandType: "DECLINE_TRANSACTION_PROPOSAL" as const,
+            proposalId,
+          },
+        };
+        const workflow = declinePendingProposalCore({
+          runtime: base.simulation,
+          command,
+          trustedContext: trusted,
+          environment: {
+            clock: new FixedClock(
+              pending.command.metadata.submittedAt,
+            ),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: workflow.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId: base.lastTransactionId,
+        });
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: workflow,
+        };
+      }),
+    [commitMutation, configuration.scenarioSeed, scenario],
+  );
+
+  const commitEndorsedProposal = useCallback(
+    (
+      proposalId: string,
+      decisionId: string,
+      submissionOptions?: { readonly recordDecision?: boolean },
+    ): Promise<{
+      readonly workflow: EndorsementWorkflowOutcome;
+      readonly transactionOutcome: SimulationCommandOutcome | null;
+    }> =>
+      commitMutation((base) => {
+        const pending =
+          base.simulation.pendingProposalsById[proposalId];
+        if (pending === undefined) {
+          throw new Error(`Unknown pending proposal "${proposalId}"`);
+        }
+        const sequence = commandSequence(base.commandJournal);
+        const contextId = activeContextIdForStage(
+          scenario,
+          base.viewedStageId,
+          base.commandJournal,
+        );
+        const trusted = contextAt(
+          scenario,
+          contextIndex(scenario, contextId),
+        );
+        const entry = endorsementWorkflowJournalEntry({
+          commandSequence: sequence,
+          opcode: JournalOpcode.COMMIT_ENDORSED_TRANSACTION,
+          contextId,
+          proposalCommandSequence:
+            commandSequenceFromId(proposalId),
+          scenario,
+        });
+        const command = {
+          metadata: {
+            commandId: commandId(sequence),
+            sessionId: base.sessionId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: pending.command.metadata.submittedAt,
+            expectedStateVersions: {},
+          },
+          payload: {
+            commandType: "COMMIT_ENDORSED_TRANSACTION" as const,
+            proposalId,
+          },
+        };
+        const result = commitPendingProposalCore({
+          runtime: base.simulation,
+          command,
+          trustedContext: trusted,
+          ledger,
+          registries,
+          environment: {
+            clock: new FixedClock(
+              pending.command.metadata.submittedAt,
+            ),
+            random: new SeededRandomSource(
+              `${configuration.scenarioSeed}:${sequence}`,
+            ),
+            ids: new SequenceIdGenerator(sequence),
+          },
+        });
+        const accepted =
+          result.transactionOutcome?.isAccepted === true;
+        let prospective = sessionReducer(base, {
+          type: "SIMULATION_UPDATED",
+          simulation: result.workflow.state,
+          commandJournal: [...base.commandJournal, entry],
+          transactionId:
+            accepted &&
+            result.transactionOutcome?.transaction !== null
+              ? result.transactionOutcome.transaction.transactionId
+              : base.lastTransactionId,
+        });
+        if (submissionOptions?.recordDecision !== false) {
+          prospective = sessionReducer(prospective, {
+            type: "RECORD_DECISION",
+            decisionId,
+            encodedValue: accepted ? 1 : 0,
+            interaction: {
+              interactionId: `INT_${String(base.interactions.length + 1).padStart(4, "0")}`,
+              stageId: base.viewedStageId,
+              interactionType: accepted
+                ? LearnerInteractionType.TRANSACTION_SUBMITTED
+                : LearnerInteractionType.TRANSACTION_REJECTED,
+              targetId: decisionId,
+              isCorrect: accepted,
+              attemptNumber:
+                (base.decisions[decisionId]?.attemptCount ?? 0) + 1,
+              scenarioTimestamp:
+                pending.command.metadata.submittedAt,
+            },
+          });
+        }
+        if (
+          pending.actionId === "RECORD_CORRECTION" &&
+          accepted
+        ) {
+          prospective = sessionReducer(prospective, {
+            type: "CORRECTION_REASON_RECORDED",
+            reason: (
+              pending.command.payload as {
+                readonly reason: string;
+              }
+            ).reason,
+          });
+        }
+        return {
+          state: deriveProgress(prospective, scenario),
+          result,
+        };
+      }),
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      ledger,
+      registries,
+      scenario,
     ],
   );
 
@@ -1338,6 +1794,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       },
 
       submitCommand,
+      createEndorsedProposal,
+      endorsePendingProposal,
+      declinePendingProposal,
+      commitEndorsedProposal,
       sealPendingBlock,
       requestRoleHandoff,
       submitCertificateDecision,
@@ -1386,6 +1846,10 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       signatureProvider,
       state,
       submitCommand,
+      createEndorsedProposal,
+      endorsePendingProposal,
+      declinePendingProposal,
+      commitEndorsedProposal,
       requestRoleHandoff,
       submitCertificateDecision,
       submitDiscrepancyDecision,

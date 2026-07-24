@@ -28,7 +28,7 @@ export const TC3_SECTION_BUDGET = {
   metadata: 220,
   progress: 420,
   context: 160,
-  baseline: 1_000,
+  baseline: 1_600,
   stage3: 220,
   stage5: 500,
   stage9: 220,

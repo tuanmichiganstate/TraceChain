@@ -3,6 +3,11 @@
 Status: accepted for the foundation phase
 Date: 24 July 2026
 
+Post-decision implementation note: cryptographic endorsement Increment B was
+subsequently completed for the Guided and Challenge SCORM engine. The original
+decision below records the foundation baseline and prevented the platform work
+from claiming that capability before its acceptance gate was met.
+
 ## Context
 
 The instructor-ready roadmap expands TraceChain from portable learner packages

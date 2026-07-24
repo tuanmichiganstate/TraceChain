@@ -28,6 +28,7 @@ import {
 import {
   SignatureValidationRule,
   type CryptographicRuntime,
+  type EndorsementPolicyExpression,
 } from "./types";
 import { validateCryptographicRuntime } from "./validation";
 
@@ -95,6 +96,92 @@ describe("signature and authorization service", () => {
         provider,
       }),
     ).resolves.toEqual({ isValid: true, issues: [] });
+  });
+
+  it("rejects cyclic endorsement-policy expressions without recursing forever", async () => {
+    const cyclicExpression: {
+      kind: "ALL_OF";
+      policies: EndorsementPolicyExpression[];
+    } = {
+      kind: "ALL_OF",
+      policies: [],
+    };
+    cyclicExpression.policies.push(cyclicExpression);
+    const [firstPolicy, ...remainingPolicies] =
+      coffeeCryptographicRuntime.endorsementPolicies.policies;
+    expect(firstPolicy).toBeDefined();
+    const runtime: CryptographicRuntime = {
+      ...coffeeCryptographicRuntime,
+      endorsementPolicies: {
+        ...coffeeCryptographicRuntime.endorsementPolicies,
+        policies: [
+          {
+            ...firstPolicy!,
+            expression: cyclicExpression,
+          },
+          ...remainingPolicies,
+        ],
+      },
+    };
+
+    const result = await validateCryptographicRuntime({
+      runtime,
+      scenario: coffeeScenario,
+      provider,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        message: "must not contain cyclic policy expressions",
+      }),
+    );
+  });
+
+  it("rejects an organization repeated across one endorsement policy", async () => {
+    const [firstPolicy, ...remainingPolicies] =
+      coffeeCryptographicRuntime.endorsementPolicies.policies;
+    expect(firstPolicy).toBeDefined();
+    const repeatedOrganization =
+      OrganizationId.PRODUCER_COOP;
+    const runtime: CryptographicRuntime = {
+      ...coffeeCryptographicRuntime,
+      endorsementPolicies: {
+        ...coffeeCryptographicRuntime.endorsementPolicies,
+        policies: [
+          {
+            ...firstPolicy!,
+            expression: {
+              kind: "ALL_OF",
+              policies: [
+                {
+                  kind: "SIGNED_BY",
+                  organizationId: repeatedOrganization,
+                },
+                {
+                  kind: "SIGNED_BY",
+                  organizationId: repeatedOrganization,
+                },
+              ],
+            },
+          },
+          ...remainingPolicies,
+        ],
+      },
+    };
+
+    const result = await validateCryptographicRuntime({
+      runtime,
+      scenario: coffeeScenario,
+      provider,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        message: "must not repeat an organization",
+      }),
+    );
   });
 
   it("authorizes a recognized certifier with an active key", async () => {

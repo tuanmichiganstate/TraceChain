@@ -15,6 +15,7 @@ import {
   SignatureValidationRule,
   type CryptographicRuntime,
   type EducationalKeyRecord,
+  type SignaturePurpose,
   type SignatureEnvelope,
   type SignatureProvider,
   type SignatureTamperDemonstration,
@@ -37,7 +38,7 @@ export interface SignedCommandResult {
   readonly failureRuleIds: readonly SignatureValidationRuleId[];
 }
 
-function activeKeyFor(
+export function activeKeyFor(
   runtime: CryptographicRuntime,
   organizationId: string,
 ): EducationalKeyRecord {
@@ -56,29 +57,29 @@ function activeKeyFor(
   return key;
 }
 
-export async function signAndVerifyCommand(options: {
-  readonly command: DomainSimulationCommand;
+export async function signAndVerifyProposal(options: {
+  readonly proposal: SignatureTrustEvidence["proposal"];
   readonly trustedContext: TrustedExecutionContext;
-  readonly configurationHash: string;
-  readonly scenarioId: string;
-  readonly scenarioVersion: string;
+  readonly authorizationCommandType: string;
+  readonly signedAt: string;
+  readonly purpose: SignaturePurpose;
   readonly runtime: CryptographicRuntime;
   readonly provider: SignatureProvider;
   readonly tamperSignature?: boolean;
-}): Promise<SignedCommandResult> {
-  const proposal = createTransactionProposal(options);
-  const digest = proposalDigest(proposal);
+}): Promise<SignatureTrustEvidence> {
+  const digest = proposalDigest(options.proposal);
   const key = activeKeyFor(
     options.runtime,
     options.trustedContext.organizationId,
   );
   const statement = signatureStatement({
     proposalDigest: digest,
-    sessionId: options.command.metadata.sessionId,
+    sessionId: options.proposal.sessionId,
     organizationId: options.trustedContext.organizationId,
     roleId: options.trustedContext.roleId,
     keyId: key.keyId,
-    signedAt: options.command.metadata.submittedAt,
+    signedAt: options.signedAt,
+    purpose: options.purpose,
   });
   const statementBytes = canonicalBytes(statement);
   const signatureBytes = await options.provider.sign(
@@ -119,7 +120,7 @@ export async function signAndVerifyCommand(options: {
       decodeBase64Url(signature.signatureBase64Url),
     ));
   const authorization = evaluateAuthorization({
-    commandType: options.command.payload.commandType,
+    commandType: options.authorizationCommandType,
     trustedContext: options.trustedContext,
     signedOrganizationId: signature.organizationId,
     signedRoleId: signature.roleId,
@@ -134,10 +135,10 @@ export async function signAndVerifyCommand(options: {
   ].filter(
     (ruleId, index, all) => all.indexOf(ruleId) === index,
   );
-  const evidence: SignatureTrustEvidence = {
-    proposal,
+  return {
+    proposal: options.proposal,
     proposalCanonicalBytesBase64Url: encodeBase64Url(
-      canonicalBytes(proposal),
+      canonicalBytes(options.proposal),
     ),
     proposalDigest: digest,
     signatureStatement: statement,
@@ -155,17 +156,42 @@ export async function signAndVerifyCommand(options: {
     authorization,
     failureRuleIds,
   };
+}
+
+export async function signAndVerifyCommand(options: {
+  readonly command: DomainSimulationCommand;
+  readonly trustedContext: TrustedExecutionContext;
+  readonly configurationHash: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly runtime: CryptographicRuntime;
+  readonly provider: SignatureProvider;
+  readonly tamperSignature?: boolean;
+}): Promise<SignedCommandResult> {
+  const proposal = createTransactionProposal(options);
+  const evidence = await signAndVerifyProposal({
+    proposal,
+    trustedContext: options.trustedContext,
+    authorizationCommandType: options.command.payload.commandType,
+    signedAt: options.command.metadata.submittedAt,
+    purpose: "PROPOSAL_SUBMISSION",
+    runtime: options.runtime,
+    provider: options.provider,
+    ...(options.tamperSignature === undefined
+      ? {}
+      : { tamperSignature: options.tamperSignature }),
+  });
 
   return {
     envelope:
-      signatureValid && authorization.authorized
+      evidence.signatureValid && evidence.authorization.authorized
         ? ({
             command: options.command,
             evidence,
           } as VerifiedCommandEnvelope)
         : null,
     evidence,
-    failureRuleIds,
+    failureRuleIds: evidence.failureRuleIds,
   };
 }
 

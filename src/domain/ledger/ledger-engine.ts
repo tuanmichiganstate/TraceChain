@@ -91,6 +91,7 @@ export class SimulatedLedger {
     context: CommandContext,
     registries: ValidationRegistries,
     signatureEvidence?: SignatureTrustEvidence,
+    verifiedEndorsements?: readonly EndorsementResult[],
   ): TransactionResult {
     const transactionId = formatTransactionId(state.nextTransactionSequence);
     const timestamp = command.scenarioTimestamp;
@@ -162,16 +163,19 @@ export class SimulatedLedger {
       };
     }
 
-    const endorsingOrganizations = requiredEndorsers(command, context, state);
-
-    const endorsements: EndorsementResult[] = endorsingOrganizations.map((organizationId) => ({
-      endorsingOrganizationId: organizationId,
-      endorsedAt: timestamp,
-      isEndorsed: true,
-      // Anything not proposed by this organization was approved on the
-      // learner's behalf, and the interface must say so.
-      isSimulatedCounterparty: organizationId !== context.organizationId,
-    }));
+    const endorsements: readonly EndorsementResult[] =
+      verifiedEndorsements ??
+      requiredEndorsers(command, context, state).map(
+        (organizationId) => ({
+          endorsingOrganizationId: organizationId,
+          endorsedAt: timestamp,
+          isEndorsed: true,
+          // Anything not proposed by this organization was approved on the
+          // learner's behalf, and the interface must say so.
+          isSimulatedCounterparty:
+            organizationId !== context.organizationId,
+        }),
+      );
 
     const event = commandToEvent(command, transactionId, state);
 

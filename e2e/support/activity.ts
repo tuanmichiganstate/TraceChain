@@ -110,6 +110,43 @@ export class Activity {
     await seal.click();
   }
 
+  async submitEndorsedAndSeal(name: string): Promise<void> {
+    const panel = this.panel(name);
+    await panel
+      .getByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      })
+      .click();
+    await expect(
+      panel.getByRole("heading", {
+        name: "Phê duyệt bắt buộc",
+      }),
+    ).toBeVisible();
+    await panel
+      .getByRole("button", {
+        name: /Bàn giao cho (bên tiếp nhận lưu giữ|nhà sản xuất)|Yêu cầu tổ chức khác xem xét/,
+      })
+      .click();
+    await panel
+      .getByRole("button", {
+        name: "Ký và phê duyệt đề xuất",
+      })
+      .click();
+    await expect(
+      panel.getByText(/Đã đáp ứng yêu cầu/),
+    ).toBeVisible();
+    await panel
+      .getByRole("button", {
+        name: "Cam kết giao dịch đã được phê duyệt",
+      })
+      .click();
+    const seal = panel.getByRole("button", {
+      name: "Ghi giao dịch vào khối",
+    });
+    await expect(seal).toBeVisible();
+    await seal.click();
+  }
+
   async submitSoundCertificateDecision(): Promise<void> {
     await this.page
       .getByRole("combobox", { name: "Nội dung và thời hạn chứng nhận" })
@@ -188,7 +225,9 @@ export class Activity {
 
     await this.expectStage(4);
     await this.answer(/Chỉ chuyển quyền lưu giữ/);
-    await this.submitAndSeal("Bàn giao lô hàng cho đơn vị vận chuyển");
+    await this.submitEndorsedAndSeal(
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+    );
     await this.answer(/Ghi nhận vượt ngưỡng/);
     await this.submitAndSeal("Ghi nhận điều kiện vận chuyển");
     await this.continue();
@@ -197,7 +236,9 @@ export class Activity {
     await this.submitAndSeal("Tiếp nhận lô hàng");
     await this.submitAndSeal("Ghi nhận việc mua lô hàng");
     await this.submitSoundDiscrepancyDecision();
-    await this.submitAndSeal("Gửi giao dịch điều chỉnh");
+    await this.submitEndorsedAndSeal(
+      "Gửi giao dịch điều chỉnh",
+    );
   }
 
   /** Stages 1 to 7, ending with the packaged lot on the retailer's shelf. */

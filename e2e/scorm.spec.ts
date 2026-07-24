@@ -97,6 +97,124 @@ test.describe("saving and resuming", () => {
     ).toHaveCount(0);
   });
 
+  test("resumes a pending proposal, retained decline, and collected endorsement", async ({
+    page,
+  }) => {
+    await installScormApi(page);
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.continue();
+    await activity.submitSoundCertificateDecision();
+    await activity.submitAndSeal("Ghi nhận tài liệu lên chuỗi");
+    await activity.submitAndSeal("Cấp chứng nhận cho lô hàng");
+    await activity.continue();
+    await activity.answer(/Chỉ chuyển quyền lưu giữ/);
+
+    const panel = activity.panel(
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+    );
+    await panel
+      .getByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      })
+      .click();
+    await expect(
+      panel.getByText(/1 trên 2 tổ chức bắt buộc/),
+    ).toBeVisible();
+
+    const pendingSaved = await peek(page, "cmi.suspend_data");
+    await installScormApi(page, {
+      initialValues: {
+        "cmi.suspend_data": pendingSaved,
+        "cmi.core.entry": "resume",
+      },
+    });
+    await page.goto("/");
+    await activity.resumePrevious();
+    await activity.expectStage(4);
+
+    const replayedPanel = activity.panel(
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+    );
+    await expect(
+      replayedPanel.getByText(/1 trên 2 tổ chức bắt buộc/),
+    ).toBeVisible();
+    await replayedPanel
+      .getByRole("button", {
+        name: "Bàn giao cho bên tiếp nhận lưu giữ",
+      })
+      .click();
+    await replayedPanel
+      .getByRole("button", { name: "Từ chối đề xuất" })
+      .click();
+    await expect(
+      replayedPanel.getByText(
+        /Lần từ chối trước vẫn được giữ trong lịch sử/,
+      ),
+    ).toBeVisible();
+
+    const declinedSaved = await peek(page, "cmi.suspend_data");
+    await installScormApi(page, {
+      initialValues: {
+        "cmi.suspend_data": declinedSaved,
+        "cmi.core.entry": "resume",
+      },
+    });
+    await page.goto("/");
+    await activity.resumePrevious();
+    await activity.expectStage(4);
+
+    const declinedPanel = activity.panel(
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+    );
+    await expect(
+      declinedPanel.getByText(
+        /Lần từ chối trước vẫn được giữ trong lịch sử/,
+      ),
+    ).toBeVisible();
+    await declinedPanel
+      .getByRole("button", {
+        name: "Ký và phê duyệt đề xuất",
+      })
+      .click();
+    await expect(
+      declinedPanel.getByText(/Đã đáp ứng yêu cầu/),
+    ).toBeVisible();
+
+    const endorsedSaved = await peek(page, "cmi.suspend_data");
+    await installScormApi(page, {
+      initialValues: {
+        "cmi.suspend_data": endorsedSaved,
+        "cmi.core.entry": "resume",
+      },
+    });
+    await page.goto("/");
+    await activity.resumePrevious();
+    await activity.expectStage(4);
+
+    const endorsedPanel = activity.panel(
+      "Bàn giao lô hàng cho đơn vị vận chuyển",
+    );
+    await expect(
+      endorsedPanel.getByText(/Đã đáp ứng yêu cầu/),
+    ).toBeVisible();
+    await endorsedPanel
+      .getByRole("button", {
+        name: "Cam kết giao dịch đã được phê duyệt",
+      })
+      .click();
+    await expect(
+      endorsedPanel.getByRole("button", {
+        name: "Ghi giao dịch vào khối",
+      }),
+    ).toBeVisible();
+  });
+
   /**
    * A hint is persisted as one bit in the hint bitmap, and the credit it caps is
    * recomputed from the scenario's declared targets on load rather than stored.

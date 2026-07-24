@@ -10,12 +10,18 @@ import { useSimulation } from "../../app/providers/simulation-provider";
 import { StageShell } from "../../components/stage-shell";
 import { KnowledgeCheckPanel } from "../../components/knowledge-check-panel";
 import { TransactionAction } from "../../components/transaction-action";
+import { EndorsedTransactionAction } from "../../components/endorsed-transaction-action";
 import { AssetCard } from "../../components/asset-card";
 import { commandContext, runtimeCommand } from "../../domain/scenario/runtime";
 import type {
   RecordTransportConditionCommand,
   TransferCustodyCommand,
 } from "../../domain/commands/commands";
+import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
+import {
+  decodeAnswer,
+  isAnswerCorrect,
+} from "../../domain/scenario/answer-codec";
 
 /**
  * Stage 4. The handover, and what travels with it.
@@ -34,11 +40,31 @@ export function ShipAndMonitorStage(): ReactNode {
   const t = useTranslator();
   const { stage, scenario } = useScenario();
   const { state } = useSimulation();
+  const configuration = useOptionalConfiguration();
   const definition = stage(ScenarioStageId.SHIP_AND_MONITOR);
   const [scopeCheck, transportCheck] = definition?.knowledgeChecks ?? [];
 
   /** Set once the learner has answered; drives the command they then submit. */
-  const [transfersOwnership, setTransfersOwnership] = useState<boolean | null>(null);
+  const [currentTransfersOwnership, setTransfersOwnership] =
+    useState<boolean | null>(null);
+  const restoredScopeDecision =
+    scopeCheck === undefined
+      ? undefined
+      : state.decisions[scopeCheck.knowledgeCheckId];
+  const restoredTransfersOwnership =
+    scopeCheck === undefined ||
+    restoredScopeDecision === undefined
+      ? null
+      : !isAnswerCorrect(
+          scopeCheck,
+          decodeAnswer(
+            scopeCheck,
+            restoredScopeDecision.encodedValue,
+          ),
+        );
+  const transfersOwnership =
+    currentTransfersOwnership ??
+    restoredTransfersOwnership;
 
   const sourceBatchId = scenario.runtime.assetRoles.sourceBatchId;
   const sensorCommand = runtimeCommand<RecordTransportConditionCommand>(
@@ -53,6 +79,18 @@ export function ShipAndMonitorStage(): ReactNode {
       transaction.transactionType === TransactionType.TRANSFER_CUSTODY &&
       transaction.transactionStatus === TransactionStatus.COMMITTED,
   );
+  const custodyProposalSubmitted = Object.values(
+    state.simulation.pendingProposalsById,
+  ).some(
+    (proposal) =>
+      proposal.actionId === "TRANSFER_CUSTODY" &&
+      proposal.status !== "SUPERSEDED",
+  );
+  const CustodyTransactionAction =
+    configuration?.configuration.technicalFeatures
+      .endorsementPolicies === true
+      ? EndorsedTransactionAction
+      : TransactionAction;
 
   return (
     <StageShell stageId={ScenarioStageId.SHIP_AND_MONITOR}>
@@ -66,6 +104,9 @@ export function ShipAndMonitorStage(): ReactNode {
       {scopeCheck !== undefined ? (
         <KnowledgeCheckPanel
           check={scopeCheck}
+          isLocked={
+            custodyProposalSubmitted || custodyCommitted
+          }
           onAnswered={(isCorrect) => {
             // A learner who answered "custody only" submits a valid transfer;
             // anyone else submits the one the rules refuse, and reads why.
@@ -75,7 +116,7 @@ export function ShipAndMonitorStage(): ReactNode {
       ) : null}
 
       {transfersOwnership !== null ? (
-        <TransactionAction
+        <CustodyTransactionAction
           decisionId="INT_CUSTODY_TRANSFERRED_TRANSACTION"
           actionId="TRANSFER_CUSTODY"
           labelKey="stage.shipAndMonitor.custodyAction"

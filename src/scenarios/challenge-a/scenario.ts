@@ -203,7 +203,7 @@ const scripts = transformed.scriptedTransactions.map((script) => {
 export const challengeAScenario: ScenarioDefinition = {
   ...transformed,
   scenarioId: "SCN_COFFEE_CHALLENGE_A",
-  scenarioVersion: "1.0.0",
+  scenarioVersion: "1.1.0",
   titleKey: "challenge.title",
   descriptionKey: "challenge.description",
   estimatedMinutes: 22,
@@ -243,6 +243,10 @@ export const challengeAScenario: ScenarioDefinition = {
       },
     },
     roleHandoffs: [
+      ...transformed.runtime.roleHandoffs.filter(
+        (handoff) =>
+          handoff.stageId !== ScenarioStageId.RECALL_AND_DEBRIEF,
+      ),
       {
         handoffId: "HANDOFF_RETAILER_TO_INTERNAL_REVIEW",
         stageId: ScenarioStageId.RECALL_AND_DEBRIEF,

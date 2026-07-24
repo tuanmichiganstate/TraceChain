@@ -51,6 +51,11 @@ export const JournalOpcode = {
   SUSPEND_LOT: 33,
   SUBMIT_DISCREPANCY_DECISION: 40,
   INVESTIGATE_DISCREPANCY: 41,
+  CREATE_ENDORSED_PROPOSAL: 50,
+  ENDORSE_TRANSACTION_PROPOSAL: 51,
+  DECLINE_TRANSACTION_PROPOSAL: 52,
+  COMMIT_ENDORSED_TRANSACTION: 53,
+  CREATE_ENDORSED_CORRECTION_PROPOSAL: 54,
 } as const;
 
 export type JournalOpcodeValue = (typeof JournalOpcode)[keyof typeof JournalOpcode];
@@ -92,6 +97,7 @@ function definition(
 
 export function commandJournalDefinitions(
   scenario: ScenarioDefinition,
+  endorsementPoliciesEnabled = false,
 ): readonly JournalOpcodeDefinition[] {
   const limits = scenario.runtime.journalLimits;
   return [
@@ -102,7 +108,7 @@ export function commandJournalDefinitions(
     definition(
       JournalOpcode.TRANSFER_CUSTODY,
       "baseline",
-      MAX_ATTEMPT_COUNT,
+      endorsementPoliciesEnabled ? 0 : MAX_ATTEMPT_COUNT,
     ),
     // One historical attempt may already have been rejected before the
     // custody handoff. The UI now gates that ordering mistake, while this
@@ -110,9 +116,14 @@ export function commandJournalDefinitions(
     definition(JournalOpcode.RECORD_TRANSPORT, "baseline", 2),
     definition(JournalOpcode.RECEIVE_BATCH, "baseline", 1),
     definition(JournalOpcode.PURCHASE_ON_RECEIPT, "baseline", 1),
-    definition(JournalOpcode.RECORD_CORRECTION, "stage5", 1, {
+    definition(
+      JournalOpcode.RECORD_CORRECTION,
+      "stage5",
+      endorsementPoliciesEnabled ? 0 : 1,
+      {
       0: limits.correctionReasonMaximumUtf8Bytes,
-    }),
+      },
+    ),
     definition(JournalOpcode.TRANSFORM_BATCH, "baseline", 1),
     definition(JournalOpcode.PACKAGE_BATCH, "baseline", 1),
     definition(JournalOpcode.TRANSFER_OWNERSHIP, "baseline", 1),
@@ -126,7 +137,14 @@ export function commandJournalDefinitions(
     // Rejected submissions do not create an ordering batch, so retaining more
     // seal records would describe no valid authored path.
     definition(JournalOpcode.SEAL_PENDING_BLOCK, "baseline", 13),
-    definition(JournalOpcode.ROLE_HANDOFF, "context", limits.maximumStage9Handoffs),
+    definition(
+      JournalOpcode.ROLE_HANDOFF,
+      "context",
+      limits.maximumStage9Handoffs +
+        (endorsementPoliciesEnabled
+          ? limits.maximumEndorsementHandoffs
+          : 0),
+    ),
     definition(JournalOpcode.SUBMIT_CERTIFICATE_DECISION, "stage3", 1),
     definition(JournalOpcode.REVIEW_ISSUER, "stage3", 1),
     definition(JournalOpcode.REMEDIATE_STORAGE, "stage3", 1),
@@ -136,6 +154,36 @@ export function commandJournalDefinitions(
       JournalOpcode.INVESTIGATE_DISCREPANCY,
       "stage5",
       limits.maximumStage5Mitigations,
+    ),
+    definition(
+      JournalOpcode.CREATE_ENDORSED_PROPOSAL,
+      "baseline",
+      endorsementPoliciesEnabled ? MAX_ATTEMPT_COUNT : 0,
+    ),
+    definition(
+      JournalOpcode.CREATE_ENDORSED_CORRECTION_PROPOSAL,
+      "baseline",
+      endorsementPoliciesEnabled ? 1 : 0,
+      {
+        1: limits.correctionReasonMaximumUtf8Bytes,
+      },
+    ),
+    definition(
+      JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL,
+      "baseline",
+      endorsementPoliciesEnabled ? 2 : 0,
+    ),
+    definition(
+      JournalOpcode.DECLINE_TRANSACTION_PROPOSAL,
+      "baseline",
+      endorsementPoliciesEnabled
+        ? limits.maximumEndorsementDeclines
+        : 0,
+    ),
+    definition(
+      JournalOpcode.COMMIT_ENDORSED_TRANSACTION,
+      "baseline",
+      endorsementPoliciesEnabled ? 2 : 0,
     ),
   ];
 }
@@ -152,7 +200,11 @@ export function tc3CodecSchema(options: {
     scenarioSeed: options.configuration.scenarioSeed,
     decisionIds: options.scenario.decisionIds,
     hintIds: options.scenario.hintIds,
-    opcodes: commandJournalDefinitions(options.scenario),
+    opcodes: commandJournalDefinitions(
+      options.scenario,
+      options.configuration.technicalFeatures
+        .endorsementPolicies,
+    ),
   };
 }
 
@@ -241,6 +293,101 @@ export function commandJournalEntry(options: {
     opcode: actionOpcode(options.actionId),
     contextIndex: contextIndex(options.scenario, options.contextId),
     values: compactValuesForCommand(options.actionId, options.command, options.scenario),
+  };
+}
+
+export function endorsedProposalJournalEntry(options: {
+  readonly commandSequence: number;
+  readonly actionId: string;
+  readonly command: SupplyChainCommand;
+  readonly contextId: string;
+  readonly scenario: ScenarioDefinition;
+}): CompactCommandJournalEntry {
+  const opcode =
+    options.actionId === "RECORD_CORRECTION"
+      ? JournalOpcode.CREATE_ENDORSED_CORRECTION_PROPOSAL
+      : JournalOpcode.CREATE_ENDORSED_PROPOSAL;
+  return {
+    commandSequence: options.commandSequence,
+    opcode,
+    contextIndex: contextIndex(
+      options.scenario,
+      options.contextId,
+    ),
+    values: [
+      actionOpcode(options.actionId),
+      ...compactValuesForCommand(
+        options.actionId,
+        options.command,
+        options.scenario,
+      ),
+    ],
+  };
+}
+
+export function commandFromEndorsedProposalJournal(
+  entry: CompactCommandJournalEntry,
+  scenario: ScenarioDefinition,
+  state: DomainState,
+): {
+  readonly actionId: string;
+  readonly command: SupplyChainCommand;
+} {
+  const actionOpcodeValue = entry.values[0];
+  if (typeof actionOpcodeValue !== "number") {
+    throw new ScenarioConfigurationError(
+      "Endorsed proposal journal entry has no action opcode",
+    );
+  }
+  const expectedOuterOpcode =
+    actionOpcodeValue === JournalOpcode.RECORD_CORRECTION
+      ? JournalOpcode.CREATE_ENDORSED_CORRECTION_PROPOSAL
+      : actionOpcodeValue === JournalOpcode.TRANSFER_CUSTODY
+        ? JournalOpcode.CREATE_ENDORSED_PROPOSAL
+        : null;
+  if (
+    expectedOuterOpcode === null ||
+    entry.opcode !== expectedOuterOpcode
+  ) {
+    throw new ScenarioConfigurationError(
+      "Endorsed proposal action does not match its bounded journal opcode",
+    );
+  }
+  const reconstructed = commandFromJournal(
+    {
+      ...entry,
+      opcode: actionOpcodeValue,
+      values: entry.values.slice(1),
+    },
+    scenario,
+    state,
+  );
+  if (reconstructed === null) {
+    throw new ScenarioConfigurationError(
+      `Endorsed proposal refers to unknown action opcode ${actionOpcodeValue}`,
+    );
+  }
+  return reconstructed;
+}
+
+export function endorsementWorkflowJournalEntry(options: {
+  readonly commandSequence: number;
+  readonly opcode:
+    | typeof JournalOpcode.ENDORSE_TRANSACTION_PROPOSAL
+    | typeof JournalOpcode.DECLINE_TRANSACTION_PROPOSAL
+    | typeof JournalOpcode.COMMIT_ENDORSED_TRANSACTION;
+  readonly contextId: string;
+  readonly proposalCommandSequence: number;
+  readonly scenario: ScenarioDefinition;
+}): CompactCommandJournalEntry {
+  return {
+    commandSequence: options.commandSequence,
+    opcode: options.opcode,
+    contextIndex: contextIndex(
+      options.scenario,
+      options.contextId,
+    ),
+    values: [options.proposalCommandSequence],
   };
 }
 

@@ -7,8 +7,13 @@ import { StatusPill } from "./status-pill";
 
 export function SignatureTrustSummary({
   evidence,
+  endorsementStatus = "NOT_APPLICABLE",
 }: {
   readonly evidence: SignatureTrustEvidence;
+  readonly endorsementStatus?:
+    | "NOT_APPLICABLE"
+    | "PENDING"
+    | "SATISFIED";
 }): ReactNode {
   const t = useTranslator();
   const [copyStatus, setCopyStatus] = useState<
@@ -90,8 +95,20 @@ export function SignatureTrustSummary({
         <div className="asset-card__row">
           <dt>{t("signature.endorsementLabel")}</dt>
           <dd>
-            <StatusPill tone="neutral">
-              {t("signature.notApplicable")}
+            <StatusPill
+              tone={
+                endorsementStatus === "SATISFIED"
+                  ? "pass"
+                  : "neutral"
+              }
+            >
+              {t(
+                endorsementStatus === "SATISFIED"
+                  ? "signature.endorsementSatisfied"
+                  : endorsementStatus === "PENDING"
+                    ? "signature.endorsementPending"
+                    : "signature.notApplicable",
+              )}
             </StatusPill>
           </dd>
         </div>

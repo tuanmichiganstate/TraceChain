@@ -121,7 +121,6 @@ export interface ValidationResult {
 export interface EndorsementResult {
   endorsingOrganizationId: string;
   endorsedAt: string;
-  /** Always true in single-user mode; the type allows future refusal. */
   isEndorsed: boolean;
   /**
    * True when the simulation generated this endorsement on the learner's
@@ -130,6 +129,11 @@ export interface EndorsementResult {
    * the opposite of the intended lesson.
    */
   isSimulatedCounterparty: boolean;
+  /** Present for a genuine educational Ed25519 endorsement. */
+  endorsementId?: string;
+  proposalDigest?: string;
+  endorsementPolicyId?: string;
+  signatureEvidence?: SignatureTrustEvidence;
 }
 
 export interface LedgerTransaction {

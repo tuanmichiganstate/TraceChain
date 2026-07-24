@@ -41,6 +41,7 @@ const runtimeFileNames = new Set([
   "identity-registry.json",
   "educational-signing-keys.json",
   "authorization-policies.json",
+  "endorsement-policies.json",
 ]);
 const packagingFileNames = new Set([
   "imsmanifest.xml",
@@ -526,6 +527,7 @@ function packageOne({
       ["identity-registry.json", cryptographicRuntime.identityRegistry],
       ["educational-signing-keys.json", cryptographicRuntime.signingKeys],
       ["authorization-policies.json", cryptographicRuntime.authorizationPolicies],
+      ["endorsement-policies.json", cryptographicRuntime.endorsementPolicies],
     ]) {
       const content = `${JSON.stringify(value, null, 2)}\n`;
       writeFileSync(join(packageDirectory, fileName), content, "utf8");
@@ -572,7 +574,11 @@ function packageOne({
     reproducibleSource: provenance.reproducibleSource,
     normalizedArchiveMetadata: true,
     cryptographicEvidenceSchemaVersion:
-      cryptographicRuntime === null ? null : "1",
+      cryptographicRuntime === null
+        ? null
+        : configuration.technicalFeatures.endorsementPolicies
+          ? "2"
+          : "1",
     cryptographicRuntimeHashes,
     cryptographicMechanisms:
       cryptographicRuntime === null
@@ -581,6 +587,14 @@ function packageOne({
             signatureAlgorithm: "Ed25519",
             signatureProvider: "@noble/ed25519@3.1.0",
             signatureComputation: "REAL",
+            endorsementSignatureComputation:
+              configuration.technicalFeatures.endorsementPolicies
+                ? "REAL"
+                : "DISABLED",
+            endorsementPolicyEvaluation:
+              configuration.technicalFeatures.endorsementPolicies
+                ? "CONSTRAINED_SERIALIZABLE_POLICY_TREE"
+                : "DISABLED",
             organizationalIdentity: "EDUCATIONAL_SIMULATION",
             keyCustody: "STATIC_EDUCATIONAL_FIXTURE",
             certificateIssuance: "EDUCATIONAL_SIMULATION",

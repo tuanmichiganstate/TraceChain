@@ -12,6 +12,10 @@ import type { LedgerDomainEvent } from "../events/events";
 import type { DomainState } from "../ledger/domain-state";
 import type { TransactionResult } from "../ledger/ledger-engine";
 import type {
+  EndorsementEvaluation,
+  EndorsementPolicyDefinition,
+  EndorsementRecord,
+  EndorsementValidationRuleId,
   SignatureTrustEvidence,
   SignatureValidationRuleId,
 } from "../../crypto/signatures/types";
@@ -78,9 +82,37 @@ export type ConsequentialDecisionCommand =
   | SubmitDiscrepancyDecisionCommand
   | MitigationDecisionCommand;
 
+export interface CreateTransactionProposalCommand {
+  readonly commandType: "CREATE_TRANSACTION_PROPOSAL";
+  readonly actionId: string;
+  readonly businessCommand: SupplyChainCommand;
+}
+
+export interface EndorseTransactionProposalCommand {
+  readonly commandType: "ENDORSE_TRANSACTION_PROPOSAL";
+  readonly proposalId: string;
+}
+
+export interface DeclineTransactionProposalCommand {
+  readonly commandType: "DECLINE_TRANSACTION_PROPOSAL";
+  readonly proposalId: string;
+}
+
+export interface CommitEndorsedTransactionCommand {
+  readonly commandType: "COMMIT_ENDORSED_TRANSACTION";
+  readonly proposalId: string;
+}
+
+export type EndorsementWorkflowCommand =
+  | CreateTransactionProposalCommand
+  | EndorseTransactionProposalCommand
+  | DeclineTransactionProposalCommand
+  | CommitEndorsedTransactionCommand;
+
 export type SimulationCommandPayload =
   | SupplyChainCommand
-  | ConsequentialDecisionCommand;
+  | ConsequentialDecisionCommand
+  | EndorsementWorkflowCommand;
 
 export interface DomainSimulationCommand extends SimulationCommand {
   readonly payload: SupplyChainCommand;
@@ -138,7 +170,8 @@ export interface AttemptValidationFailure {
     | "MISSING_STATE_VERSION"
     | "UNEXPECTED_STATE_VERSION"
     | "DOMAIN_RULE_FAILED"
-    | SignatureValidationRuleId;
+    | SignatureValidationRuleId
+    | EndorsementValidationRuleId;
   readonly messageKey: string;
   readonly details?: Readonly<Record<string, string | number | boolean>>;
 }
@@ -159,10 +192,35 @@ export interface AttemptAuditEvent {
 
 export type SimulationEvent = AcceptedDomainEvent | AttemptAuditEvent;
 
+export type PendingProposalStatus =
+  | "AWAITING_ENDORSEMENTS"
+  | "POLICY_SATISFIED"
+  | "COMMITTED"
+  | "DECLINED"
+  | "STALE"
+  | "SUPERSEDED";
+
+export interface PendingTransactionProposal {
+  readonly proposalId: string;
+  readonly actionId: string;
+  readonly command: DomainSimulationCommand;
+  readonly proposerContext: TrustedExecutionContext;
+  readonly proposalEvidence: SignatureTrustEvidence;
+  readonly policy: EndorsementPolicyDefinition;
+  readonly endorsements: readonly EndorsementRecord[];
+  readonly evaluation: EndorsementEvaluation;
+  readonly status: PendingProposalStatus;
+  readonly declineCommandIds: readonly string[];
+  readonly transactionId: string | null;
+}
+
 export interface SimulationRuntimeState {
   readonly domain: DomainState;
   readonly acceptedEvents: readonly AcceptedDomainEvent[];
   readonly attemptAuditEvents: readonly AttemptAuditEvent[];
+  readonly pendingProposalsById: Readonly<
+    Record<string, PendingTransactionProposal>
+  >;
   /**
    * Runtime idempotency cache. TC3 persists the compact command journal and
    * rebuilds this index during replay rather than serializing event objects.
@@ -202,3 +260,23 @@ export type SimulationCommandOutcome =
 export type ProcessedCommandOutcome =
   | Omit<AcceptedSimulationCommandOutcome, "state">
   | Omit<RejectedSimulationCommandOutcome, "state">;
+
+export interface AcceptedEndorsementWorkflowOutcome {
+  readonly isAccepted: true;
+  readonly commandId: string;
+  readonly state: SimulationRuntimeState;
+  readonly pendingProposal: PendingTransactionProposal;
+  readonly event: SimulationDecisionEvent;
+}
+
+export interface RejectedEndorsementWorkflowOutcome {
+  readonly isAccepted: false;
+  readonly commandId: string;
+  readonly state: SimulationRuntimeState;
+  readonly pendingProposal: PendingTransactionProposal | null;
+  readonly auditEvent: AttemptAuditEvent;
+}
+
+export type EndorsementWorkflowOutcome =
+  | AcceptedEndorsementWorkflowOutcome
+  | RejectedEndorsementWorkflowOutcome;

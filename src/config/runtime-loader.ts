@@ -69,6 +69,7 @@ export async function loadRuntimePackage(
           loadJson(fetcher, "./identity-registry.json"),
           loadJson(fetcher, "./educational-signing-keys.json"),
           loadJson(fetcher, "./authorization-policies.json"),
+          loadJson(fetcher, "./endorsement-policies.json"),
           loadJson(fetcher, "./build-info.json"),
         ])
       : null;
@@ -111,9 +112,10 @@ export async function loadRuntimePackage(
           identityRegistry: cryptographicFiles[0],
           signingKeys: cryptographicFiles[1],
           authorizationPolicies: cryptographicFiles[2],
+          endorsementPolicies: cryptographicFiles[3],
         } as CryptographicRuntime;
   if (cryptographicRuntime !== null) {
-    const buildInformation = cryptographicFiles?.[3] as {
+    const buildInformation = cryptographicFiles?.[4] as {
       readonly scenarioHash?: unknown;
       readonly cryptographicEvidenceSchemaVersion?: unknown;
       readonly cryptographicRuntimeHashes?: unknown;
@@ -121,7 +123,11 @@ export async function loadRuntimePackage(
     if (
       buildInformation.scenarioHash !==
         sha256Hex(`${JSON.stringify(scenario, null, 2)}\n`) ||
-      buildInformation.cryptographicEvidenceSchemaVersion !== "1" ||
+      buildInformation.cryptographicEvidenceSchemaVersion !==
+        (configurationFile.configuration.technicalFeatures
+          .endorsementPolicies
+          ? "2"
+          : "1") ||
       typeof buildInformation.cryptographicRuntimeHashes !== "object" ||
       buildInformation.cryptographicRuntimeHashes === null
     ) {
@@ -138,6 +144,10 @@ export async function loadRuntimePackage(
       [
         "authorization-policies.json",
         cryptographicRuntime.authorizationPolicies,
+      ],
+      [
+        "endorsement-policies.json",
+        cryptographicRuntime.endorsementPolicies,
       ],
     ] as const;
     for (const [fileName, value] of files) {

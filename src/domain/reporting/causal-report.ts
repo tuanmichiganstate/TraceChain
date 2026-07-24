@@ -220,6 +220,78 @@ export function buildCausalReport(options: {
       messageKey: "report.causal.recallSignatureAccepted",
     });
   }
+  const genuinelyEndorsedTransactions = signedTransactions.filter(
+    (transaction) =>
+      transaction.endorsementResults.length > 0 &&
+      transaction.endorsementResults.every(
+        (endorsement) =>
+          endorsement.isSimulatedCounterparty === false &&
+          endorsement.signatureEvidence?.signatureValid === true,
+      ),
+  );
+  if (
+    genuinelyEndorsedTransactions.some(
+      (transaction) =>
+        transaction.transactionType ===
+        TransactionType.TRANSFER_CUSTODY,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.custodyEndorsed",
+    });
+  }
+  if (
+    genuinelyEndorsedTransactions.some(
+      (transaction) =>
+        transaction.transactionType ===
+        TransactionType.RECORD_CORRECTION,
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.correctionEndorsed",
+    });
+  }
+  if (
+    options.runtime.attemptAuditEvents.some((event) =>
+      event.validationFailures.some(
+        (failure) =>
+          failure.code ===
+          "RULE_ENDORSEMENT_PROPOSAL_MISMATCH",
+      ),
+    )
+  ) {
+    governanceQuality -= 10;
+    explanations.push({
+      messageKey:
+        "report.causal.endorsementProposalMismatch",
+    });
+  }
+  if (
+    options.runtime.attemptAuditEvents.some((event) =>
+      event.validationFailures.some(
+        (failure) =>
+          failure.code ===
+          "RULE_ENDORSED_STATE_VERSION_STALE",
+      ),
+    )
+  ) {
+    operationalEfficiency -= 10;
+    explanations.push({
+      messageKey: "report.causal.endorsedProposalStale",
+    });
+  }
+  if (
+    options.runtime.acceptedEvents.some(
+      (event) =>
+        event.kind === "SIMULATION_DECISION" &&
+        event.decisionType ===
+          "TRANSACTION_PROPOSAL_DECLINED",
+    )
+  ) {
+    explanations.push({
+      messageKey: "report.causal.endorsementDeclined",
+    });
+  }
 
   const discrepancyEntry = options.journal.find(
     (entry) => entry.opcode === JournalOpcode.SUBMIT_DISCREPANCY_DECISION,

@@ -104,6 +104,8 @@ export interface ScenarioRuntimeDefinition {
     readonly maximumStage5Mitigations: number;
     readonly maximumStage9Handoffs: number;
     readonly maximumStage9Resubmissions: number;
+    readonly maximumEndorsementHandoffs: number;
+    readonly maximumEndorsementDeclines: number;
     readonly correctionReasonMaximumUtf8Bytes: number;
   };
 }

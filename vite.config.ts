@@ -11,6 +11,7 @@ const cryptographicRuntimeFiles: Readonly<Record<string, string>> = {
   "identity-registry.json": `${JSON.stringify(coffeeCryptographicRuntime.identityRegistry, null, 2)}\n`,
   "educational-signing-keys.json": `${JSON.stringify(coffeeCryptographicRuntime.signingKeys, null, 2)}\n`,
   "authorization-policies.json": `${JSON.stringify(coffeeCryptographicRuntime.authorizationPolicies, null, 2)}\n`,
+  "endorsement-policies.json": `${JSON.stringify(coffeeCryptographicRuntime.endorsementPolicies, null, 2)}\n`,
 };
 const cryptographicRuntimeHashes = Object.fromEntries(
   Object.entries(cryptographicRuntimeFiles).map(([fileName, source]) => [
@@ -28,12 +29,15 @@ const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
       scenarioHash: createHash("sha256")
         .update(developmentScenarioSource, "utf8")
         .digest("hex"),
-      cryptographicEvidenceSchemaVersion: "1",
+      cryptographicEvidenceSchemaVersion: "2",
       cryptographicRuntimeHashes,
       cryptographicMechanisms: {
         signatureAlgorithm: "Ed25519",
         signatureProvider: "@noble/ed25519@3.1.0",
         signatureComputation: "REAL",
+        endorsementSignatureComputation: "REAL",
+        endorsementPolicyEvaluation:
+          "CONSTRAINED_SERIALIZABLE_POLICY_TREE",
         organizationalIdentity: "EDUCATIONAL_SIMULATION",
         keyCustody: "STATIC_EDUCATIONAL_FIXTURE",
         certificateIssuance: "EDUCATIONAL_SIMULATION",

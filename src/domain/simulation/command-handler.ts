@@ -17,12 +17,14 @@ import type {
   TrustedExecutionContext,
 } from "./types";
 import type { SignatureTrustEvidence } from "../../crypto/signatures/types";
+import type { EndorsementResult } from "../types/models";
 
 export function createSimulationRuntimeState(domain: DomainState): SimulationRuntimeState {
   return {
     domain,
     acceptedEvents: [],
     attemptAuditEvents: [],
+    pendingProposalsById: {},
     outcomesByCommandId: {},
   };
 }
@@ -65,7 +67,7 @@ export function expectedStateVersionsFor(
   );
 }
 
-function contextFailures(
+export function trustedContextFailures(
   command: DomainSimulationCommand,
   trusted: TrustedExecutionContext,
 ): AttemptValidationFailure[] {
@@ -85,7 +87,7 @@ function contextFailures(
       ];
 }
 
-function versionFailures(
+export function stateVersionFailures(
   command: DomainSimulationCommand,
   state: DomainState,
 ): AttemptValidationFailure[] {
@@ -139,7 +141,7 @@ function versionTransitions(
     .sort((left, right) => left.assetId.localeCompare(right.assetId, "en"));
 }
 
-function rejectedOutcome(
+export function recordRejectedAttempt(
   runtime: SimulationRuntimeState,
   command: DomainSimulationCommand,
   failures: readonly AttemptValidationFailure[],
@@ -190,6 +192,7 @@ export function handleSimulationCommand(options: {
   readonly environment: SimulationEnvironment;
   readonly signatureEvidence?: SignatureTrustEvidence;
   readonly signatureFailures?: readonly AttemptValidationFailure[];
+  readonly verifiedEndorsements?: readonly EndorsementResult[];
 }): SimulationCommandOutcome {
   const {
     runtime,
@@ -199,17 +202,18 @@ export function handleSimulationCommand(options: {
     registries,
     environment,
     signatureEvidence,
+    verifiedEndorsements,
   } = options;
   const duplicate = runtime.outcomesByCommandId[command.metadata.commandId];
   if (duplicate !== undefined) return { ...duplicate, state: runtime };
 
   const boundaryFailures = [
-    ...contextFailures(command, trustedContext),
-    ...versionFailures(command, runtime.domain),
+    ...trustedContextFailures(command, trustedContext),
+    ...stateVersionFailures(command, runtime.domain),
     ...(options.signatureFailures ?? []),
   ];
   if (boundaryFailures.length > 0) {
-    return rejectedOutcome(
+    return recordRejectedAttempt(
       runtime,
       command,
       boundaryFailures,
@@ -229,10 +233,11 @@ export function handleSimulationCommand(options: {
     },
     registries,
     signatureEvidence,
+    verifiedEndorsements,
   );
 
   if (!transaction.isAccepted) {
-    return rejectedOutcome(
+    return recordRejectedAttempt(
       runtime,
       command,
       transaction.validation.failures.map((failure) => ({
@@ -271,6 +276,7 @@ export function handleSimulationCommand(options: {
     domain: transaction.state,
     acceptedEvents: [...runtime.acceptedEvents, acceptedEvent],
     attemptAuditEvents: runtime.attemptAuditEvents,
+    pendingProposalsById: runtime.pendingProposalsById,
     outcomesByCommandId: runtime.outcomesByCommandId,
   };
   const processed = {

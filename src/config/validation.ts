@@ -131,7 +131,6 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
       );
     }
     for (const unavailable of [
-      "endorsementPolicies",
       "stateVersionConflicts",
       "merkleLab",
       "proofOfWorkLab",

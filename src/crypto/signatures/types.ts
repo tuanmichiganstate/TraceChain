@@ -53,10 +53,42 @@ export interface AuthorizationPolicyRegistry {
   readonly policies: readonly AuthorizationPolicy[];
 }
 
+export type EndorsementPolicyExpression =
+  | {
+      readonly kind: "SIGNED_BY";
+      readonly organizationId: string;
+    }
+  | {
+      readonly kind: "ALL_OF";
+      readonly policies: readonly EndorsementPolicyExpression[];
+    }
+  | {
+      readonly kind: "ANY_OF";
+      readonly policies: readonly EndorsementPolicyExpression[];
+    }
+  | {
+      readonly kind: "THRESHOLD";
+      readonly required: number;
+      readonly organizationIds: readonly string[];
+    };
+
+export interface EndorsementPolicyDefinition {
+  readonly endorsementPolicyId: string;
+  readonly appliesToCommandTypes: readonly string[];
+  readonly expression: EndorsementPolicyExpression;
+  readonly localizationKey: string;
+}
+
+export interface EndorsementPolicyRegistry {
+  readonly schemaVersion: "1";
+  readonly policies: readonly EndorsementPolicyDefinition[];
+}
+
 export interface CryptographicRuntime {
   readonly identityRegistry: EducationalIdentityRegistry;
   readonly signingKeys: EducationalSigningKeyRegistry;
   readonly authorizationPolicies: AuthorizationPolicyRegistry;
+  readonly endorsementPolicies: EndorsementPolicyRegistry;
 }
 
 export interface TransactionProposalV1 {
@@ -131,6 +163,46 @@ export interface SignatureTrustEvidence {
   readonly signatureValid: boolean;
   readonly authorization: AuthorizationResult;
   readonly failureRuleIds: readonly SignatureValidationRuleId[];
+}
+
+export interface EndorsementRecord {
+  readonly endorsementId: string;
+  readonly proposalId: string;
+  readonly proposalDigest: string;
+  readonly organizationId: string;
+  readonly roleId: string;
+  readonly keyId: string;
+  readonly signature: SignatureEnvelope;
+  readonly endorsedAt: string;
+  /**
+   * Derived during live execution and deterministic replay. TC3 stores the
+   * compact action and trusted context, never this redundant evidence object.
+   */
+  readonly verification: SignatureTrustEvidence;
+}
+
+export const EndorsementValidationRule = {
+  POLICY_NOT_SATISFIED: "RULE_ENDORSEMENT_POLICY_NOT_SATISFIED",
+  SIGNATURE_INVALID: "RULE_ENDORSEMENT_SIGNATURE_INVALID",
+  ENDORSER_NOT_AUTHORIZED: "RULE_ENDORSER_NOT_AUTHORIZED",
+  PROPOSAL_MISMATCH: "RULE_ENDORSEMENT_PROPOSAL_MISMATCH",
+  DUPLICATE_ENDORSER: "RULE_DUPLICATE_ENDORSER",
+  ENDORSED_STATE_VERSION_STALE: "RULE_ENDORSED_STATE_VERSION_STALE",
+} as const;
+
+export type EndorsementValidationRuleId =
+  (typeof EndorsementValidationRule)[keyof typeof EndorsementValidationRule];
+
+export interface EndorsementEvaluation {
+  readonly endorsementPolicyId: string;
+  readonly satisfied: boolean;
+  readonly validEndorsementIds: readonly string[];
+  readonly invalidEndorsementIds: readonly string[];
+  readonly missingOrganizationIds: readonly string[];
+  readonly duplicateOrganizationIds: readonly string[];
+  readonly proposalMismatchIds: readonly string[];
+  readonly unauthorizedEndorserIds: readonly string[];
+  readonly failureRuleIds: readonly EndorsementValidationRuleId[];
 }
 
 export interface SignatureTamperDemonstration {
