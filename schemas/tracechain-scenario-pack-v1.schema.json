@@ -278,7 +278,12 @@
           "enum": ["EVENT_OCCURRED", "FIELD_EQUALS", "FIELD_IN"]
         },
         "eventType": { "$ref": "#/$defs/identifier" },
-        "fieldPath": { "type": "string", "minLength": 1 },
+        "fieldPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^(?!(?:.*\\.)?(?:__proto__|constructor|prototype)(?:\\.|$))[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+        },
         "expectedValue": {
           "type": ["string", "number", "boolean"]
         },

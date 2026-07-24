@@ -257,6 +257,30 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("rejects unsafe automated-evidence field paths", () => {
+    const invalid = structuredClone(packJson);
+    const inspectionRule = invalid.evidenceRules.find(
+      (rule) =>
+        rule.evidenceRuleId === "RULE_CERTIFICATE_INSPECTED",
+    );
+    if (inspectionRule === undefined) {
+      throw new Error("Expected the certificate inspection rule.");
+    }
+    inspectionRule.fieldPath = "__proto__.evidenceId";
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INVALID_EVIDENCE_FIELD_PATH",
+          path: "$.evidenceRules[0].fieldPath",
+        }),
+      );
+    }
+  });
+
   it("rejects unknown competency references", () => {
     const invalid = structuredClone(packJson) as {
       scenarios: {

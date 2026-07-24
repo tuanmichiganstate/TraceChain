@@ -41,6 +41,7 @@ import type {
   WeightedCategoricalOutcomeModelV1,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
+import { evaluateAutomatedEvidenceRule } from "../runs/automated-evidence-rule";
 import { projectRunStateForRole } from "../runs/projection";
 import {
   hashReplayState,
@@ -1107,7 +1108,7 @@ export class HostedStage3RunService {
             commandDigest: digest,
             batchIndex: built.length,
             evidenceRuleId: "RULE_CERTIFICATE_INSPECTED",
-            sourceEventIds: [inspected.sequenced.eventId],
+            sourceEvents: [inspected.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -1185,7 +1186,7 @@ export class HostedStage3RunService {
             commandDigest: digest,
             batchIndex: built.length,
             evidenceRuleId: "RULE_CERTIFICATE_DECISION_SUBMITTED",
-            sourceEventIds: [submitted.sequenced.eventId],
+            sourceEvents: [submitted.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -1207,7 +1208,7 @@ export class HostedStage3RunService {
           });
           built.push(proposed);
           state = proposed.nextState;
-          const transactionEventIds: string[] = [];
+          const transactionEvents: RunEventV1[] = [];
           for (const actionId of this.adapter.actionIdsFor(
             state.caseVariant,
           )) {
@@ -1239,11 +1240,14 @@ export class HostedStage3RunService {
               payload: {
                 actionId,
                 coreCommandId,
+                validationRuleId:
+                  preview.summary.validationRuleIds[0] ??
+                  "RULE_NONE",
                 summary: summaryToJson(preview.summary),
               },
             });
             built.push(transaction);
-            transactionEventIds.push(transaction.sequenced.eventId);
+            transactionEvents.push(transaction.sequenced);
             state = transaction.nextState;
           }
           if (
@@ -1262,7 +1266,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_UNAUTHORIZED_CERTIFICATE_RECOGNIZED",
-              sourceEventIds: transactionEventIds,
+              sourceEvents: transactionEvents,
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1385,7 +1389,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_CUSTODY_ENDORSEMENT_SATISFIED",
-              sourceEventIds: [endorsement.sequenced.eventId],
+              sourceEvents: [endorsement.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1477,7 +1481,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_TRANSPORT_CONDITION_RECORDED",
-              sourceEventIds: [transaction.sequenced.eventId],
+              sourceEvents: [transaction.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1615,7 +1619,7 @@ export class HostedStage3RunService {
             evidenceRuleId: evaluation.isRejectedAttempt
               ? "RULE_DISCREPANCY_REJECTED_ATTEMPT"
               : "RULE_DISCREPANCY_DECISION_SUBMITTED",
-            sourceEventIds: [submitted.sequenced.eventId],
+            sourceEvents: [submitted.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -1742,7 +1746,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_CORRECTION_ENDORSEMENT_SATISFIED",
-              sourceEventIds: [endorsement.sequenced.eventId],
+              sourceEvents: [endorsement.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1800,7 +1804,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_APPEND_ONLY_CORRECTION_COMMITTED",
-              sourceEventIds: [commitment.sequenced.eventId],
+              sourceEvents: [commitment.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1868,7 +1872,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_TRANSFORMATION_PROVENANCE_CREATED",
-              sourceEventIds: [transaction.sequenced.eventId],
+              sourceEvents: [transaction.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -1936,7 +1940,7 @@ export class HostedStage3RunService {
               commandDigest: digest,
               batchIndex: built.length,
               evidenceRuleId,
-              sourceEventIds: [submitted.sequenced.eventId],
+              sourceEvents: [submitted.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -2084,7 +2088,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_RETAIL_DISPATCH_RECORDED",
-              sourceEventIds: [transaction.sequenced.eventId],
+              sourceEvents: [transaction.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -2144,7 +2148,7 @@ export class HostedStage3RunService {
             batchIndex: built.length,
             evidenceRuleId:
               "RULE_TAMPER_DEMONSTRATION_COMPLETED",
-            sourceEventIds: [demonstrated.sequenced.eventId],
+            sourceEvents: [demonstrated.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -2189,7 +2193,7 @@ export class HostedStage3RunService {
               batchIndex: built.length,
               evidenceRuleId:
                 "RULE_DATA_GOVERNANCE_CLASSIFIED",
-              sourceEventIds: [submitted.sequenced.eventId],
+              sourceEvents: [submitted.sequenced],
             });
             built.push(evidence);
             state = evidence.nextState;
@@ -2231,7 +2235,7 @@ export class HostedStage3RunService {
             commandDigest: digest,
             batchIndex: built.length,
             evidenceRuleId: "RULE_RECALL_SCOPE_SUBMITTED",
-            sourceEventIds: [submitted.sequenced.eventId],
+            sourceEvents: [submitted.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -2334,7 +2338,7 @@ export class HostedStage3RunService {
             evidenceRuleId: preview.summary.isAccepted
               ? "RULE_AUTHORIZED_RECALL_COMMITTED"
               : "RULE_UNAUTHORIZED_RECALL_RETAINED",
-            sourceEventIds: [transaction.sequenced.eventId],
+            sourceEvents: [transaction.sequenced],
           });
           built.push(evidence);
           state = evidence.nextState;
@@ -3855,19 +3859,42 @@ export class HostedStage3RunService {
       }
       case "COMPETENCY_EVIDENCE_RECORDED": {
         const state = this.stateOrThrow(current);
+        const evidenceRuleId = requiredString(
+          event.payload.evidenceRuleId,
+          "evidenceRuleId",
+        );
+        const indicatorIds = requiredStringArray(
+          event.payload.indicatorIds,
+          "indicatorIds",
+        );
+        const rule = this.pack.evidenceRules.find(
+          (candidate) =>
+            candidate.evidenceRuleId === evidenceRuleId,
+        );
+        const evidenceRuleVersion =
+          event.payload.evidenceRuleVersion === undefined
+            ? rule?.version
+            : requiredString(
+                event.payload.evidenceRuleVersion,
+                "evidenceRuleVersion",
+              );
+        if (
+          rule === undefined ||
+          rule.version !== evidenceRuleVersion ||
+          canonicalize(rule.indicatorIds) !== canonicalize(indicatorIds)
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            `Competency evidence rule ${evidenceRuleId}@${evidenceRuleVersion} does not match the run's exact pack.`,
+          );
+        }
         const evidence: HostedCompetencyEvidence = {
           competencyEvidenceId: requiredString(
             event.payload.competencyEvidenceId,
             "competencyEvidenceId",
           ),
-          evidenceRuleId: requiredString(
-            event.payload.evidenceRuleId,
-            "evidenceRuleId",
-          ),
-          indicatorIds: requiredStringArray(
-            event.payload.indicatorIds,
-            "indicatorIds",
-          ),
+          evidenceRuleId,
+          indicatorIds,
           sourceEventIds: requiredStringArray(
             event.payload.sourceEventIds,
             "sourceEventIds",
@@ -3972,7 +3999,7 @@ export class HostedStage3RunService {
     readonly commandDigest: string;
     readonly batchIndex: number;
     readonly evidenceRuleId: string;
-    readonly sourceEventIds: readonly string[];
+    readonly sourceEvents: readonly RunEventV1[];
   }): Promise<BuiltEvent> {
     const rule = this.pack.evidenceRules.find(
       (candidate) =>
@@ -3982,6 +4009,21 @@ export class HostedStage3RunService {
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",
         `Evidence rule ${options.evidenceRuleId} is missing from the pack.`,
+      );
+    }
+    const matchingSourceEvents = options.sourceEvents.filter(
+      (event) =>
+        event.runId === options.state.runId &&
+        event.packId === options.state.packId &&
+        event.packVersion === options.state.packVersion &&
+        event.scenarioId === options.state.scenarioId &&
+        event.scenarioVersion === options.state.scenarioVersion &&
+        evaluateAutomatedEvidenceRule(rule, event).matched,
+    );
+    if (matchingSourceEvents.length === 0) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        `Evidence rule ${rule.evidenceRuleId}@${rule.version} does not match its source event.`,
       );
     }
     return this.buildEvent({
@@ -3996,8 +4038,11 @@ export class HostedStage3RunService {
       payload: {
         competencyEvidenceId: this.ids.nextId("CEV"),
         evidenceRuleId: rule.evidenceRuleId,
+        evidenceRuleVersion: rule.version,
         indicatorIds: rule.indicatorIds,
-        sourceEventIds: options.sourceEventIds,
+        sourceEventIds: matchingSourceEvents.map(
+          (event) => event.eventId,
+        ),
       },
     });
   }

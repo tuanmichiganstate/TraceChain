@@ -592,6 +592,55 @@ describe("server-authoritative hosted Stage 3 run", () => {
         `COMMAND_TRANSACTION_${persisted.runId}_ISSUE_CERTIFICATE`
       ]?.signatureEvidence?.signature.signatureBase64Url,
     );
+    expect(
+      (await finalStore.load(persisted.runId)).find(
+        (event) =>
+          event.eventType === "COMPETENCY_EVIDENCE_RECORDED",
+      )?.payload,
+    ).toMatchObject({
+      evidenceRuleId: "RULE_CERTIFICATE_INSPECTED",
+      evidenceRuleVersion: "1.0.0",
+    });
+  });
+
+  it("rejects competency evidence when its authored rule does not match the source event", async () => {
+    const draft = structuredClone(packJson);
+    const inspectionRule = draft.evidenceRules.find(
+      (rule) =>
+        rule.evidenceRuleId === "RULE_CERTIFICATE_INSPECTED",
+    );
+    if (inspectionRule === undefined) {
+      throw new Error("Expected the certificate inspection rule.");
+    }
+    inspectionRule.expectedValue = "EVID_OTHER_RECORD";
+    const validated = validateScenarioPack(draft);
+    if (!validated.isValid) {
+      throw new Error("The deliberately non-matching pack must validate.");
+    }
+    const pack = publishScenarioPack(validated.pack, {
+      publishedAt: NOW,
+      publishedBy: instructor.userId,
+    });
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store, pack);
+    const created = await service.createRun(
+      instructor,
+      createRequest(
+        "authorized-certifier",
+        "RUN_NON_MATCHING_EVIDENCE_RULE",
+      ),
+    );
+
+    await expect(
+      service.submit(learner, {
+        commandType: "INSPECT_EVIDENCE",
+        commandId: "COMMAND_NON_MATCHING_EVIDENCE_RULE",
+        runId: created.state.runId,
+        expectedRunVersion: created.state.version,
+        evidenceId: "EVID_CERTIFICATE_RECORD",
+      }),
+    ).rejects.toMatchObject({ code: "PACK_CONTRACT_MISMATCH" });
+    expect(await store.load(created.state.runId)).toHaveLength(2);
   });
 
   it("continues the authorized run through endorsed custody and transport", async () => {
@@ -1426,6 +1475,23 @@ describe("server-authoritative hosted Stage 3 run", () => {
           "RULE_UNAUTHORIZED_CERTIFICATE_RECOGNIZED",
       ),
     ).toBe(true);
+    const runEvents = await store.load(final.runId);
+    const rejectedEvent = runEvents.find(
+      (event) => event.eventType === "TRANSACTION_REJECTED",
+    );
+    const ruleEvidence = runEvents.find(
+      (event) =>
+        event.eventType === "COMPETENCY_EVIDENCE_RECORDED" &&
+        event.payload.evidenceRuleId ===
+          "RULE_UNAUTHORIZED_CERTIFICATE_RECOGNIZED",
+    );
+    expect(rejectedEvent?.payload.validationRuleId).toBe(
+      "RULE_ORGANIZATION_NOT_AUTHORIZED",
+    );
+    expect(ruleEvidence?.payload).toMatchObject({
+      evidenceRuleVersion: "1.0.0",
+      sourceEventIds: [rejectedEvent?.eventId],
+    });
   });
 
   it("requires the scenario-authored certificate response evidence fields", async () => {

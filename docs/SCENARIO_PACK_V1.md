@@ -115,7 +115,14 @@ each competency relationship as `primary`, `supporting`, or `contextual`.
 Rubric levels are numeric and localized. Criteria reference observable
 indicators and versioned declarative evidence rules. Evidence rules retain an
 event type and constrained comparison operation; they do not execute imported
-expressions.
+expressions. The hosted run service evaluates those rules before it records
+competency evidence. `EVENT_OCCURRED` requires the authored event type,
+`FIELD_EQUALS` compares one scalar event-payload field, and `FIELD_IN` compares
+one scalar field against an authored set. `fieldPath` is a bounded,
+dot-separated path relative to the source event payload; array traversal and
+prototype fields are rejected. A recorded evidence event retains the exact
+rule ID, rule version, indicator IDs, and only the source event IDs that
+matched.
 
 This hosted competency layer is separate from the current 100-point SCORM score.
 The foundation does not change existing items, hints, mitigation ceilings, or

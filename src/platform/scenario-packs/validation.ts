@@ -830,7 +830,26 @@ function validateEvidenceRules(
       identifier: true,
     });
     if (operator === "FIELD_EQUALS" || operator === "FIELD_IN") {
-      context.string(rule.fieldPath, `${rulePath}.fieldPath`);
+      const fieldPath = context.string(
+        rule.fieldPath,
+        `${rulePath}.fieldPath`,
+      );
+      if (fieldPath !== null) {
+        context.check(
+          fieldPath.length <= 200,
+          "EVIDENCE_FIELD_PATH_TOO_LONG",
+          `${rulePath}.fieldPath`,
+          "must contain at most 200 characters",
+        );
+        context.check(
+          /^(?!(?:.*\.)?(?:__proto__|constructor|prototype)(?:\.|$))[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u.test(
+            fieldPath,
+          ),
+          "INVALID_EVIDENCE_FIELD_PATH",
+          `${rulePath}.fieldPath`,
+          "must be a bounded dot-separated payload path without prototype fields",
+        );
+      }
     }
     if (operator === "FIELD_EQUALS") {
       context.check(

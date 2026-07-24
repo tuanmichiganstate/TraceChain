@@ -282,6 +282,10 @@ as technical failures.
   rating and moderation revisions, and the V1 data dictionary. The assignment competency
   report links targeted indicator versions to observable evidence and current
   ratings while explicitly avoiding a single-simulation competence inference.
+  Versioned declarative evidence rules are executed against their referenced
+  source-event type and bounded payload condition before evidence is appended;
+  non-matching rules fail the prospective command batch without persisting
+  partial learner state.
   The instructor workspace exposes the same data as expandable per-learner
   profiles with evidence recency, rubric comments, and supporting event
   actions that focus the existing run timeline, plus the current class rating

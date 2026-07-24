@@ -4,6 +4,10 @@
 
 ### Added
 
+- Executable declarative competency-evidence rules for hosted runs. The
+  constrained event, field-equality, and field-membership operators now verify
+  their referenced source events before evidence is recorded; each new
+  evidence event retains the exact rule version and matching source-event IDs.
 - Scenario-controlled policy citation for the hosted certificate decision. The
   learner cites the applicable rule alongside inspected evidence, and
   instructor replay distinguishes a cited policy from one that was available
