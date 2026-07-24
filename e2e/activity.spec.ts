@@ -111,7 +111,11 @@ test.describe("rules the learner can feel", () => {
     ).toBeVisible();
   });
 
-  test("shows the tamper escalation without touching the learner's ledger", async ({ page }) => {
+  test("shows the tamper escalation without touching the learner's ledger", async ({
+    page,
+    browserName,
+  }) => {
+    allowMeasuredWebKitWalkthrough(browserName);
     await page.goto("/");
     const activity = new Activity(page);
 
