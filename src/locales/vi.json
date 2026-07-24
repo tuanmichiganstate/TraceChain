@@ -131,6 +131,8 @@
   "instructorReview.latestEvidence": "Bằng chứng gần nhất",
   "instructorReview.performanceAndComments": "Đánh giá và nhận xét hiện tại",
   "instructorReview.supportingEvents": "Tham chiếu sự kiện hỗ trợ",
+  "instructorReview.reviewEvent": "Xem sự kiện",
+  "instructorReview.reviewSupportingEvent": "Xem sự kiện hỗ trợ {eventId}",
   "instructorReview.ratingValue": "Mức {level}",
   "instructorReview.ratingDistribution": "Phân bố đánh giá",
   "instructorReview.ratingDistributionValue": "Mức {level}: {count}",

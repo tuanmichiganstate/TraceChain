@@ -369,6 +369,49 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       });
       return;
     }
+    if (pathname === "/api/v1/runs/RUN_MONITOR_001/timeline") {
+      await route.fulfill({
+        json: {
+          timeline: [
+            {
+              sequenceNumber: 4,
+              eventId: "HEVT_MONITOR_004",
+              eventType: "COMPETENCY_EVIDENCE_RECORDED",
+              occurredAt: "2026-07-24T08:04:00.000Z",
+              authenticatedUserId: "USER_MONITOR_LEARNER",
+              simulationActorId: "ACT_CERTIFICATION_OFFICER",
+              organizationId: "ORG_CERTIFIER",
+              roleId: "CERTIFICATION_OFFICER",
+              causationId: "COMMAND_MONITOR_004",
+              payload: {},
+            },
+          ],
+        },
+      });
+      return;
+    }
+    if (
+      pathname === "/api/v1/runs/RUN_MONITOR_001/competencies"
+    ) {
+      await route.fulfill({ json: { competencies: [] } });
+      return;
+    }
+    if (
+      pathname === "/api/v1/runs/RUN_MONITOR_001/rubric-evidence"
+    ) {
+      await route.fulfill({ json: { rubricEvidence: [] } });
+      return;
+    }
+    if (pathname === "/api/v1/runs/RUN_MONITOR_001/ratings") {
+      await route.fulfill({
+        json: {
+          assignment,
+          ratings: [],
+          moderationResolutions: [],
+        },
+      });
+      return;
+    }
     await route.fulfill({
       status: 404,
       json: { error: { code: "UNEXPECTED_TEST_ROUTE" } },
@@ -402,6 +445,14 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     learnerProfile.getByText("Uses certificate evidence carefully."),
   ).toBeVisible();
   await expect(learnerProfile.getByText("HEVT_MONITOR_004")).toBeVisible();
+  await learnerProfile
+    .getByRole("button", {
+      name: "Review supporting event HEVT_MONITOR_004",
+    })
+    .click();
+  const targetedEvent = page.locator('tr[aria-current="true"]');
+  await expect(targetedEvent).toContainText("HEVT_MONITOR_004");
+  await expect(targetedEvent).toBeFocused();
   expect(monitorRequests).toBe(1);
 
   await page.getByRole("button", { name: "Refresh status" }).click();

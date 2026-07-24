@@ -171,6 +171,42 @@ describe("instructor review screen", () => {
   });
 
   it("offers stable JSON and CSV downloads after loading an assignment report", async () => {
+    const assignment = {
+      schemaVersion: "1.0.0" as const,
+      assignmentId: "ASSIGNMENT_EXPORT_001",
+      title: "Coffee export cohort",
+      packId: "PACK_STANDARD_COFFEE_STAGE3",
+      packVersion: "1.4.0",
+      scenarioId: "SCN_COFFEE_001",
+      scenarioVersion: "2.2.0",
+      mode: "standard" as const,
+      learnerUserIds: ["USER_LEARNER_001"],
+      status: "active" as const,
+      feedbackReleaseStatus: "withheld" as const,
+      createdAt: "2026-07-24T08:00:00.000Z",
+      createdByUserId: "USER_INSTRUCTOR_001",
+    };
+    const loadRunReview = vi.fn().mockResolvedValue({
+      assignment,
+      timeline: [
+        {
+          sequenceNumber: 2,
+          eventId: "HEVT_EXPORT_002",
+          eventType: "COMPETENCY_EVIDENCE_RECORDED",
+          occurredAt: "2026-07-24T08:04:00.000Z",
+          authenticatedUserId: "USER_LEARNER_001",
+          simulationActorId: "ACT_LOGISTICS_COORDINATOR",
+          organizationId: "ORG_LOGISTICS_PROVIDER",
+          roleId: "LOGISTICS_COORDINATOR",
+          causationId: "COMMAND_EXPORT_002",
+          payload: {},
+        },
+      ],
+      competencies: [],
+      rubricEvidence: [],
+      ratings: [],
+      moderationResolutions: [],
+    });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn().mockResolvedValue({
@@ -252,21 +288,7 @@ describe("instructor review screen", () => {
       }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
-        assignment: {
-          schemaVersion: "1.0.0",
-          assignmentId: "ASSIGNMENT_EXPORT_001",
-          title: "Coffee export cohort",
-          packId: "PACK_STANDARD_COFFEE_STAGE3",
-          packVersion: "1.4.0",
-          scenarioId: "SCN_COFFEE_001",
-          scenarioVersion: "2.2.0",
-          mode: "standard",
-          learnerUserIds: ["USER_LEARNER_001"],
-          status: "active",
-          feedbackReleaseStatus: "withheld",
-          createdAt: "2026-07-24T08:00:00.000Z",
-          createdByUserId: "USER_INSTRUCTOR_001",
-        },
+        assignment,
         learners: [
           {
             learnerUserId: "USER_LEARNER_001",
@@ -306,7 +328,7 @@ describe("instructor review screen", () => {
         roles: ["instructor"],
       }),
       loadRunReplay: vi.fn(),
-      loadRunReview: vi.fn(),
+      loadRunReview,
       releaseFeedback: vi.fn(),
       saveModeration: vi.fn(),
       saveRating: vi.fn(),
@@ -394,6 +416,21 @@ describe("instructor review screen", () => {
     expect(
       within(learnerProfile).getByText("2026-07-24T08:04:00.000Z"),
     ).toBeVisible();
+    await user.click(
+      within(learnerProfile).getByRole("button", {
+        name: "Review supporting event HEVT_EXPORT_002",
+      }),
+    );
+    expect(loadRunReview).toHaveBeenCalledWith("RUN_EXPORT_001");
+    expect(
+      await screen.findByRole("heading", { name: "Run summary" }),
+    ).toBeInTheDocument();
+    const targetedEvent = document.querySelector(
+      'tr[aria-current="true"]',
+    );
+    expect(targetedEvent).not.toBeNull();
+    expect(targetedEvent).toHaveTextContent("HEVT_EXPORT_002");
+    expect(targetedEvent).toHaveFocus();
   });
 
   it("loads one run's existing timeline, competency, and rubric evidence", async () => {

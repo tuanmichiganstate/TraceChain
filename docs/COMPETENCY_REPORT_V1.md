@@ -61,7 +61,9 @@ platform does not synthesize a performance level from that absence.
 The instructor workspace renders this projection as an expandable profile for
 each assigned learner. It displays the target type, exact scenario identity,
 evidence count and latest observation time, current rubric comments, and the
-run and source-event references supporting each observation. The compact class
+run and source-event references supporting each observation. A supporting
+event action loads its exact run timeline and focuses the referenced
+append-only event; replay remains available from that row. The compact class
 table remains a separate aggregate view.
 
 ## Class projection

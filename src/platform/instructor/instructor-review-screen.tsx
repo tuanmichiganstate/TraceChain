@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -375,6 +376,9 @@ export function InstructorReviewScreen({
   const [sessionErrorKey, setSessionErrorKey] = useState<string | null>(null);
   const [runId, setRunId] = useState("");
   const [review, setReview] = useState<InstructorRunReview | null>(null);
+  const [targetEventId, setTargetEventId] = useState<string | null>(
+    null,
+  );
   const [reviewErrorKey, setReviewErrorKey] = useState<string | null>(null);
   const [isReviewLoading, setReviewLoading] = useState(false);
 
@@ -400,8 +404,13 @@ export function InstructorReviewScreen({
       (role) => role === "instructor" || role === "administrator",
     ) ?? false;
 
-  async function loadRequestedReview(requestedRunId: string) {
+  async function loadRequestedReview(
+    requestedRunId: string,
+    requestedEventId: string | null = null,
+  ) {
     if (requestedRunId.length === 0) return;
+    setRunId(requestedRunId);
+    setTargetEventId(requestedEventId);
     setReviewLoading(true);
     setReviewErrorKey(null);
     setReview(null);
@@ -466,7 +475,14 @@ export function InstructorReviewScreen({
 
           {mayManage ? <ScormPackageBuilder api={api} /> : null}
 
-          {mayReview ? <AssignmentReport api={api} /> : null}
+          {mayReview ? (
+            <AssignmentReport
+              api={api}
+              onReviewEvent={(requestedRunId, eventId) =>
+                loadRequestedReview(requestedRunId, eventId)
+              }
+            />
+          ) : null}
 
           {mayReview ? (
             <section className="card card--work">
@@ -516,6 +532,7 @@ export function InstructorReviewScreen({
               runId={runId.trim()}
               mayReleaseFeedback={mayManage}
               mayModerate={mayManage}
+              targetEventId={targetEventId}
               onRefresh={() => loadRequestedReview(runId.trim())}
             />
           )}
@@ -891,8 +908,13 @@ function TextField({
 
 function AssignmentReport({
   api,
+  onReviewEvent,
 }: {
   readonly api: InstructorReviewApi;
+  readonly onReviewEvent: (
+    runId: string,
+    eventId: string,
+  ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
   const [assignmentId, setAssignmentId] = useState("");
@@ -1048,7 +1070,10 @@ function AssignmentReport({
             </table>
           </div>
           {competencies === null ? null : (
-            <ClassCompetencyReport report={competencies} />
+            <ClassCompetencyReport
+              report={competencies}
+              onReviewEvent={onReviewEvent}
+            />
           )}
         </div>
       )}
@@ -1196,8 +1221,13 @@ function AssignmentLiveMonitor({
 
 function ClassCompetencyReport({
   report,
+  onReviewEvent,
 }: {
   readonly report: HostedAssignmentCompetencyReportV1;
+  readonly onReviewEvent: (
+    runId: string,
+    eventId: string,
+  ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
   return (
@@ -1267,15 +1297,23 @@ function ClassCompetencyReport({
           </tbody>
         </table>
       </div>
-      <LearnerCompetencyProfiles report={report} />
+      <LearnerCompetencyProfiles
+        report={report}
+        onReviewEvent={onReviewEvent}
+      />
     </div>
   );
 }
 
 function LearnerCompetencyProfiles({
   report,
+  onReviewEvent,
 }: {
   readonly report: HostedAssignmentCompetencyReportV1;
+  readonly onReviewEvent: (
+    runId: string,
+    eventId: string,
+  ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
   return (
@@ -1373,6 +1411,23 @@ function LearnerCompetencyProfiles({
                                   <span key={eventId}>
                                     {index === 0 ? null : ", "}
                                     <code>{eventId}</code>
+                                    {" "}
+                                    <button
+                                      aria-label={t(
+                                        "instructorReview.reviewSupportingEvent",
+                                        { eventId },
+                                      )}
+                                      className="button button--secondary instructor-review__event-link"
+                                      type="button"
+                                      onClick={() =>
+                                        void onReviewEvent(
+                                          observation.runId,
+                                          eventId,
+                                        )
+                                      }
+                                    >
+                                      {t("instructorReview.reviewEvent")}
+                                    </button>
                                   </span>
                                 ),
                               )}
@@ -1398,6 +1453,7 @@ function RunReview({
   runId,
   mayReleaseFeedback,
   mayModerate,
+  targetEventId,
   onRefresh,
 }: {
   readonly api: InstructorReviewApi;
@@ -1405,9 +1461,11 @@ function RunReview({
   readonly runId: string;
   readonly mayReleaseFeedback: boolean;
   readonly mayModerate: boolean;
+  readonly targetEventId: string | null;
   readonly onRefresh: () => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
+  const targetEventRef = useRef<HTMLTableRowElement>(null);
   const [isReleasing, setReleasing] = useState(false);
   const [releaseErrorKey, setReleaseErrorKey] =
     useState<string | null>(null);
@@ -1418,6 +1476,12 @@ function RunReview({
     useState<number | null>(null);
   const [replayErrorKey, setReplayErrorKey] =
     useState<string | null>(null);
+
+  useEffect(() => {
+    if (targetEventId !== null) {
+      targetEventRef.current?.focus();
+    }
+  }, [review.timeline, targetEventId]);
 
   async function releaseFeedback() {
     setReleasing(true);
@@ -1506,10 +1570,24 @@ function RunReview({
               </tr>
             </thead>
             <tbody>
-              {review.timeline.map((item) => (
-                <tr key={item.eventId}>
+              {review.timeline.map((item) => {
+                const isTargetEvent = item.eventId === targetEventId;
+                return (
+                <tr
+                  aria-current={isTargetEvent ? "true" : undefined}
+                  className={
+                    isTargetEvent
+                      ? "instructor-review__target-event"
+                      : undefined
+                  }
+                  key={item.eventId}
+                  ref={isTargetEvent ? targetEventRef : undefined}
+                  tabIndex={isTargetEvent ? -1 : undefined}
+                >
                   <td>{item.sequenceNumber}</td>
                   <td>
+                    <code>{item.eventId}</code>
+                    <br />
                     <code>{item.eventType}</code>
                   </td>
                   <td>
@@ -1539,7 +1617,8 @@ function RunReview({
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

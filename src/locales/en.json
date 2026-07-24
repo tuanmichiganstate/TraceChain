@@ -131,6 +131,8 @@
   "instructorReview.latestEvidence": "Latest evidence",
   "instructorReview.performanceAndComments": "Current rating and comment",
   "instructorReview.supportingEvents": "Supporting event references",
+  "instructorReview.reviewEvent": "Review event",
+  "instructorReview.reviewSupportingEvent": "Review supporting event {eventId}",
   "instructorReview.ratingValue": "Level {level}",
   "instructorReview.ratingDistribution": "Rating distribution",
   "instructorReview.ratingDistributionValue": "Level {level}: {count}",

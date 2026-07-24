@@ -26,7 +26,8 @@ pending actions, and replay health. Hidden authored outcomes remain excluded.
 The assignment report includes expandable learner competency profiles. Each
 profile presents the exact scenario version's targeted indicators, observation
 counts and recency, current rubric comments, and source-event references. It
-does not derive a second score or claim stable competence from one run.
+can load and focus a referenced event in the existing run timeline. It does not
+derive a second score or claim stable competence from one run.
 
 ## Learner authority boundary
 

@@ -264,6 +264,16 @@
   padding-inline-start: var(--space-4);
 }
 
+.instructor-review__event-link {
+  margin-inline-start: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--size-small);
+}
+
+.instructor-review__target-event {
+  background: var(--colour-navy-soft);
+}
+
 .instructor-review__monitor {
   margin-block-start: var(--space-5);
 }
