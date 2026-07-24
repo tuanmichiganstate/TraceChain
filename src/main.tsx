@@ -11,6 +11,9 @@ import {
   type LocaleCode,
 } from "./localization/i18n";
 import { InstructorReviewScreen } from "./platform/instructor/instructor-review-screen";
+import { ScenarioAuthorScreen } from "./platform/author/scenario-author-screen";
+import { HostedLearnerScreen } from "./platform/learner/hosted-learner-screen";
+import { HostedPortalScreen } from "./platform/portal/hosted-portal-screen";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
@@ -28,13 +31,25 @@ function hostedInterfaceLocale(): LocaleCode {
     : "vi";
 }
 
-if (/^\/instructor\/?$/u.test(window.location.pathname)) {
+if (
+  /^\/(?:platform|instructor|author|learner)\/?$/u.test(
+    window.location.pathname,
+  )
+) {
   const locale = hostedInterfaceLocale();
   document.documentElement.lang = locale;
   root.render(
     <StrictMode>
       <LocaleProvider locale={locale}>
-        <InstructorReviewScreen />
+        {/^\/platform\/?$/u.test(window.location.pathname) ? (
+          <HostedPortalScreen />
+        ) : /^\/author\/?$/u.test(window.location.pathname) ? (
+          <ScenarioAuthorScreen />
+        ) : /^\/learner\/?$/u.test(window.location.pathname) ? (
+          <HostedLearnerScreen />
+        ) : (
+          <InstructorReviewScreen />
+        )}
       </LocaleProvider>
     </StrictMode>,
   );

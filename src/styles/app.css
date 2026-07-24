@@ -222,6 +222,27 @@
   align-items: end;
 }
 
+.instructor-review__export {
+  margin-block: var(--space-4);
+}
+
+.instructor-review__export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.instructor-review__competency-report {
+  margin-block-start: var(--space-6);
+}
+
+.instructor-review__replay {
+  margin-block-start: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
 .instructor-review__inline-form {
   display: flex;
   flex-wrap: wrap;
@@ -237,6 +258,14 @@
   display: grid;
   min-inline-size: min(18rem, 75vw);
   gap: var(--space-2);
+}
+
+.instructor-review__moderation {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--colour-border);
 }
 
 /* ---- Dialog ---- */
@@ -1445,4 +1474,21 @@
 .signature-trust .hash {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.scenario-author__draft-editor {
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.scenario-author__draft-editor > legend {
+  padding-inline: var(--space-2);
+  font-weight: 700;
+}
+
+.scenario-author__draft-editor .data-table input,
+.scenario-author__draft-editor .data-table select {
+  min-width: 12rem;
 }

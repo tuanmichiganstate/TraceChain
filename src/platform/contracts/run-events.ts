@@ -9,6 +9,8 @@ export type ApplicationRole =
 
 export type PlatformRunEventType =
   | "RUN_CREATED"
+  | "RANDOM_DRAW_MADE"
+  | "OUTCOME_REALIZED"
   | "EVIDENCE_RELEASED"
   | "EVIDENCE_INSPECTED"
   | "POLICY_CONSULTED"

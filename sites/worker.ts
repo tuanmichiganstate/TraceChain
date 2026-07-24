@@ -1,5 +1,11 @@
 import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
 import type { CreateHostedAssignmentRequest } from "../src/platform/contracts/assessment";
+import type {
+  CreateScormPackageJobRequest,
+  HostedScormPackageCatalogV1,
+} from "../src/platform/contracts/scorm-package-job";
+import en from "../src/locales/en.json";
+import vi from "../src/locales/vi.json";
 import {
   AuthenticatedPrincipalError,
   AUTHENTICATED_USER_EMAIL_HEADER,
@@ -31,19 +37,61 @@ import {
 import { D1RunEventStore } from "../src/platform/persistence/d1-run-event-store";
 import { ensureD1FoundationSchema } from "../src/platform/persistence/d1-schema";
 import { D1ScenarioPackRepository } from "../src/platform/persistence/d1-scenario-pack-repository";
+import {
+  D1ScormPackageJobRepository,
+  ScormPackageJobRepositoryError,
+} from "../src/platform/persistence/d1-scorm-package-job-repository";
 import type { D1DatabaseLike } from "../src/platform/persistence/d1-types";
 import {
   RunEventStoreConflictError,
 } from "../src/platform/runs/event-store";
+import {
+  AssignmentExportError,
+  assignmentEvidenceFilename,
+  createAssignmentEvidenceExport,
+  serializeAssignmentEvidenceCsv,
+  serializeAssignmentEvidenceJson,
+} from "../src/platform/reporting/assignment-export";
+import {
+  AssignmentCompetencyReportError,
+  createAssignmentCompetencyReport,
+} from "../src/platform/reporting/assignment-competency-report";
+import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
+import {
+  compareScenarioPackVersions,
+  createScenarioRolePreview,
+  ScenarioAuthoringError,
+  scenarioPackValidationReport,
+} from "../src/platform/scenario-packs/authoring";
 
 interface AssetBinding {
   fetch(request: Request): Promise<Response>;
 }
 
+interface R2ObjectBodyLike {
+  readonly body: ReadableStream<Uint8Array> | null;
+}
+
+interface R2BucketLike {
+  put(
+    key: string,
+    value: ArrayBuffer,
+    options?: {
+      readonly httpMetadata?: {
+        readonly contentType?: string;
+        readonly contentDisposition?: string;
+      };
+      readonly customMetadata?: Readonly<Record<string, string>>;
+    },
+  ): Promise<unknown>;
+  get(key: string): Promise<R2ObjectBodyLike | null>;
+}
+
 interface WorkerEnvironment {
   readonly ASSETS: AssetBinding;
   readonly DB: D1DatabaseLike;
+  readonly ARTIFACTS: R2BucketLike;
   readonly TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS?: string;
 }
 
@@ -55,6 +103,8 @@ const securityHeaders = {
 const API_PREFIX = "/api/v1/";
 const MAXIMUM_COMMAND_BYTES = 64 * 1024;
 const MAXIMUM_PACK_BYTES = 2 * 1024 * 1024;
+const MAXIMUM_SCORM_ARTIFACT_BYTES = 25 * 1024 * 1024;
+const scenarioPackCatalogs = { en, vi } as const;
 
 function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
@@ -78,6 +128,23 @@ function jsonResponse(
       headers: {
         "cache-control": "no-store",
         "content-type": "application/json; charset=utf-8",
+      },
+    }),
+  );
+}
+
+function downloadResponse(
+  body: string,
+  contentType: string,
+  filename: string,
+): Response {
+  return withSecurityHeaders(
+    new Response(body, {
+      status: 200,
+      headers: {
+        "cache-control": "no-store",
+        "content-disposition": `attachment; filename="${filename}"`,
+        "content-type": contentType,
       },
     }),
   );
@@ -201,17 +268,47 @@ function errorResponse(error: unknown): Response {
       },
     });
   }
+  if (error instanceof ScenarioAuthoringError) {
+    return jsonResponse(
+      error.code === "SCENARIO_NOT_FOUND" ? 404 : 400,
+      { error: { code: error.code } },
+    );
+  }
   if (error instanceof AssignmentRepositoryError) {
     const status =
       error.code === "ASSIGNMENT_NOT_FOUND"
         ? 404
         : error.code === "ASSIGNMENT_CONFLICT" ||
             error.code === "RATING_REVISION_CONFLICT" ||
+            error.code === "MODERATION_REVISION_CONFLICT" ||
             error.code === "FEEDBACK_ALREADY_RELEASED" ||
             error.code === "FEEDBACK_NOT_RELEASED" ||
             error.code === "RUN_NOT_ASSIGNED"
           ? 409
           : error.code === "ASSIGNMENT_STORAGE_FAILED"
+            ? 500
+            : 400;
+    return jsonResponse(status, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof AssignmentExportError) {
+    return jsonResponse(500, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof AssignmentCompetencyReportError) {
+    return jsonResponse(500, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof ScormPackageJobRepositoryError) {
+    const status =
+      error.code === "PACKAGE_JOB_NOT_FOUND"
+        ? 404
+        : error.code === "PACKAGE_JOB_CONFLICT"
+          ? 409
+          : error.code === "PACKAGE_JOB_STORAGE_FAILED"
             ? 500
             : 400;
     return jsonResponse(status, {
@@ -256,6 +353,93 @@ function pathAssignmentId(
   return match?.[1] === undefined
     ? null
     : decodeURIComponent(match[1]);
+}
+
+function pathScenarioPackVersion(
+  pathname: string,
+  suffix = "",
+): { readonly packId: string; readonly version: string } | null {
+  const escapedSuffix = suffix.replace(
+    /[.*+?^${}()|[\]\\]/gu,
+    "\\$&",
+  );
+  const pattern = suffix.length === 0
+    ? /^\/api\/v1\/scenario-packs\/([^/]+)\/versions\/([^/]+)$/u
+    : new RegExp(
+        `^/api/v1/scenario-packs/([^/]+)/versions/([^/]+)/${escapedSuffix}$`,
+        "u",
+      );
+  const match = pattern.exec(pathname);
+  return match?.[1] === undefined || match[2] === undefined
+    ? null
+    : {
+        packId: decodeURIComponent(match[1]),
+        version: decodeURIComponent(match[2]),
+      };
+}
+
+function pathScenarioPackComparison(
+  pathname: string,
+): string | null {
+  const match =
+    /^\/api\/v1\/scenario-packs\/([^/]+)\/compare$/u.exec(pathname);
+  return match?.[1] === undefined
+    ? null
+    : decodeURIComponent(match[1]);
+}
+
+function pathScormPackageJob(
+  pathname: string,
+  suffix = "",
+): string | null {
+  const escapedSuffix = suffix.replace(
+    /[.*+?^${}()|[\]\\]/gu,
+    "\\$&",
+  );
+  const pattern = suffix.length === 0
+    ? /^\/api\/v1\/scorm-package-jobs\/([^/]+)$/u
+    : new RegExp(
+        `^/api/v1/scorm-package-jobs/([^/]+)/${escapedSuffix}$`,
+        "u",
+      );
+  const match = pattern.exec(pathname);
+  return match?.[1] === undefined
+    ? null
+    : decodeURIComponent(match[1]);
+}
+
+function byteHash(bytes: ArrayBuffer): Promise<string> {
+  return crypto.subtle.digest("SHA-256", bytes).then((digest) =>
+    [...new Uint8Array(digest)]
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join(""),
+  );
+}
+
+async function loadScormPackageCatalog(
+  request: Request,
+  assets: AssetBinding,
+): Promise<HostedScormPackageCatalogV1> {
+  const response = await assets.fetch(
+    new Request(new URL("/scorm-packages/catalog.json", request.url)),
+  );
+  if (!response.ok) {
+    throw new ScormPackageJobRepositoryError(
+      "PACKAGE_JOB_STORAGE_FAILED",
+      "The generated SCORM package catalog is unavailable.",
+    );
+  }
+  const catalog = (await response.json()) as HostedScormPackageCatalogV1;
+  if (
+    catalog.schemaVersion !== "1.0.0" ||
+    !Array.isArray(catalog.packages)
+  ) {
+    throw new ScormPackageJobRepositoryError(
+      "PACKAGE_JOB_STORAGE_FAILED",
+      "The generated SCORM package catalog is invalid.",
+    );
+  }
+  return catalog;
 }
 
 async function hostedServiceForRun(
@@ -352,6 +536,442 @@ async function apiResponse(
 
   if (
     request.method === "POST" &&
+    url.pathname === "/api/v1/scenario-packs/validate"
+  ) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_PACK_BYTES);
+    if (!isRecord(body) || !("pack" in body)) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "pack must contain a scenario-pack object.",
+      );
+    }
+    return jsonResponse(200, {
+      report: scenarioPackValidationReport(
+        body.pack,
+        scenarioPackCatalogs,
+      ),
+    });
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/scorm-package-jobs"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const jobs = await new D1ScormPackageJobRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).list(principal);
+    return jsonResponse(200, {
+      jobs: jobs.map((job) => ({
+        ...job,
+        downloadUrl: `/api/v1/scorm-package-jobs/${encodeURIComponent(job.jobId)}/download`,
+      })),
+    });
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/learner/assignments"
+  ) {
+    const learner = requireApplicationRole(principal, ["learner"]);
+    const assignments = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).listForLearner(learner.userId);
+    return jsonResponse(200, { assignments });
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/v1/scorm-package-jobs"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new ScormPackageJobRepositoryError(
+        "INVALID_PACKAGE_JOB",
+        "Package job request must be an object.",
+      );
+    }
+    const packageRequest: CreateScormPackageJobRequest = {
+      commandId: requiredText(body.commandId, "commandId"),
+      jobId: requiredText(body.jobId, "jobId"),
+      presetId: requiredText(
+        body.presetId,
+        "presetId",
+      ) as CreateScormPackageJobRequest["presetId"],
+    };
+    const catalog = await loadScormPackageCatalog(
+      request,
+      environment.ASSETS,
+    );
+    const artifact = catalog.packages.find(
+      (candidate) => candidate.presetId === packageRequest.presetId,
+    );
+    if (artifact === undefined) {
+      throw new ScormPackageJobRepositoryError(
+        "INVALID_PACKAGE_JOB",
+        "Only a complete, accepted package preset may be generated.",
+      );
+    }
+    const assetResponse = await environment.ASSETS.fetch(
+      new Request(new URL(artifact.downloadPath, request.url)),
+    );
+    if (!assetResponse.ok) {
+      throw new ScormPackageJobRepositoryError(
+        "PACKAGE_JOB_STORAGE_FAILED",
+        "The verified package artifact is unavailable.",
+      );
+    }
+    const bytes = await assetResponse.arrayBuffer();
+    if (
+      bytes.byteLength !== artifact.sizeBytes ||
+      bytes.byteLength > MAXIMUM_SCORM_ARTIFACT_BYTES ||
+      (await byteHash(bytes)) !== artifact.sha256
+    ) {
+      throw new ScormPackageJobRepositoryError(
+        "PACKAGE_JOB_STORAGE_FAILED",
+        "The package artifact does not match its generated catalog.",
+      );
+    }
+    const artifactKey =
+      `scorm-packages/${artifact.sha256}/${artifact.filename}`;
+    await environment.ARTIFACTS.put(artifactKey, bytes, {
+      httpMetadata: {
+        contentType: "application/zip",
+        contentDisposition: `attachment; filename="${artifact.filename}"`,
+      },
+      customMetadata: {
+        sha256: artifact.sha256,
+        configurationHash: artifact.configurationHash,
+        scenarioId: artifact.scenarioId,
+        scenarioVersion: artifact.scenarioVersion,
+      },
+    });
+    const result = await new D1ScormPackageJobRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).createCompleted(
+      packageRequest,
+      artifact,
+      artifactKey,
+      principal,
+    );
+    return jsonResponse(result.wasIdempotentReplay ? 200 : 201, {
+      job: {
+        ...result.job,
+        downloadUrl: `/api/v1/scorm-package-jobs/${encodeURIComponent(result.job.jobId)}/download`,
+      },
+      wasIdempotentReplay: result.wasIdempotentReplay,
+    });
+  }
+
+  const scormPackageJobId = pathScormPackageJob(url.pathname);
+  if (request.method === "GET" && scormPackageJobId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const job = await new D1ScormPackageJobRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).find(scormPackageJobId);
+    if (job === null) {
+      throw new ScormPackageJobRepositoryError(
+        "PACKAGE_JOB_NOT_FOUND",
+        "SCORM package job does not exist.",
+      );
+    }
+    if (
+      job.requestedByUserId !== principal.userId &&
+      !principal.roles.includes("administrator")
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The package job belongs to another instructor.",
+      );
+    }
+    return jsonResponse(200, {
+      job: {
+        ...job,
+        downloadUrl: `/api/v1/scorm-package-jobs/${encodeURIComponent(job.jobId)}/download`,
+      },
+    });
+  }
+
+  const downloadScormPackageJobId = pathScormPackageJob(
+    url.pathname,
+    "download",
+  );
+  if (
+    request.method === "GET" &&
+    downloadScormPackageJobId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const job = await new D1ScormPackageJobRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).find(downloadScormPackageJobId);
+    if (job === null) {
+      throw new ScormPackageJobRepositoryError(
+        "PACKAGE_JOB_NOT_FOUND",
+        "SCORM package job does not exist.",
+      );
+    }
+    if (
+      job.requestedByUserId !== principal.userId &&
+      !principal.roles.includes("administrator")
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The package job belongs to another instructor.",
+      );
+    }
+    const artifact = await environment.ARTIFACTS.get(job.artifactKey);
+    if (artifact?.body === null || artifact === null) {
+      throw new ScormPackageJobRepositoryError(
+        "PACKAGE_JOB_STORAGE_FAILED",
+        "The completed package artifact is unavailable.",
+      );
+    }
+    return withSecurityHeaders(
+      new Response(artifact.body, {
+        status: 200,
+        headers: {
+          "cache-control": "private, no-store",
+          "content-disposition": `attachment; filename="${job.filename}"`,
+          "content-length": String(job.sizeBytes),
+          "content-type": "application/zip",
+          "x-content-sha256": job.sha256,
+        },
+      }),
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/v1/scenario-packs/import"
+  ) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_PACK_BYTES);
+    if (!isRecord(body) || !("pack" in body)) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "pack must contain a scenario-pack object.",
+      );
+    }
+    const report = scenarioPackValidationReport(
+      body.pack,
+      scenarioPackCatalogs,
+    );
+    if (!report.valid) {
+      return jsonResponse(422, { report });
+    }
+    const pack = body.pack as ScenarioPackV1;
+    await new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    ).saveDraft(pack);
+    return jsonResponse(201, { report });
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/scenario-packs"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "scenario-author",
+      "administrator",
+    ]);
+    const packs = await new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    ).list();
+    return jsonResponse(200, { packs });
+  }
+
+  const scenarioPackVersion = pathScenarioPackVersion(url.pathname);
+  if (request.method === "GET" && scenarioPackVersion !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "scenario-author",
+      "administrator",
+    ]);
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    ).find(
+      scenarioPackVersion.packId,
+      scenarioPackVersion.version,
+    );
+    if (pack === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_PACK_NOT_FOUND" },
+      });
+    }
+    return jsonResponse(200, { pack });
+  }
+
+  const previewPackVersion = pathScenarioPackVersion(
+    url.pathname,
+    "preview",
+  );
+  if (request.method === "GET" && previewPackVersion !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "scenario-author",
+      "administrator",
+    ]);
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    ).find(previewPackVersion.packId, previewPackVersion.version);
+    if (pack === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_PACK_NOT_FOUND" },
+      });
+    }
+    return jsonResponse(200, {
+      preview: createScenarioRolePreview({
+        pack,
+        scenarioId: requiredText(
+          url.searchParams.get("scenarioId"),
+          "scenarioId",
+        ),
+        scenarioVersion: requiredText(
+          url.searchParams.get("scenarioVersion"),
+          "scenarioVersion",
+        ),
+        locale: requiredText(url.searchParams.get("locale"), "locale"),
+        mode: requiredText(
+          url.searchParams.get("mode"),
+          "mode",
+        ) as CreateHostedAssignmentRequest["mode"],
+        roleId: requiredText(url.searchParams.get("roleId"), "roleId"),
+        localizationCatalogs: scenarioPackCatalogs,
+      }),
+    });
+  }
+
+  const comparisonPackId = pathScenarioPackComparison(url.pathname);
+  if (request.method === "GET" && comparisonPackId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "scenario-author",
+      "administrator",
+    ]);
+    const fromVersion = requiredText(
+      url.searchParams.get("fromVersion"),
+      "fromVersion",
+    );
+    const toVersion = requiredText(
+      url.searchParams.get("toVersion"),
+      "toVersion",
+    );
+    const repository = new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    );
+    const [from, to] = await Promise.all([
+      repository.find(comparisonPackId, fromVersion),
+      repository.find(comparisonPackId, toVersion),
+    ]);
+    if (from === null || to === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_PACK_NOT_FOUND" },
+      });
+    }
+    return jsonResponse(200, {
+      comparison: compareScenarioPackVersions(from, to),
+    });
+  }
+
+  const publishPackVersion = pathScenarioPackVersion(
+    url.pathname,
+    "publish",
+  );
+  if (request.method === "POST" && publishPackVersion !== null) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const published = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).publish(publishPackVersion.packId, publishPackVersion.version, {
+      publishedAt: clock.now(),
+      publishedBy: principal.userId,
+    });
+    return jsonResponse(201, {
+      packId: published.packId,
+      version: published.version,
+      status: published.status,
+      contentHash: published.publication?.contentHash,
+    });
+  }
+
+  const retirePackVersion = pathScenarioPackVersion(
+    url.pathname,
+    "retire",
+  );
+  if (request.method === "POST" && retirePackVersion !== null) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Retirement request must be an object.",
+      );
+    }
+    const clock = new SystemUtcClock();
+    const result = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).retire(retirePackVersion.packId, retirePackVersion.version, {
+      commandId: requiredText(body.commandId, "commandId"),
+      retiredAt: clock.now(),
+      retiredBy: principal.userId,
+    });
+    return jsonResponse(result.wasIdempotentReplay ? 200 : 201, {
+      packId: result.pack.packId,
+      version: result.pack.version,
+      status: result.pack.status,
+      contentHash: result.pack.publication?.contentHash,
+      wasIdempotentReplay: result.wasIdempotentReplay,
+    });
+  }
+
+  if (
+    request.method === "POST" &&
     url.pathname === "/api/v1/scenario-packs/publish"
   ) {
     requireApplicationRole(principal, [
@@ -432,11 +1052,30 @@ async function apiResponse(
         "Assignment must reference one exact published scenario version.",
       );
     }
+    if (
+      scenario.legacyCompatibility?.adapterId !==
+        "tracechain-coffee-v2" ||
+      scenario.legacyCompatibility.stageId !==
+        "STG_03_ANCHOR_CERTIFICATE"
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "The selected scenario has no registered hosted runtime adapter.",
+      );
+    }
+    const mode = requiredText(
+      body.mode,
+      "mode",
+    ) as CreateHostedAssignmentRequest["mode"];
     const result = await new D1AssignmentRepository(
       environment.DB,
       clock,
     ).create(
-      body as unknown as CreateHostedAssignmentRequest,
+      {
+        ...(body as unknown as CreateHostedAssignmentRequest),
+        mode,
+        runConfiguration: modeConfigurationFor(scenario, mode),
+      },
       principal,
     );
     return jsonResponse(
@@ -476,7 +1115,8 @@ async function apiResponse(
     request.method === "POST" &&
     startRunAssignmentId !== null
   ) {
-    requireApplicationRole(principal, [
+    const runCreator = requireApplicationRole(principal, [
+      "learner",
       "instructor",
       "administrator",
     ]);
@@ -498,10 +1138,9 @@ async function apiResponse(
         `Assignment ${startRunAssignmentId} does not exist.`,
       );
     }
-    const learnerUserId = requiredText(
-      body.learnerUserId,
-      "learnerUserId",
-    );
+    const learnerUserId = runCreator.roles.includes("learner")
+      ? runCreator.userId
+      : requiredText(body.learnerUserId, "learnerUserId");
     if (
       assignment.status !== "active" ||
       !assignment.learnerUserIds.includes(learnerUserId)
@@ -542,11 +1181,23 @@ async function apiResponse(
       assignmentId: assignment.assignmentId,
       learnerUserId,
       mode: assignment.mode,
-      scenarioSeed: requiredText(body.scenarioSeed, "scenarioSeed"),
-      caseVariant: requiredText(
-        body.caseVariant,
-        "caseVariant",
-      ) as CreateHostedStage3RunRequest["caseVariant"],
+      modeConfiguration: assignment.runConfiguration,
+      ...(assignment.runConfiguration.seedPolicy === "generated"
+        ? {}
+        : {
+            scenarioSeed: runCreator.roles.includes("learner")
+              ? `assignment:${assignment.assignmentId}:${learnerUserId}`
+              : requiredText(body.scenarioSeed, "scenarioSeed"),
+          }),
+      caseVariant: runCreator.roles.includes("learner")
+        ? (
+            assignment.runConfiguration.forcedOutcomeCode ??
+            "authorized-certifier"
+          ) as CreateHostedStage3RunRequest["caseVariant"]
+        : requiredText(
+            body.caseVariant,
+            "caseVariant",
+          ) as CreateHostedStage3RunRequest["caseVariant"],
     });
     return jsonResponse(
       result.wasIdempotentReplay ? 200 : 201,
@@ -576,6 +1227,120 @@ async function apiResponse(
       new SystemUtcClock(),
     ).report(reportAssignmentId);
     return jsonResponse(200, { report });
+  }
+
+  const competencyAssignmentId = pathAssignmentId(
+    url.pathname,
+    "competencies",
+  );
+  if (
+    request.method === "GET" &&
+    competencyAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(competencyAssignmentId);
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(
+      report.assignment.packId,
+      report.assignment.packVersion,
+    );
+    if (pack === null || pack.status !== "published") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Competency reporting requires the assignment's exact published pack.",
+      );
+    }
+    const service = new HostedStage3RunService(
+      pack,
+      new D1RunEventStore(environment.DB),
+      clock,
+      new WebCryptoIdGenerator(),
+    );
+    const evidenceByRun = await Promise.all(
+      report.learners.flatMap((learner) =>
+        learner.runs.map(async (run) => ({
+          runId: run.runId,
+          indicators: await service.competencyReport(
+            principal,
+            run.runId,
+          ),
+        })),
+      ),
+    );
+    return jsonResponse(200, {
+      competencies: createAssignmentCompetencyReport({
+        assignmentReport: report,
+        pack,
+        evidenceByRun,
+      }),
+    });
+  }
+
+  const jsonExportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "export.json",
+  );
+  const csvExportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "export.csv",
+  );
+  const exportAssignmentId =
+    jsonExportAssignmentId ?? csvExportAssignmentId;
+  if (request.method === "GET" && exportAssignmentId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(exportAssignmentId);
+    const eventStore = new D1RunEventStore(environment.DB);
+    const events = (
+      await Promise.all(
+        report.learners.flatMap((learner) =>
+          learner.runs.map((run) => eventStore.load(run.runId)),
+        ),
+      )
+    ).flat();
+    const exported = createAssignmentEvidenceExport({
+      report,
+      events,
+      ratingRevisions: await repository.ratingHistory(
+        exportAssignmentId,
+      ),
+      moderationResolutions: await repository.moderationHistory(
+        exportAssignmentId,
+      ),
+      generatedAt: clock.now(),
+    });
+    if (jsonExportAssignmentId !== null) {
+      return downloadResponse(
+        serializeAssignmentEvidenceJson(exported),
+        "application/json; charset=utf-8",
+        assignmentEvidenceFilename(exportAssignmentId, "json"),
+      );
+    }
+    return downloadResponse(
+      serializeAssignmentEvidenceCsv(exported),
+      "text/csv; charset=utf-8",
+      assignmentEvidenceFilename(exportAssignmentId, "csv"),
+    );
   }
 
   const feedbackReleaseAssignmentId = pathAssignmentId(
@@ -632,6 +1397,8 @@ async function apiResponse(
     return jsonResponse(200, {
       assignment,
       ratings: await repository.currentRatings(ratingRunId),
+      moderationResolutions:
+        await repository.currentModerationResolutions(ratingRunId),
     });
   }
   if (ratingRunId !== null && request.method === "POST") {
@@ -747,6 +1514,97 @@ async function apiResponse(
     );
   }
 
+  const moderationRunId = pathRunId(
+    url.pathname,
+    "moderation",
+  );
+  if (
+    moderationRunId !== null &&
+    request.method === "POST"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (
+      !isRecord(body) ||
+      requiredText(body.runId, "runId") !== moderationRunId
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_MODERATION",
+        "Moderation run ID must match the API route.",
+      );
+    }
+    const { pack, service } = await hostedServiceForRun(
+      environment,
+      principal.userId,
+      moderationRunId,
+    );
+    const state = await service.loadState(moderationRunId);
+    if (state.status !== "completed") {
+      throw new AssignmentRepositoryError(
+        "INVALID_MODERATION",
+        "Moderation is available after run completion.",
+      );
+    }
+    const rubricId = requiredText(body.rubricId, "rubricId");
+    const criterionId = requiredText(
+      body.criterionId,
+      "criterionId",
+    );
+    const rubric = pack.rubrics.find(
+      (candidate) => candidate.rubricId === rubricId,
+    );
+    const criterion = rubric?.criteria.find(
+      (candidate) => candidate.criterionId === criterionId,
+    );
+    if (
+      rubric === undefined ||
+      criterion === undefined ||
+      typeof body.levelValue !== "number" ||
+      !rubric.levels.some(
+        (level) => level.value === body.levelValue,
+      ) ||
+      !Array.isArray(body.sourceRatingIds)
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_MODERATION",
+        "Moderation must use an authored rubric level and source ratings.",
+      );
+    }
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    const result = await repository.saveModeration(
+      {
+        commandId: requiredText(body.commandId, "commandId"),
+        runId: moderationRunId,
+        rubricId,
+        rubricVersion: rubric.version,
+        criterionId,
+        levelValue: body.levelValue,
+        comment:
+          typeof body.comment === "string" ? body.comment : "",
+        sourceRatingIds:
+          body.sourceRatingIds as readonly string[],
+        expectedRevision:
+          typeof body.expectedRevision === "number"
+            ? body.expectedRevision
+            : Number.NaN,
+      },
+      principal,
+    );
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        resolution: result.resolution,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
+  }
+
   const feedbackRunId = pathRunId(url.pathname, "feedback");
   if (feedbackRunId !== null && request.method === "GET") {
     const { service } = await hostedServiceForRun(
@@ -777,6 +1635,8 @@ async function apiResponse(
       assignmentId: assignment.assignmentId,
       releasedAt: assignment.feedbackReleasedAt,
       ratings: await repository.currentRatings(feedbackRunId),
+      moderationResolutions:
+        await repository.currentModerationResolutions(feedbackRunId),
     });
   }
 
@@ -889,6 +1749,7 @@ async function apiResponse(
   const runId =
     pathRunId(url.pathname) ??
     pathRunId(url.pathname, "timeline") ??
+    pathRunId(url.pathname, "replay") ??
     pathRunId(url.pathname, "competencies") ??
     pathRunId(url.pathname, "rubric-evidence");
   if (request.method === "GET" && runId !== null) {
@@ -921,6 +1782,18 @@ async function apiResponse(
     if (url.pathname.endsWith("/timeline")) {
       return jsonResponse(200, {
         timeline: await service.instructorTimeline(principal, runId),
+      });
+    }
+    if (url.pathname.endsWith("/replay")) {
+      const requestedSequence = url.searchParams.get("sequence");
+      return jsonResponse(200, {
+        replay: await service.instructorReplay(
+          principal,
+          runId,
+          requestedSequence === null
+            ? undefined
+            : Number(requestedSequence),
+        ),
       });
     }
     if (url.pathname.endsWith("/competencies")) {

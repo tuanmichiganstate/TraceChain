@@ -13,6 +13,7 @@ export interface HostedAssignmentV1 {
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
+  readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly feedbackReleaseStatus: "withheld" | "released";
@@ -31,6 +32,7 @@ export interface CreateHostedAssignmentRequest {
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
+  readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly learnerUserIds: readonly string[];
 }
 
@@ -72,12 +74,53 @@ export interface ManualRubricRatingResult {
   readonly wasIdempotentReplay: boolean;
 }
 
+export interface SaveRubricModerationRequest {
+  readonly commandId: string;
+  readonly runId: string;
+  readonly rubricId: string;
+  readonly rubricVersion: string;
+  readonly criterionId: string;
+  readonly levelValue: number;
+  readonly comment: string;
+  readonly sourceRatingIds: readonly string[];
+  readonly expectedRevision: number;
+}
+
+/**
+ * Append-only instructor resolution of one or more manual ratings.
+ *
+ * A resolution is assessment evidence only. It never mutates the learner's
+ * simulation events, academic simulation score, or realized outcome.
+ */
+export interface RubricModerationResolutionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly resolutionId: string;
+  readonly assignmentId: string;
+  readonly runId: string;
+  readonly rubricId: string;
+  readonly rubricVersion: string;
+  readonly criterionId: string;
+  readonly levelValue: number;
+  readonly comment: string;
+  readonly sourceRatingIds: readonly string[];
+  readonly revision: number;
+  readonly moderatorUserId: string;
+  readonly resolvedAt: string;
+}
+
+export interface RubricModerationResult {
+  readonly resolution: RubricModerationResolutionV1;
+  readonly wasIdempotentReplay: boolean;
+}
+
 export interface HostedAssignmentRunSummary {
   readonly runId: string;
   readonly learnerUserId: string;
   readonly status: "active" | "completed";
   readonly eventCount: number;
   readonly ratings: readonly ManualRubricRatingV1[];
+  readonly moderationResolutions:
+    readonly RubricModerationResolutionV1[];
 }
 
 export interface HostedAssignmentLearnerReport {
@@ -90,3 +133,9 @@ export interface HostedAssignmentReportV1 {
   readonly assignment: HostedAssignmentV1;
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }
+
+export interface HostedLearnerAssignmentV1 {
+  readonly assignment: HostedAssignmentV1;
+  readonly runs: readonly HostedAssignmentRunSummary[];
+}
+import type { HostedRunModeConfigurationV1 } from "./scenario-pack";

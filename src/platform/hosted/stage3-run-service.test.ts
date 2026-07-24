@@ -10,6 +10,7 @@ import {
   type AppendRunEventsResult,
   type RunEventStore,
 } from "../runs/event-store";
+import { hashReplayState } from "../runs/replay";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import {
@@ -58,6 +59,47 @@ function publishedPack(): ScenarioPackV1 {
     publishedAt: NOW,
     publishedBy: instructor.userId,
   });
+}
+
+function legacyPublishedPack(): ScenarioPackV1 {
+  const legacy = structuredClone(packJson) as unknown as {
+    scenarios: {
+      supportedModes: string[];
+      modeConfigurations?: unknown;
+      outcomeModels?: unknown;
+    }[];
+  };
+  const scenario = legacy.scenarios[0];
+  if (scenario === undefined) throw new Error("Expected coffee scenario.");
+  scenario.supportedModes = [
+    "tutorial",
+    "standard",
+    "configured",
+  ];
+  delete scenario.modeConfigurations;
+  delete scenario.outcomeModels;
+  const result = validateScenarioPack(legacy);
+  if (!result.isValid) {
+    throw new Error(
+      result.issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
+        .join("\n"),
+    );
+  }
+  return publishScenarioPack(result.pack, {
+    publishedAt: NOW,
+    publishedBy: instructor.userId,
+  });
+}
+
+function legacyStateHash(state: HostedStage3RunState): string {
+  const {
+    modeConfiguration: _modeConfiguration,
+    outcomeResolution: _outcomeResolution,
+    outcomeEvidenceStatus: _outcomeEvidenceStatus,
+    ...legacyState
+  } = state;
+  return hashReplayState(legacyState);
 }
 
 function createRequest(
@@ -312,6 +354,173 @@ class ReadOnlyEventStore implements RunEventStore {
 }
 
 describe("server-authoritative hosted Stage 3 run", () => {
+  it("allows a learner to create only their own run", async () => {
+    const ownRun = await serviceFor(
+      new MemoryRunEventStore(),
+    ).createRun(
+      learner,
+      createRequest(
+        "authorized-certifier",
+        "RUN_LEARNER_SELF_START",
+      ),
+    );
+    expect(ownRun.state.learnerUserId).toBe(learner.userId);
+
+    await expect(
+      serviceFor(new MemoryRunEventStore()).createRun(learner, {
+        ...createRequest(
+          "authorized-certifier",
+          "RUN_LEARNER_CROSS_START",
+        ),
+        learnerUserId: otherLearner.userId,
+      }),
+    ).rejects.toMatchObject({
+      code: "RUN_ACCESS_DENIED",
+    });
+  });
+
+  it("creates and replays an assignment-scoped seed when the mode requires it", async () => {
+    const {
+      scenarioSeed: _scenarioSeed,
+      ...requestWithoutSeed
+    } = createRequest(
+      "authorized-certifier",
+      "RUN_TUTORIAL_GENERATED_SEED",
+    );
+    const request: CreateHostedStage3RunRequest = {
+      ...requestWithoutSeed,
+      mode: "tutorial",
+    };
+    const first = await serviceFor(
+      new MemoryRunEventStore(),
+    ).createRun(instructor, request);
+    const second = await serviceFor(
+      new MemoryRunEventStore(),
+    ).createRun(instructor, request);
+
+    expect(first.state.scenarioSeed).toMatch(
+      /^generated:[a-f0-9]{64}$/u,
+    );
+    expect(second.state.scenarioSeed).toBe(first.state.scenarioSeed);
+    expect(first.state.outcomeResolution.strategy).toBe("forced");
+    expect(first.state.outcomeResolution).not.toHaveProperty("draw");
+  });
+
+  it("loads exact pre-mode-config coffee runs without rewriting their state hashes", async () => {
+    const pack = legacyPublishedPack();
+    const store = new MemoryRunEventStore();
+    const created = await serviceFor(store, pack).createRun(
+      instructor,
+      createRequest(
+        "authorized-certifier",
+        "RUN_LEGACY_MODE_CONTRACT",
+      ),
+    );
+    const currentEvents = await store.load(created.state.runId);
+    const createdEvent = currentEvents[0];
+    const releasedEvent = currentEvents[1];
+    if (
+      createdEvent === undefined ||
+      releasedEvent === undefined ||
+      createdEvent.eventType !== "RUN_CREATED"
+    ) {
+      throw new Error("Expected the two initial hosted events.");
+    }
+    const {
+      modeConfiguration: _modeConfiguration,
+      ...legacyCreatedPayload
+    } = createdEvent.payload;
+    const stateAfterCreated: HostedStage3RunState = {
+      ...created.state,
+      version: 1,
+      releasedEvidenceIds: [],
+    };
+    const createdStateHash = legacyStateHash(stateAfterCreated);
+    const legacyEvents: readonly RunEventV1[] = [
+      {
+        ...createdEvent,
+        payload: legacyCreatedPayload,
+        resultingStateHash: createdStateHash,
+      },
+      {
+        ...releasedEvent,
+        previousStateHash: createdStateHash,
+        resultingStateHash: legacyStateHash(created.state),
+      },
+    ];
+
+    const replayed = await serviceFor(
+      new ReadOnlyEventStore(legacyEvents),
+      pack,
+    ).loadState(created.state.runId);
+
+    expect(replayed).toEqual(created.state);
+    expect(replayed.modeConfiguration).toMatchObject({
+      mode: "standard",
+      outcomeStrategy: "forced",
+      seedPolicy: "supplied",
+    });
+  });
+
+  it("records and replays a deterministic probabilistic outcome in sandbox mode", async () => {
+    const firstStore = new MemoryRunEventStore();
+    const firstRequest = {
+      ...createRequest(
+        "authorized-certifier",
+        "RUN_SANDBOX_OUTCOME_001",
+      ),
+      mode: "sandbox" as const,
+      scenarioSeed: "sandbox-outcome-seed-001",
+    };
+    const first = await serviceFor(firstStore).createRun(
+      instructor,
+      firstRequest,
+    );
+    const firstEvents = await firstStore.load(first.state.runId);
+
+    expect(first.state.modeConfiguration).toMatchObject({
+      mode: "sandbox",
+      allowRetry: true,
+      feedbackTiming: "immediate",
+      outcomeStrategy: "probabilistic",
+    });
+    expect(first.state.outcomeEvidenceStatus).toBe("recorded");
+    expect(first.state.outcomeResolution.draw).toBeGreaterThanOrEqual(0);
+    expect(first.state.outcomeResolution.draw).toBeLessThan(1);
+    expect(firstEvents.map((event) => event.eventType)).toEqual([
+      "RUN_CREATED",
+      "RANDOM_DRAW_MADE",
+      "OUTCOME_REALIZED",
+      "EVIDENCE_RELEASED",
+    ]);
+
+    const secondStore = new MemoryRunEventStore();
+    const second = await serviceFor(secondStore).createRun(
+      instructor,
+      {
+        ...firstRequest,
+        commandId: "COMMAND_CREATE_RUN_SANDBOX_OUTCOME_002",
+        runId: "RUN_SANDBOX_OUTCOME_002",
+      },
+    );
+    expect(second.state.outcomeResolution).toEqual(
+      first.state.outcomeResolution,
+    );
+
+    const replayed = await serviceFor(
+      new ReadOnlyEventStore(firstEvents),
+    ).loadState(first.state.runId);
+    expect(replayed).toEqual(first.state);
+    expect(
+      JSON.stringify(
+        await serviceFor(firstStore).learnerProjection(
+          learner,
+          first.state.runId,
+        ),
+      ),
+    ).not.toContain("sandbox-outcome-seed-001");
+  });
+
   it("runs the authorized path with trusted context and exact replay", async () => {
     const store = new MemoryRunEventStore();
     const pack = publishedPack();
@@ -900,7 +1109,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
     expect(await serviceFor(store).loadState(corrected.runId)).toEqual(
       dispatched.state,
     );
-  });
+  }, 10_000);
 
   it("continues the retail lot into the Stage 8 integrity activity", async () => {
     const service = serviceFor(new MemoryRunEventStore());

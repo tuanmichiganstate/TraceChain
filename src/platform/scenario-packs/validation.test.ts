@@ -1,4 +1,5 @@
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
@@ -55,6 +56,24 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("validates a self-localized disciplinary starter without source catalog changes", () => {
+    const result = validateScenarioPack(
+      structuredClone(pharmaceuticalPackJson),
+    );
+
+    expect(result.isValid).toBe(true);
+    if (result.isValid) {
+      expect(result.pack.manifest.domain).toBe(
+        "pharmaceutical-cold-chain",
+      );
+      expect(
+        result.pack.competencyFrameworks[0]?.competencies[0]
+          ?.competencyId,
+      ).toBe("PHARMA.COLD_CHAIN");
+      expect(result.pack.localizationCatalogs?.vi).toBeDefined();
+    }
+  });
+
   it("returns path-specific diagnostics for missing locale content", () => {
     const invalid = structuredClone(packJson) as {
       manifest: { title: { localizationKey: string } };
@@ -69,6 +88,108 @@ describe("scenario-pack validation", () => {
         expect.objectContaining({
           code: "MISSING_LOCALIZATION_KEY",
           path: "$.manifest.title.localizationKey",
+        }),
+      );
+    }
+  });
+
+  it("requires exactly one published configuration for every supported mode", () => {
+    const invalid = structuredClone(packJson);
+    const scenario = invalid.scenarios[0];
+    if (scenario === undefined) throw new Error("Expected scenario.");
+    scenario.modeConfigurations =
+      scenario.modeConfigurations.filter(
+        (configuration) => configuration.mode !== "sandbox",
+      );
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "MODE_CONFIGURATION_MISMATCH",
+          path: "$.scenarios[0].modeConfigurations",
+        }),
+      );
+    }
+  });
+
+  it("accepts the pre-mode-config coffee pack only through its registered legacy adapter", () => {
+    const legacy = structuredClone(packJson) as unknown as {
+      scenarios: {
+        supportedModes: string[];
+        modeConfigurations?: unknown;
+        outcomeModels?: unknown;
+      }[];
+    };
+    const scenario = legacy.scenarios[0];
+    if (scenario === undefined) throw new Error("Expected scenario.");
+    scenario.supportedModes = [
+      "tutorial",
+      "standard",
+      "configured",
+    ];
+    delete scenario.modeConfigurations;
+    delete scenario.outcomeModels;
+
+    const result = validate(legacy);
+
+    expect(result.isValid).toBe(true);
+  });
+
+  it("rejects missing mode contracts for scenarios without the registered legacy adapter", () => {
+    const invalid = structuredClone(pharmaceuticalPackJson) as unknown as {
+      scenarios: {
+        modeConfigurations?: unknown;
+        outcomeModels?: unknown;
+      }[];
+    };
+    const scenario = invalid.scenarios[0];
+    if (scenario === undefined) throw new Error("Expected scenario.");
+    delete scenario.modeConfigurations;
+    delete scenario.outcomeModels;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: "$.scenarios[0].modeConfigurations",
+          }),
+          expect.objectContaining({
+            path: "$.scenarios[0].outcomeModels",
+          }),
+        ]),
+      );
+    }
+  });
+
+  it("rejects non-positive weighted outcome probabilities", () => {
+    const invalid = structuredClone(packJson);
+    const scenario = invalid.scenarios[0];
+    const model = scenario?.outcomeModels[0];
+    if (
+      scenario === undefined ||
+      model === undefined ||
+      model.distribution !== "weighted-categorical"
+    ) {
+      throw new Error("Expected weighted certificate outcome model.");
+    }
+    const outcome = model.outcomes[0];
+    if (outcome === undefined) throw new Error("Expected outcome.");
+    outcome.weight = 0;
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "NUMBER_BELOW_MINIMUM",
+          path: "$.scenarios[0].outcomeModels[0].outcomes[0].weight",
         }),
       );
     }

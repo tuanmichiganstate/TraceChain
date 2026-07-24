@@ -52,6 +52,7 @@ const ROOT_KEYS = [
   "version",
   "status",
   "supportedLocales",
+  "localizationCatalogs",
   "manifest",
   "competencyFrameworks",
   "rubrics",
@@ -82,6 +83,16 @@ const RUN_MODES = new Set([
   "sandbox",
   "configured",
 ]);
+const FEEDBACK_TIMINGS = new Set([
+  "immediate",
+  "stage-end",
+  "final",
+]);
+const OUTCOME_STRATEGIES = new Set([
+  "forced",
+  "probabilistic",
+]);
+const SEED_POLICIES = new Set(["supplied", "generated"]);
 
 const LIFECYCLE_STATUSES = new Set([
   "draft",
@@ -93,10 +104,15 @@ const LIFECYCLE_STATUSES = new Set([
 class ValidationContext {
   readonly issues: ScenarioPackValidationIssue[] = [];
   checkedCount = 0;
+  localizationCatalogs: Readonly<
+    Record<string, Readonly<Record<string, unknown>>>
+  >;
 
   constructor(
     readonly options: ScenarioPackValidationOptions = {},
-  ) {}
+  ) {
+    this.localizationCatalogs = options.localizationCatalogs ?? {};
+  }
 
   check(
     condition: boolean,
@@ -282,6 +298,66 @@ function validateUniqueStrings(
   return strings;
 }
 
+function validatePackLocalizationCatalogs(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  supportedLocales: readonly string[],
+): void {
+  if (value === undefined) return;
+  const catalogs = context.object(value, path);
+  if (catalogs === null) return;
+  const normalized: Record<string, Readonly<Record<string, unknown>>> = {};
+  for (const [locale, catalogValue] of Object.entries(catalogs)) {
+    context.check(
+      supportedLocales.includes(locale),
+      "UNSUPPORTED_LOCALIZATION_CATALOG",
+      `${path}.${locale}`,
+      "must match a locale declared by supportedLocales",
+    );
+    const catalog = context.object(catalogValue, `${path}.${locale}`);
+    if (catalog === null) continue;
+    const normalizedCatalog: Record<string, string> = {};
+    for (const [key, text] of Object.entries(catalog)) {
+      context.check(
+        /^[A-Za-z][A-Za-z0-9._-]*$/u.test(key),
+        "INVALID_LOCALIZATION_KEY",
+        `${path}.${locale}.${key}`,
+        "must use a stable catalogue key",
+      );
+      const isNonEmptyText =
+        typeof text === "string" && text.trim().length > 0;
+      context.check(
+        isNonEmptyText,
+        "INVALID_LOCALIZATION_VALUE",
+        `${path}.${locale}.${key}`,
+        "must be a non-empty string",
+      );
+      if (isNonEmptyText && typeof text === "string") {
+        normalizedCatalog[key] = text;
+      }
+    }
+    normalized[locale] = normalizedCatalog;
+  }
+  for (const locale of supportedLocales) {
+    context.check(
+      normalized[locale] !== undefined,
+      "MISSING_LOCALIZATION_CATALOG",
+      `${path}.${locale}`,
+      "must provide a catalogue for every supported locale",
+    );
+  }
+  context.localizationCatalogs = Object.fromEntries(
+    supportedLocales.map((locale) => [
+      locale,
+      {
+        ...(context.localizationCatalogs[locale] ?? {}),
+        ...(normalized[locale] ?? {}),
+      },
+    ]),
+  );
+}
+
 function validateLocalizedText(
   context: ValidationContext,
   value: unknown,
@@ -303,7 +379,7 @@ function validateLocalizedText(
     "must be a stable catalogue key",
   );
   for (const locale of supportedLocales) {
-    const catalog = context.options.localizationCatalogs?.[locale];
+    const catalog = context.localizationCatalogs[locale];
     if (catalog !== undefined) {
       context.check(
         typeof catalog[localizationKey] === "string" &&
@@ -1609,6 +1685,8 @@ function validateScenario(
       "status",
       "title",
       "supportedModes",
+      "modeConfigurations",
+      "outcomeModels",
       "competencyTargets",
       "organizations",
       "roles",
@@ -1657,6 +1735,300 @@ function validateScenario(
       "must be tutorial, standard, sandbox, or configured",
     );
   });
+  const usesLegacyCoffeeModeContract =
+    scenario.modeConfigurations === undefined &&
+    scenario.outcomeModels === undefined &&
+    isJsonObject(scenario.legacyCompatibility) &&
+    scenario.legacyCompatibility.adapterId ===
+      "tracechain-coffee-v2";
+  const outcomeModels = usesLegacyCoffeeModeContract
+    ? []
+    : context.array(
+        scenario.outcomeModels,
+        `${path}.outcomeModels`,
+      );
+  const outcomeCodesByModel = new Map<string, ReadonlySet<string>>();
+  if (outcomeModels !== null) {
+    outcomeModels.forEach((value, index) => {
+      const modelPath = `${path}.outcomeModels[${String(index)}]`;
+      const model = context.object(value, modelPath);
+      if (model === null) return;
+      const distribution = context.string(
+        model.distribution,
+        `${modelPath}.distribution`,
+      );
+      const outcomeModelId = context.string(
+        model.outcomeModelId,
+        `${modelPath}.outcomeModelId`,
+        { identifier: true },
+      );
+      context.string(
+        model.randomStreamId,
+        `${modelPath}.randomStreamId`,
+        { identifier: true },
+      );
+      if (distribution === "bernoulli") {
+        context.allowedKeys(
+          model,
+          [
+            "outcomeModelId",
+            "distribution",
+            "randomStreamId",
+            "probability",
+            "onTrue",
+            "onFalse",
+          ],
+          modelPath,
+        );
+        context.number(
+          model.probability,
+          `${modelPath}.probability`,
+          { minimum: 0, maximum: 1 },
+        );
+        const onTrue = context.string(
+          model.onTrue,
+          `${modelPath}.onTrue`,
+          { identifier: true },
+        );
+        const onFalse = context.string(
+          model.onFalse,
+          `${modelPath}.onFalse`,
+          { identifier: true },
+        );
+        context.check(
+          onTrue === null || onFalse === null || onTrue !== onFalse,
+          "DUPLICATE_OUTCOME_CODE",
+          modelPath,
+          "must define two distinct Bernoulli outcome codes",
+        );
+        if (
+          outcomeModelId !== null &&
+          onTrue !== null &&
+          onFalse !== null
+        ) {
+          outcomeCodesByModel.set(
+            outcomeModelId,
+            new Set([onTrue, onFalse]),
+          );
+        }
+        return;
+      }
+      context.allowedKeys(
+        model,
+        [
+          "outcomeModelId",
+          "distribution",
+          "randomStreamId",
+          "outcomes",
+        ],
+        modelPath,
+      );
+      context.check(
+        distribution === "weighted-categorical",
+        "INVALID_OUTCOME_DISTRIBUTION",
+        `${modelPath}.distribution`,
+        "must be bernoulli or weighted-categorical",
+      );
+      const outcomes = context.array(
+        model.outcomes,
+        `${modelPath}.outcomes`,
+      );
+      const codes: string[] = [];
+      if (outcomes !== null) {
+        context.check(
+          outcomes.length >= 2,
+          "TOO_FEW_STOCHASTIC_OUTCOMES",
+          `${modelPath}.outcomes`,
+          "must contain at least two outcomes",
+        );
+        outcomes.forEach((outcomeValue, outcomeIndex) => {
+          const outcomePath =
+            `${modelPath}.outcomes[${String(outcomeIndex)}]`;
+          const outcome = context.object(outcomeValue, outcomePath);
+          if (outcome === null) return;
+          context.allowedKeys(
+            outcome,
+            ["outcomeCode", "weight"],
+            outcomePath,
+          );
+          const code = context.string(
+            outcome.outcomeCode,
+            `${outcomePath}.outcomeCode`,
+            { identifier: true },
+          );
+          if (code !== null) codes.push(code);
+          context.number(
+            outcome.weight,
+            `${outcomePath}.weight`,
+            { minimum: Number.MIN_VALUE },
+          );
+        });
+      }
+      context.check(
+        new Set(codes).size === codes.length,
+        "DUPLICATE_OUTCOME_CODE",
+        `${modelPath}.outcomes`,
+        "must not contain duplicate outcome codes",
+      );
+      if (outcomeModelId !== null) {
+        outcomeCodesByModel.set(outcomeModelId, new Set(codes));
+      }
+    });
+  }
+  context.check(
+    outcomeCodesByModel.size === (outcomeModels?.length ?? 0),
+    "DUPLICATE_OUTCOME_MODEL",
+    `${path}.outcomeModels`,
+    "must not contain duplicate outcome-model identifiers",
+  );
+
+  const modeConfigurations = usesLegacyCoffeeModeContract
+    ? []
+    : context.array(
+        scenario.modeConfigurations,
+        `${path}.modeConfigurations`,
+      );
+  const configuredModes: string[] = [];
+  if (modeConfigurations !== null) {
+    modeConfigurations.forEach((value, index) => {
+      const configurationPath =
+        `${path}.modeConfigurations[${String(index)}]`;
+      const configuration = context.object(
+        value,
+        configurationPath,
+      );
+      if (configuration === null) return;
+      context.allowedKeys(
+        configuration,
+        [
+          "mode",
+          "allowHints",
+          "allowRetry",
+          "allowBacktracking",
+          "feedbackTiming",
+          "showScores",
+          "outcomeStrategy",
+          "seedPolicy",
+          "timeLimitMinutes",
+          "allowCommunication",
+          "allowEvidenceRequests",
+          "outcomeModelId",
+          "forcedOutcomeCode",
+        ],
+        configurationPath,
+      );
+      const mode = context.string(
+        configuration.mode,
+        `${configurationPath}.mode`,
+      );
+      if (mode !== null) configuredModes.push(mode);
+      context.check(
+        mode !== null && RUN_MODES.has(mode),
+        "INVALID_RUN_MODE",
+        `${configurationPath}.mode`,
+        "must be tutorial, standard, sandbox, or configured",
+      );
+      for (const key of [
+        "allowHints",
+        "allowRetry",
+        "allowBacktracking",
+        "showScores",
+        "allowCommunication",
+        "allowEvidenceRequests",
+      ] as const) {
+        context.check(
+          typeof configuration[key] === "boolean",
+          "EXPECTED_BOOLEAN",
+          `${configurationPath}.${key}`,
+          "must be a boolean",
+        );
+      }
+      context.check(
+        typeof configuration.feedbackTiming === "string" &&
+          FEEDBACK_TIMINGS.has(configuration.feedbackTiming),
+        "INVALID_FEEDBACK_TIMING",
+        `${configurationPath}.feedbackTiming`,
+        "must be immediate, stage-end, or final",
+      );
+      context.check(
+        typeof configuration.outcomeStrategy === "string" &&
+          OUTCOME_STRATEGIES.has(configuration.outcomeStrategy),
+        "INVALID_OUTCOME_STRATEGY",
+        `${configurationPath}.outcomeStrategy`,
+        "must be forced or probabilistic",
+      );
+      context.check(
+        typeof configuration.seedPolicy === "string" &&
+          SEED_POLICIES.has(configuration.seedPolicy),
+        "INVALID_SEED_POLICY",
+        `${configurationPath}.seedPolicy`,
+        "must be supplied or generated",
+      );
+      if (configuration.timeLimitMinutes !== undefined) {
+        context.number(
+          configuration.timeLimitMinutes,
+          `${configurationPath}.timeLimitMinutes`,
+          { integer: true, minimum: 1, maximum: 1440 },
+        );
+      }
+      const outcomeModelId =
+        configuration.outcomeModelId === undefined
+          ? null
+          : context.string(
+              configuration.outcomeModelId,
+              `${configurationPath}.outcomeModelId`,
+              { identifier: true },
+            );
+      if (outcomeModelId !== null) {
+        context.check(
+          outcomeCodesByModel.has(outcomeModelId),
+          "UNKNOWN_OUTCOME_MODEL",
+          `${configurationPath}.outcomeModelId`,
+          "must reference an outcome model defined by this scenario",
+        );
+      }
+      if (configuration.outcomeStrategy === "probabilistic") {
+        context.check(
+          outcomeModelId !== null,
+          "MISSING_OUTCOME_MODEL",
+          `${configurationPath}.outcomeModelId`,
+          "is required for probabilistic outcomes",
+        );
+      }
+      if (configuration.forcedOutcomeCode !== undefined) {
+        const forcedOutcomeCode = context.string(
+          configuration.forcedOutcomeCode,
+          `${configurationPath}.forcedOutcomeCode`,
+          { identifier: true },
+        );
+        context.check(
+          forcedOutcomeCode !== null &&
+            outcomeModelId !== null &&
+            (outcomeCodesByModel.get(outcomeModelId)?.has(
+              forcedOutcomeCode,
+            ) ??
+              false),
+          "INVALID_FORCED_OUTCOME",
+          `${configurationPath}.forcedOutcomeCode`,
+          "must be an outcome code in the referenced model",
+        );
+      }
+    });
+  }
+  context.check(
+    new Set(configuredModes).size === configuredModes.length,
+    "DUPLICATE_MODE_CONFIGURATION",
+    `${path}.modeConfigurations`,
+    "must define each hosted mode at most once",
+  );
+  context.check(
+    usesLegacyCoffeeModeContract ||
+      (modes.length === configuredModes.length &&
+        modes.every((mode) => configuredModes.includes(mode))),
+    "MODE_CONFIGURATION_MISMATCH",
+    `${path}.modeConfigurations`,
+    "must define exactly one configuration for every supported mode unless using the registered legacy coffee adapter",
+  );
 
   const targets = context.array(
     scenario.competencyTargets,
@@ -2277,6 +2649,12 @@ export function validateScenarioPack(
         "must use a supported BCP 47 language form",
       );
     });
+    validatePackLocalizationCatalogs(
+      context,
+      pack.localizationCatalogs,
+      "$.localizationCatalogs",
+      supportedLocales,
+    );
 
     const manifest = context.object(pack.manifest, "$.manifest");
     if (manifest !== null) {

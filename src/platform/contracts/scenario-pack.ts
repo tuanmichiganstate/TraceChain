@@ -16,6 +16,60 @@ export type HostedRunMode =
   | "sandbox"
   | "configured";
 
+export type HostedFeedbackTiming =
+  | "immediate"
+  | "stage-end"
+  | "final";
+
+export type HostedOutcomeStrategy =
+  | "forced"
+  | "probabilistic";
+
+export type HostedSeedPolicy =
+  | "supplied"
+  | "generated";
+
+export interface HostedRunModeConfigurationV1 {
+  readonly mode: HostedRunMode;
+  readonly allowHints: boolean;
+  readonly allowRetry: boolean;
+  readonly allowBacktracking: boolean;
+  readonly feedbackTiming: HostedFeedbackTiming;
+  readonly showScores: boolean;
+  readonly outcomeStrategy: HostedOutcomeStrategy;
+  readonly seedPolicy: HostedSeedPolicy;
+  readonly timeLimitMinutes?: number;
+  readonly allowCommunication: boolean;
+  readonly allowEvidenceRequests: boolean;
+  readonly outcomeModelId?: string;
+  readonly forcedOutcomeCode?: string;
+}
+
+export interface BernoulliOutcomeModelV1 {
+  readonly outcomeModelId: string;
+  readonly distribution: "bernoulli";
+  readonly randomStreamId: string;
+  readonly probability: number;
+  readonly onTrue: string;
+  readonly onFalse: string;
+}
+
+export interface WeightedCategoricalOutcomeV1 {
+  readonly outcomeCode: string;
+  readonly weight: number;
+}
+
+export interface WeightedCategoricalOutcomeModelV1 {
+  readonly outcomeModelId: string;
+  readonly distribution: "weighted-categorical";
+  readonly randomStreamId: string;
+  readonly outcomes: readonly WeightedCategoricalOutcomeV1[];
+}
+
+export type StochasticOutcomeModelV1 =
+  | BernoulliOutcomeModelV1
+  | WeightedCategoricalOutcomeModelV1;
+
 export interface ScenarioPackManifestV1 {
   readonly title: LocalizedText;
   readonly description: LocalizedText;
@@ -218,6 +272,14 @@ export interface ScenarioDefinitionV1 {
   readonly status: VersionLifecycleStatus;
   readonly title: LocalizedText;
   readonly supportedModes: readonly HostedRunMode[];
+  /**
+   * Required for newly authored scenarios. The fields remain optional in the
+   * V1 TypeScript shape so already-published coffee compatibility packs can be
+   * loaded and replayed through their registered legacy adapter.
+   */
+  readonly modeConfigurations?:
+    readonly HostedRunModeConfigurationV1[];
+  readonly outcomeModels?: readonly StochasticOutcomeModelV1[];
   readonly competencyTargets: readonly CompetencyTargetV1[];
   readonly organizations: readonly ScenarioOrganizationV1[];
   readonly roles: readonly ScenarioRoleV1[];
@@ -244,6 +306,9 @@ export interface ScenarioPackV1 {
   readonly version: string;
   readonly status: VersionLifecycleStatus;
   readonly supportedLocales: readonly string[];
+  readonly localizationCatalogs?: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  >;
   readonly manifest: ScenarioPackManifestV1;
   readonly competencyFrameworks: readonly CompetencyFrameworkV1[];
   readonly rubrics: readonly RubricDefinitionV1[];

@@ -12,6 +12,10 @@ export type AsyncRunEventReducer<State> = (
   event: RunEventV1,
 ) => Promise<State>;
 
+export type ReplayStateHashProjection<State> = (
+  state: Readonly<State>,
+) => unknown;
+
 export class RunReplayError extends Error {
   constructor(
     readonly code:
@@ -33,6 +37,7 @@ export function replayRunEvents<State>(
   initialState: State,
   events: readonly RunEventV1[],
   reducer: RunEventReducer<State>,
+  stateForHash: ReplayStateHashProjection<State> = (state) => state,
 ): State {
   let state = structuredClone(initialState);
   for (const [index, event] of events.entries()) {
@@ -43,7 +48,7 @@ export function replayRunEvents<State>(
         `Expected event sequence ${String(expectedSequence)}, received ${String(event.sequenceNumber)}.`,
       );
     }
-    const previousStateHash = hashReplayState(state);
+    const previousStateHash = hashReplayState(stateForHash(state));
     if (event.previousStateHash !== previousStateHash) {
       throw new RunReplayError(
         "PREVIOUS_STATE_HASH_MISMATCH",
@@ -51,7 +56,9 @@ export function replayRunEvents<State>(
       );
     }
     const nextState = reducer(state, event);
-    const resultingStateHash = hashReplayState(nextState);
+    const resultingStateHash = hashReplayState(
+      stateForHash(nextState),
+    );
     if (event.resultingStateHash !== resultingStateHash) {
       throw new RunReplayError(
         "RESULTING_STATE_HASH_MISMATCH",
@@ -67,6 +74,7 @@ export async function replayRunEventsAsync<State>(
   initialState: State,
   events: readonly RunEventV1[],
   reducer: AsyncRunEventReducer<State>,
+  stateForHash: ReplayStateHashProjection<State> = (state) => state,
 ): Promise<State> {
   let state = structuredClone(initialState);
   for (const [index, event] of events.entries()) {
@@ -77,7 +85,7 @@ export async function replayRunEventsAsync<State>(
         `Expected event sequence ${String(expectedSequence)}, received ${String(event.sequenceNumber)}.`,
       );
     }
-    const previousStateHash = hashReplayState(state);
+    const previousStateHash = hashReplayState(stateForHash(state));
     if (event.previousStateHash !== previousStateHash) {
       throw new RunReplayError(
         "PREVIOUS_STATE_HASH_MISMATCH",
@@ -85,7 +93,9 @@ export async function replayRunEventsAsync<State>(
       );
     }
     const nextState = await reducer(state, event);
-    const resultingStateHash = hashReplayState(nextState);
+    const resultingStateHash = hashReplayState(
+      stateForHash(nextState),
+    );
     if (event.resultingStateHash !== resultingStateHash) {
       throw new RunReplayError(
         "RESULTING_STATE_HASH_MISMATCH",

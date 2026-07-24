@@ -11,10 +11,11 @@ executable-content checks that JSON Schema alone cannot express.
 
 ## Validate a pack
 
-The repository's first pack is:
+The repository packs are:
 
 ```text
 scenario-packs/standard-coffee-stage3/tracechain.pack.json
+scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json
 ```
 
 Validate it with:
@@ -51,11 +52,20 @@ A pack contains:
 - publication metadata for immutable published or retired versions.
 
 Every localized object contains a stable `localizationKey`. The repository
-validator confirms that key exists in every locale declared by the pack. Actual
-learner-facing copy remains in `src/locales/`, preserving TraceChain's single
-localization system. Competency, indicator, rubric, evidence-rule,
+validator confirms that key exists in every locale declared by the pack.
+Compatibility packs may resolve those keys from `src/locales/`; portable
+disciplinary packs may include bounded `localizationCatalogs` as immutable
+pack data. Embedded catalogues must cover every supported locale and override
+application values only inside that pack. Competency, indicator, rubric, evidence-rule,
 organization, role, policy, evidence, decision, node, transition, and
 compatibility references are validated.
+
+Mode configuration and outcome-model properties are structurally optional in
+the V1 JSON Schema only so content-addressed coffee packs published before
+Phase 5 remain loadable. Runtime validation permits that omission solely for
+the registered `tracechain-coffee-v2` compatibility adapter. Every generic and
+newly authored scenario must provide both `modeConfigurations` and
+`outcomeModels`; no application default is applied to authored content.
 
 ## Workflow nodes
 
@@ -87,7 +97,8 @@ stable option IDs and JSON-compatible authored values.
 
 ## Competencies and rubrics
 
-The first pack seeds BC1–BC8 and PC1–PC10 as data. Each competency and
+The coffee pack seeds BC1–BC8 and PC1–PC10 as data. The pharmaceutical starter
+demonstrates the independent `PHARMA.COLD_CHAIN` namespace. Each competency and
 performance indicator has its own version. Scenario targets explicitly mark
 each competency relationship as `primary`, `supporting`, or `contextual`.
 
@@ -181,12 +192,10 @@ The first hosted vertical slice now provides:
 - an optional server-managed initial-administrator allowlist for an empty D1
   deployment.
 
-It does not yet provide:
-
-- application-role, course, or roster-provisioning screens;
-- learner or author portal screens and broader instructor moderation screens;
-- rich exports;
-- a graphical SCORM builder.
-
-Those remain sequenced in `docs/target-architecture.md`. SCORM continues to use
-the current compact deterministic TC3 journal.
+The hosted role workspaces, JSON/CSV exports, moderation, deterministic run
+modes, author lifecycle, and graphical Guided/Challenge package jobs are now
+implemented. Application-role, course, and roster provisioning remain
+deployment administration. The pharmaceutical starter validates and previews
+through the generic authoring layer; a compatible hosted runtime adapter is
+still required before it can be assigned. SCORM continues to use the current
+compact deterministic TC3 journal.

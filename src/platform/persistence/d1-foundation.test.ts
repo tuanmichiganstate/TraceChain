@@ -2,6 +2,8 @@ import {
   DatabaseSync,
   type SQLInputValue,
 } from "node:sqlite";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import { schemaStatements } from "../../../db/schema";
 import { FixedClock } from "../../domain/simulation/environment";
@@ -14,6 +16,8 @@ import {
   verifyScenarioPackContentHash,
 } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
+import type { HostedRunMode } from "../contracts/scenario-pack";
+import { validateHostedModeConfiguration } from "../runs/mode-configuration";
 import { D1ApplicationPrincipalRepository } from "./d1-principal-repository";
 import { D1ScenarioPackRepository } from "./d1-scenario-pack-repository";
 import type {
@@ -123,6 +127,147 @@ function draftPack() {
 }
 
 describe("D1 instructor-platform foundation", () => {
+  it("applies the ordered migrations and backfills bounded run-mode configuration", () => {
+    const database = new DatabaseSync(":memory:");
+    try {
+      for (const migration of [
+        "0001_instructor_platform_foundation.sql",
+        "0002_assignments.sql",
+      ]) {
+        database.exec(
+          readFileSync(
+            resolve(process.cwd(), "db", "migrations", migration),
+            "utf8",
+          ),
+        );
+      }
+      database
+        .prepare(
+          `INSERT INTO application_users (
+            user_id, email, status, created_at_utc
+          ) VALUES (?, ?, 'active', ?)`,
+        )
+        .run(
+          "USER_MIGRATION_001",
+          "migration@example.edu",
+          "2026-07-24T03:00:00.000Z",
+        );
+      database
+        .prepare(
+          `INSERT INTO scenario_pack_versions (
+            pack_id,
+            pack_version,
+            lifecycle_status,
+            content_hash,
+            pack_json,
+            updated_at_utc,
+            updated_by_user_id
+          ) VALUES (?, ?, 'draft', NULL, '{}', ?, ?)`,
+        )
+        .run(
+          "PACK_MIGRATION_001",
+          "1.0.0",
+          "2026-07-24T03:00:00.000Z",
+          "USER_MIGRATION_001",
+        );
+      const insertAssignment = database.prepare(
+        `INSERT INTO assignments (
+          assignment_id,
+          creation_command_id,
+          title,
+          pack_id,
+          pack_version,
+          scenario_id,
+          scenario_version,
+          run_mode,
+          created_at_utc,
+          created_by_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const mode of [
+        "tutorial",
+        "standard",
+        "sandbox",
+        "configured",
+      ] as const) {
+        insertAssignment.run(
+          `ASSIGNMENT_${mode.toUpperCase()}`,
+          `COMMAND_${mode.toUpperCase()}`,
+          `${mode} migration`,
+          "PACK_MIGRATION_001",
+          "1.0.0",
+          "SCENARIO_MIGRATION_001",
+          "1.0.0",
+          mode,
+          "2026-07-24T03:00:00.000Z",
+          "USER_MIGRATION_001",
+        );
+      }
+
+      for (const migration of [
+        "0003_rubric_moderation.sql",
+        "0004_assignment_mode_configuration.sql",
+        "0005_scenario_pack_retirement.sql",
+        "0006_scorm_package_jobs.sql",
+      ]) {
+        database.exec(
+          readFileSync(
+            resolve(process.cwd(), "db", "migrations", migration),
+            "utf8",
+          ),
+        );
+      }
+
+      const rows = database
+        .prepare(
+          `SELECT run_mode, mode_configuration_json
+          FROM assignments
+          ORDER BY run_mode`,
+        )
+        .all() as {
+        readonly run_mode: HostedRunMode;
+        readonly mode_configuration_json: string;
+      }[];
+      expect(rows).toHaveLength(4);
+      for (const row of rows) {
+        expect(
+          validateHostedModeConfiguration(
+            JSON.parse(row.mode_configuration_json) as unknown,
+            row.run_mode,
+          ).mode,
+        ).toBe(row.run_mode);
+      }
+      const tableNames = database
+        .prepare(
+          `SELECT name
+          FROM sqlite_master
+          WHERE type = 'table'
+          ORDER BY name`,
+        )
+        .all()
+        .map((row) => (row as { readonly name: string }).name);
+      expect(tableNames).toEqual(
+        expect.arrayContaining([
+          "rubric_moderation_resolutions",
+          "scorm_package_jobs",
+        ]),
+      );
+      const packColumns = database
+        .prepare("PRAGMA table_info(scenario_pack_versions)")
+        .all()
+        .map((row) => (row as { readonly name: string }).name);
+      expect(packColumns).toEqual(
+        expect.arrayContaining([
+          "retirement_command_id",
+          "retired_at_utc",
+          "retired_by_user_id",
+        ]),
+      );
+    } finally {
+      database.close();
+    }
+  });
+
   it("stores drafts and enforces immutable content-addressed publication", async () => {
     const database = new SqliteD1Database();
     try {
@@ -150,6 +295,14 @@ describe("D1 instructor-platform foundation", () => {
       expect(
         await repository.find(draft.packId, draft.version),
       ).toEqual(published);
+      expect(await repository.list()).toEqual([
+        expect.objectContaining({
+          packId: draft.packId,
+          version: draft.version,
+          status: "published",
+          contentHash: published.publication?.contentHash,
+        }),
+      ]);
 
       await expect(repository.saveDraft(draft)).rejects.toBeInstanceOf(
         ScenarioPackPublicationError,
@@ -160,6 +313,41 @@ describe("D1 instructor-platform foundation", () => {
           publishedBy: "USER_AUTHOR_002",
         }),
       ).rejects.toBeInstanceOf(ScenarioPackPublicationError);
+
+      const retirement = {
+        commandId: "CMD_RETIRE_PACK_001",
+        retiredAt: "2026-07-24T05:00:00.000Z",
+        retiredBy: "USER_AUTHOR_001",
+      } as const;
+      const firstRetirement = await repository.retire(
+        draft.packId,
+        draft.version,
+        retirement,
+      );
+      const replayedRetirement = await repository.retire(
+        draft.packId,
+        draft.version,
+        retirement,
+      );
+      expect(firstRetirement.wasIdempotentReplay).toBe(false);
+      expect(replayedRetirement.wasIdempotentReplay).toBe(true);
+      expect(firstRetirement.pack.status).toBe("retired");
+      expect(
+        firstRetirement.pack.publication?.contentHash,
+      ).toBe(published.publication?.contentHash);
+      expect(verifyScenarioPackContentHash(firstRetirement.pack)).toBe(true);
+      expect(
+        await repository.find(draft.packId, draft.version),
+      ).toEqual(firstRetirement.pack);
+      expect(await repository.list()).toEqual([
+        expect.objectContaining({
+          packId: draft.packId,
+          version: draft.version,
+          status: "retired",
+          retiredAt: retirement.retiredAt,
+          retiredByUserId: retirement.retiredBy,
+        }),
+      ]);
     } finally {
       database.close();
     }

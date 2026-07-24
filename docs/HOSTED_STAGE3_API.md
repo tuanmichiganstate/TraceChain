@@ -69,13 +69,15 @@ The logical Sites binding is:
 ```json
 {
   "d1": "DB",
-  "r2": null
+  "r2": "ARTIFACTS"
 }
 ```
 
 The current schema is in `db/schema.ts`; migration history begins at
 `db/migrations/0001_instructor_platform_foundation.sql` and adds assignments
-and assessment records in `db/migrations/0002_assignments.sql`.
+and assessment records in `0002_assignments.sql`, rubric moderation in `0003`,
+resolved assignment-mode configuration in `0004`, pack retirement metadata in
+`0005`, and content-addressed SCORM package jobs in `0006`.
 
 Tables:
 
@@ -86,6 +88,8 @@ Tables:
 - `assignment_learners`
 - `hosted_run_events`
 - `rubric_rating_revisions`
+- `rubric_moderation_resolutions`
+- `scorm_package_jobs`
 
 `hosted_run_events` enforces unique `(run_id, sequence_number)`,
 `(run_id, idempotency_key)`, and `event_id`. D1 batch execution makes one
@@ -99,28 +103,48 @@ All endpoints use `/api/v1`.
 | Method and path | Application role | Result |
 |---|---|---|
 | `GET /session` | provisioned user | Server-owned user ID, email and roles |
+| `POST /scenario-packs/validate` | scenario author or administrator | Path-specific validation report without persistence |
+| `POST /scenario-packs/import` | scenario author or administrator | Validated mutable draft |
+| `GET /scenario-packs` | instructor, scenario author or administrator | Versioned scenario library |
+| `GET /scenario-packs/:packId/versions/:version` | instructor, scenario author or administrator | Exact stored pack |
+| `GET /scenario-packs/:packId/versions/:version/preview` | instructor, scenario author or administrator | Deterministic role-and-mode preview |
+| `GET /scenario-packs/:packId/compare` | instructor, scenario author or administrator | Stable path comparison between exact versions |
+| `POST /scenario-packs/:packId/versions/:version/publish` | scenario author or administrator | Immutable publication |
+| `POST /scenario-packs/:packId/versions/:version/retire` | scenario author or administrator | Idempotent retirement metadata |
 | `POST /scenario-packs/publish` | scenario author or administrator | Immutable pack identity |
 | `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario and provisioned learner roster |
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
-| `POST /assignments/:assignmentId/start-run` | instructor or administrator | New run using server-owned assignment configuration |
+| `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
+| `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration |
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, event-count and current-rating report |
+| `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
+| `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary |
+| `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same evidence in the documented flat CSV V1 layout |
 | `POST /assignments/:assignmentId/feedback-release` | instructor or administrator | One-way release of current feedback |
 | `POST /runs` | instructor, scenario author or administrator | New assigned hosted coffee run metadata |
 | `GET /runs/:runId` | assigned learner | Role-filtered projection only |
 | `POST /runs/:runId/commands` | assigned learner | Persisted command result and new projection |
 | `GET /runs/:runId/timeline` | instructor, rater or administrator | Ordered attributed event timeline |
+| `GET /runs/:runId/replay?sequence=:number` | instructor, rater or administrator | Deterministic role-filtered state immediately after one authoritative event |
 | `GET /runs/:runId/competencies` | instructor, rater or administrator | Evidence grouped by indicator |
 | `GET /runs/:runId/rubric-evidence` | instructor, rater or administrator | Observable evidence per criterion |
 | `GET /runs/:runId/ratings` | instructor, rater or administrator | Current manual rating revision per criterion |
 | `POST /runs/:runId/ratings` | instructor, rater or administrator | Evidence-linked append-only manual rating revision |
+| `POST /runs/:runId/moderation` | instructor or administrator | Evidence-linked append-only rubric score resolution |
 | `GET /runs/:runId/feedback` | assigned learner | Released manual feedback, or an explicit withheld result |
+| `GET /scorm-package-jobs` | instructor or administrator | Authorized package-job history |
+| `POST /scorm-package-jobs` | instructor or administrator | Exact verified Guided or Challenge artifact |
+| `GET /scorm-package-jobs/:jobId` | owner or administrator | Package identity and download URL |
+| `GET /scorm-package-jobs/:jobId/download` | owner or administrator | Exact content-addressed ZIP |
 
-The hosted application route `/instructor` is a thin workspace over these
-endpoints. It resolves the deployment-authenticated session, creates
-exact-version assignments, accepts one exact run or assignment ID, presents
-the attributed timeline and evidence projections, records rubric ratings, and
-releases feedback. It does not create a second reporting model or duplicate
-replay logic.
+The hosted `/instructor`, `/learner`, and `/author` routes are thin workspaces
+over these endpoints. They do not create a second reporting, replay, authoring,
+or package-generation model. See `docs/HOSTED_ROLE_WORKSPACES_V1.md`.
+
+Assignments retain the fully resolved published mode configuration. Sandbox
+and Configured probabilistic cases record deterministic random-draw and
+realized-outcome events; Standard and Tutorial can force an authored outcome
+without consuming a draw. See `docs/HOSTED_RUN_MODES_V1.md`.
 
 The first command set is deliberately bounded:
 
@@ -238,10 +262,20 @@ grade.
   learner run.
 - Exact-version assignment creation, a provisioned learner roster,
   assignment-bound run start, manual rating, feedback release, and a focused
-  assignment report are implemented.
-- Course, roster-provisioning, moderation, and learner portal screens are not
-  implemented.
-- CSV/JSON exports and graphical package jobs are not implemented.
+  assignment report are implemented. Stable JSON and CSV assignment evidence
+  exports include exact content versions, complete event streams, append-only
+  rating and moderation revisions, and the V1 data dictionary. The assignment competency
+  report links targeted indicator versions to observable evidence and current
+  ratings while explicitly avoiding a single-simulation competence inference.
+- Instructor timeline replay reconstructs the exact role-filtered view at a
+  selected event sequence and never returns hidden actual state.
+- Course and roster-provisioning screens are not implemented.
+- The learner, instructor/rater/administrator, and author workspaces are
+  implemented. The author workspace includes a self-localized pharmaceutical
+  starter for validation and preview; the complete hosted runtime remains the
+  coffee journey.
+- Graphical Guided and Challenge package jobs reuse the exact Node-generated
+  artifacts and content-addressed R2 storage.
 - The hosted service exposes both the custody-transfer and quantity-correction
   endorsement policies.
 - SCORM continues to use TC3 and is unchanged by hosted D1 persistence.

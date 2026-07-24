@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assertStaticApplicationBuildPaths,
   classifyPackageBuild,
   classifyPackageFileName,
 } from "./scorm-package-policy.mjs";
@@ -43,5 +44,24 @@ test("package filename classification rejects non-ZIP names", () => {
   assert.throws(
     () => classifyPackageFileName("TraceChain_Guided_vi_v2.1.0", false),
     /end in \.zip/u,
+  );
+});
+
+test("SCORM input rejects a nested hosted Sites bundle", () => {
+  assert.doesNotThrow(() =>
+    assertStaticApplicationBuildPaths([
+      "index.html",
+      "assets/index.js",
+      "scenario.json",
+    ]),
+  );
+  assert.throws(
+    () =>
+      assertStaticApplicationBuildPaths([
+        "index.html",
+        "assets/index.js",
+        "client/scorm-packages/package.zip",
+      ]),
+    /cannot reuse hosted build content/u,
   );
 });

@@ -3,14 +3,22 @@ import type {
   AssignmentRunMode,
   CreateHostedAssignmentRequest,
   HostedAssignmentReportV1,
+  HostedLearnerAssignmentV1,
   HostedAssignmentRunSummary,
   HostedAssignmentCreationResult,
   HostedAssignmentV1,
   ManualRubricRatingResult,
   ManualRubricRatingV1,
+  RubricModerationResolutionV1,
+  RubricModerationResult,
   SaveManualRubricRatingRequest,
+  SaveRubricModerationRequest,
 } from "../contracts/assessment";
 import type { ApplicationPrincipal } from "../hosted/access";
+import {
+  HostedModeConfigurationError,
+  validateHostedModeConfiguration,
+} from "../runs/mode-configuration";
 import type { D1DatabaseLike } from "./d1-types";
 
 interface AssignmentRow {
@@ -22,6 +30,7 @@ interface AssignmentRow {
   readonly scenario_id: string;
   readonly scenario_version: string;
   readonly run_mode: string;
+  readonly mode_configuration_json: string;
   readonly lifecycle_status: string;
   readonly feedback_release_status: string;
   readonly feedback_release_command_id: string | null;
@@ -57,6 +66,21 @@ interface RunSummaryRow {
   readonly completed: number;
 }
 
+interface ModerationRow {
+  readonly resolution_id: string;
+  readonly assignment_id: string;
+  readonly run_id: string;
+  readonly rubric_id: string;
+  readonly rubric_version: string;
+  readonly criterion_id: string;
+  readonly revision: number;
+  readonly level_value: number;
+  readonly comment: string;
+  readonly source_rating_ids_json: string;
+  readonly moderator_user_id: string;
+  readonly resolved_at_utc: string;
+}
+
 const FIND_ASSIGNMENT = `SELECT
   assignment_id,
   creation_command_id,
@@ -66,6 +90,7 @@ const FIND_ASSIGNMENT = `SELECT
   scenario_id,
   scenario_version,
   run_mode,
+  mode_configuration_json,
   lifecycle_status,
   feedback_release_status,
   feedback_release_command_id,
@@ -79,6 +104,29 @@ WHERE assignment_id = ?`;
 const FIND_ASSIGNMENT_BY_COMMAND = `SELECT assignment_id
 FROM assignments
 WHERE creation_command_id = ?`;
+
+const LIST_LEARNER_ASSIGNMENTS = `SELECT
+  assignments.assignment_id,
+  assignments.creation_command_id,
+  assignments.title,
+  assignments.pack_id,
+  assignments.pack_version,
+  assignments.scenario_id,
+  assignments.scenario_version,
+  assignments.run_mode,
+  assignments.mode_configuration_json,
+  assignments.lifecycle_status,
+  assignments.feedback_release_status,
+  assignments.feedback_release_command_id,
+  assignments.feedback_released_at_utc,
+  assignments.feedback_released_by_user_id,
+  assignments.created_at_utc,
+  assignments.created_by_user_id
+FROM assignments
+JOIN assignment_learners
+  ON assignment_learners.assignment_id = assignments.assignment_id
+WHERE assignment_learners.learner_user_id = ?
+ORDER BY assignments.created_at_utc DESC, assignments.assignment_id`;
 
 const FIND_LEARNERS = `SELECT learner_user_id
 FROM assignment_learners
@@ -102,11 +150,12 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   scenario_id,
   scenario_version,
   run_mode,
+  mode_configuration_json,
   lifecycle_status,
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'withheld', ?, ?)`;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'withheld', ?, ?)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -155,6 +204,23 @@ FROM rubric_rating_revisions
 WHERE run_id = ?
 ORDER BY rubric_id, criterion_id, revision`;
 
+const FIND_RATINGS_FOR_ASSIGNMENT = `SELECT
+  rating_id,
+  assignment_id,
+  run_id,
+  rubric_id,
+  rubric_version,
+  criterion_id,
+  revision,
+  level_value,
+  comment,
+  linked_evidence_ids_json,
+  rater_user_id,
+  rated_at_utc
+FROM rubric_rating_revisions
+WHERE assignment_id = ?
+ORDER BY run_id, rubric_id, criterion_id, revision`;
+
 const INSERT_RATING = `INSERT INTO rubric_rating_revisions (
   rating_id,
   assignment_id,
@@ -168,6 +234,71 @@ const INSERT_RATING = `INSERT INTO rubric_rating_revisions (
   linked_evidence_ids_json,
   rater_user_id,
   rated_at_utc
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+const FIND_MODERATION_BY_ID = `SELECT
+  resolution_id,
+  assignment_id,
+  run_id,
+  rubric_id,
+  rubric_version,
+  criterion_id,
+  revision,
+  level_value,
+  comment,
+  source_rating_ids_json,
+  moderator_user_id,
+  resolved_at_utc
+FROM rubric_moderation_resolutions
+WHERE resolution_id = ?`;
+
+const FIND_MODERATION_FOR_RUN = `SELECT
+  resolution_id,
+  assignment_id,
+  run_id,
+  rubric_id,
+  rubric_version,
+  criterion_id,
+  revision,
+  level_value,
+  comment,
+  source_rating_ids_json,
+  moderator_user_id,
+  resolved_at_utc
+FROM rubric_moderation_resolutions
+WHERE run_id = ?
+ORDER BY rubric_id, criterion_id, revision`;
+
+const FIND_MODERATION_FOR_ASSIGNMENT = `SELECT
+  resolution_id,
+  assignment_id,
+  run_id,
+  rubric_id,
+  rubric_version,
+  criterion_id,
+  revision,
+  level_value,
+  comment,
+  source_rating_ids_json,
+  moderator_user_id,
+  resolved_at_utc
+FROM rubric_moderation_resolutions
+WHERE assignment_id = ?
+ORDER BY run_id, rubric_id, criterion_id, revision`;
+
+const INSERT_MODERATION = `INSERT INTO rubric_moderation_resolutions (
+  resolution_id,
+  assignment_id,
+  run_id,
+  rubric_id,
+  rubric_version,
+  criterion_id,
+  revision,
+  level_value,
+  comment,
+  source_rating_ids_json,
+  moderator_user_id,
+  resolved_at_utc
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
 const RELEASE_FEEDBACK = `UPDATE assignments
@@ -223,6 +354,8 @@ export class AssignmentRepositoryError extends Error {
       | "RUN_NOT_ASSIGNED"
       | "INVALID_RATING"
       | "RATING_REVISION_CONFLICT"
+      | "INVALID_MODERATION"
+      | "MODERATION_REVISION_CONFLICT"
       | "FEEDBACK_ALREADY_RELEASED"
       | "FEEDBACK_NOT_RELEASED",
     message: string,
@@ -309,6 +442,21 @@ function normalizeRequest(
       "learnerUserIds must not contain duplicates.",
     );
   }
+  let runConfiguration;
+  try {
+    runConfiguration = validateHostedModeConfiguration(
+      request.runConfiguration,
+      assignmentMode(request.mode),
+    );
+  } catch (error) {
+    if (error instanceof HostedModeConfigurationError) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        error.message,
+      );
+    }
+    throw error;
+  }
   return {
     commandId: identifier(request.commandId, "commandId"),
     assignmentId: identifier(request.assignmentId, "assignmentId"),
@@ -321,7 +469,8 @@ function normalizeRequest(
       "scenarioVersion",
       64,
     ),
-    mode: assignmentMode(request.mode),
+    mode: runConfiguration.mode,
+    runConfiguration,
     learnerUserIds,
   };
 }
@@ -391,6 +540,72 @@ function normalizeRatingRequest(
   };
 }
 
+function normalizeModerationRequest(
+  request: SaveRubricModerationRequest,
+): SaveRubricModerationRequest {
+  if (
+    !Number.isInteger(request.levelValue) ||
+    !Number.isInteger(request.expectedRevision) ||
+    request.expectedRevision < 0
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_MODERATION",
+      "Moderation level and expected revision must be integers.",
+    );
+  }
+  if (
+    typeof request.comment !== "string" ||
+    request.comment.trim().length === 0 ||
+    request.comment.length > 1000
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_MODERATION",
+      "Moderation comment must contain 1 to 1,000 characters.",
+    );
+  }
+  if (
+    !Array.isArray(request.sourceRatingIds) ||
+    request.sourceRatingIds.length === 0 ||
+    request.sourceRatingIds.length > 100
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_MODERATION",
+      "Moderation must reference 1 to 100 rating revisions.",
+    );
+  }
+  const sourceRatingIds = [
+    ...new Set(
+      request.sourceRatingIds.map((ratingId, index) =>
+        identifier(
+          ratingId,
+          `sourceRatingIds[${String(index)}]`,
+        ),
+      ),
+    ),
+  ].sort();
+  if (sourceRatingIds.length !== request.sourceRatingIds.length) {
+    throw new AssignmentRepositoryError(
+      "INVALID_MODERATION",
+      "sourceRatingIds must not contain duplicates.",
+    );
+  }
+  return {
+    commandId: identifier(request.commandId, "commandId"),
+    runId: identifier(request.runId, "runId"),
+    rubricId: identifier(request.rubricId, "rubricId"),
+    rubricVersion: boundedText(
+      request.rubricVersion,
+      "rubricVersion",
+      64,
+    ),
+    criterionId: identifier(request.criterionId, "criterionId"),
+    levelValue: request.levelValue,
+    comment: request.comment.trim(),
+    sourceRatingIds,
+    expectedRevision: request.expectedRevision,
+  };
+}
+
 function linkedEvidenceFrom(row: RatingRow): readonly string[] {
   try {
     const parsed: unknown = JSON.parse(row.linked_evidence_ids_json);
@@ -427,6 +642,47 @@ function ratingFrom(row: RatingRow): ManualRubricRatingV1 {
   };
 }
 
+function sourceRatingIdsFrom(
+  row: ModerationRow,
+): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(row.source_rating_ids_json);
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every((item) => typeof item === "string")
+    ) {
+      return parsed;
+    }
+  } catch {
+    // The structured storage error below avoids exposing database details.
+  }
+  throw new AssignmentRepositoryError(
+    "ASSIGNMENT_STORAGE_FAILED",
+    "Stored moderation evidence violates the current contract.",
+  );
+}
+
+function moderationFrom(
+  row: ModerationRow,
+): RubricModerationResolutionV1 {
+  return {
+    schemaVersion: "1.0.0",
+    resolutionId: row.resolution_id,
+    assignmentId: row.assignment_id,
+    runId: row.run_id,
+    rubricId: row.rubric_id,
+    rubricVersion: row.rubric_version,
+    criterionId: row.criterion_id,
+    levelValue: row.level_value,
+    comment: row.comment,
+    sourceRatingIds: sourceRatingIdsFrom(row),
+    revision: row.revision,
+    moderatorUserId: row.moderator_user_id,
+    resolvedAt: row.resolved_at_utc,
+  };
+}
+
 function isSameRating(
   existing: ManualRubricRatingV1,
   request: SaveManualRubricRatingRequest,
@@ -447,6 +703,26 @@ function isSameRating(
   );
 }
 
+function isSameModeration(
+  existing: RubricModerationResolutionV1,
+  request: SaveRubricModerationRequest,
+  principal: ApplicationPrincipal,
+): boolean {
+  return (
+    existing.resolutionId === request.commandId &&
+    existing.runId === request.runId &&
+    existing.rubricId === request.rubricId &&
+    existing.rubricVersion === request.rubricVersion &&
+    existing.criterionId === request.criterionId &&
+    existing.levelValue === request.levelValue &&
+    existing.comment === request.comment &&
+    existing.revision === request.expectedRevision + 1 &&
+    existing.moderatorUserId === principal.userId &&
+    JSON.stringify(existing.sourceRatingIds) ===
+      JSON.stringify(request.sourceRatingIds)
+  );
+}
+
 function isSameAssignment(
   existing: HostedAssignmentV1,
   row: AssignmentRow,
@@ -462,6 +738,8 @@ function isSameAssignment(
     existing.scenarioId === request.scenarioId &&
     existing.scenarioVersion === request.scenarioVersion &&
     existing.mode === request.mode &&
+    JSON.stringify(existing.runConfiguration) ===
+      JSON.stringify(request.runConfiguration) &&
     existing.createdByUserId === principal.userId &&
     JSON.stringify(existing.learnerUserIds) ===
       JSON.stringify(request.learnerUserIds)
@@ -484,6 +762,20 @@ function assignmentFrom(
       "Stored assignment data violates the current contract.",
     );
   }
+  let runConfiguration;
+  try {
+    runConfiguration = validateHostedModeConfiguration(
+      JSON.parse(row.mode_configuration_json) as unknown,
+      row.run_mode as AssignmentRunMode,
+    );
+  } catch (error) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      error instanceof Error
+        ? `Stored assignment mode configuration is invalid: ${error.message}`
+        : "Stored assignment mode configuration is invalid.",
+    );
+  }
   return {
     schemaVersion: "1.0.0",
     assignmentId: row.assignment_id,
@@ -493,6 +785,7 @@ function assignmentFrom(
     scenarioId: row.scenario_id,
     scenarioVersion: row.scenario_version,
     mode: row.run_mode as AssignmentRunMode,
+    runConfiguration,
     learnerUserIds,
     status: row.lifecycle_status,
     feedbackReleaseStatus: row.feedback_release_status,
@@ -573,6 +866,7 @@ export class D1AssignmentRepository {
           normalized.scenarioId,
           normalized.scenarioVersion,
           normalized.mode,
+          JSON.stringify(normalized.runConfiguration),
           now,
           principal.userId,
         ),
@@ -641,6 +935,39 @@ export class D1AssignmentRepository {
       );
     }
     return assignment;
+  }
+
+  async listForLearner(
+    learnerUserId: string,
+  ): Promise<readonly HostedLearnerAssignmentV1[]> {
+    const normalizedLearnerId = identifier(
+      learnerUserId,
+      "learnerUserId",
+    );
+    const result = await this.database
+      .prepare(LIST_LEARNER_ASSIGNMENTS)
+      .bind(normalizedLearnerId)
+      .all<AssignmentRow>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Learner assignments could not be loaded.",
+      );
+    }
+    const assignments: HostedLearnerAssignmentV1[] = [];
+    for (const row of result.results) {
+      const assignment = await this.assignmentFromRow(row);
+      const report = await this.report(assignment.assignmentId);
+      assignments.push({
+        assignment,
+        runs:
+          report.learners.find(
+            (learner) =>
+              learner.learnerUserId === normalizedLearnerId,
+          )?.runs ?? [],
+      });
+    }
+    return assignments;
   }
 
   async saveRating(
@@ -755,6 +1082,185 @@ export class D1AssignmentRepository {
       .map(ratingFrom);
   }
 
+  async ratingHistory(
+    assignmentId: string,
+  ): Promise<readonly ManualRubricRatingV1[]> {
+    const assignment = await this.find(assignmentId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${assignmentId} does not exist.`,
+      );
+    }
+    const result = await this.database
+      .prepare(FIND_RATINGS_FOR_ASSIGNMENT)
+      .bind(assignment.assignmentId)
+      .all<RatingRow>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment rating history could not be loaded.",
+      );
+    }
+    return result.results.map(ratingFrom);
+  }
+
+  async saveModeration(
+    request: SaveRubricModerationRequest,
+    principal: ApplicationPrincipal,
+  ): Promise<RubricModerationResult> {
+    const normalized = normalizeModerationRequest(request);
+    const existingRow = await this.database
+      .prepare(FIND_MODERATION_BY_ID)
+      .bind(normalized.commandId)
+      .first<ModerationRow>();
+    if (existingRow !== null) {
+      const existing = moderationFrom(existingRow);
+      if (isSameModeration(existing, normalized, principal)) {
+        return {
+          resolution: existing,
+          wasIdempotentReplay: true,
+        };
+      }
+      throw new AssignmentRepositoryError(
+        "MODERATION_REVISION_CONFLICT",
+        "The moderation command ID is already bound to different content.",
+      );
+    }
+    const assignment = await this.findForRun(normalized.runId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "RUN_NOT_ASSIGNED",
+        "Moderation requires a run created from an assignment.",
+      );
+    }
+    const ratingRows = await this.ratingRows(normalized.runId);
+    const ratingsById = new Map(
+      ratingRows.map((row) => [row.rating_id, row]),
+    );
+    for (const ratingId of normalized.sourceRatingIds) {
+      const rating = ratingsById.get(ratingId);
+      if (
+        rating === undefined ||
+        rating.rubric_id !== normalized.rubricId ||
+        rating.rubric_version !== normalized.rubricVersion ||
+        rating.criterion_id !== normalized.criterionId
+      ) {
+        throw new AssignmentRepositoryError(
+          "INVALID_MODERATION",
+          "Moderation sources must be rating revisions for the same run, rubric, version, and criterion.",
+        );
+      }
+    }
+    const existingResolutions = await this.moderationRows(
+      normalized.runId,
+    );
+    const latestRevision = existingResolutions
+      .filter(
+        (resolution) =>
+          resolution.rubric_id === normalized.rubricId &&
+          resolution.criterion_id === normalized.criterionId,
+      )
+      .reduce(
+        (latest, resolution) =>
+          Math.max(latest, resolution.revision),
+        0,
+      );
+    if (latestRevision !== normalized.expectedRevision) {
+      throw new AssignmentRepositoryError(
+        "MODERATION_REVISION_CONFLICT",
+        "The rubric criterion was moderated from a stale revision.",
+      );
+    }
+    const revision = latestRevision + 1;
+    const resolvedAt = this.clock.now();
+    const result = await this.database
+      .prepare(INSERT_MODERATION)
+      .bind(
+        normalized.commandId,
+        assignment.assignmentId,
+        normalized.runId,
+        normalized.rubricId,
+        normalized.rubricVersion,
+        normalized.criterionId,
+        revision,
+        normalized.levelValue,
+        normalized.comment,
+        JSON.stringify(normalized.sourceRatingIds),
+        principal.userId,
+        resolvedAt,
+      )
+      .run();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "The moderation resolution could not be stored.",
+      );
+    }
+    return {
+      resolution: {
+        schemaVersion: "1.0.0",
+        resolutionId: normalized.commandId,
+        assignmentId: assignment.assignmentId,
+        runId: normalized.runId,
+        rubricId: normalized.rubricId,
+        rubricVersion: normalized.rubricVersion,
+        criterionId: normalized.criterionId,
+        levelValue: normalized.levelValue,
+        comment: normalized.comment,
+        sourceRatingIds: normalized.sourceRatingIds,
+        revision,
+        moderatorUserId: principal.userId,
+        resolvedAt,
+      },
+      wasIdempotentReplay: false,
+    };
+  }
+
+  async currentModerationResolutions(
+    runId: string,
+  ): Promise<readonly RubricModerationResolutionV1[]> {
+    const rows = await this.moderationRows(identifier(runId, "runId"));
+    const latestByCriterion = new Map<string, ModerationRow>();
+    for (const row of rows) {
+      const key = `${row.rubric_id}\u0000${row.criterion_id}`;
+      const current = latestByCriterion.get(key);
+      if (current === undefined || current.revision < row.revision) {
+        latestByCriterion.set(key, row);
+      }
+    }
+    return [...latestByCriterion.values()]
+      .sort((left, right) =>
+        `${left.rubric_id}\u0000${left.criterion_id}`.localeCompare(
+          `${right.rubric_id}\u0000${right.criterion_id}`,
+        ),
+      )
+      .map(moderationFrom);
+  }
+
+  async moderationHistory(
+    assignmentId: string,
+  ): Promise<readonly RubricModerationResolutionV1[]> {
+    const assignment = await this.find(assignmentId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${assignmentId} does not exist.`,
+      );
+    }
+    const result = await this.database
+      .prepare(FIND_MODERATION_FOR_ASSIGNMENT)
+      .bind(assignment.assignmentId)
+      .all<ModerationRow>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment moderation history could not be loaded.",
+      );
+    }
+    return result.results.map(moderationFrom);
+  }
+
   async releaseFeedback(
     assignmentId: string,
     commandId: string,
@@ -844,6 +1350,8 @@ export class D1AssignmentRepository {
         status: row.completed === 1 ? "completed" : "active",
         eventCount: row.event_count,
         ratings: await this.currentRatings(row.run_id),
+        moderationResolutions:
+          await this.currentModerationResolutions(row.run_id),
       });
     }
     return {
@@ -867,6 +1375,22 @@ export class D1AssignmentRepository {
       throw new AssignmentRepositoryError(
         "ASSIGNMENT_STORAGE_FAILED",
         "Run ratings could not be loaded.",
+      );
+    }
+    return result.results;
+  }
+
+  private async moderationRows(
+    runId: string,
+  ): Promise<readonly ModerationRow[]> {
+    const result = await this.database
+      .prepare(FIND_MODERATION_FOR_RUN)
+      .bind(runId)
+      .all<ModerationRow>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Run moderation resolutions could not be loaded.",
       );
     }
     return result.results;

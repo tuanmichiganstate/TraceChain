@@ -44,9 +44,21 @@ role-filtered learner state, and exposes authenticated timeline,
 rubric-evidence, and competency APIs. The hosted `/instructor` route provides a
 deliberately small authenticated workspace for exact-version assignment
 creation, those evidence projections, evidence-linked rubric ratings,
-one-way feedback release, and assignment reports. It does not yet provide a
-learner portal, course or roster administration, moderation, or exports and
-does not alter the current SCORM activity.
+one-way feedback release, moderation, assignment reports, and graphical SCORM
+package jobs. The `/learner` route lists only the signed-in learner's
+assignments and runs the complete bounded coffee command path from
+role-filtered server state. The `/author` route imports bounded JSON, YAML, or
+ZIP packs, provides a compact visual draft editor and pharmaceutical
+cold-chain starter, validates and previews roles and modes, compares versions,
+and controls publication and retirement. Course and roster provisioning remain
+deployment administration rather than application screens. Assignment
+reports now provide stable JSON and CSV evidence exports with exact content
+versions, complete event streams, rating revisions, and a data dictionary.
+They also summarize versioned learner and class competency evidence without
+inferring stable competence from one run. Instructors can replay any event
+sequence through the existing deterministic reducer and inspect the
+role-filtered view that existed at that point. The hosted work does not alter
+the current SCORM activity.
 
 | | |
 |---|---|
@@ -133,9 +145,13 @@ src/
 │   └── time/          deterministic scenario clock
 ├── platform/
 │   ├── contracts/     scenario-pack, competency, rubric and hosted-event V1
+│   ├── author/        pack import, draft editing, preview and lifecycle UI
 │   ├── hosted/        incremental coffee orchestration, trusted access and APIs
 │   ├── instructor/    thin assignment, evidence and assessment workspace
+│   ├── learner/       assigned-run dashboard and role-filtered command UI
 │   ├── persistence/   D1 event, pack and application-principal adapters
+│   ├── portal/        role-aware hosted workspace landing page
+│   ├── reporting/     export and competency-report projections
 │   ├── runs/          event-store port, replay guard and role projection
 │   └── scenario-packs validation and immutable publication
 ├── scenarios/
@@ -194,6 +210,22 @@ schemas/               published versioned JSON Schemas
   compatibility-adapter, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
+- `docs/ASSIGNMENT_EXPORT_V1.md` — the stable assignment JSON/CSV evidence
+  contract and data dictionary
+- `docs/COMPETENCY_REPORT_V1.md` — versioned learner and class competency
+  evidence aggregation and its no-inference boundary
+- `docs/RUN_REPLAY_V1.md` — exact sequence-bounded instructor replay and the
+  hidden-state boundary
+- `docs/RUBRIC_MODERATION_V1.md` — append-only rubric score resolution and its
+  separation from simulation scoring
+- `docs/HOSTED_RUN_MODES_V1.md` — published Tutorial, Standard, Sandbox, and
+  Configured behavior plus deterministic outcome replay
+- `docs/SCENARIO_AUTHORING_V1.md` — self-localized pack import, visual draft
+  editing, validation, preview, comparison, publication, and retirement
+- `docs/SCORM_PACKAGE_JOBS_V1.md` — hosted package identity, object storage,
+  shared-build verification, and exact download behavior
+- `docs/HOSTED_ROLE_WORKSPACES_V1.md` — authenticated learner, instructor,
+  rater, author, and administrator route boundaries
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
@@ -213,8 +245,9 @@ schemas/               published versioned JSON Schemas
 - **`SCENARIO_STAGE_ORDER` is append-only** for the same reason.
 - **Every knowledge check must appear in `DECISION_IDS`**, or its answer is
   collected, scored, and then silently lost on resume.
-- **No learner-facing string may live outside `src/locales/`.**
-  `validate:locales` fails the build otherwise.
+- **Core application strings live in `src/locales/`.** Portable scenario packs
+  may carry their own bounded `localizationCatalogs`; their referenced EN/VI
+  keys are validated as immutable pack content.
 - **No student identity may reach the ledger** — not an asset, transaction,
   block, hash, or suspend-data value.
 - **`cmi.suspend_data` is capped at 4096 characters.** TC3 enforces a

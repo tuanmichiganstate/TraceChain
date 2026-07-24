@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
 } from "node:fs";
@@ -12,14 +13,23 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
-const defaultPackPath = join(
-  projectRoot,
-  "scenario-packs",
-  "standard-coffee-stage3",
-  "tracechain.pack.json",
+function repositoryPackPaths(directory) {
+  return readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) return repositoryPackPaths(path);
+      return entry.isFile() && entry.name === "tracechain.pack.json"
+        ? [path]
+        : [];
+    })
+    .sort();
+}
+
+const defaultPackPaths = repositoryPackPaths(
+  join(projectRoot, "scenario-packs"),
 );
 const requestedPaths =
-  process.argv.length > 2 ? process.argv.slice(2) : [defaultPackPath];
+  process.argv.length > 2 ? process.argv.slice(2) : defaultPackPaths;
 const packPaths = requestedPaths.map((requestedPath) =>
   isAbsolute(requestedPath)
     ? requestedPath

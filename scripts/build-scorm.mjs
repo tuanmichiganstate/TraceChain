@@ -22,6 +22,7 @@ import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { build as bundle } from "esbuild";
 import {
+  assertStaticApplicationBuildPaths,
   classifyPackageBuild,
   classifyPackageFileName,
 } from "./scorm-package-policy.mjs";
@@ -757,9 +758,10 @@ async function main() {
   }
 
   const distDirectory = join(projectRoot, "dist");
-  if (!existsSync(join(distDirectory, "index.html"))) {
-    throw new Error("dist/index.html not found. Run the application build first.");
-  }
+  const applicationBuildPaths = existsSync(distDirectory)
+    ? listFilesRecursively(distDirectory)
+    : [];
+  assertStaticApplicationBuildPaths(applicationBuildPaths);
   const staticBuild = hashStaticApplication(distDirectory);
 
   const results = resolvedInputs.map(
@@ -805,6 +807,44 @@ async function main() {
       ].join("\n"),
     );
   }
+  const artifactCatalog = {
+    schemaVersion: "1.0.0",
+    generatedAt: provenance.generatedAt,
+    sourceCommit: provenance.sourceCommit,
+    applicationBuildHash: staticBuild.hash,
+    release: provenance.releaseBuild,
+    packages: results.map((result) => {
+      const bytes = readFileSync(result.outputPath);
+      const buildInformation = JSON.parse(
+        readFileSync(
+          join(result.packageDirectory, "build-info.json"),
+          "utf8",
+        ),
+      );
+      return {
+        presetId: result.configuration.mode,
+        title: result.title,
+        filename: result.outputName,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        sizeBytes: bytes.byteLength,
+        release: provenance.releaseBuild,
+        configurationHash: result.configurationHash,
+        scenarioId: result.configuration.scenarioId,
+        scenarioVersion: result.configuration.scenarioVersion,
+        applicationBuildHash: staticBuild.hash,
+        sourceCommit: provenance.sourceCommit,
+        generatedAt: provenance.generatedAt,
+        cryptographicEvidenceSchemaVersion:
+          buildInformation.cryptographicEvidenceSchemaVersion,
+      };
+    }),
+  };
+  mkdirSync(join(projectRoot, "dist-scorm"), { recursive: true });
+  writeFileSync(
+    join(projectRoot, "dist-scorm", "package-catalog.json"),
+    `${JSON.stringify(artifactCatalog, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 main().catch((error) => {

@@ -1,4 +1,4 @@
-/* global Request, Response, URL */
+/* global Request, Response, TextEncoder, URL, structuredClone */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -32,7 +32,7 @@ after(async () => {
 
 const appShell = "<!doctype html><title>TraceChain</title>";
 
-function createAssetEnvironment() {
+function createAssetEnvironment(files = {}) {
   const requestedPaths = [];
 
   return {
@@ -48,10 +48,39 @@ function createAssetEnvironment() {
               headers: { "content-type": "text/html; charset=utf-8" },
             });
           }
+          const file = files[pathname];
+          if (file !== undefined) {
+            return new Response(file.body, {
+              status: 200,
+              headers: {
+                "content-type":
+                  file.contentType ?? "application/octet-stream",
+              },
+            });
+          }
 
           return new Response("Not found", { status: 404 });
         },
       },
+    },
+  };
+}
+
+function createArtifactBucket() {
+  const objects = new Map();
+  return {
+    objects,
+    async put(key, value, options) {
+      objects.set(key, {
+        bytes: new Uint8Array(value.slice(0)),
+        options,
+      });
+    },
+    async get(key) {
+      const object = objects.get(key);
+      return object === undefined
+        ? null
+        : { body: new Response(object.bytes).body };
     },
   };
 }
@@ -232,6 +261,18 @@ async function standardCoffeePack() {
   );
 }
 
+async function pharmaceuticalColdChainPack() {
+  return JSON.parse(
+    await readFile(
+      new URL(
+        "../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+}
+
 test("serves the application shell at the root without relying on Accept", async () => {
   const { env, requestedPaths } = createAssetEnvironment();
   const response = await worker.fetch(
@@ -248,17 +289,24 @@ test("serves the application shell at the root without relying on Accept", async
 });
 
 test("serves the application shell for browser navigation routes", async () => {
-  const { env, requestedPaths } = createAssetEnvironment();
-  const response = await worker.fetch(
-    new Request("https://tracechain.example/instructor", {
-      headers: { accept: "text/html,application/xhtml+xml" },
-    }),
-    env,
-  );
+  for (const pathname of [
+    "/platform",
+    "/learner",
+    "/instructor",
+    "/author",
+  ]) {
+    const { env, requestedPaths } = createAssetEnvironment();
+    const response = await worker.fetch(
+      new Request(`https://tracechain.example${pathname}`, {
+        headers: { accept: "text/html,application/xhtml+xml" },
+      }),
+      env,
+    );
 
-  assert.equal(response.status, 200);
-  assert.equal(await response.text(), appShell);
-  assert.deepEqual(requestedPaths, ["/instructor", "/index.html"]);
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), appShell);
+    assert.deepEqual(requestedPaths, [pathname, "/index.html"]);
+  }
 });
 
 test("preserves a missing-asset response for non-navigation requests", async () => {
@@ -389,6 +437,371 @@ test("bootstraps only a server-allowlisted administrator into an empty D1 databa
   }
 });
 
+test("supports validated immutable scenario-pack authoring lifecycle", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  try {
+    await worker.fetch(apiRequest("/api/v1/session"), env);
+    seedUser(
+      database,
+      "USER_AUTHOR_LIFECYCLE",
+      "author@example.edu",
+      ["scenario-author"],
+    );
+    const pack = await standardCoffeePack();
+    const invalid = structuredClone(pack);
+    invalid.scenarios[0].entryNodeId = "MISSING_NODE";
+
+    const validation = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/validate", {
+        method: "POST",
+        email: "author@example.edu",
+        body: { pack: invalid },
+      }),
+      env,
+    );
+    assert.equal(validation.status, 200);
+    const invalidReport = (await validation.json()).report;
+    assert.equal(invalidReport.valid, false);
+    assert.equal(
+      invalidReport.issues.some(
+        (issue) => issue.code === "UNKNOWN_ENTRY_NODE",
+      ),
+      true,
+    );
+
+    const imported = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/import", {
+        method: "POST",
+        email: "author@example.edu",
+        body: { pack },
+      }),
+      env,
+    );
+    assert.equal(imported.status, 201, await imported.clone().text());
+    assert.equal((await imported.json()).report.valid, true);
+
+    const listedDraft = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs", {
+        email: "author@example.edu",
+      }),
+      env,
+    );
+    assert.equal(listedDraft.status, 200);
+    assert.deepEqual(
+      (await listedDraft.json()).packs.map(
+        ({ packId, version, status }) => ({ packId, version, status }),
+      ),
+      [{ packId: pack.packId, version: pack.version, status: "draft" }],
+    );
+
+    const previewPath =
+      `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
+      `/versions/${encodeURIComponent(pack.version)}/preview` +
+      `?scenarioId=${encodeURIComponent(pack.scenarios[0].scenarioId)}` +
+      `&scenarioVersion=${encodeURIComponent(pack.scenarios[0].version)}` +
+      "&locale=en&mode=standard&roleId=LOGISTICS_COORDINATOR";
+    const preview = await worker.fetch(
+      apiRequest(previewPath, { email: "author@example.edu" }),
+      env,
+    );
+    assert.equal(preview.status, 200, await preview.clone().text());
+    const previewBody = (await preview.json()).preview;
+    assert.equal(previewBody.packId, pack.packId);
+    assert.equal(previewBody.roleId, "LOGISTICS_COORDINATOR");
+    assert.equal(previewBody.modeConfiguration.feedbackTiming, "final");
+    assert.equal(Object.hasOwn(previewBody, "actualState"), false);
+
+    const published = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
+          `/versions/${encodeURIComponent(pack.version)}/publish`,
+        {
+          method: "POST",
+          email: "author@example.edu",
+          body: {},
+        },
+      ),
+      env,
+    );
+    assert.equal(published.status, 201, await published.clone().text());
+    const publication = await published.json();
+    assert.equal(publication.status, "published");
+    assert.match(publication.contentHash, /^[a-f0-9]{64}$/u);
+
+    const next = structuredClone(pack);
+    next.version = "1.5.0";
+    next.manifest.domain = "supply-chain-governance";
+    const nextImport = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/import", {
+        method: "POST",
+        email: "author@example.edu",
+        body: { pack: next },
+      }),
+      env,
+    );
+    assert.equal(nextImport.status, 201, await nextImport.clone().text());
+    const comparison = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
+          `/compare?fromVersion=${encodeURIComponent(pack.version)}` +
+          "&toVersion=1.5.0",
+        { email: "author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(comparison.status, 200, await comparison.clone().text());
+    assert.deepEqual(
+      (await comparison.json()).comparison.changedPaths,
+      ["manifest.domain", "status", "version"],
+    );
+
+    const retirementPath =
+      `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
+      `/versions/${encodeURIComponent(pack.version)}/retire`;
+    const retirementBody = { commandId: "CMD_RETIRE_LIFECYCLE_001" };
+    const retired = await worker.fetch(
+      apiRequest(retirementPath, {
+        method: "POST",
+        email: "author@example.edu",
+        body: retirementBody,
+      }),
+      env,
+    );
+    assert.equal(retired.status, 201, await retired.clone().text());
+    const retiredBody = await retired.json();
+    assert.equal(retiredBody.status, "retired");
+    assert.equal(retiredBody.contentHash, publication.contentHash);
+    assert.equal(retiredBody.wasIdempotentReplay, false);
+
+    const replayed = await worker.fetch(
+      apiRequest(retirementPath, {
+        method: "POST",
+        email: "author@example.edu",
+        body: retirementBody,
+      }),
+      env,
+    );
+    assert.equal(replayed.status, 200, await replayed.clone().text());
+    assert.equal((await replayed.json()).wasIdempotentReplay, true);
+  } finally {
+    database.close();
+  }
+});
+
+test("imports and previews a self-localized disciplinary pack", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  try {
+    await worker.fetch(apiRequest("/api/v1/session"), env);
+    seedUser(
+      database,
+      "USER_AUTHOR_PHARMA",
+      "pharma-author@example.edu",
+      ["scenario-author", "instructor"],
+    );
+    const pack = await pharmaceuticalColdChainPack();
+    const imported = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/import", {
+        method: "POST",
+        email: "pharma-author@example.edu",
+        body: { pack },
+      }),
+      env,
+    );
+    assert.equal(imported.status, 201, await imported.clone().text());
+    assert.equal((await imported.json()).report.valid, true);
+
+    const preview = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-packs/${pack.packId}` +
+          `/versions/${pack.version}/preview` +
+          `?scenarioId=${pack.scenarios[0].scenarioId}` +
+          `&scenarioVersion=${pack.scenarios[0].version}` +
+          "&locale=vi&mode=tutorial&roleId=QUALITY_MANAGER",
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(preview.status, 200, await preview.clone().text());
+    const body = (await preview.json()).preview;
+    assert.equal(body.scenarioTitle, "Xem xét sai lệch nhiệt độ");
+    assert.deepEqual(body.nodes[1].visibleEvidenceIds, [
+      "EVID_PHARMA_SENSOR_SUMMARY",
+    ]);
+    assert.equal(Object.hasOwn(body, "actualState"), false);
+
+    const publish = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-packs/${pack.packId}` +
+          `/versions/${pack.version}/publish`,
+        {
+          method: "POST",
+          email: "pharma-author@example.edu",
+          body: { commandId: "CMD_PUBLISH_PHARMA_001" },
+        },
+      ),
+      env,
+    );
+    assert.equal(publish.status, 201, await publish.clone().text());
+
+    const unsupportedAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "pharma-author@example.edu",
+        body: {
+          commandId: "CMD_ASSIGN_PHARMA_001",
+          assignmentId: "ASSIGNMENT_PHARMA_001",
+          title: "Pharmaceutical cold-chain review",
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenarioId: pack.scenarios[0].scenarioId,
+          scenarioVersion: pack.scenarios[0].version,
+          mode: "tutorial",
+          learnerUserIds: ["USER_LEARNER_NOT_REQUIRED_FOR_GUARD"],
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      unsupportedAssignment.status,
+      400,
+      await unsupportedAssignment.clone().text(),
+    );
+    assert.deepEqual(await unsupportedAssignment.json(), {
+      error: {
+        code: "INVALID_ASSIGNMENT",
+      },
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("creates idempotent authenticated SCORM package jobs from generator artifacts", async () => {
+  const database = new SqliteD1Database();
+  const packageBytes = new TextEncoder().encode("verified-scorm-zip");
+  const sha256 = createHash("sha256")
+    .update(packageBytes)
+    .digest("hex");
+  const artifact = {
+    presetId: "guided",
+    title: "TraceChain Guided Practice",
+    filename: "TraceChain_Guided_NON_RELEASE.zip",
+    downloadPath: `/scorm-packages/${sha256}.zip`,
+    sha256,
+    sizeBytes: packageBytes.byteLength,
+    release: false,
+    configurationHash: "a".repeat(64),
+    scenarioId: "SCN_COFFEE_001",
+    scenarioVersion: "2.2.0",
+    applicationBuildHash: "b".repeat(64),
+    sourceCommit: "553f7c72f37b4dfcecc99ecce4b8c0678b23fa38",
+    generatedAt: "2026-07-24T03:00:00.000Z",
+    cryptographicEvidenceSchemaVersion: "2",
+  };
+  const { env } = createAssetEnvironment({
+    "/scorm-packages/catalog.json": {
+      body: JSON.stringify({
+        schemaVersion: "1.0.0",
+        generatedAt: artifact.generatedAt,
+        sourceCommit: artifact.sourceCommit,
+        applicationBuildHash: artifact.applicationBuildHash,
+        release: false,
+        packages: [artifact],
+      }),
+      contentType: "application/json",
+    },
+    [artifact.downloadPath]: {
+      body: packageBytes,
+      contentType: "application/zip",
+    },
+  });
+  const bucket = createArtifactBucket();
+  env.DB = database;
+  env.ARTIFACTS = bucket;
+  try {
+    await worker.fetch(apiRequest("/api/v1/session"), env);
+    seedUser(
+      database,
+      "USER_PACKAGE_INSTRUCTOR",
+      "package-instructor@example.edu",
+      ["instructor"],
+    );
+    const body = {
+      commandId: "CMD_PACKAGE_GUIDED_001",
+      jobId: "JOB_PACKAGE_GUIDED_001",
+      presetId: "guided",
+    };
+    const created = await worker.fetch(
+      apiRequest("/api/v1/scorm-package-jobs", {
+        method: "POST",
+        email: "package-instructor@example.edu",
+        body,
+      }),
+      env,
+    );
+    assert.equal(created.status, 201, await created.clone().text());
+    const createdBody = await created.json();
+    assert.equal(createdBody.wasIdempotentReplay, false);
+    assert.deepEqual(
+      {
+        jobId: createdBody.job.jobId,
+        presetId: createdBody.job.presetId,
+        status: createdBody.job.status,
+        release: createdBody.job.release,
+        sha256: createdBody.job.sha256,
+      },
+      {
+        jobId: body.jobId,
+        presetId: "guided",
+        status: "completed",
+        release: false,
+        sha256,
+      },
+    );
+
+    const replayed = await worker.fetch(
+      apiRequest("/api/v1/scorm-package-jobs", {
+        method: "POST",
+        email: "package-instructor@example.edu",
+        body,
+      }),
+      env,
+    );
+    assert.equal(replayed.status, 200, await replayed.clone().text());
+    assert.equal((await replayed.json()).wasIdempotentReplay, true);
+
+    const listed = await worker.fetch(
+      apiRequest("/api/v1/scorm-package-jobs", {
+        email: "package-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(listed.status, 200);
+    assert.equal((await listed.json()).jobs.length, 1);
+
+    const downloaded = await worker.fetch(
+      apiRequest(
+        `/api/v1/scorm-package-jobs/${body.jobId}/download`,
+        { email: "package-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(downloaded.status, 200);
+    assert.equal(downloaded.headers.get("x-content-sha256"), sha256);
+    assert.deepEqual(
+      new Uint8Array(await downloaded.arrayBuffer()),
+      packageBytes,
+    );
+    assert.equal(bucket.objects.size, 1);
+  } finally {
+    database.close();
+  }
+});
+
 test("creates an exact published assignment for a provisioned learner", async () => {
   const database = new SqliteD1Database();
   const { env } = createAssetEnvironment();
@@ -411,6 +824,12 @@ test("creates an exact published assignment for a provisioned learner", async ()
       "assignment-learner@example.edu",
       ["learner"],
     );
+    seedUser(
+      database,
+      "USER_LEARNER_UNASSIGNED",
+      "unassigned-learner@example.edu",
+      ["learner"],
+    );
     const pack = await standardCoffeePack();
     const publish = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/publish", {
@@ -431,6 +850,9 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioId: pack.scenarios[0].scenarioId,
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
+      runConfiguration: pack.scenarios[0].modeConfigurations.find(
+        (configuration) => configuration.mode === "standard",
+      ),
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
     };
     const create = await worker.fetch(
@@ -452,6 +874,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioId: pack.scenarios[0].scenarioId,
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
+      runConfiguration: assignmentBody.runConfiguration,
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
       status: "active",
       feedbackReleaseStatus: "withheld",
@@ -484,18 +907,70 @@ test("creates an exact published assignment for a provisioned learner", async ()
       "ASSIGNMENT_COFFEE_001",
     );
 
+    const learnerAssignments = await worker.fetch(
+      apiRequest("/api/v1/learner/assignments", {
+        email: "assignment-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      learnerAssignments.status,
+      200,
+      await learnerAssignments.clone().text(),
+    );
+    const learnerAssignmentBody = await learnerAssignments.json();
+    assert.equal(learnerAssignmentBody.assignments.length, 1);
+    assert.equal(
+      learnerAssignmentBody.assignments[0].assignment.assignmentId,
+      "ASSIGNMENT_COFFEE_001",
+    );
+    assert.deepEqual(learnerAssignmentBody.assignments[0].runs, []);
+
+    const unassignedAssignments = await worker.fetch(
+      apiRequest("/api/v1/learner/assignments", {
+        email: "unassigned-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      unassignedAssignments.status,
+      200,
+      await unassignedAssignments.clone().text(),
+    );
+    assert.deepEqual(
+      (await unassignedAssignments.json()).assignments,
+      [],
+    );
+
+    const rejectedStart = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/start-run",
+        {
+          method: "POST",
+          email: "unassigned-learner@example.edu",
+          body: {
+            commandId: "COMMAND_UNASSIGNED_RUN_001",
+            runId: "RUN_UNASSIGNED_COFFEE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(rejectedStart.status, 400);
+    assert.equal(
+      (await rejectedStart.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
+
     const start = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_COFFEE_001/start-run",
         {
           method: "POST",
-          email: "assignment-instructor@example.edu",
+          email: "assignment-learner@example.edu",
           body: {
             commandId: "COMMAND_ASSIGNMENT_RUN_001",
             runId: "RUN_ASSIGNMENT_COFFEE_001",
-            learnerUserId: "USER_LEARNER_ASSIGNMENT",
-            scenarioSeed: "assignment-seed-001",
-            caseVariant: "authorized-certifier",
           },
         },
       ),
@@ -510,6 +985,24 @@ test("creates an exact published assignment for a provisioned learner", async ()
       version: 2,
       wasIdempotentReplay: false,
     });
+
+    const resumedAssignments = await worker.fetch(
+      apiRequest("/api/v1/learner/assignments", {
+        email: "assignment-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      resumedAssignments.status,
+      200,
+      await resumedAssignments.clone().text(),
+    );
+    assert.deepEqual(
+      (await resumedAssignments.json()).assignments[0].runs.map(
+        (run) => run.runId,
+      ),
+      ["RUN_ASSIGNMENT_COFFEE_001"],
+    );
   } finally {
     database.close();
   }
@@ -1288,6 +1781,56 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       true,
     );
 
+    const moderationBody = {
+      commandId: "COMMAND_SITE_MODERATION_001",
+      runId,
+      rubricId: rated.rating.rubricId,
+      criterionId: rated.rating.criterionId,
+      levelValue: 3,
+      comment:
+        "The evidence-linked rating is retained as the resolved level.",
+      sourceRatingIds: [rated.rating.ratingId],
+      expectedRevision: 0,
+    };
+    const moderation = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/moderation`, {
+        method: "POST",
+        email: "instructor@example.edu",
+        body: moderationBody,
+      }),
+      env,
+    );
+    assert.equal(
+      moderation.status,
+      201,
+      await moderation.clone().text(),
+    );
+    const moderated = await moderation.json();
+    assert.equal(moderated.resolution.revision, 1);
+    assert.deepEqual(
+      moderated.resolution.sourceRatingIds,
+      [rated.rating.ratingId],
+    );
+    assert.equal(moderated.wasIdempotentReplay, false);
+
+    const repeatedModeration = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/moderation`, {
+        method: "POST",
+        email: "instructor@example.edu",
+        body: moderationBody,
+      }),
+      env,
+    );
+    assert.equal(
+      repeatedModeration.status,
+      200,
+      await repeatedModeration.clone().text(),
+    );
+    assert.equal(
+      (await repeatedModeration.json()).wasIdempotentReplay,
+      true,
+    );
+
     const release = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_SITE_001/feedback-release",
@@ -1316,7 +1859,11 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await learnerFeedback.clone().text(),
     );
-    assert.equal((await learnerFeedback.json()).ratings.length, 1);
+    const releasedFeedback = await learnerFeedback.json();
+    assert.equal(releasedFeedback.ratings.length, 1);
+    assert.deepEqual(releasedFeedback.moderationResolutions, [
+      moderated.resolution,
+    ]);
 
     const report = await worker.fetch(
       apiRequest(
@@ -1335,8 +1882,168 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         status: "completed",
         eventCount: 54,
         ratings: [rated.rating],
+        moderationResolutions: [moderated.resolution],
       },
     ]);
+
+    const competencyReportResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/competencies",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      competencyReportResponse.status,
+      200,
+      await competencyReportResponse.clone().text(),
+    );
+    const assignmentCompetencies = (
+      await competencyReportResponse.json()
+    ).competencies;
+    assert.equal(
+      assignmentCompetencies.interpretation,
+      "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
+    );
+    assert.deepEqual(assignmentCompetencies.frameworks, [
+      {
+        frameworkId: "TRACECHAIN_CORE",
+        frameworkVersion: "1.0.0",
+      },
+    ]);
+    assert.equal(assignmentCompetencies.learners.length, 1);
+    const evidenceUseCompetency =
+      assignmentCompetencies.learners[0].indicators.find(
+        (indicator) => indicator.indicatorId === "PC2.PI1",
+      );
+    assert.equal(evidenceUseCompetency.evidenceCount > 0, true);
+    assert.deepEqual(evidenceUseCompetency.currentRatings, [
+      {
+        runId,
+        ratingId: rated.rating.ratingId,
+        rubricId: rated.rating.rubricId,
+        rubricVersion: rated.rating.rubricVersion,
+        criterionId: rated.rating.criterionId,
+        levelValue: rated.rating.levelValue,
+        comment: rated.rating.comment,
+        linkedEvidenceIds: rated.rating.linkedEvidenceIds,
+        revision: rated.rating.revision,
+        raterUserId: rated.rating.raterUserId,
+        ratedAt: rated.rating.ratedAt,
+      },
+    ]);
+    const classEvidenceUse =
+      assignmentCompetencies.classIndicators.find(
+        (indicator) => indicator.indicatorId === "PC2.PI1",
+      );
+    assert.deepEqual(classEvidenceUse.ratingDistribution, [
+      { levelValue: 3, count: 1 },
+    ]);
+
+    const learnerCompetencyReport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/competencies",
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerCompetencyReport.status, 403);
+
+    const jsonExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(jsonExport.status, 200, await jsonExport.clone().text());
+    assert.equal(
+      jsonExport.headers.get("content-type"),
+      "application/json; charset=utf-8",
+    );
+    assert.equal(
+      jsonExport.headers.get("content-disposition"),
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
+    );
+    const exportedEvidence = await jsonExport.json();
+    assert.equal(exportedEvidence.schemaVersion, "1.0.0");
+    assert.equal(
+      exportedEvidence.exportType,
+      "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+    );
+    assert.equal(
+      exportedEvidence.assignment.packVersion,
+      pack.version,
+    );
+    assert.equal(
+      exportedEvidence.assignment.scenarioVersion,
+      pack.scenarios[0].version,
+    );
+    assert.equal(exportedEvidence.events.length, 54);
+    assert.deepEqual(exportedEvidence.ratingRevisions, [rated.rating]);
+    assert.deepEqual(exportedEvidence.moderationResolutions, [
+      moderated.resolution,
+    ]);
+    assert.deepEqual(
+      exportedEvidence.dataDictionary.datasets.map(
+        (dataset) => dataset.id,
+      ),
+      [
+        "assignment",
+        "participants",
+        "runs",
+        "events",
+        "ratingRevisions",
+        "moderationResolutions",
+      ],
+    );
+
+    const csvExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.csv",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(csvExport.status, 200, await csvExport.clone().text());
+    assert.equal(
+      csvExport.headers.get("content-type"),
+      "text/csv; charset=utf-8",
+    );
+    assert.equal(
+      csvExport.headers.get("content-disposition"),
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.csv"',
+    );
+    const exportedCsv = await csvExport.text();
+    assert.match(
+      exportedCsv,
+      /^export_schema_version,record_type,assignment_id,/u,
+    );
+    assert.match(
+      exportedCsv,
+      /event,ASSIGNMENT_SITE_001,USER_LEARNER_001,/u,
+    );
+    assert.match(
+      exportedCsv,
+      /rating_revision,ASSIGNMENT_SITE_001,/u,
+    );
+    assert.match(
+      exportedCsv,
+      /moderation_resolution,ASSIGNMENT_SITE_001,/u,
+    );
+
+    const learnerExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json",
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerExport.status, 403);
+    assert.equal(
+      (await learnerExport.json()).error.code,
+      "APPLICATION_ROLE_REQUIRED",
+    );
 
     const timelineResponse = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/timeline`, {
@@ -1358,6 +2065,86 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       ),
       true,
     );
+
+    const replayAtEvidenceRelease = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=2`, {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      replayAtEvidenceRelease.status,
+      200,
+      await replayAtEvidenceRelease.clone().text(),
+    );
+    const earlyReplay = (await replayAtEvidenceRelease.json()).replay;
+    assert.deepEqual(
+      {
+        runId: earlyReplay.runId,
+        throughSequenceNumber: earlyReplay.throughSequenceNumber,
+        totalEventCount: earlyReplay.totalEventCount,
+        packId: earlyReplay.packId,
+        packVersion: earlyReplay.packVersion,
+        scenarioId: earlyReplay.scenarioId,
+        scenarioVersion: earlyReplay.scenarioVersion,
+        projectionVersion: earlyReplay.projection.version,
+        currentNodeId:
+          earlyReplay.projection.workflowState.currentNodeId,
+      },
+      {
+        runId,
+        throughSequenceNumber: 2,
+        totalEventCount: 54,
+        packId: pack.packId,
+        packVersion: pack.version,
+        scenarioId: pack.scenarios[0].scenarioId,
+        scenarioVersion: pack.scenarios[0].version,
+        projectionVersion: 2,
+        currentNodeId: "certificate-evidence",
+      },
+    );
+    assert.equal(earlyReplay.selectedEvent.sequenceNumber, 2);
+    assert.equal(earlyReplay.selectedEvent.eventType, "EVIDENCE_RELEASED");
+    assert.equal(
+      Object.hasOwn(earlyReplay.projection, "actualState"),
+      false,
+    );
+
+    const repeatedReplay = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=2`, {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.deepEqual(
+      await repeatedReplay.json(),
+      { replay: earlyReplay },
+    );
+
+    const invalidReplay = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=0`, {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(invalidReplay.status, 400);
+    assert.equal(
+      (await invalidReplay.json()).error.code,
+      "INVALID_COMMAND",
+    );
+
+    const learnerReplay = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=2`, {
+        email: "learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(learnerReplay.status, 403);
+    assert.equal(
+      (await learnerReplay.json()).error.code,
+      "APPLICATION_ROLE_REQUIRED",
+    );
+
     assert.equal(
       timeline.some(
         (event) => event.eventType === "ENDORSEMENT_RECORDED",

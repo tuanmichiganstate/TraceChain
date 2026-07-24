@@ -33,7 +33,11 @@ import type {
 } from "../contracts/run-events";
 import type { JsonObject, JsonValue } from "../contracts/json";
 import { isJsonObject } from "../contracts/json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { InstructorRunReplayV1 } from "../contracts/run-replay";
+import type {
+  ScenarioPackV1,
+  WeightedCategoricalOutcomeModelV1,
+} from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
 import { projectRunStateForRole } from "../runs/projection";
 import {
@@ -41,6 +45,15 @@ import {
   replayRunEventsAsync,
 } from "../runs/replay";
 import {
+  modeConfigurationFor,
+  validateHostedModeConfiguration,
+} from "../runs/mode-configuration";
+import {
+  resolveStochasticOutcome,
+  type StochasticOutcomeResolutionV1,
+} from "../runs/stochastic-outcomes";
+import {
+  HostedAuthorizationError,
   requireApplicationRole,
   requireAssignedLearner,
   type ApplicationPrincipal,
@@ -71,6 +84,22 @@ import type {
 const EVIDENCE_ID = "EVID_CERTIFICATE_RECORD";
 const MAXIMUM_JUSTIFICATION_LENGTH = 1_000;
 const MINIMUM_CORRECTION_REASON_LENGTH = 10;
+const LEGACY_COFFEE_OUTCOME_MODEL: WeightedCategoricalOutcomeModelV1 =
+  {
+    outcomeModelId: "LEGACY_CERTIFICATE_CASE",
+    distribution: "weighted-categorical",
+    randomStreamId: "legacy-certificate-case",
+    outcomes: [
+      {
+        outcomeCode: "authorized-certifier",
+        weight: 1,
+      },
+      {
+        outcomeCode: "unauthorized-transporter",
+        weight: 1,
+      },
+    ],
+  };
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actorId",
   "authenticatedUserId",
@@ -104,6 +133,19 @@ interface BuiltEvent {
 
 function requestDigest(request: unknown): string {
   return sha256Hex(canonicalize(request));
+}
+
+function legacyHostedStateForHash(
+  state: Readonly<HostedStage3RunState | null>,
+): unknown {
+  if (state === null) return null;
+  const {
+    modeConfiguration: _modeConfiguration,
+    outcomeResolution: _outcomeResolution,
+    outcomeEvidenceStatus: _outcomeEvidenceStatus,
+    ...legacyState
+  } = state;
+  return legacyState;
 }
 
 function rejectSelfAssertedIdentity(
@@ -803,11 +845,39 @@ export class HostedStage3RunService {
     request: CreateHostedStage3RunRequest,
   ): Promise<HostedStage3RunResult> {
     const creator = requireApplicationRole(principal, [
+      "learner",
       "instructor",
       "scenario-author",
       "administrator",
     ]);
+    if (
+      creator.roles.includes("learner") &&
+      creator.userId !== request.learnerUserId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "A learner may only start their own assigned run.",
+      );
+    }
     this.validateCreateRequest(request);
+    const {
+      modeConfiguration,
+      outcomeResolution,
+      scenarioSeed,
+    } =
+      this.resolveModeAndOutcome(request);
+    if (!isCaseVariant(outcomeResolution.outcomeCode)) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The authored certificate outcome is not a supported case variant.",
+      );
+    }
+    const effectiveRequest: CreateHostedStage3RunRequest = {
+      ...request,
+      modeConfiguration,
+      scenarioSeed,
+      caseVariant: outcomeResolution.outcomeCode,
+    };
     const digest = requestDigest(request);
     const existingEvents = await this.eventStore.load(request.runId);
     if (existingEvents.length > 0) {
@@ -836,7 +906,7 @@ export class HostedStage3RunService {
         `Run ${request.runId} already exists.`,
       );
     }
-    const context = this.adapter.trustedContextFor(request);
+    const context = this.adapter.trustedContextFor(effectiveRequest);
     let state: HostedStage3RunState | null = null;
     const built: BuiltEvent[] = [];
     const created = await this.buildEvent({
@@ -852,13 +922,53 @@ export class HostedStage3RunService {
         assignmentId: request.assignmentId,
         learnerUserId: request.learnerUserId,
         mode: request.mode,
-        scenarioSeed: request.scenarioSeed,
-        caseVariant: request.caseVariant,
+        scenarioSeed,
+        caseVariant: effectiveRequest.caseVariant,
+        modeConfiguration:
+          modeConfiguration as unknown as JsonObject,
         packContentHash: this.packContentHash(),
       },
     });
     built.push(created);
     state = created.nextState;
+    if (outcomeResolution.strategy === "probabilistic") {
+      const randomDraw = await this.buildEvent({
+        runId: request.runId,
+        state,
+        principal: creator,
+        context,
+        commandId: request.commandId,
+        commandDigest: digest,
+        batchIndex: built.length,
+        eventType: "RANDOM_DRAW_MADE",
+        payload: {
+          outcomeModelId: outcomeResolution.outcomeModelId,
+          distribution: outcomeResolution.distribution,
+          randomStreamId: outcomeResolution.randomStreamId,
+          probabilityParameters:
+            outcomeResolution.probabilityParameters as JsonObject,
+          draw: outcomeResolution.draw ?? -1,
+        },
+      });
+      built.push(randomDraw);
+      state = randomDraw.nextState;
+      const outcome = await this.buildEvent({
+        runId: request.runId,
+        state,
+        principal: creator,
+        context,
+        commandId: request.commandId,
+        commandDigest: digest,
+        batchIndex: built.length,
+        eventType: "OUTCOME_REALIZED",
+        payload: {
+          outcomeModelId: outcomeResolution.outcomeModelId,
+          outcomeCode: outcomeResolution.outcomeCode,
+        },
+      });
+      built.push(outcome);
+      state = outcome.nextState;
+    }
     const released = await this.buildEvent({
       runId: request.runId,
       state,
@@ -2223,6 +2333,74 @@ export class HostedStage3RunService {
     }));
   }
 
+  async instructorReplay(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+    throughSequenceNumber?: number,
+  ): Promise<InstructorRunReplayV1> {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const events = await this.eventStore.load(runId);
+    if (events.length === 0) {
+      throw new HostedRunCommandError(
+        "RUN_NOT_FOUND",
+        `Run ${runId} does not exist.`,
+      );
+    }
+    const sequenceNumber =
+      throughSequenceNumber ?? events.length;
+    if (
+      !Number.isInteger(sequenceNumber) ||
+      sequenceNumber < 1 ||
+      sequenceNumber > events.length
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        `Replay sequence must be between 1 and ${String(events.length)}.`,
+      );
+    }
+    const boundedEvents = events.slice(0, sequenceNumber);
+    const selectedEvent = boundedEvents.at(-1);
+    if (selectedEvent === undefined) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Replay requires at least one event.",
+      );
+    }
+    const state = await this.replay(boundedEvents);
+    return {
+      schemaVersion: "1.0.0",
+      runId: state.runId,
+      assignmentId: state.assignmentId,
+      learnerUserId: state.learnerUserId,
+      packId: state.packId,
+      packVersion: state.packVersion,
+      scenarioId: state.scenarioId,
+      scenarioVersion: state.scenarioVersion,
+      throughSequenceNumber: sequenceNumber,
+      totalEventCount: events.length,
+      selectedEvent: {
+        sequenceNumber: selectedEvent.sequenceNumber,
+        eventId: selectedEvent.eventId,
+        eventType: selectedEvent.eventType,
+        occurredAt: selectedEvent.serverTimestampUtc,
+        authenticatedUserId: selectedEvent.authenticatedUserId,
+        simulationActorId: selectedEvent.simulationActorId,
+        organizationId: selectedEvent.organizationId,
+        roleId: selectedEvent.roleId,
+        causationId: selectedEvent.causationId,
+        resultingStateHash: selectedEvent.resultingStateHash,
+      },
+      projection: projectRunStateForRole(
+        this.toProjectionState(state),
+        state.activeTrustedContext.roleId,
+      ),
+    };
+  }
+
   async competencyReport(
     principal: ApplicationPrincipal | null,
     runId: string,
@@ -2310,10 +2488,19 @@ export class HostedStage3RunService {
   private async replay(
     events: readonly RunEventV1[],
   ): Promise<HostedStage3RunState> {
+    const firstEvent = events[0];
+    const usesLegacyStateHashes =
+      firstEvent?.eventType === "RUN_CREATED" &&
+      firstEvent.payload.modeConfiguration === undefined;
     const state = await replayRunEventsAsync<
       HostedStage3RunState | null
-    >(null, events, (current, event) =>
-      this.applyEvent(current, event),
+    >(
+      null,
+      events,
+      (current, event) => this.applyEvent(current, event),
+      usesLegacyStateHashes
+        ? legacyHostedStateForHash
+        : (value) => value,
     );
     if (state === null) {
       throw new HostedRunCommandError(
@@ -2383,12 +2570,36 @@ export class HostedStage3RunService {
             "learnerUserId",
           ),
           mode,
+          ...(event.payload.modeConfiguration === undefined
+            ? {}
+            : {
+                modeConfiguration:
+                  validateHostedModeConfiguration(
+                    event.payload.modeConfiguration,
+                    mode,
+                  ),
+              }),
           scenarioSeed: requiredString(
             event.payload.scenarioSeed,
             "scenarioSeed",
           ),
           caseVariant,
         };
+        const {
+          modeConfiguration,
+          outcomeResolution,
+          scenarioSeed,
+        } =
+          this.resolveModeAndOutcome(request);
+        if (
+          outcomeResolution.outcomeCode !== caseVariant ||
+          scenarioSeed !== request.scenarioSeed
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Run outcome differs from deterministic replay.",
+          );
+        }
         if (
           requiredString(
             event.payload.packContentHash,
@@ -2411,8 +2622,14 @@ export class HostedStage3RunService {
           scenarioId: event.scenarioId,
           scenarioVersion: event.scenarioVersion,
           mode: request.mode,
-          scenarioSeed: request.scenarioSeed,
+          modeConfiguration,
+          scenarioSeed,
           caseVariant,
+          outcomeResolution,
+          outcomeEvidenceStatus:
+            outcomeResolution.strategy === "probabilistic"
+              ? "awaiting-draw"
+              : "not-required",
           activeTrustedContext: this.adapter.trustedContextFor(request),
           version: event.sequenceNumber,
           status: "active",
@@ -2449,7 +2666,74 @@ export class HostedStage3RunService {
           simulation: this.adapter.createInitialSimulation(),
         };
       }
+      case "RANDOM_DRAW_MADE": {
+        const state = this.stateOrThrow(current);
+        if (
+          state.outcomeEvidenceStatus !== "awaiting-draw" ||
+          state.outcomeResolution.draw === undefined
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Random-draw evidence is not expected for this run.",
+          );
+        }
+        const {
+          requestDigest: _requestDigest,
+          ...recordedDraw
+        } = event.payload;
+        assertReplayEvidenceMatches(
+          {
+            outcomeModelId: state.outcomeResolution.outcomeModelId,
+            distribution: state.outcomeResolution.distribution,
+            randomStreamId:
+              state.outcomeResolution.randomStreamId,
+            probabilityParameters:
+              state.outcomeResolution.probabilityParameters,
+            draw: state.outcomeResolution.draw,
+          },
+          recordedDraw,
+          "random draw",
+        );
+        return this.updateRequiredState(current, event, {
+          outcomeEvidenceStatus: "awaiting-outcome",
+        });
+      }
+      case "OUTCOME_REALIZED": {
+        const state = this.stateOrThrow(current);
+        if (state.outcomeEvidenceStatus !== "awaiting-outcome") {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Realized-outcome evidence is out of order.",
+          );
+        }
+        const {
+          requestDigest: _requestDigest,
+          ...recordedOutcome
+        } = event.payload;
+        assertReplayEvidenceMatches(
+          {
+            outcomeModelId: state.outcomeResolution.outcomeModelId,
+            outcomeCode: state.outcomeResolution.outcomeCode,
+          },
+          recordedOutcome,
+          "realized outcome",
+        );
+        return this.updateRequiredState(current, event, {
+          outcomeEvidenceStatus: "recorded",
+        });
+      }
       case "EVIDENCE_RELEASED":
+        if (
+          this.stateOrThrow(current).outcomeEvidenceStatus ===
+            "awaiting-draw" ||
+          this.stateOrThrow(current).outcomeEvidenceStatus ===
+            "awaiting-outcome"
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Evidence cannot be released before the authored outcome is recorded.",
+          );
+        }
         return this.updateRequiredState(current, event, {
           releasedEvidenceIds: [
             ...this.stateOrThrow(current).releasedEvidenceIds,
@@ -3630,7 +3914,6 @@ export class HostedStage3RunService {
       runId: request.runId,
       assignmentId: request.assignmentId,
       learnerUserId: request.learnerUserId,
-      scenarioSeed: request.scenarioSeed,
     })) {
       requiredString(value, field);
     }
@@ -3715,6 +3998,83 @@ export class HostedStage3RunService {
         `A correction reason of at least ${String(MINIMUM_CORRECTION_REASON_LENGTH)} characters and at most ${String(maximumBytes)} UTF-8 bytes is required.`,
       );
     }
+  }
+
+  private resolveModeAndOutcome(
+    request: CreateHostedStage3RunRequest,
+  ): {
+    readonly modeConfiguration: ReturnType<
+      typeof modeConfigurationFor
+    >;
+    readonly outcomeResolution: StochasticOutcomeResolutionV1;
+    readonly scenarioSeed: string;
+  } {
+    const scenario = this.hostedScenario();
+    const authoredConfiguration = modeConfigurationFor(
+      scenario,
+      request.mode,
+    );
+    const modeConfiguration =
+      request.modeConfiguration === undefined
+        ? authoredConfiguration
+        : validateHostedModeConfiguration(
+            request.modeConfiguration,
+            request.mode,
+          );
+    if (
+      canonicalize(modeConfiguration) !==
+      canonicalize(authoredConfiguration)
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Run mode behavior must match the exact published scenario configuration.",
+      );
+    }
+    const outcomeModelId = modeConfiguration.outcomeModelId;
+    const model = (scenario.outcomeModels ?? []).find(
+      (candidate) =>
+        candidate.outcomeModelId === outcomeModelId,
+    ) ??
+      (scenario.outcomeModels === undefined &&
+      scenario.legacyCompatibility?.adapterId ===
+        "tracechain-coffee-v2" &&
+      modeConfiguration.outcomeStrategy === "forced"
+        ? LEGACY_COFFEE_OUTCOME_MODEL
+        : undefined);
+    if (model === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Hosted coffee mode has no applicable outcome model.",
+      );
+    }
+    const scenarioSeed =
+      modeConfiguration.seedPolicy === "generated"
+        ? `generated:${sha256Hex(
+            canonicalize({
+              domain: "TRACECHAIN_HOSTED_SCENARIO_SEED_V1",
+              packContentHash: this.packContentHash(),
+              assignmentId: request.assignmentId,
+              runId: request.runId,
+              commandId: request.commandId,
+            }),
+          )}`
+        : requiredString(request.scenarioSeed, "scenarioSeed");
+    return {
+      modeConfiguration,
+      scenarioSeed,
+      outcomeResolution: resolveStochasticOutcome({
+        model,
+        scenarioSeed,
+        strategy: modeConfiguration.outcomeStrategy,
+        ...(modeConfiguration.outcomeStrategy === "forced"
+          ? {
+              forcedOutcomeCode:
+                modeConfiguration.forcedOutcomeCode ??
+                request.caseVariant,
+            }
+          : {}),
+      }),
+    };
   }
 
   private packContentHash(): string {
@@ -3942,8 +4302,36 @@ export class HostedStage3RunService {
       actualState: {
         caseVariant: state.caseVariant,
         scenarioSeed: state.scenarioSeed,
+        modeConfiguration:
+          state.modeConfiguration as unknown as JsonValue,
+        outcomeResolution:
+          state.outcomeResolution as unknown as JsonValue,
       },
       businessState: [
+        {
+          recordId: "RUN_MODE_BEHAVIOR",
+          visibleToRoleIds: [roleId],
+          value: {
+            mode: state.modeConfiguration.mode,
+            allowHints: state.modeConfiguration.allowHints,
+            allowRetry: state.modeConfiguration.allowRetry,
+            allowBacktracking:
+              state.modeConfiguration.allowBacktracking,
+            feedbackTiming:
+              state.modeConfiguration.feedbackTiming,
+            showScores: state.modeConfiguration.showScores,
+            ...(state.modeConfiguration.timeLimitMinutes === undefined
+              ? {}
+              : {
+                  timeLimitMinutes:
+                    state.modeConfiguration.timeLimitMinutes,
+                }),
+            allowCommunication:
+              state.modeConfiguration.allowCommunication,
+            allowEvidenceRequests:
+              state.modeConfiguration.allowEvidenceRequests,
+          },
+        },
         {
           recordId: "DECISION_STATUS",
           visibleToRoleIds: [roleId],
@@ -4066,7 +4454,10 @@ export class HostedStage3RunService {
       rngState: {
         seed: state.scenarioSeed,
         streamPosition: state.version,
-        recordedDraws: [],
+        recordedDraws:
+          state.outcomeResolution.draw === undefined
+            ? []
+            : [state.outcomeResolution.draw],
       },
     };
   }

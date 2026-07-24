@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:site": "npm run build && node scripts/build-site.mjs",
+    "build:site": "npm run build && npm run build:scorm && npm run verify:scorm && node scripts/build-site.mjs",
+    "build:site:from-artifacts": "node scripts/build-site.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:site": "node --test sites/worker.test.mjs",
@@ -26,7 +27,7 @@
     "build:scorm": "node scripts/build-scorm.mjs --preset guided,challenge --no-build --allow-dirty --legacy-guided",
     "verify:scorm": "node scripts/verify-scorm.mjs",
     "verify:signature-evidence": "node scripts/verify-signature-evidence.mjs",
-    "quality": "npm run lint && npm run typecheck && npm run test && npm run test:site && npm run validate:locales && npm run validate:scenario && npm run validate:platform-pack && npm run verify:e2e-matrix && npm run test:content-review && npm run test:package-generator && npm run verify:content-review && npm run build && npm run build:scorm && npm run verify:scorm && npm run build:site",
+    "quality": "npm run lint && npm run typecheck && npm run test && npm run test:site && npm run validate:locales && npm run validate:scenario && npm run validate:platform-pack && npm run verify:e2e-matrix && npm run test:content-review && npm run test:package-generator && npm run verify:content-review && npm run build && npm run build:scorm && npm run verify:scorm && npm run build:site:from-artifacts",
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=chromium",
     "verify:content-review": "node scripts/verify-content-review.mjs",
@@ -35,6 +36,8 @@
   },
   "dependencies": {
     "@noble/ed25519": "3.1.0",
+    "fflate": "^0.8.2",
+    "js-yaml": "^4.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -43,6 +46,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

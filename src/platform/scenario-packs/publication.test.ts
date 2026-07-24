@@ -76,4 +76,48 @@ describe("scenario-pack publication", () => {
       await repository.find(packJson.packId, packJson.version),
     ).toBe(published);
   });
+
+  it("retires published content as metadata and replays the command idempotently", async () => {
+    const repository = new MemoryScenarioPackRepository();
+    await repository.saveDraft(draftPack());
+    const published = await repository.publish(
+      packJson.packId,
+      packJson.version,
+      publication,
+    );
+    const originalHash = published.publication?.contentHash;
+    const metadata = {
+      commandId: "CMD_RETIRE_PACK_001",
+      retiredAt: "2026-07-24T04:00:00.000Z",
+      retiredBy: "USER_SCENARIO_AUTHOR_001",
+    } as const;
+
+    const first = await repository.retire(
+      packJson.packId,
+      packJson.version,
+      metadata,
+    );
+    const second = await repository.retire(
+      packJson.packId,
+      packJson.version,
+      metadata,
+    );
+
+    expect(first.wasIdempotentReplay).toBe(false);
+    expect(second.wasIdempotentReplay).toBe(true);
+    expect(first.pack.status).toBe("retired");
+    expect(first.pack.publication?.contentHash).toBe(originalHash);
+    expect(verifyScenarioPackContentHash(first.pack)).toBe(true);
+    expect(await repository.list()).toEqual([
+      expect.objectContaining({
+        packId: packJson.packId,
+        version: packJson.version,
+        status: "retired",
+        retiredAt: metadata.retiredAt,
+      }),
+    ]);
+    await expect(repository.saveDraft(draftPack())).rejects.toBeInstanceOf(
+      ScenarioPackPublicationError,
+    );
+  });
 });

@@ -30,9 +30,13 @@ run-evidence screen presents
 the existing timeline, competency, and rubric projections without duplicating
 them. It now also provides exact-version assignment creation, assignment-bound
 run start, evidence-linked manual rating revisions, one-way feedback release,
-and a focused assignment report. Learner and author portals, course and roster
-administration, moderation, exports, and hosted package jobs remain later
-gates.
+and a focused assignment report, exact replay, competency reports, stable
+assignment exports, and append-only rubric moderation. Learner and author
+portals now expose the bounded individual coffee journey and pack-authoring
+lifecycle. Role-aware navigation includes learner, instructor, rater, author,
+and administrator capabilities, and hosted package jobs reuse verified
+artifacts from the existing generator. Course, roster, and institutional
+identity provisioning remain deployment-administration boundaries.
 
 ## Target layers
 
@@ -79,7 +83,7 @@ Ports
 
 Adapters
   D1 hosted repositories
-  R2 evidence/export objects when uploads are introduced
+  R2 generated SCORM package artifacts
   memory adapters for tests
   SCORM persistence and reporting
   standalone development persistence
@@ -105,8 +109,8 @@ Browser
 The first hosted foundation uses D1 because the repository is already connected
 to Sites and D1 is the platform-owned durable relational service. Repositories
 and event-store ports isolate SQL and preserve a future PostgreSQL deployment
-option. R2 is not declared until the first upload or export-file workflow is
-implemented.
+option. R2 stores verified SCORM artifacts for authenticated package jobs; run
+events, reports, and pack definitions remain structured D1 records.
 
 Institutional OIDC remains the production preference where the deployment
 environment supplies it. The first Sites implementation may use forwarded
@@ -334,9 +338,13 @@ competency result, and optional overall score are distinct records.
 12. Add assignments, ratings, feedback release, reports, replay, and exports.
 13. Extract the Node package generator into a hosted job service and build the
     graphical builder.
-14. Add deterministic hosted modes and stochastic outcomes.
+14. Add deterministic hosted modes and stochastic outcomes. (Complete.)
 15. Add pack import, immutable publication, preview, comparison, retirement,
-    localization workflow, and additional packs.
+    self-contained localization workflow, a compact visual draft editor, and
+    an additional pharmaceutical cold-chain starter. (Complete for the
+    Phase 6 authoring boundary; the starter is validation/preview content,
+    while the hosted authoritative runtime remains the complete coffee
+    journey.)
 
 Collaborative multi-learner orchestration remains deferred.
 

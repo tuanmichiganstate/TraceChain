@@ -88,6 +88,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    emptyOutDir: true,
     assetsDir: "assets",
     // The SCORM package must run without a network connection after loading, so
     // no asset may be emitted as an external URL reference.

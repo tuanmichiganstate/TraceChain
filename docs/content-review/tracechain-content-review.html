@@ -27,7 +27,9 @@
 <li><a href="#group-field"><span>field</span><b>30</b></a></li>
 <li><a href="#group-hint"><span>hint</span><b>10</b></a></li>
 <li><a href="#group-history"><span>history</span><b>8</b></a></li>
-<li><a href="#group-instructorReview"><span>instructorReview</span><b>73</b></a></li>
+<li><a href="#group-hostedLearner"><span>hostedLearner</span><b>77</b></a></li>
+<li><a href="#group-hostedPortal"><span>hostedPortal</span><b>16</b></a></li>
+<li><a href="#group-instructorReview"><span>instructorReview</span><b>134</b></a></li>
 <li><a href="#group-ledger"><span>ledger</span><b>14</b></a></li>
 <li><a href="#group-lifecycle"><span>lifecycle</span><b>12</b></a></li>
 <li><a href="#group-lineage"><span>lineage</span><b>10</b></a></li>
@@ -41,6 +43,7 @@
 <li><a href="#group-recall"><span>recall</span><b>1</b></a></li>
 <li><a href="#group-report"><span>report</span><b>55</b></a></li>
 <li><a href="#group-sale"><span>sale</span><b>3</b></a></li>
+<li><a href="#group-scenarioAuthor"><span>scenarioAuthor</span><b>72</b></a></li>
 <li><a href="#group-score"><span>score</span><b>6</b></a></li>
 <li><a href="#group-signature"><span>signature</span><b>43</b></a></li>
 <li><a href="#group-stage"><span>stage</span><b>6</b></a></li>
@@ -70,7 +73,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>1065/1065</b>chuỗi song ngữ</li>
+    <li><b>1291/1291</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -1176,8 +1179,479 @@
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction history</p></details>
 </article>
 </section>
+<section id="group-hostedLearner">
+  <h2>hostedLearner <span>77 chuỗi</span></h2>
+  <article class="entry" data-locale-key="hostedLearner.account">
+  <header><code>hostedLearner.account</code></header>
+  <p class="vi" lang="vi">Người học đang đăng nhập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signed-in learner</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action">
+  <header><code>hostedLearner.action</code></header>
+  <p class="vi" lang="vi">Thao tác</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Action</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.COMMIT_CORRECTION">
+  <header><code>hostedLearner.action.COMMIT_CORRECTION</code></header>
+  <p class="vi" lang="vi">Ghi nhận điều chỉnh đã được xác nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Commit endorsed correction</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.COMMIT_CUSTODY_TRANSFER">
+  <header><code>hostedLearner.action.COMMIT_CUSTODY_TRANSFER</code></header>
+  <p class="vi" lang="vi">Ghi nhận chuyển quyền lưu giữ đã được xác nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Commit endorsed custody transfer</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.CREATE_CORRECTION_PROPOSAL">
+  <header><code>hostedLearner.action.CREATE_CORRECTION_PROPOSAL</code></header>
+  <p class="vi" lang="vi">Tạo đề xuất điều chỉnh chỉ ghi thêm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Create append-only correction proposal</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.CREATE_CUSTODY_TRANSFER_PROPOSAL">
+  <header><code>hostedLearner.action.CREATE_CUSTODY_TRANSFER_PROPOSAL</code></header>
+  <p class="vi" lang="vi">Tạo đề xuất chuyển quyền lưu giữ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Create custody-transfer proposal</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.DISPATCH_BATCH">
+  <header><code>hostedLearner.action.DISPATCH_BATCH</code></header>
+  <p class="vi" lang="vi">Gửi lô hàng đến điểm bán lẻ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Dispatch the batch to retail</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.ENDORSE_CORRECTION">
+  <header><code>hostedLearner.action.ENDORSE_CORRECTION</code></header>
+  <p class="vi" lang="vi">Xác nhận điều chỉnh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorse the correction</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.ENDORSE_CUSTODY_TRANSFER">
+  <header><code>hostedLearner.action.ENDORSE_CUSTODY_TRANSFER</code></header>
+  <p class="vi" lang="vi">Xác nhận chuyển quyền lưu giữ với vai trò bên nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorse custody transfer as receiver</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.INSPECT_EVIDENCE">
+  <header><code>hostedLearner.action.INSPECT_EVIDENCE</code></header>
+  <p class="vi" lang="vi">Kiểm tra bằng chứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Inspect evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.INVESTIGATE_DISCREPANCY">
+  <header><code>hostedLearner.action.INVESTIGATE_DISCREPANCY</code></header>
+  <p class="vi" lang="vi">Điều tra sai lệch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Investigate the discrepancy</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.PACKAGE_BATCH">
+  <header><code>hostedLearner.action.PACKAGE_BATCH</code></header>
+  <p class="vi" lang="vi">Đóng gói lô cà phê rang</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Package the roasted batch</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.PURCHASE_ON_RECEIPT">
+  <header><code>hostedLearner.action.PURCHASE_ON_RECEIPT</code></header>
+  <p class="vi" lang="vi">Ghi nhận chuyển quyền sở hữu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Record ownership transfer</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.RECEIVE_BATCH">
+  <header><code>hostedLearner.action.RECEIVE_BATCH</code></header>
+  <p class="vi" lang="vi">Tiếp nhận lô hàng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Receive the batch</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.RECORD_TRANSPORT_CONDITION">
+  <header><code>hostedLearner.action.RECORD_TRANSPORT_CONDITION</code></header>
+  <p class="vi" lang="vi">Ghi nhận điều kiện vận chuyển</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Record transport condition</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.REQUEST_RECALL_HANDOFF">
+  <header><code>hostedLearner.action.REQUEST_RECALL_HANDOFF</code></header>
+  <p class="vi" lang="vi">Yêu cầu chuyển giao cho cơ quan quản lý</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Request regulator handoff</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.RESUBMIT_AUTHORIZED_RECALL">
+  <header><code>hostedLearner.action.RESUBMIT_AUTHORIZED_RECALL</code></header>
+  <p class="vi" lang="vi">Gửi lại lệnh thu hồi với vai trò cơ quan quản lý</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Resubmit the recall as regulator</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.RUN_TAMPER_DEMONSTRATION">
+  <header><code>hostedLearner.action.RUN_TAMPER_DEMONSTRATION</code></header>
+  <p class="vi" lang="vi">Chạy minh họa can thiệp tính toàn vẹn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run integrity-tamper demonstration</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_CERTIFICATE_DECISION">
+  <header><code>hostedLearner.action.SUBMIT_CERTIFICATE_DECISION</code></header>
+  <p class="vi" lang="vi">Gửi quyết định về chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit certificate decision</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_CERTIFICATE_TRANSACTION">
+  <header><code>hostedLearner.action.SUBMIT_CERTIFICATE_TRANSACTION</code></header>
+  <p class="vi" lang="vi">Gửi giao dịch chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit certificate transaction</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_DATA_GOVERNANCE_DECISION">
+  <header><code>hostedLearner.action.SUBMIT_DATA_GOVERNANCE_DECISION</code></header>
+  <p class="vi" lang="vi">Gửi phân loại quản trị dữ liệu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit data-governance classification</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_DISCREPANCY_DECISION">
+  <header><code>hostedLearner.action.SUBMIT_DISCREPANCY_DECISION</code></header>
+  <p class="vi" lang="vi">Gửi quyết định xử lý sai lệch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit discrepancy decision</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_KNOWLEDGE_DECISION">
+  <header><code>hostedLearner.action.SUBMIT_KNOWLEDGE_DECISION</code></header>
+  <p class="vi" lang="vi">Gửi nhận định chuyên môn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit professional judgment</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_RECALL_SCOPE_DECISION">
+  <header><code>hostedLearner.action.SUBMIT_RECALL_SCOPE_DECISION</code></header>
+  <p class="vi" lang="vi">Gửi phạm vi thu hồi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit recall scope</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.SUBMIT_RECALL_TRANSACTION">
+  <header><code>hostedLearner.action.SUBMIT_RECALL_TRANSACTION</code></header>
+  <p class="vi" lang="vi">Gửi lệnh thu hồi bằng vai trò hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit recall under the active role</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.TRANSFER_DISTRIBUTION_OWNERSHIP">
+  <header><code>hostedLearner.action.TRANSFER_DISTRIBUTION_OWNERSHIP</code></header>
+  <p class="vi" lang="vi">Chuyển quyền sở hữu cho nhà phân phối</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transfer ownership to the distributor</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.TRANSFORM_BATCH">
+  <header><code>hostedLearner.action.TRANSFORM_BATCH</code></header>
+  <p class="vi" lang="vi">Chế biến lô đã điều chỉnh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transform the corrected batch</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.alsoTransferOwnership">
+  <header><code>hostedLearner.alsoTransferOwnership</code></header>
+  <p class="vi" lang="vi">Đồng thời chuyển quyền sở hữu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Also transfer ownership</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.assignment">
+  <header><code>hostedLearner.assignment</code></header>
+  <p class="vi" lang="vi">Bài tập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assignment</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.assignments">
+  <header><code>hostedLearner.assignments</code></header>
+  <p class="vi" lang="vi">Mô phỏng được giao</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assigned simulations</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.certificateAssessment">
+  <header><code>hostedLearner.certificateAssessment</code></header>
+  <p class="vi" lang="vi">Nội dung và hiệu lực của chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Certificate content and validity</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.complete">
+  <header><code>hostedLearner.complete</code></header>
+  <p class="vi" lang="vi">Lượt chạy này đã hoàn thành.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This run is complete.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.correctionReason">
+  <header><code>hostedLearner.correctionReason</code></header>
+  <p class="vi" lang="vi">Lý do điều chỉnh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Correction reason</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.currentAction">
+  <header><code>hostedLearner.currentAction</code></header>
+  <p class="vi" lang="vi">Gửi thao tác hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit the current action</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.discrepancyAction">
+  <header><code>hostedLearner.discrepancyAction</code></header>
+  <p class="vi" lang="vi">Cách xử lý sai lệch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Discrepancy response</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.discrepancyCause">
+  <header><code>hostedLearner.discrepancyCause</code></header>
+  <p class="vi" lang="vi">Nguyên nhân có khả năng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Likely cause</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.error">
+  <header><code>hostedLearner.error</code></header>
+  <p class="vi" lang="vi">Không thể hoàn thành thao tác trên nền tảng. Hãy tải lại bài tập và thử lại.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The hosted action could not be completed. Reload the assignment and try again.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidence">
+  <header><code>hostedLearner.evidence</code></header>
+  <p class="vi" lang="vi">Bằng chứng có sẵn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Available evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidenceUnknown">
+  <header><code>hostedLearner.evidenceUnknown</code></header>
+  <p class="vi" lang="vi">Bằng chứng kịch bản {evidenceId}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario evidence {evidenceId}</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.eyebrow">
+  <header><code>hostedLearner.eyebrow</code></header>
+  <p class="vi" lang="vi">Mô phỏng trên nền tảng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Hosted simulation</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.feedback">
+  <header><code>hostedLearner.feedback</code></header>
+  <p class="vi" lang="vi">Phản hồi của giảng viên</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Instructor feedback</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.feedbackEmpty">
+  <header><code>hostedLearner.feedbackEmpty</code></header>
+  <p class="vi" lang="vi">Phản hồi đã được công bố nhưng chưa có đánh giá thủ công.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Feedback has been released, but no manual rating is recorded.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.feedbackLevel">
+  <header><code>hostedLearner.feedbackLevel</code></header>
+  <p class="vi" lang="vi">mức {level}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">level {level}</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.feedbackLoading">
+  <header><code>hostedLearner.feedbackLoading</code></header>
+  <p class="vi" lang="vi">Đang tải phản hồi đã công bố...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading released feedback...</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.feedbackWithheld">
+  <header><code>hostedLearner.feedbackWithheld</code></header>
+  <p class="vi" lang="vi">Phản hồi của giảng viên chưa được công bố.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Instructor feedback has not been released yet.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.issuerAssessment">
+  <header><code>hostedLearner.issuerAssessment</code></header>
+  <p class="vi" lang="vi">Danh tính và thẩm quyền của bên cấp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Issuer identity and authorization</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.justification">
+  <header><code>hostedLearner.justification</code></header>
+  <p class="vi" lang="vi">Lý do quyết định</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Decision justification</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.loading">
+  <header><code>hostedLearner.loading</code></header>
+  <p class="vi" lang="vi">Đang tải bài tập TraceChain của bạn...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading your TraceChain assignments...</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.lotDisposition">
+  <header><code>hostedLearner.lotDisposition</code></header>
+  <p class="vi" lang="vi">Xử lý lô hàng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Lot disposition</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.mode">
+  <header><code>hostedLearner.mode</code></header>
+  <p class="vi" lang="vi">Chế độ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Mode</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.noAssignments">
+  <header><code>hostedLearner.noAssignments</code></header>
+  <p class="vi" lang="vi">Tài khoản này chưa được giao mô phỏng đang hoạt động hoặc đã hoàn thành.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No active or completed simulation has been assigned to this account.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.noLedgerTransactions">
+  <header><code>hostedLearner.noLedgerTransactions</code></header>
+  <p class="vi" lang="vi">Chưa có giao dịch được chấp nhận nào hiển thị.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No accepted transaction is visible yet.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.none">
+  <header><code>hostedLearner.none</code></header>
+  <p class="vi" lang="vi">Hiện không có bằng chứng nào hiển thị cho vai trò này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No evidence is currently visible to this role.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.notAuthorized">
+  <header><code>hostedLearner.notAuthorized</code></header>
+  <p class="vi" lang="vi">Tài khoản này không có quyền người học.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This account does not have learner access.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.notStarted">
+  <header><code>hostedLearner.notStarted</code></header>
+  <p class="vi" lang="vi">Chưa bắt đầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Not started</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.optionUnknown">
+  <header><code>hostedLearner.optionUnknown</code></header>
+  <p class="vi" lang="vi">Phương án kịch bản {option}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario option {option}</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.recallScope">
+  <header><code>hostedLearner.recallScope</code></header>
+  <p class="vi" lang="vi">Chọn mọi lô hậu duệ bị ảnh hưởng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Select every affected descendant batch</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.record">
+  <header><code>hostedLearner.record</code></header>
+  <p class="vi" lang="vi">Bản ghi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Record</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.resume">
+  <header><code>hostedLearner.resume</code></header>
+  <p class="vi" lang="vi">Tiếp tục</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Resume</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.review">
+  <header><code>hostedLearner.review</code></header>
+  <p class="vi" lang="vi">Xem lại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Review</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.role">
+  <header><code>hostedLearner.role</code></header>
+  <p class="vi" lang="vi">Vai trò hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Active role</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.roleUnknown">
+  <header><code>hostedLearner.roleUnknown</code></header>
+  <p class="vi" lang="vi">Vai trò kịch bản {roleId}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario role {roleId}</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.run.active">
+  <header><code>hostedLearner.run.active</code></header>
+  <p class="vi" lang="vi">Đang thực hiện</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">In progress</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.run.completed">
+  <header><code>hostedLearner.run.completed</code></header>
+  <p class="vi" lang="vi">Đã hoàn thành</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Completed</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.runId">
+  <header><code>hostedLearner.runId</code></header>
+  <p class="vi" lang="vi">Mã lượt chạy</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run ID</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.start">
+  <header><code>hostedLearner.start</code></header>
+  <p class="vi" lang="vi">Bắt đầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Start</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.status">
+  <header><code>hostedLearner.status</code></header>
+  <p class="vi" lang="vi">Trạng thái</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Status</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.step">
+  <header><code>hostedLearner.step</code></header>
+  <p class="vi" lang="vi">Nhiệm vụ hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Current task</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.storageChoice">
+  <header><code>hostedLearner.storageChoice</code></header>
+  <p class="vi" lang="vi">Lưu trữ tài liệu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Document storage</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.submit">
+  <header><code>hostedLearner.submit</code></header>
+  <p class="vi" lang="vi">Gửi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Submit</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.subtitle">
+  <header><code>hostedLearner.subtitle</code></header>
+  <p class="vi" lang="vi">Bắt đầu hoặc tiếp tục mô phỏng được giao riêng cho bạn. Mỗi thao tác đã gửi đều được máy chủ xác thực và ghi nhận.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Start or resume your individually assigned simulation. Every submitted action is validated and recorded by the server.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.title">
+  <header><code>hostedLearner.title</code></header>
+  <p class="vi" lang="vi">Bài tập TraceChain của tôi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">My TraceChain assignments</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.traceability">
+  <header><code>hostedLearner.traceability</code></header>
+  <p class="vi" lang="vi">Không gian truy xuất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Traceability workspace</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.value">
+  <header><code>hostedLearner.value</code></header>
+  <p class="vi" lang="vi">Giá trị hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Current value</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.viewLedger">
+  <header><code>hostedLearner.viewLedger</code></header>
+  <p class="vi" lang="vi">Xem các giao dịch sổ cái đã được chấp nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">View accepted ledger transactions</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.viewRoleState">
+  <header><code>hostedLearner.viewRoleState</code></header>
+  <p class="vi" lang="vi">Xem trạng thái nghiệp vụ và chính sách hiển thị cho vai trò</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">View role-visible business and policy state</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.workspace">
+  <header><code>hostedLearner.workspace</code></header>
+  <p class="vi" lang="vi">Trạng thái mô phỏng hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Current simulation state</p></details>
+</article>
+</section>
+<section id="group-hostedPortal">
+  <h2>hostedPortal <span>16 chuỗi</span></h2>
+  <article class="entry" data-locale-key="hostedPortal.account">
+  <header><code>hostedPortal.account</code></header>
+  <p class="vi" lang="vi">Tài khoản đang đăng nhập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signed-in account</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.author.description">
+  <header><code>hostedPortal.author.description</code></header>
+  <p class="vi" lang="vi">Nhập, chỉnh sửa, xác thực, xem trước, công bố, so sánh và ngừng dùng các gói kịch bản có phiên bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Import, edit, validate, preview, publish, compare, and retire versioned scenario packs.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.author.title">
+  <header><code>hostedPortal.author.title</code></header>
+  <p class="vi" lang="vi">Biên soạn kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario authoring</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.error">
+  <header><code>hostedPortal.error</code></header>
+  <p class="vi" lang="vi">Không thể tải phiên TraceChain đã xác thực của bạn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Your authenticated TraceChain session could not be loaded.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.eyebrow">
+  <header><code>hostedPortal.eyebrow</code></header>
+  <p class="vi" lang="vi">Nền tảng TraceChain</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">TraceChain platform</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.instructor.description">
+  <header><code>hostedPortal.instructor.description</code></header>
+  <p class="vi" lang="vi">Cấu hình bài tập, xem bằng chứng, đánh giá lượt chạy, báo cáo kết quả và tạo gói SCORM theo quyền của bạn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Configure assignments, review evidence, assess runs, report results, and generate SCORM packages according to your role.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.instructor.title">
+  <header><code>hostedPortal.instructor.title</code></header>
+  <p class="vi" lang="vi">Đánh giá của giảng viên và người chấm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Instructor and rater review</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.learner.description">
+  <header><code>hostedPortal.learner.description</code></header>
+  <p class="vi" lang="vi">Bắt đầu hoặc tiếp tục mô phỏng cá nhân đã được giao.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Start or resume an individually assigned hosted simulation.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.learner.title">
+  <header><code>hostedPortal.learner.title</code></header>
+  <p class="vi" lang="vi">Bài tập người học</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Learner assignments</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.library.description">
+  <header><code>hostedPortal.library.description</code></header>
+  <p class="vi" lang="vi">Xem các gói đã công bố và xem trước đúng phiên bản kịch bản theo vai trò và chế độ.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Inspect published packs and preview exact scenario versions by role and mode.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.library.title">
+  <header><code>hostedPortal.library.title</code></header>
+  <p class="vi" lang="vi">Thư viện kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario library</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.loading">
+  <header><code>hostedPortal.loading</code></header>
+  <p class="vi" lang="vi">Đang tải quyền truy cập TraceChain của bạn...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading your TraceChain access...</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.open">
+  <header><code>hostedPortal.open</code></header>
+  <p class="vi" lang="vi">Mở không gian</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Open workspace</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.subtitle">
+  <header><code>hostedPortal.subtitle</code></header>
+  <p class="vi" lang="vi">Các không gian bên dưới được xác định từ vai trò ứng dụng do máy chủ cấp cho bạn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The workspaces below come from your server-provisioned application roles.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.title">
+  <header><code>hostedPortal.title</code></header>
+  <p class="vi" lang="vi">Chọn không gian làm việc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Choose a workspace</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedPortal.workspaces">
+  <header><code>hostedPortal.workspaces</code></header>
+  <p class="vi" lang="vi">Không gian làm việc có sẵn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Available workspaces</p></details>
+</article>
+</section>
 <section id="group-instructorReview">
-  <h2>instructorReview <span>73 chuỗi</span></h2>
+  <h2>instructorReview <span>134 chuỗi</span></h2>
   <article class="entry" data-locale-key="instructorReview.assignmentCreate">
   <header><code>instructorReview.assignmentCreate</code></header>
   <p class="vi" lang="vi">Tạo bài tập</p>
@@ -1213,6 +1687,16 @@
   <p class="vi" lang="vi">Tên bài tập</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assignment title</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.classCompetencyHeading">
+  <header><code>instructorReview.classCompetencyHeading</code></header>
+  <p class="vi" lang="vi">Bằng chứng năng lực của lớp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Class competency evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.classCompetencyHelp">
+  <header><code>instructorReview.classCompetencyHelp</code></header>
+  <p class="vi" lang="vi">Các số liệu này tóm tắt bằng chứng đã ghi nhận và đánh giá rubric hiện tại. Hệ thống không suy luận năng lực ổn định chỉ từ một lần mô phỏng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">These counts summarize recorded evidence and current rubric ratings. They do not infer stable competence from one simulation.</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.classReportHeading">
   <header><code>instructorReview.classReportHeading</code></header>
   <p class="vi" lang="vi">Báo cáo bài tập</p>
@@ -1242,6 +1726,11 @@
   <header><code>instructorReview.criterion</code></header>
   <p class="vi" lang="vi">Tiêu chí</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Criterion</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.currentRatingCount">
+  <header><code>instructorReview.currentRatingCount</code></header>
+  <p class="vi" lang="vi">Đánh giá hiện tại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Current ratings</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.email">
   <header><code>instructorReview.email</code></header>
@@ -1273,10 +1762,20 @@
   <p class="vi" lang="vi">Tài khoản TraceChain của bạn không có quyền xem lại lượt chạy.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Your TraceChain account does not have permission to review runs.</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.error.package">
+  <header><code>instructorReview.error.package</code></header>
+  <p class="vi" lang="vi">Không thể chuẩn bị gói từ các tạo tác lưu trữ đã được xác minh. Hãy thử lại hoặc liên hệ quản trị viên.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The package could not be prepared from the verified hosted artifacts. Try again or contact the administrator.</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.error.rating">
   <header><code>instructorReview.error.rating</code></header>
   <p class="vi" lang="vi">Không thể lưu đánh giá. Hãy tải lại lượt chạy và kiểm tra mức rubric đã chọn.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The rating could not be saved. Reload the run and check the selected rubric level.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.error.replay">
+  <header><code>instructorReview.error.replay</code></header>
+  <p class="vi" lang="vi">Vị trí phát lại này không còn hợp lệ. Hãy tải lại dòng thời gian của lượt chạy rồi thử lại.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">That replay position is no longer valid. Reload the run timeline and try again.</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.error.runNotFound">
   <header><code>instructorReview.error.runNotFound</code></header>
@@ -1302,6 +1801,26 @@
   <header><code>instructorReview.evidenceCount</code></header>
   <p class="vi" lang="vi">{count} bản ghi bằng chứng</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} evidence records</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.evidenceRecordCount">
+  <header><code>instructorReview.evidenceRecordCount</code></header>
+  <p class="vi" lang="vi">Bản ghi bằng chứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence records</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.exportCsv">
+  <header><code>instructorReview.exportCsv</code></header>
+  <p class="vi" lang="vi">Tải bằng chứng CSV</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Download CSV evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.exportHelp">
+  <header><code>instructorReview.exportHelp</code></header>
+  <p class="vi" lang="vi">Tải xuống đúng phiên bản bài tập, danh sách người học, sự kiện lượt chạy và các bản sửa đổi đánh giá cùng kết luận điều hòa chỉ ghi thêm. Tệp JSON có từ điển dữ liệu theo phiên bản; tệp CSV dùng bố cục phẳng đã được tài liệu hóa.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Download the exact assignment versions, roster, run events, and append-only rating and moderation revisions. JSON includes the versioned data dictionary; CSV uses the documented flat layout.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.exportJson">
+  <header><code>instructorReview.exportJson</code></header>
+  <p class="vi" lang="vi">Tải bằng chứng JSON</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Download JSON evidence</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.eyebrow">
   <header><code>instructorReview.eyebrow</code></header>
@@ -1333,10 +1852,30 @@
   <p class="vi" lang="vi">Phản hồi</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Feedback</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.feedbackTiming.final">
+  <header><code>instructorReview.feedbackTiming.final</code></header>
+  <p class="vi" lang="vi">cuối cùng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">final</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.feedbackTiming.immediate">
+  <header><code>instructorReview.feedbackTiming.immediate</code></header>
+  <p class="vi" lang="vi">ngay lập tức</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">immediate</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.feedbackTiming.stage-end">
+  <header><code>instructorReview.feedbackTiming.stage-end</code></header>
+  <p class="vi" lang="vi">cuối giai đoạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">stage-end</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.findRunHeading">
   <header><code>instructorReview.findRunHeading</code></header>
   <p class="vi" lang="vi">Mở lượt chạy</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Open a run</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.indicator">
+  <header><code>instructorReview.indicator</code></header>
+  <p class="vi" lang="vi">Chỉ báo</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Indicator</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.learner">
   <header><code>instructorReview.learner</code></header>
@@ -1352,6 +1891,16 @@
   <header><code>instructorReview.learnerIdsHint</code></header>
   <p class="vi" lang="vi">Phân tách các mã người học bằng dấu cách, dấu phẩy hoặc dòng mới.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Separate learner IDs with spaces, commas, or new lines.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.learnersObserved">
+  <header><code>instructorReview.learnersObserved</code></header>
+  <p class="vi" lang="vi">Người học có bằng chứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Learners with evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.learnersObservedValue">
+  <header><code>instructorReview.learnersObservedValue</code></header>
+  <p class="vi" lang="vi">{observed} trên {assigned}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{observed} of {assigned}</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.loadRun">
   <header><code>instructorReview.loadRun</code></header>
@@ -1393,10 +1942,75 @@
   <p class="vi" lang="vi">Hướng dẫn</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Tutorial</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.modeHelp.configured">
+  <header><code>instructorReview.modeHelp.configured</code></header>
+  <p class="vi" lang="vi">Thiết lập nhóm học có kiểm soát và seed được cung cấp tạo ra kết quả có thể tái tạo chính xác.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Controlled cohort settings and a supplied seed produce an exactly reproducible outcome.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.modeHelp.sandbox">
+  <header><code>instructorReview.modeHelp.sandbox</code></header>
+  <p class="vi" lang="vi">Hoạt động thử nghiệm có thể phát lại và kết quả xác suất có tính xác định dùng seed được cung cấp.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replay-friendly experimentation and a deterministic probabilistic outcome use the supplied seed.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.modeHelp.standard">
+  <header><code>instructorReview.modeHelp.standard</code></header>
+  <p class="vi" lang="vi">Điều kiện chuẩn hóa, phản hồi cuối cùng, không gợi ý và không thử lại dùng thiết lập Tiêu chuẩn đã công bố.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Standardized conditions, final feedback, and no hints or retry use the scenario&#39;s published Standard settings.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.modeHelp.tutorial">
+  <header><code>instructorReview.modeHelp.tutorial</code></header>
+  <p class="vi" lang="vi">Phản hồi có hướng dẫn, gợi ý, thử lại và quay lại dùng thiết lập Hướng dẫn đã công bố của kịch bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Guided feedback, hints, retry, and backtracking use the scenario&#39;s published Tutorial settings.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.modeResolved">
+  <header><code>instructorReview.modeResolved</code></header>
+  <p class="vi" lang="vi">Hành vi đã xác định: phản hồi {feedback}; kết quả {outcome}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Resolved behavior: {feedback} feedback; {outcome} outcome.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationComment">
+  <header><code>instructorReview.moderationComment</code></header>
+  <p class="vi" lang="vi">Lý do kết luận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Resolution rationale</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationHeading">
+  <header><code>instructorReview.moderationHeading</code></header>
+  <p class="vi" lang="vi">Kết luận điều hòa đánh giá</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Moderation resolution</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationLevel">
+  <header><code>instructorReview.moderationLevel</code></header>
+  <p class="vi" lang="vi">Mức đã thống nhất</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Resolved level</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationRevision">
+  <header><code>instructorReview.moderationRevision</code></header>
+  <p class="vi" lang="vi">Đã lưu bản sửa đổi kết luận {revision}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Saved resolution revision {revision}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationSave">
+  <header><code>instructorReview.moderationSave</code></header>
+  <p class="vi" lang="vi">Lưu kết luận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Save resolution</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationSaving">
+  <header><code>instructorReview.moderationSaving</code></header>
+  <p class="vi" lang="vi">Đang lưu kết luận...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Saving resolution...</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.moderationSources">
+  <header><code>instructorReview.moderationSources</code></header>
+  <p class="vi" lang="vi">{count} bản sửa đổi đánh giá nguồn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} source rating revisions</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.noCompetencyEvidence">
   <header><code>instructorReview.noCompetencyEvidence</code></header>
   <p class="vi" lang="vi">Chưa có bằng chứng năng lực nào được ghi nhận cho lượt chạy này.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No competency evidence has been recorded for this run.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.none">
+  <header><code>instructorReview.none</code></header>
+  <p class="vi" lang="vi">Không có</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">None</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.notObserved">
   <header><code>instructorReview.notObserved</code></header>
@@ -1413,6 +2027,16 @@
   <p class="vi" lang="vi">Đã quan sát</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Observed</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.outcomeStrategy.forced">
+  <header><code>instructorReview.outcomeStrategy.forced</code></header>
+  <p class="vi" lang="vi">được ấn định</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">forced</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.outcomeStrategy.probabilistic">
+  <header><code>instructorReview.outcomeStrategy.probabilistic</code></header>
+  <p class="vi" lang="vi">xác suất có tính xác định</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">deterministic probabilistic</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.packId">
   <header><code>instructorReview.packId</code></header>
   <p class="vi" lang="vi">Mã gói nội dung</p>
@@ -1422,6 +2046,86 @@
   <header><code>instructorReview.packVersion</code></header>
   <p class="vi" lang="vi">Phiên bản gói nội dung</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Pack version</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageBuild">
+  <header><code>instructorReview.packageBuild</code></header>
+  <p class="vi" lang="vi">Phân loại bản dựng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Build classification</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageBuilderHeading">
+  <header><code>instructorReview.packageBuilderHeading</code></header>
+  <p class="vi" lang="vi">Tạo gói SCORM</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Generate a SCORM package</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageBuilderHelp">
+  <header><code>instructorReview.packageBuilderHelp</code></header>
+  <p class="vi" lang="vi">Chọn một cấu hình dựng sẵn đã được nghiệm thu. TraceChain dùng cùng bản dựng ứng dụng và trình tạo gói Node đã được xác minh như quy trình dòng lệnh; nội dung Đánh giá và Phòng thí nghiệm kỹ thuật chưa hoàn chỉnh sẽ không được hiển thị.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Choose one accepted preset. TraceChain uses the same verified application build and Node package generator as the command-line workflow; unsupported Assessment and Technical Laboratory content is not offered.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageDevelopment">
+  <header><code>instructorReview.packageDevelopment</code></header>
+  <p class="vi" lang="vi">Bản phát triển — không phải bản phát hành</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Development — not a release</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageDownload">
+  <header><code>instructorReview.packageDownload</code></header>
+  <p class="vi" lang="vi">Tải ZIP</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Download ZIP</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageGenerate">
+  <header><code>instructorReview.packageGenerate</code></header>
+  <p class="vi" lang="vi">Tạo gói</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Generate package</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageGenerating">
+  <header><code>instructorReview.packageGenerating</code></header>
+  <p class="vi" lang="vi">Đang chuẩn bị gói...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Preparing package...</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageHistory">
+  <header><code>instructorReview.packageHistory</code></header>
+  <p class="vi" lang="vi">Làm mới lịch sử gói</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Refresh package history</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageIdentity">
+  <header><code>instructorReview.packageIdentity</code></header>
+  <p class="vi" lang="vi">SHA-256</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">SHA-256</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packagePreset">
+  <header><code>instructorReview.packagePreset</code></header>
+  <p class="vi" lang="vi">Cấu hình gói</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Package preset</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packagePreset.challenge">
+  <header><code>instructorReview.packagePreset.challenge</code></header>
+  <p class="vi" lang="vi">Thử thách A</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Challenge A</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packagePreset.guided">
+  <header><code>instructorReview.packagePreset.guided</code></header>
+  <p class="vi" lang="vi">Thực hành có hướng dẫn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Guided practice</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packagePresetHelp.challenge">
+  <header><code>instructorReview.packagePresetHelp.challenge</code></header>
+  <p class="vi" lang="vi">Thử thách A bằng tiếng Việt đã được biên soạn, ít hướng dẫn hơn và phản hồi trì hoãn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Vietnamese curated Challenge A with reduced guidance and delayed feedback.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packagePresetHelp.guided">
+  <header><code>instructorReview.packagePresetHelp.guided</code></header>
+  <p class="vi" lang="vi">Thực hành chuỗi cà phê bằng tiếng Việt với phản hồi ngay và hỗ trợ đã biên soạn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Vietnamese guided coffee practice with immediate feedback and authored support.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageRelease">
+  <header><code>instructorReview.packageRelease</code></header>
+  <p class="vi" lang="vi">Bản phát hành</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Release</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.packageTitle">
+  <header><code>instructorReview.packageTitle</code></header>
+  <p class="vi" lang="vi">Tên gói</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Package title</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.ratingComment">
   <header><code>instructorReview.ratingComment</code></header>
@@ -1452,6 +2156,61 @@
   <header><code>instructorReview.ratingSaving</code></header>
   <p class="vi" lang="vi">Đang lưu đánh giá...</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Saving rating...</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replay">
+  <header><code>instructorReview.replay</code></header>
+  <p class="vi" lang="vi">Phát lại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replay</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayAtEvent">
+  <header><code>instructorReview.replayAtEvent</code></header>
+  <p class="vi" lang="vi">Phát lại sau sự kiện {sequence}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replay after event {sequence}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayHeading">
+  <header><code>instructorReview.replayHeading</code></header>
+  <p class="vi" lang="vi">Phát lại tại sự kiện {sequence}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replay at event {sequence}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayHelp">
+  <header><code>instructorReview.replayHelp</code></header>
+  <p class="vi" lang="vi">Đây là góc nhìn theo vai trò được tái tạo có tính xác định từ các sự kiện đến thứ tự đã chọn. Trạng thái thực tế bị ẩn không được đưa vào.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This is the deterministic role-filtered view reconstructed from events through the selected sequence. Hidden actual state is not included.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayLoading">
+  <header><code>instructorReview.replayLoading</code></header>
+  <p class="vi" lang="vi">Đang phát lại...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replaying...</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayNode">
+  <header><code>instructorReview.replayNode</code></header>
+  <p class="vi" lang="vi">Nút quy trình</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Workflow node</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayPermittedActions">
+  <header><code>instructorReview.replayPermittedActions</code></header>
+  <p class="vi" lang="vi">Thao tác được phép</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Permitted actions</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayPosition">
+  <header><code>instructorReview.replayPosition</code></header>
+  <p class="vi" lang="vi">Vị trí phát lại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Replay position</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayPositionValue">
+  <header><code>instructorReview.replayPositionValue</code></header>
+  <p class="vi" lang="vi">Sự kiện {sequence} trên {total}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Event {sequence} of {total}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayRole">
+  <header><code>instructorReview.replayRole</code></header>
+  <p class="vi" lang="vi">Vai trò mô phỏng đang hoạt động</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Active simulation role</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.replayVisibleEvidence">
+  <header><code>instructorReview.replayVisibleEvidence</code></header>
+  <p class="vi" lang="vi">Bản ghi bằng chứng hiển thị</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Visible evidence records</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.roles">
   <header><code>instructorReview.roles</code></header>
@@ -1527,6 +2286,26 @@
   <header><code>instructorReview.summaryHeading</code></header>
   <p class="vi" lang="vi">Tóm tắt lượt chạy</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run summary</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.targetType">
+  <header><code>instructorReview.targetType</code></header>
+  <p class="vi" lang="vi">Mức độ mục tiêu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Target</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.targetType.contextual">
+  <header><code>instructorReview.targetType.contextual</code></header>
+  <p class="vi" lang="vi">Theo bối cảnh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Contextual</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.targetType.primary">
+  <header><code>instructorReview.targetType.primary</code></header>
+  <p class="vi" lang="vi">Chính</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Primary</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.targetType.supporting">
+  <header><code>instructorReview.targetType.supporting</code></header>
+  <p class="vi" lang="vi">Hỗ trợ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Supporting</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.time">
   <header><code>instructorReview.time</code></header>
@@ -3206,6 +3985,369 @@
   <header><code>sale.PROHIBITED</code></header>
   <p class="vi" lang="vi">Không được phép bán</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Sale prohibited</p></details>
+</article>
+</section>
+<section id="group-scenarioAuthor">
+  <h2>scenarioAuthor <span>72 chuỗi</span></h2>
+  <article class="entry" data-locale-key="scenarioAuthor.account">
+  <header><code>scenarioAuthor.account</code></header>
+  <p class="vi" lang="vi">Tài khoản đang đăng nhập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Signed-in account</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.actions">
+  <header><code>scenarioAuthor.actions</code></header>
+  <p class="vi" lang="vi">Thao tác</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Actions</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.compare">
+  <header><code>scenarioAuthor.compare</code></header>
+  <p class="vi" lang="vi">So sánh</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Compare</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.compareHeading">
+  <header><code>scenarioAuthor.compareHeading</code></header>
+  <p class="vi" lang="vi">So sánh phiên bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Compare versions</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.compareSummary">
+  <header><code>scenarioAuthor.compareSummary</code></header>
+  <p class="vi" lang="vi">{changed} đường dẫn thay đổi, {added} đường dẫn được thêm và {removed} đường dẫn bị bỏ.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{changed} changed paths, {added} added paths, and {removed} removed paths.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.domain">
+  <header><code>scenarioAuthor.domain</code></header>
+  <p class="vi" lang="vi">Lĩnh vực</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Domain</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.domain">
+  <header><code>scenarioAuthor.editor.domain</code></header>
+  <p class="vi" lang="vi">Lĩnh vực bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft domain</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.node">
+  <header><code>scenarioAuthor.editor.node</code></header>
+  <p class="vi" lang="vi">Nút</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Node</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.packId">
+  <header><code>scenarioAuthor.editor.packId</code></header>
+  <p class="vi" lang="vi">Mã gói bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft pack ID</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.packVersion">
+  <header><code>scenarioAuthor.editor.packVersion</code></header>
+  <p class="vi" lang="vi">Phiên bản gói bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft pack version</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.scenarioId">
+  <header><code>scenarioAuthor.editor.scenarioId</code></header>
+  <p class="vi" lang="vi">Mã kịch bản bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft scenario ID</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.scenarioTitle">
+  <header><code>scenarioAuthor.editor.scenarioTitle</code></header>
+  <p class="vi" lang="vi">Tiêu đề kịch bản ({locale})</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario title ({locale})</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.scenarioVersion">
+  <header><code>scenarioAuthor.editor.scenarioVersion</code></header>
+  <p class="vi" lang="vi">Phiên bản kịch bản bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft scenario version</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.terminal">
+  <header><code>scenarioAuthor.editor.terminal</code></header>
+  <p class="vi" lang="vi">Nút kết thúc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Terminal node</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.title">
+  <header><code>scenarioAuthor.editor.title</code></header>
+  <p class="vi" lang="vi">Tiêu đề đã bản địa hóa</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Localized title</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.transitions">
+  <header><code>scenarioAuthor.editor.transitions</code></header>
+  <p class="vi" lang="vi">Nút tiếp theo</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Next node</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.type">
+  <header><code>scenarioAuthor.editor.type</code></header>
+  <p class="vi" lang="vi">Loại</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Type</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editor.workflow">
+  <header><code>scenarioAuthor.editor.workflow</code></header>
+  <p class="vi" lang="vi">Sơ đồ quy trình</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Workflow outline</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editorHeading">
+  <header><code>scenarioAuthor.editorHeading</code></header>
+  <p class="vi" lang="vi">Trình biên tập bản nháp trực quan</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Visual draft editor</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editorHelp">
+  <header><code>scenarioAuthor.editorHelp</code></header>
+  <p class="vi" lang="vi">Chỉnh sửa định danh bản nháp, tiêu đề song ngữ và đích đến trong quy trình. Cùng một bộ xác thực phía máy chủ sẽ kiểm tra mọi thay đổi trước khi nhập hoặc công bố.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Edit draft identity, bilingual titles, and workflow destinations. The same server validator checks every change before import or publication.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.compare">
+  <header><code>scenarioAuthor.error.compare</code></header>
+  <p class="vi" lang="vi">So sánh phiên bản cần hai phiên bản đã lưu khác nhau của cùng một gói.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Version comparison requires two different stored versions of the same pack.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.fileTooLarge">
+  <header><code>scenarioAuthor.error.fileTooLarge</code></header>
+  <p class="vi" lang="vi">Tệp đã chọn hoặc nội dung giải nén vượt giới hạn biên soạn 2 MB.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The selected file or expanded archive exceeds the 2 MB authoring limit.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.generic">
+  <header><code>scenarioAuthor.error.generic</code></header>
+  <p class="vi" lang="vi">Không thể hoàn thành yêu cầu biên soạn kịch bản. Hãy thử lại hoặc liên hệ quản trị viên.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The scenario-author request could not be completed. Try again or contact the administrator.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.import">
+  <header><code>scenarioAuthor.error.import</code></header>
+  <p class="vi" lang="vi">Không thể nhập bản nháp. Hãy xem báo cáo xác thực và các phiên bản bất biến hiện có.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The draft could not be imported. Review the validation report and existing immutable versions.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.lifecycle">
+  <header><code>scenarioAuthor.error.lifecycle</code></header>
+  <p class="vi" lang="vi">Không thể hoàn thành thao tác vòng đời. Hãy làm mới thư viện và kiểm tra trạng thái của đúng phiên bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The lifecycle action could not be completed. Refresh the library and check the exact version status.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.notAuthorized">
+  <header><code>scenarioAuthor.error.notAuthorized</code></header>
+  <p class="vi" lang="vi">Tài khoản TraceChain của bạn không có quyền biên soạn kịch bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Your TraceChain account does not have scenario-author permission.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.parse">
+  <header><code>scenarioAuthor.error.parse</code></header>
+  <p class="vi" lang="vi">Tệp đã chọn không phải là một gói kịch bản TraceChain JSON, YAML hoặc ZIP rõ ràng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The selected file is not an unambiguous TraceChain JSON, YAML, or ZIP scenario pack.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.preview">
+  <header><code>scenarioAuthor.error.preview</code></header>
+  <p class="vi" lang="vi">Không thể tạo bản xem trước theo vai trò từ kịch bản, chế độ, vai trò và ngôn ngữ đã chọn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The role preview could not be generated from that scenario, mode, role, and language.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.eyebrow">
+  <header><code>scenarioAuthor.eyebrow</code></header>
+  <p class="vi" lang="vi">Không gian biên soạn kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario author workspace</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.file">
+  <header><code>scenarioAuthor.file</code></header>
+  <p class="vi" lang="vi">Tệp gói kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario-pack file</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.fromVersion">
+  <header><code>scenarioAuthor.fromVersion</code></header>
+  <p class="vi" lang="vi">Từ phiên bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">From version</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.import">
+  <header><code>scenarioAuthor.import</code></header>
+  <p class="vi" lang="vi">Nhập bản nháp hợp lệ</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Import valid draft</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.importHeading">
+  <header><code>scenarioAuthor.importHeading</code></header>
+  <p class="vi" lang="vi">Nhập và xác thực</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Import and validate</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.importHelp">
+  <header><code>scenarioAuthor.importHelp</code></header>
+  <p class="vi" lang="vi">Chọn một tệp TraceChain JSON hoặc YAML, hoặc tệp ZIP chứa tracechain.pack.json. Nội dung nhập vào chỉ được xử lý như dữ liệu và không bao giờ được thực thi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Choose one TraceChain JSON or YAML file, or a ZIP containing tracechain.pack.json. Imported content is treated as data and is never executed.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.imported">
+  <header><code>scenarioAuthor.imported</code></header>
+  <p class="vi" lang="vi">Đã nhập bản nháp gói kịch bản hợp lệ.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The valid scenario-pack draft was imported.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.libraryHeading">
+  <header><code>scenarioAuthor.libraryHeading</code></header>
+  <p class="vi" lang="vi">Thư viện kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario library</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.loadTemplate">
+  <header><code>scenarioAuthor.loadTemplate</code></header>
+  <p class="vi" lang="vi">Tải mẫu khởi tạo chuỗi lạnh dược phẩm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Load pharmaceutical cold-chain starter</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.loading">
+  <header><code>scenarioAuthor.loading</code></header>
+  <p class="vi" lang="vi">Đang kiểm tra quyền biên soạn TraceChain...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Checking your TraceChain author access...</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.locale">
+  <header><code>scenarioAuthor.locale</code></header>
+  <p class="vi" lang="vi">Ngôn ngữ xem trước</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Preview language</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.mode">
+  <header><code>scenarioAuthor.mode</code></header>
+  <p class="vi" lang="vi">Chế độ chạy</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run mode</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.mode.configured">
+  <header><code>scenarioAuthor.mode.configured</code></header>
+  <p class="vi" lang="vi">Đã cấu hình</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Configured</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.mode.sandbox">
+  <header><code>scenarioAuthor.mode.sandbox</code></header>
+  <p class="vi" lang="vi">Thử nghiệm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Sandbox</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.mode.standard">
+  <header><code>scenarioAuthor.mode.standard</code></header>
+  <p class="vi" lang="vi">Tiêu chuẩn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Standard</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.mode.tutorial">
+  <header><code>scenarioAuthor.mode.tutorial</code></header>
+  <p class="vi" lang="vi">Hướng dẫn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Tutorial</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.open">
+  <header><code>scenarioAuthor.open</code></header>
+  <p class="vi" lang="vi">Mở</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Open</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.pack">
+  <header><code>scenarioAuthor.pack</code></header>
+  <p class="vi" lang="vi">Gói</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Pack</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.preview">
+  <header><code>scenarioAuthor.preview</code></header>
+  <p class="vi" lang="vi">Tạo bản xem trước theo vai trò</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Generate role preview</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewHeading">
+  <header><code>scenarioAuthor.previewHeading</code></header>
+  <p class="vi" lang="vi">Xem trước {packId} phiên bản {version}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Preview {packId} version {version}</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewSummary">
+  <header><code>scenarioAuthor.previewSummary</code></header>
+  <p class="vi" lang="vi">Vai trò {roleId}, chế độ {mode}: {count} nút quy trình có thể đến.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Role {roleId}, mode {mode}: {count} reachable workflow nodes.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.publish">
+  <header><code>scenarioAuthor.publish</code></header>
+  <p class="vi" lang="vi">Công bố</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Publish</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.published">
+  <header><code>scenarioAuthor.published</code></header>
+  <p class="vi" lang="vi">Đã công bố đúng phiên bản gói kịch bản; nội dung này hiện bất biến.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The exact scenario-pack version was published and is now immutable.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.retire">
+  <header><code>scenarioAuthor.retire</code></header>
+  <p class="vi" lang="vi">Ngừng dùng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Retire</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.retired">
+  <header><code>scenarioAuthor.retired</code></header>
+  <p class="vi" lang="vi">Đã ngừng dùng phiên bản đã công bố cho hoạt động mới. Nội dung bất biến vẫn được giữ cho các lượt chạy hiện có.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The published version was retired for new use. Its immutable content remains available for existing runs.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.role">
+  <header><code>scenarioAuthor.role</code></header>
+  <p class="vi" lang="vi">Vai trò mô phỏng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Simulation role</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.scenario">
+  <header><code>scenarioAuthor.scenario</code></header>
+  <p class="vi" lang="vi">Kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status">
+  <header><code>scenarioAuthor.status</code></header>
+  <p class="vi" lang="vi">Trạng thái</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Status</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status.all">
+  <header><code>scenarioAuthor.status.all</code></header>
+  <p class="vi" lang="vi">Tất cả trạng thái</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">All statuses</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status.draft">
+  <header><code>scenarioAuthor.status.draft</code></header>
+  <p class="vi" lang="vi">Bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status.published">
+  <header><code>scenarioAuthor.status.published</code></header>
+  <p class="vi" lang="vi">Đã công bố</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Published</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status.retired">
+  <header><code>scenarioAuthor.status.retired</code></header>
+  <p class="vi" lang="vi">Đã ngừng dùng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Retired</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.status.validated">
+  <header><code>scenarioAuthor.status.validated</code></header>
+  <p class="vi" lang="vi">Đã xác thực</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Validated</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.statusFilter">
+  <header><code>scenarioAuthor.statusFilter</code></header>
+  <p class="vi" lang="vi">Lọc theo trạng thái vòng đời</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Filter by lifecycle status</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.subtitle">
+  <header><code>scenarioAuthor.subtitle</code></header>
+  <p class="vi" lang="vi">Nhập nội dung khai báo, xem chẩn đoán xác thực, xem trước lộ trình hiển thị theo vai trò, so sánh phiên bản và quản lý quy trình công bố bất biến.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Import declarative content, inspect validation diagnostics, preview role-visible paths, compare versions, and control immutable publication.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.template.pharmaceuticalColdChain">
+  <header><code>scenarioAuthor.template.pharmaceuticalColdChain</code></header>
+  <p class="vi" lang="vi">Mẫu khởi tạo chuỗi lạnh dược phẩm tích hợp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Built-in pharmaceutical cold-chain starter</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.title">
+  <header><code>scenarioAuthor.title</code></header>
+  <p class="vi" lang="vi">Quản lý gói kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Manage scenario packs</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.toVersion">
+  <header><code>scenarioAuthor.toVersion</code></header>
+  <p class="vi" lang="vi">Đến phiên bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">To version</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.validate">
+  <header><code>scenarioAuthor.validate</code></header>
+  <p class="vi" lang="vi">Chỉ xác thực, không nhập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Validate without importing</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.validationChecks">
+  <header><code>scenarioAuthor.validationChecks</code></header>
+  <p class="vi" lang="vi">Đã hoàn thành {count} bước kiểm tra hợp đồng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} contract checks completed.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.validationInvalid">
+  <header><code>scenarioAuthor.validationInvalid</code></header>
+  <p class="vi" lang="vi">Xác thực phát hiện vấn đề</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Validation found issues</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.validationValid">
+  <header><code>scenarioAuthor.validationValid</code></header>
+  <p class="vi" lang="vi">Xác thực đạt yêu cầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Validation passed</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.version">
+  <header><code>scenarioAuthor.version</code></header>
+  <p class="vi" lang="vi">Phiên bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Version</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.visibleEvidence">
+  <header><code>scenarioAuthor.visibleEvidence</code></header>
+  <p class="vi" lang="vi">{count} bản ghi bằng chứng hiển thị</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} visible evidence records</p></details>
 </article>
 </section>
 <section id="group-score">
@@ -5553,7 +6695,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>d684c132c23d78f3f8dccf6b9bcaf7aa29d8c1b0</code> · SHA-256 nguồn: <code>f2b389b1d574ab8a36b09bda00421d14efcdcc7dcd7d24e6179cb9b0f890630e</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>553f7c72f37b4dfcecc99ecce4b8c0678b23fa38</code> · SHA-256 nguồn: <code>5c901f46e3053721ec812928ea0b8ca4117207664db515b9db19198ba38b3d40</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

@@ -4,7 +4,11 @@ import type {
   SimulationRuntimeState,
   TrustedExecutionContext,
 } from "../../domain/simulation/types";
-import type { HostedRunMode } from "../contracts/scenario-pack";
+import type {
+  HostedRunMode,
+  HostedRunModeConfigurationV1,
+} from "../contracts/scenario-pack";
+import type { StochasticOutcomeResolutionV1 } from "../runs/stochastic-outcomes";
 
 export type Stage3CaseVariant =
   | "authorized-certifier"
@@ -144,8 +148,15 @@ export interface HostedStage3RunState {
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly mode: HostedRunMode;
+  readonly modeConfiguration: HostedRunModeConfigurationV1;
   readonly scenarioSeed: string;
   readonly caseVariant: Stage3CaseVariant;
+  readonly outcomeResolution: StochasticOutcomeResolutionV1;
+  readonly outcomeEvidenceStatus:
+    | "not-required"
+    | "awaiting-draw"
+    | "awaiting-outcome"
+    | "recorded";
   readonly activeTrustedContext: TrustedExecutionContext;
   readonly version: number;
   readonly status: "active" | "completed";
@@ -225,7 +236,8 @@ export interface CreateHostedStage3RunRequest {
   readonly assignmentId: string;
   readonly learnerUserId: string;
   readonly mode: HostedRunMode;
-  readonly scenarioSeed: string;
+  readonly modeConfiguration?: HostedRunModeConfigurationV1;
+  readonly scenarioSeed?: string;
   readonly caseVariant: Stage3CaseVariant;
 }
 

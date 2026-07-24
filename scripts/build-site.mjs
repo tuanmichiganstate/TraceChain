@@ -1,4 +1,11 @@
-import { mkdir, readdir, rename } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  writeFile,
+} from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -15,6 +22,9 @@ const serverDirectory = fileURLToPath(
 const workerOutput = fileURLToPath(
   new URL("../dist/server/index.js", import.meta.url),
 );
+const packageCatalogPath = fileURLToPath(
+  new URL("../dist-scorm/package-catalog.json", import.meta.url),
+);
 
 const clientEntries = await readdir(buildDirectory, { withFileTypes: true });
 await mkdir(clientDirectory, { recursive: true });
@@ -27,6 +37,55 @@ for (const entry of clientEntries) {
     join(clientDirectory, entry.name),
   );
 }
+
+const packageCatalog = JSON.parse(
+  await readFile(packageCatalogPath, "utf8"),
+);
+if (
+  packageCatalog?.schemaVersion !== "1.0.0" ||
+  !Array.isArray(packageCatalog.packages) ||
+  packageCatalog.packages.length === 0
+) {
+  throw new Error(
+    "The hosted build requires a verified SCORM package catalog.",
+  );
+}
+const hostedPackageDirectory = join(
+  clientDirectory,
+  "scorm-packages",
+);
+await mkdir(hostedPackageDirectory, { recursive: true });
+const hostedPackages = [];
+for (const artifact of packageCatalog.packages) {
+  const source = join(repositoryRoot, artifact.filename);
+  const bytes = await readFile(source);
+  if (bytes.byteLength !== artifact.sizeBytes) {
+    throw new Error(
+      `SCORM artifact size does not match its catalog: ${artifact.filename}`,
+    );
+  }
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (sha256 !== artifact.sha256) {
+    throw new Error(
+      `SCORM artifact hash does not match its catalog: ${artifact.filename}`,
+    );
+  }
+  const targetName = `${artifact.sha256}.zip`;
+  await writeFile(join(hostedPackageDirectory, targetName), bytes);
+  hostedPackages.push({
+    ...artifact,
+    downloadPath: `/scorm-packages/${targetName}`,
+  });
+}
+await writeFile(
+  join(hostedPackageDirectory, "catalog.json"),
+  `${JSON.stringify(
+    { ...packageCatalog, packages: hostedPackages },
+    null,
+    2,
+  )}\n`,
+  "utf8",
+);
 
 await mkdir(serverDirectory, { recursive: true });
 await build({

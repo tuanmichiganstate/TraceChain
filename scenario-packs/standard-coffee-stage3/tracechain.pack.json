@@ -688,7 +688,82 @@
       "supportedModes": [
         "tutorial",
         "standard",
+        "sandbox",
         "configured"
+      ],
+      "modeConfigurations": [
+        {
+          "mode": "tutorial",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "generated",
+          "timeLimitMinutes": 45,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true,
+          "outcomeModelId": "CERTIFICATE_CASE"
+        },
+        {
+          "mode": "standard",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "final",
+          "showScores": false,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "supplied",
+          "timeLimitMinutes": 30,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true,
+          "outcomeModelId": "CERTIFICATE_CASE"
+        },
+        {
+          "mode": "sandbox",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": false,
+          "outcomeStrategy": "probabilistic",
+          "seedPolicy": "supplied",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true,
+          "outcomeModelId": "CERTIFICATE_CASE"
+        },
+        {
+          "mode": "configured",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "stage-end",
+          "showScores": false,
+          "outcomeStrategy": "probabilistic",
+          "seedPolicy": "supplied",
+          "timeLimitMinutes": 30,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true,
+          "outcomeModelId": "CERTIFICATE_CASE"
+        }
+      ],
+      "outcomeModels": [
+        {
+          "outcomeModelId": "CERTIFICATE_CASE",
+          "distribution": "weighted-categorical",
+          "randomStreamId": "certificate-case",
+          "outcomes": [
+            {
+              "outcomeCode": "authorized-certifier",
+              "weight": 3
+            },
+            {
+              "outcomeCode": "unauthorized-transporter",
+              "weight": 1
+            }
+          ]
+        }
       ],
       "competencyTargets": [
         {

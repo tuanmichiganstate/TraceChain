@@ -1,0 +1,462 @@
+{
+  "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
+  "schemaVersion": "1.0.0",
+  "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
+  "version": "1.0.0",
+  "status": "draft",
+  "supportedLocales": [
+    "en",
+    "vi"
+  ],
+  "localizationCatalogs": {
+    "en": {
+      "platformPack.pharmaColdChain.manifest.title": "Pharmaceutical cold-chain starter",
+      "platformPack.pharmaColdChain.manifest.description": "A compact authoring example about reviewing a temperature excursion before medicine release.",
+      "platformPack.pharmaColdChain.manifest.educationalPurpose": "Evaluate conflicting ledger and sensor evidence and make a defensible release decision.",
+      "platformPack.pharmaColdChain.framework.title": "Pharmaceutical cold-chain competencies",
+      "platformPack.pharmaColdChain.competency.title": "Cold-chain evidence judgment",
+      "platformPack.pharmaColdChain.competency.description": "Evaluate traceability and temperature evidence before releasing a medicine shipment.",
+      "platformPack.pharmaColdChain.indicator.statement": "Uses ledger and sensor evidence to justify a proportionate cold-chain decision.",
+      "platformPack.pharmaColdChain.rubric.title": "Cold-chain decision rubric",
+      "platformPack.pharmaColdChain.rubric.level0": "Not demonstrated",
+      "platformPack.pharmaColdChain.rubric.level1": "Demonstrated",
+      "platformPack.pharmaColdChain.rubric.criterion.title": "Evidence-based release decision",
+      "platformPack.pharmaColdChain.rubric.criterion.description": "The decision responds to the temperature record and explains its operational consequence.",
+      "platformPack.pharmaColdChain.scenario.title": "Temperature excursion review",
+      "platformPack.pharmaColdChain.organization.manufacturer": "Medicine manufacturer",
+      "platformPack.pharmaColdChain.organization.distributor": "Healthcare distributor",
+      "platformPack.pharmaColdChain.role.quality": "Quality manager",
+      "platformPack.pharmaColdChain.role.distribution": "Distribution pharmacist",
+      "platformPack.pharmaColdChain.asset.shipment": "Medicine shipment",
+      "platformPack.pharmaColdChain.policy.release": "Cold-chain release rule",
+      "platformPack.pharmaColdChain.evidence.sensor": "Temperature sensor summary",
+      "platformPack.pharmaColdChain.node.briefing.title": "Review the shipment",
+      "platformPack.pharmaColdChain.node.briefing.body": "A signed custody record is intact, but the off-chain sensor summary reports a temperature excursion. Decide whether the shipment may be released.",
+      "platformPack.pharmaColdChain.node.evidence.title": "Inspect the available evidence",
+      "platformPack.pharmaColdChain.node.decision.title": "Make a release decision",
+      "platformPack.pharmaColdChain.node.decision.prompt": "Choose a proportionate response to the temperature excursion.",
+      "platformPack.pharmaColdChain.field.action.prompt": "Shipment action",
+      "platformPack.pharmaColdChain.option.hold": "Hold and investigate",
+      "platformPack.pharmaColdChain.option.release": "Release without review",
+      "platformPack.pharmaColdChain.node.complete.title": "Decision recorded"
+    },
+    "vi": {
+      "platformPack.pharmaColdChain.manifest.title": "Mẫu khởi tạo chuỗi lạnh dược phẩm",
+      "platformPack.pharmaColdChain.manifest.description": "Ví dụ biên soạn ngắn về việc xem xét sai lệch nhiệt độ trước khi xuất thuốc.",
+      "platformPack.pharmaColdChain.manifest.educationalPurpose": "Đánh giá bằng chứng sổ cái và cảm biến có mâu thuẫn để đưa ra quyết định xuất hàng có căn cứ.",
+      "platformPack.pharmaColdChain.framework.title": "Năng lực chuỗi lạnh dược phẩm",
+      "platformPack.pharmaColdChain.competency.title": "Nhận định bằng chứng chuỗi lạnh",
+      "platformPack.pharmaColdChain.competency.description": "Đánh giá bằng chứng truy xuất và nhiệt độ trước khi xuất một lô thuốc.",
+      "platformPack.pharmaColdChain.indicator.statement": "Sử dụng bằng chứng sổ cái và cảm biến để giải thích quyết định chuỗi lạnh tương xứng.",
+      "platformPack.pharmaColdChain.rubric.title": "Tiêu chí quyết định chuỗi lạnh",
+      "platformPack.pharmaColdChain.rubric.level0": "Chưa thể hiện",
+      "platformPack.pharmaColdChain.rubric.level1": "Đã thể hiện",
+      "platformPack.pharmaColdChain.rubric.criterion.title": "Quyết định xuất hàng dựa trên bằng chứng",
+      "platformPack.pharmaColdChain.rubric.criterion.description": "Quyết định phản hồi hồ sơ nhiệt độ và giải thích hệ quả vận hành.",
+      "platformPack.pharmaColdChain.scenario.title": "Xem xét sai lệch nhiệt độ",
+      "platformPack.pharmaColdChain.organization.manufacturer": "Nhà sản xuất thuốc",
+      "platformPack.pharmaColdChain.organization.distributor": "Nhà phân phối y tế",
+      "platformPack.pharmaColdChain.role.quality": "Quản lý chất lượng",
+      "platformPack.pharmaColdChain.role.distribution": "Dược sĩ phân phối",
+      "platformPack.pharmaColdChain.asset.shipment": "Lô thuốc",
+      "platformPack.pharmaColdChain.policy.release": "Quy tắc xuất hàng chuỗi lạnh",
+      "platformPack.pharmaColdChain.evidence.sensor": "Tóm tắt cảm biến nhiệt độ",
+      "platformPack.pharmaColdChain.node.briefing.title": "Xem xét lô hàng",
+      "platformPack.pharmaColdChain.node.briefing.body": "Hồ sơ chuyển giao đã ký còn nguyên vẹn, nhưng bản tóm tắt cảm biến ngoài chuỗi ghi nhận sai lệch nhiệt độ. Hãy quyết định có thể xuất lô hàng hay không.",
+      "platformPack.pharmaColdChain.node.evidence.title": "Kiểm tra bằng chứng có sẵn",
+      "platformPack.pharmaColdChain.node.decision.title": "Đưa ra quyết định xuất hàng",
+      "platformPack.pharmaColdChain.node.decision.prompt": "Chọn cách xử lý tương xứng với sai lệch nhiệt độ.",
+      "platformPack.pharmaColdChain.field.action.prompt": "Cách xử lý lô hàng",
+      "platformPack.pharmaColdChain.option.hold": "Giữ lại và điều tra",
+      "platformPack.pharmaColdChain.option.release": "Xuất hàng mà không xem xét",
+      "platformPack.pharmaColdChain.node.complete.title": "Đã ghi nhận quyết định"
+    }
+  },
+  "manifest": {
+    "title": {
+      "localizationKey": "platformPack.pharmaColdChain.manifest.title"
+    },
+    "description": {
+      "localizationKey": "platformPack.pharmaColdChain.manifest.description"
+    },
+    "domain": "pharmaceutical-cold-chain",
+    "educationalPurpose": {
+      "localizationKey": "platformPack.pharmaColdChain.manifest.educationalPurpose"
+    }
+  },
+  "competencyFrameworks": [
+    {
+      "schemaVersion": "1.0.0",
+      "frameworkId": "PHARMA_COLD_CHAIN",
+      "version": "1.0.0",
+      "status": "draft",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.framework.title"
+      },
+      "competencies": [
+        {
+          "competencyId": "PHARMA.COLD_CHAIN",
+          "version": "1.0.0",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.competency.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.pharmaColdChain.competency.description"
+          },
+          "indicators": [
+            {
+              "indicatorId": "PHARMA.COLD_CHAIN.PI1",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.pharmaColdChain.indicator.statement"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rubrics": [
+    {
+      "rubricId": "RUBRIC_PHARMA_COLD_CHAIN",
+      "version": "1.0.0",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.rubric.title"
+      },
+      "levels": [
+        {
+          "value": 0,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.rubric.level0"
+          }
+        },
+        {
+          "value": 1,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.rubric.level1"
+          }
+        }
+      ],
+      "criteria": [
+        {
+          "criterionId": "CRITERION_PHARMA_RELEASE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.rubric.criterion.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.pharmaColdChain.rubric.criterion.description"
+          },
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI1"
+          ],
+          "evidenceRuleIds": [
+            "EVIDENCE_RULE_PHARMA_DECISION"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidenceRules": [
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_PHARMA_DECISION",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "PHARMA.COLD_CHAIN.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    }
+  ],
+  "scenarios": [
+    {
+      "scenarioId": "SCN_PHARMA_COLD_CHAIN_STARTER",
+      "version": "1.0.0",
+      "status": "draft",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.scenario.title"
+      },
+      "supportedModes": [
+        "tutorial",
+        "standard",
+        "sandbox",
+        "configured"
+      ],
+      "modeConfigurations": [
+        {
+          "mode": "tutorial",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "generated",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "standard",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "final",
+          "showScores": false,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "supplied",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "sandbox",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "probabilistic",
+          "seedPolicy": "generated",
+          "outcomeModelId": "OUTCOME_MODEL_PHARMA_EXCURSION",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "configured",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "stage-end",
+          "showScores": true,
+          "outcomeStrategy": "probabilistic",
+          "seedPolicy": "supplied",
+          "outcomeModelId": "OUTCOME_MODEL_PHARMA_EXCURSION",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        }
+      ],
+      "outcomeModels": [
+        {
+          "outcomeModelId": "OUTCOME_MODEL_PHARMA_EXCURSION",
+          "distribution": "weighted-categorical",
+          "randomStreamId": "pharma-temperature-outcome",
+          "outcomes": [
+            {
+              "outcomeCode": "EXCURSION_CONFIRMED",
+              "weight": 1
+            },
+            {
+              "outcomeCode": "SENSOR_FAULT_CONFIRMED",
+              "weight": 1
+            }
+          ]
+        }
+      ],
+      "competencyTargets": [
+        {
+          "competencyId": "PHARMA.COLD_CHAIN",
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI1"
+          ],
+          "targetType": "primary"
+        }
+      ],
+      "organizations": [
+        {
+          "organizationId": "ORG_MEDICINE_MANUFACTURER",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.organization.manufacturer"
+          }
+        },
+        {
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.organization.distributor"
+          }
+        }
+      ],
+      "roles": [
+        {
+          "roleId": "QUALITY_MANAGER",
+          "organizationId": "ORG_MEDICINE_MANUFACTURER",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.role.quality"
+          }
+        },
+        {
+          "roleId": "DISTRIBUTION_PHARMACIST",
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.role.distribution"
+          }
+        }
+      ],
+      "assetTypes": [
+        {
+          "assetTypeId": "MEDICINE_SHIPMENT",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.asset.shipment"
+          },
+          "schema": {
+            "requiredFields": [
+              "shipmentId",
+              "productCode",
+              "temperatureRangeC"
+            ]
+          }
+        }
+      ],
+      "initialState": {
+        "actualState": {
+          "temperatureExcursionConfirmed": true
+        },
+        "businessState": {
+          "shipmentId": "SHIPMENT_MED_001",
+          "status": "AWAITING_RELEASE"
+        },
+        "ledgerState": {
+          "custodyRecordStatus": "SIGNED_AND_INTACT"
+        },
+        "informationState": {
+          "releasedEvidenceIds": []
+        }
+      },
+      "policies": [
+        {
+          "policyId": "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.policy.release"
+          },
+          "configuration": {
+            "holdWhenTemperatureExcursionUnresolved": true
+          }
+        }
+      ],
+      "evidenceItems": [
+        {
+          "evidenceId": "EVID_PHARMA_SENSOR_SUMMARY",
+          "evidenceType": "SENSOR_SUMMARY",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.evidence.sensor"
+          },
+          "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER",
+            "DISTRIBUTION_PHARMACIST"
+          ],
+          "content": {
+            "minimumTemperatureC": 2,
+            "maximumTemperatureC": 12.4,
+            "permittedMaximumTemperatureC": 8,
+            "excursionMinutes": 47
+          }
+        }
+      ],
+      "entryNodeId": "NODE_PHARMA_BRIEFING",
+      "nodes": [
+        {
+          "nodeId": "NODE_PHARMA_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.briefing.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.pharmaColdChain.node.briefing.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_BRIEFING_EVIDENCE",
+              "toNodeId": "NODE_PHARMA_EVIDENCE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_EVIDENCE",
+          "nodeType": "EVIDENCE_RELEASE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.evidence.title"
+          },
+          "evidenceIds": [
+            "EVID_PHARMA_SENSOR_SUMMARY"
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_EVIDENCE_DECISION",
+              "toNodeId": "NODE_PHARMA_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.decision.title"
+          },
+          "decisionId": "DECISION_PHARMA_RELEASE",
+          "prompt": {
+            "localizationKey": "platformPack.pharmaColdChain.node.decision.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "shipmentAction",
+              "prompt": {
+                "localizationKey": "platformPack.pharmaColdChain.field.action.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "HOLD_AND_INVESTIGATE",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.option.hold"
+                  },
+                  "authoredValue": "HOLD_AND_INVESTIGATE"
+                },
+                {
+                  "optionId": "RELEASE_WITHOUT_REVIEW",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.option.release"
+                  },
+                  "authoredValue": "RELEASE_WITHOUT_REVIEW"
+                }
+              ]
+            }
+          ],
+          "justification": {
+            "required": true,
+            "maximumLength": 600
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_DECISION_COMPLETE",
+              "toNodeId": "NODE_PHARMA_COMPLETE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_COMPLETE",
+          "nodeType": "COMPLETION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.complete.title"
+          },
+          "outcomeCode": "PHARMA_DECISION_RECORDED",
+          "transitions": []
+        }
+      ],
+      "rubricIds": [
+        "RUBRIC_PHARMA_COLD_CHAIN"
+      ],
+      "evidenceRuleIds": [
+        "EVIDENCE_RULE_PHARMA_DECISION"
+      ]
+    }
+  ],
+  "assetHashes": {}
+}
