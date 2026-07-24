@@ -474,6 +474,13 @@ describe("instructor review screen", () => {
               inspected: true,
             },
           },
+          {
+            recordId: "EVID_SHIPPING_RECORD",
+            value: {
+              evidenceType: "shipping-record",
+              inspected: true,
+            },
+          },
         ],
         policyState: [],
         workflowState: {
@@ -645,6 +652,17 @@ describe("instructor review screen", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("EVID_CERTIFICATE_RECORD")).toBeInTheDocument();
+    const citedEvidence = screen
+      .getByText("EVID_CERTIFICATE_RECORD")
+      .closest("summary");
+    const uncitedEvidence = screen
+      .getByText("EVID_SHIPPING_RECORD")
+      .closest("summary");
+    if (citedEvidence === null || uncitedEvidence === null) {
+      throw new Error("Expected replay evidence summaries.");
+    }
+    expect(citedEvidence).toHaveTextContent("Cited");
+    expect(uncitedEvidence).toHaveTextContent("Available, not cited");
 
     const criterionRow = screen
       .getByText("CRITERION_AUTHORIZATION_JUDGMENT")

@@ -64,10 +64,12 @@ comments, and direct supporting-event review, without inferring stable
 competence from one run. Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
 at that point, with the submitted response beside the evidence available at
-that decision time. The assignment monitor uses the same replay boundary for
-current stage and pending actions, and reports a technical issue when a run
-cannot be reconstructed. It does not expose hidden outcomes. The hosted work
-does not alter the current SCORM activity.
+that decision time, including explicit cited and available-but-not-cited
+labels when the selected response recorded citations. The assignment monitor
+uses the same replay boundary for current stage and pending actions, and
+reports a technical issue when a run cannot be reconstructed. It does not
+expose hidden outcomes. The hosted work does not alter the current SCORM
+activity.
 
 | | |
 |---|---|

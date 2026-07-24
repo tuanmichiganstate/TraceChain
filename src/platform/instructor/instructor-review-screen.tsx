@@ -1779,6 +1779,10 @@ function DecisionTimeReview({
   const selectedEvent = timeline.find(
     (item) => item.eventId === replay.selectedEvent.eventId,
   );
+  const citedEvidenceIds =
+    selectedEvent === undefined
+      ? null
+      : citedEvidenceIdsFromPayload(selectedEvent.payload);
   return (
     <div className="instructor-review__decision-time-review">
       <section>
@@ -1798,25 +1802,61 @@ function DecisionTimeReview({
       <section>
         <h4>{t("instructorReview.availableEvidenceHeading")}</h4>
         <p>{t("instructorReview.availableEvidenceHelp")}</p>
+        {citedEvidenceIds === null ? null : (
+          <p>{t("instructorReview.evidenceUseHelp")}</p>
+        )}
         {replay.projection.informationState.length === 0 ? (
           <p>{t("instructorReview.noVisibleEvidence")}</p>
         ) : (
           <div className="instructor-review__visible-evidence">
-            {replay.projection.informationState.map((record) => (
-              <details key={record.recordId}>
-                <summary>
-                  <code>{record.recordId}</code>
-                </summary>
-                <pre className="instructor-review__json-evidence">
-                  <code>{JSON.stringify(record.value, null, 2)}</code>
-                </pre>
-              </details>
-            ))}
+            {replay.projection.informationState.map((record) => {
+              const wasCited =
+                citedEvidenceIds?.has(record.recordId) ?? null;
+              return (
+                <details key={record.recordId}>
+                  <summary>
+                    <span>
+                      <code>{record.recordId}</code>
+                      {wasCited === null ? null : (
+                        <span
+                          className={`instructor-review__evidence-use instructor-review__evidence-use--${wasCited ? "cited" : "not-cited"}`}
+                        >
+                          {t(
+                            wasCited
+                              ? "instructorReview.evidenceCited"
+                              : "instructorReview.evidenceNotCited",
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </summary>
+                  <pre className="instructor-review__json-evidence">
+                    <code>{JSON.stringify(record.value, null, 2)}</code>
+                  </pre>
+                </details>
+              );
+            })}
           </div>
         )}
       </section>
     </div>
   );
+}
+
+function citedEvidenceIdsFromPayload(
+  payload: Readonly<Record<string, unknown>>,
+): ReadonlySet<string> | null {
+  if (
+    !Object.prototype.hasOwnProperty.call(payload, "citedEvidenceIds") ||
+    !Array.isArray(payload.citedEvidenceIds)
+  ) {
+    return null;
+  }
+  const citedEvidenceIds = new Set<string>();
+  for (const value of payload.citedEvidenceIds) {
+    if (typeof value === "string") citedEvidenceIds.add(value);
+  }
+  return citedEvidenceIds;
 }
 
 function RubricRatingRow({

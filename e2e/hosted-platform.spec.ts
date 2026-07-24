@@ -511,6 +511,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                     inspected: true,
                   },
                 },
+                {
+                  recordId: "EVID_SHIPPING_MONITOR",
+                  value: {
+                    evidenceType: "shipping-record",
+                    inspected: true,
+                  },
+                },
               ],
               policyState: [],
               workflowState: {
@@ -587,6 +594,16 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await expect(
     page.getByText("EVID_CERTIFICATE_MONITOR", { exact: true }),
   ).toBeVisible();
+  const citedEvidence = page
+    .locator("details")
+    .filter({ hasText: "EVID_CERTIFICATE_MONITOR" });
+  const uncitedEvidence = page
+    .locator("details")
+    .filter({ hasText: "EVID_SHIPPING_MONITOR" });
+  await expect(citedEvidence.locator("summary")).toContainText("Cited");
+  await expect(uncitedEvidence.locator("summary")).toContainText(
+    "Available, not cited",
+  );
   expect(monitorRequests).toBe(1);
 
   await page.getByRole("button", { name: "Refresh status" }).click();
