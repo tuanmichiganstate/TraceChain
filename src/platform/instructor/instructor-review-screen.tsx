@@ -1219,6 +1219,9 @@ function ClassCompetencyReport({
               <th scope="col">
                 {t("instructorReview.currentRatingCount")}
               </th>
+              <th scope="col">
+                {t("instructorReview.ratingDistribution")}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1240,6 +1243,25 @@ function ClassCompetencyReport({
                 </td>
                 <td>{indicator.evidenceCount}</td>
                 <td>{indicator.currentRatingCount}</td>
+                <td>
+                  {indicator.ratingDistribution.length === 0 ? (
+                    t("instructorReview.noCurrentRatings")
+                  ) : (
+                    <ul className="instructor-review__compact-list">
+                      {indicator.ratingDistribution.map((entry) => (
+                        <li key={entry.levelValue}>
+                          {t(
+                            "instructorReview.ratingDistributionValue",
+                            {
+                              level: entry.levelValue,
+                              count: entry.count,
+                            },
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -132,6 +132,8 @@
   "instructorReview.performanceAndComments": "Current rating and comment",
   "instructorReview.supportingEvents": "Supporting event references",
   "instructorReview.ratingValue": "Level {level}",
+  "instructorReview.ratingDistribution": "Rating distribution",
+  "instructorReview.ratingDistributionValue": "Level {level}: {count}",
   "instructorReview.noCurrentRatings": "No current rating",
   "instructorReview.targetType": "Target",
   "instructorReview.targetType.primary": "Primary",

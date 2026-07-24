@@ -79,7 +79,8 @@ rating distribution by authored numeric rubric level
 Ratings remain criterion judgments. A rating can appear under each indicator
 explicitly mapped by that versioned rubric criterion. The report does not
 average levels, convert them into the existing 100-point SCORM score, or infer
-a durable competency result.
+a durable competency result. The instructor workspace presents the authored
+numeric-level distribution alongside the evidence and rating counts.
 
 ## Current limit
 

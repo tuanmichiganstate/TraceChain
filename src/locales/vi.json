@@ -132,6 +132,8 @@
   "instructorReview.performanceAndComments": "Đánh giá và nhận xét hiện tại",
   "instructorReview.supportingEvents": "Tham chiếu sự kiện hỗ trợ",
   "instructorReview.ratingValue": "Mức {level}",
+  "instructorReview.ratingDistribution": "Phân bố đánh giá",
+  "instructorReview.ratingDistributionValue": "Mức {level}: {count}",
   "instructorReview.noCurrentRatings": "Chưa có đánh giá hiện tại",
   "instructorReview.targetType": "Mức độ mục tiêu",
   "instructorReview.targetType.primary": "Chính",

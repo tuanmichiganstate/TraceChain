@@ -370,6 +370,7 @@ describe("instructor review screen", () => {
     }
     expect(within(competencyRow).getByText("1 of 1")).toBeInTheDocument();
     expect(within(competencyRow).getByText("2")).toBeInTheDocument();
+    expect(within(competencyRow).getByText("Level 3: 1")).toBeInTheDocument();
     expect(
       report.getByRole("heading", {
         name: "Learner competency profiles",

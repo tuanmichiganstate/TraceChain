@@ -55,15 +55,15 @@ and controls publication and retirement. Course and roster provisioning remain
 deployment administration rather than application screens. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, rating revisions, and a data dictionary.
-They also summarize class competency evidence and expose expandable per-learner
-profiles with evidence recency, current rubric comments, and supporting event
-references, without inferring stable competence from one run. Instructors can
-replay any event sequence through the existing deterministic reducer and
-inspect the role-filtered view that existed at that point. The assignment
-monitor uses the same replay boundary for current stage and pending actions,
-and reports a technical issue when a run cannot be reconstructed. It does not
-expose hidden outcomes. The hosted work does not alter the current SCORM
-activity.
+They also summarize class competency evidence and its rating distribution, and
+expose expandable per-learner profiles with evidence recency, current rubric
+comments, and supporting event references, without inferring stable competence
+from one run. Instructors can replay any event sequence through the existing
+deterministic reducer and inspect the role-filtered view that existed at that
+point. The assignment monitor uses the same replay boundary for current stage
+and pending actions, and reports a technical issue when a run cannot be
+reconstructed. It does not expose hidden outcomes. The hosted work does not
+alter the current SCORM activity.
 
 | | |
 |---|---|

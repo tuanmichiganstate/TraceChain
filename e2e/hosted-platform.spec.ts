@@ -390,6 +390,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await expect(
     page.getByRole("heading", { name: "Learner competency profiles" }),
   ).toBeVisible();
+  await expect(page.getByText("Level 3: 1")).toBeVisible();
   const learnerProfile = page
     .locator("details")
     .filter({ has: page.locator("summary", { hasText: "USER_MONITOR_LEARNER" }) });
