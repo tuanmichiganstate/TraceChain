@@ -236,6 +236,22 @@
   margin-block-start: var(--space-6);
 }
 
+.instructor-review__monitor {
+  margin-block-start: var(--space-5);
+}
+
+.instructor-review__monitor-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.instructor-review__monitor-heading h3 {
+  margin-block-start: 0;
+}
+
 .instructor-review__replay {
   margin-block-start: var(--space-4);
   padding: var(--space-4);

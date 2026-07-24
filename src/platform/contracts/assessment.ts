@@ -134,6 +134,48 @@ export interface HostedAssignmentReportV1 {
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }
 
+export interface HostedRunMonitorStatusV1 {
+  readonly runId: string;
+  readonly learnerUserId: string;
+  readonly status: "active" | "completed";
+  readonly eventCount: number;
+  readonly currentStageId: string;
+  readonly activeRoleId: string;
+  readonly elapsedSeconds: number;
+  readonly lastActivityAt: string;
+  readonly pendingActionIds: readonly string[];
+  readonly technicalStatus: "ok";
+}
+
+export interface HostedRunMonitorErrorV1 {
+  readonly runId: string;
+  readonly learnerUserId: string;
+  readonly status: "active" | "completed";
+  readonly eventCount: number;
+  readonly currentStageId: null;
+  readonly activeRoleId: null;
+  readonly elapsedSeconds: null;
+  readonly lastActivityAt: null;
+  readonly pendingActionIds: readonly [];
+  readonly technicalStatus: "error";
+}
+
+export type HostedRunMonitorV1 =
+  | HostedRunMonitorStatusV1
+  | HostedRunMonitorErrorV1;
+
+export interface HostedAssignmentLearnerMonitorV1 {
+  readonly learnerUserId: string;
+  readonly runs: readonly HostedRunMonitorV1[];
+}
+
+export interface HostedAssignmentMonitorV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly assignmentId: string;
+  readonly generatedAt: string;
+  readonly learners: readonly HostedAssignmentLearnerMonitorV1[];
+}
+
 export interface HostedLearnerAssignmentV1 {
   readonly assignment: HostedAssignmentV1;
   readonly runs: readonly HostedAssignmentRunSummary[];

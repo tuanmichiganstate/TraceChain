@@ -1590,6 +1590,38 @@ describe("server-authoritative hosted Stage 3 run", () => {
     );
   });
 
+  it("derives instructor monitor status from the same role-filtered replay", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const state = await progressToDecision(
+      service,
+      "authorized-certifier",
+      "RUN_MONITOR",
+    );
+
+    await expect(
+      service.instructorMonitor(learner, state.runId),
+    ).rejects.toBeInstanceOf(HostedAuthorizationError);
+
+    const monitor = await service.instructorMonitor(
+      instructor,
+      state.runId,
+      "2026-07-24T03:02:00.000Z",
+    );
+    expect(monitor).toEqual({
+      runId: state.runId,
+      learnerUserId: learner.userId,
+      status: "active",
+      eventCount: 4,
+      currentStageId: "certificate-decision",
+      activeRoleId: "CERTIFICATION_OFFICER",
+      elapsedSeconds: 120,
+      lastActivityAt: NOW,
+      pendingActionIds: ["SUBMIT_CERTIFICATE_DECISION"],
+      technicalStatus: "ok",
+    });
+  });
+
   it("rejects replay when recorded transaction evidence is changed", async () => {
     const store = new MemoryRunEventStore();
     const pack = publishedPack();

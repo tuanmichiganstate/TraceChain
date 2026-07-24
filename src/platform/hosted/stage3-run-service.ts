@@ -31,6 +31,7 @@ import type {
   RunEventV1,
   UnsequencedRunEventV1,
 } from "../contracts/run-events";
+import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
 import type { JsonObject, JsonValue } from "../contracts/json";
 import { isJsonObject } from "../contracts/json";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
@@ -2331,6 +2332,69 @@ export class HostedStage3RunService {
       causationId: event.causationId,
       payload: structuredClone(event.payload),
     }));
+  }
+
+  async instructorMonitor(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+    observedAt = this.clock.now(),
+  ): Promise<HostedRunMonitorStatusV1> {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const events = await this.eventStore.load(runId);
+    const firstEvent = events[0];
+    const lastEvent = events.at(-1);
+    if (firstEvent === undefined || lastEvent === undefined) {
+      throw new HostedRunCommandError(
+        "RUN_NOT_FOUND",
+        `Run ${runId} does not exist.`,
+      );
+    }
+    const observedAtMs = Date.parse(observedAt);
+    if (!Number.isFinite(observedAtMs)) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Monitor observation time must be a valid ISO timestamp.",
+      );
+    }
+    const state = await this.replay(events);
+    const projection = projectRunStateForRole(
+      this.toProjectionState(state),
+      state.activeTrustedContext.roleId,
+    );
+    const startedAtMs = Date.parse(firstEvent.serverTimestampUtc);
+    const lastActivityAtMs = Date.parse(lastEvent.serverTimestampUtc);
+    if (
+      !Number.isFinite(startedAtMs) ||
+      !Number.isFinite(lastActivityAtMs)
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Monitor event timestamps must be valid ISO timestamps.",
+      );
+    }
+    const elapsedUntilMs =
+      state.status === "completed"
+        ? lastActivityAtMs
+        : Math.max(lastActivityAtMs, observedAtMs);
+    return {
+      runId: state.runId,
+      learnerUserId: state.learnerUserId,
+      status: state.status,
+      eventCount: events.length,
+      currentStageId: projection.workflowState.currentNodeId,
+      activeRoleId: projection.roleId,
+      elapsedSeconds: Math.max(
+        0,
+        Math.floor((elapsedUntilMs - startedAtMs) / 1_000),
+      ),
+      lastActivityAt: lastEvent.serverTimestampUtc,
+      pendingActionIds: projection.workflowState.permittedActionIds,
+      technicalStatus: "ok",
+    };
   }
 
   async instructorReplay(

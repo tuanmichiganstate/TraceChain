@@ -117,6 +117,7 @@ All endpoints use `/api/v1`.
 | `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
 | `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration |
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, event-count and current-rating report |
+| `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
 | `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary |
 | `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same evidence in the documented flat CSV V1 layout |
@@ -254,7 +255,11 @@ Feedback release is one-way in this increment. Learners receive no manual
 ratings through the feedback endpoint until an instructor explicitly releases
 the assignment. The assignment report keeps observable event counts,
 completion, and manual ratings separate; it does not invent a second overall
-grade.
+grade. Its live-status panel is a refreshable projection of the same
+authoritative replay used by run review. Current stage and pending actions are
+limited to the active trusted role. A replay failure is reported as a technical
+status requiring attention; learner decision rejections are not misclassified
+as technical failures.
 
 ## Current limits
 
@@ -267,6 +272,9 @@ grade.
   rating and moderation revisions, and the V1 data dictionary. The assignment competency
   report links targeted indicator versions to observable evidence and current
   ratings while explicitly avoiding a single-simulation competence inference.
+- The assignment live monitor reports learner status, current workflow stage,
+  elapsed time, last activity, active-role pending actions, and replay health
+  without returning hidden outcome state.
 - Instructor timeline replay reconstructs the exact role-filtered view at a
   selected event sequence and never returns hidden actual state.
 - Course and roster-provisioning screens are not implemented.

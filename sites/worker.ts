@@ -1,5 +1,9 @@
 import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
-import type { CreateHostedAssignmentRequest } from "../src/platform/contracts/assessment";
+import type {
+  CreateHostedAssignmentRequest,
+  HostedAssignmentMonitorV1,
+  HostedRunMonitorV1,
+} from "../src/platform/contracts/assessment";
 import type {
   CreateScormPackageJobRequest,
   HostedScormPackageCatalogV1,
@@ -1227,6 +1231,84 @@ async function apiResponse(
       new SystemUtcClock(),
     ).report(reportAssignmentId);
     return jsonResponse(200, { report });
+  }
+
+  const monitorAssignmentId = pathAssignmentId(
+    url.pathname,
+    "monitor",
+  );
+  if (request.method === "GET" && monitorAssignmentId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(monitorAssignmentId);
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(
+      report.assignment.packId,
+      report.assignment.packVersion,
+    );
+    if (pack === null || pack.status !== "published") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Live monitoring requires the assignment's exact published pack.",
+      );
+    }
+    const service = new HostedStage3RunService(
+      pack,
+      new D1RunEventStore(environment.DB),
+      clock,
+      new WebCryptoIdGenerator(),
+    );
+    const generatedAt = clock.now();
+    const statuses = await Promise.all(
+      report.learners.flatMap((learner) =>
+        learner.runs.map(async (run): Promise<HostedRunMonitorV1> => {
+          try {
+            return await service.instructorMonitor(
+              principal,
+              run.runId,
+              generatedAt,
+            );
+          } catch {
+            return {
+              runId: run.runId,
+              learnerUserId: run.learnerUserId,
+              status: run.status,
+              eventCount: run.eventCount,
+              currentStageId: null,
+              activeRoleId: null,
+              elapsedSeconds: null,
+              lastActivityAt: null,
+              pendingActionIds: [],
+              technicalStatus: "error",
+            };
+          }
+        }),
+      ),
+    );
+    const monitor: HostedAssignmentMonitorV1 = {
+      schemaVersion: "1.0.0",
+      assignmentId: report.assignment.assignmentId,
+      generatedAt,
+      learners: report.learners.map((learner) => ({
+        learnerUserId: learner.learnerUserId,
+        runs: statuses.filter(
+          (status) =>
+            status.learnerUserId === learner.learnerUserId,
+        ),
+      })),
+    };
+    return jsonResponse(200, { monitor });
   }
 
   const competencyAssignmentId = pathAssignmentId(

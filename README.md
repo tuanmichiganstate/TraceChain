@@ -44,8 +44,9 @@ role-filtered learner state, and exposes authenticated timeline,
 rubric-evidence, and competency APIs. The hosted `/instructor` route provides a
 deliberately small authenticated workspace for exact-version assignment
 creation, those evidence projections, evidence-linked rubric ratings,
-one-way feedback release, moderation, assignment reports, and graphical SCORM
-package jobs. The `/learner` route lists only the signed-in learner's
+one-way feedback release, moderation, assignment reports, replay-derived live
+learner status, and graphical SCORM package jobs. The `/learner` route lists
+only the signed-in learner's
 assignments and runs the complete bounded coffee command path from
 role-filtered server state. The `/author` route imports bounded JSON, YAML, or
 ZIP packs, provides a compact visual draft editor and pharmaceutical
@@ -57,8 +58,10 @@ versions, complete event streams, rating revisions, and a data dictionary.
 They also summarize versioned learner and class competency evidence without
 inferring stable competence from one run. Instructors can replay any event
 sequence through the existing deterministic reducer and inspect the
-role-filtered view that existed at that point. The hosted work does not alter
-the current SCORM activity.
+role-filtered view that existed at that point. The assignment monitor uses the
+same replay boundary for current stage and pending actions, and reports a
+technical issue when a run cannot be reconstructed. It does not expose hidden
+outcomes. The hosted work does not alter the current SCORM activity.
 
 | | |
 |---|---|

@@ -1886,6 +1886,40 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       },
     ]);
 
+    const monitorResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/monitor",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      monitorResponse.status,
+      200,
+      await monitorResponse.clone().text(),
+    );
+    const monitor = (await monitorResponse.json()).monitor;
+    assert.equal(monitor.schemaVersion, "1.0.0");
+    assert.equal(monitor.assignmentId, "ASSIGNMENT_SITE_001");
+    assert.equal(monitor.learners.length, 1);
+    const monitoredRun = monitor.learners[0].runs[0];
+    assert.equal(monitoredRun.runId, runId);
+    assert.equal(
+      monitoredRun.learnerUserId,
+      "USER_LEARNER_001",
+    );
+    assert.equal(monitoredRun.status, "completed");
+    assert.equal(monitoredRun.eventCount, 54);
+    assert.equal(monitoredRun.currentStageId, "complete");
+    assert.equal(monitoredRun.activeRoleId, "REGULATORY_AUDITOR");
+    assert.equal(monitoredRun.elapsedSeconds >= 0, true);
+    assert.equal(
+      Number.isFinite(Date.parse(monitoredRun.lastActivityAt)),
+      true,
+    );
+    assert.deepEqual(monitoredRun.pendingActionIds, []);
+    assert.equal(monitoredRun.technicalStatus, "ok");
+
     const competencyReportResponse = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_SITE_001/competencies",

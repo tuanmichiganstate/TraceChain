@@ -18,6 +18,11 @@ simulation identity.
 The UI is a thin client. Every privileged action is authorized again in the
 worker and repository layer.
 
+The assignment live monitor is refresh-based rather than a separate real-time
+transport. It reconstructs each started run through the existing deterministic
+service and exposes only status, timing, the active role's workflow stage and
+pending actions, and replay health. Hidden authored outcomes remain excluded.
+
 ## Learner authority boundary
 
 `GET /api/v1/learner/assignments` joins the authenticated user ID to the

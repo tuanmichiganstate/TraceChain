@@ -42,6 +42,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_INSTRUCTOR_001",
@@ -103,6 +104,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment,
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_INSTRUCTOR_001",
@@ -229,6 +231,32 @@ describe("instructor review screen", () => {
           },
         ],
       }),
+      loadAssignmentMonitor: vi.fn().mockResolvedValue({
+        schemaVersion: "1.0.0",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        generatedAt: "2026-07-24T08:05:00.000Z",
+        learners: [
+          {
+            learnerUserId: "USER_LEARNER_001",
+            runs: [
+              {
+                runId: "RUN_EXPORT_001",
+                learnerUserId: "USER_LEARNER_001",
+                status: "active",
+                eventCount: 4,
+                currentStageId: "certificate-transaction",
+                activeRoleId: "LOGISTICS_COORDINATOR",
+                elapsedSeconds: 300,
+                lastActivityAt: "2026-07-24T08:04:00.000Z",
+                pendingActionIds: [
+                  "SUBMIT_CERTIFICATE_TRANSACTION",
+                ],
+                technicalStatus: "ok",
+              },
+            ],
+          },
+        ],
+      }),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_INSTRUCTOR_001",
         email: "instructor@example.edu",
@@ -257,6 +285,24 @@ describe("instructor review screen", () => {
     await user.click(
       report.getByRole("button", { name: "Load report" }),
     );
+
+    expect(api.loadAssignmentMonitor).toHaveBeenCalledWith(
+      "ASSIGNMENT_EXPORT_001",
+    );
+    expect(
+      await report.findByRole("heading", {
+        name: "Live learner status",
+      }),
+    ).toBeInTheDocument();
+    expect(report.getByText("certificate-transaction")).toBeInTheDocument();
+    expect(
+      report.getByText("SUBMIT_CERTIFICATE_TRANSACTION"),
+    ).toBeInTheDocument();
+    expect(report.getByText("No issue detected")).toBeInTheDocument();
+    await user.click(
+      report.getByRole("button", { name: "Refresh status" }),
+    );
+    expect(api.loadAssignmentMonitor).toHaveBeenCalledTimes(2);
 
     expect(
       await report.findByRole("link", { name: "Download JSON evidence" }),
@@ -333,6 +379,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_INSTRUCTOR_001",
@@ -503,6 +550,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_INSTRUCTOR_001",
@@ -597,6 +645,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_LEARNER_001",
@@ -634,6 +683,8 @@ describe("instructor review screen", () => {
             }
           : path.endsWith("/timeline")
             ? { timeline: [] }
+            : path.endsWith("/monitor")
+              ? { monitor: { schemaVersion: "1.0.0" } }
             : path.includes("/replay?sequence=")
               ? { replay: { throughSequenceNumber: 2 } }
             : path.endsWith("/competencies")
@@ -669,6 +720,7 @@ describe("instructor review screen", () => {
     await api.loadSession();
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
+    await api.loadAssignmentMonitor("ASSIGNMENT / 001");
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
@@ -677,6 +729,7 @@ describe("instructor review screen", () => {
       "/api/v1/runs/RUN%20%2F%20001/rubric-evidence",
       "/api/v1/runs/RUN%20%2F%20001/ratings",
       "/api/v1/runs/RUN%20%2F%20001/replay?sequence=2",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/monitor",
     ]);
   });
 });

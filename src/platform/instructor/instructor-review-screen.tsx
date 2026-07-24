@@ -10,6 +10,7 @@ import type { ApplicationRole } from "../contracts/run-events";
 import type {
   AssignmentRunMode,
   CreateHostedAssignmentRequest,
+  HostedAssignmentMonitorV1,
   HostedAssignmentReportV1,
   HostedAssignmentV1,
   ManualRubricRatingV1,
@@ -81,6 +82,9 @@ export interface InstructorReviewApi {
   loadAssignmentReport(
     assignmentId: string,
   ): Promise<HostedAssignmentReportV1>;
+  loadAssignmentMonitor(
+    assignmentId: string,
+  ): Promise<HostedAssignmentMonitorV1>;
   loadAssignmentCompetencies(
     assignmentId: string,
   ): Promise<HostedAssignmentCompetencyReportV1>;
@@ -231,6 +235,15 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/report`,
       );
       return result.report;
+    },
+    async loadAssignmentMonitor(assignmentId) {
+      const result = await responseJson<{
+        readonly monitor: HostedAssignmentMonitorV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/monitor`,
+      );
+      return result.monitor;
     },
     async loadAssignmentCompetencies(assignmentId) {
       const result = await responseJson<{
@@ -885,29 +898,53 @@ function AssignmentReport({
   const [assignmentId, setAssignmentId] = useState("");
   const [report, setReport] =
     useState<HostedAssignmentReportV1 | null>(null);
+  const [monitor, setMonitor] =
+    useState<HostedAssignmentMonitorV1 | null>(null);
   const [competencies, setCompetencies] =
     useState<HostedAssignmentCompetencyReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
+  const [isMonitorLoading, setMonitorLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   async function load(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setReport(null);
+    setMonitor(null);
     setCompetencies(null);
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
-      const [loadedReport, loadedCompetencies] = await Promise.all([
-        api.loadAssignmentReport(requestedAssignmentId),
-        api.loadAssignmentCompetencies(requestedAssignmentId),
-      ]);
+      const [loadedReport, loadedMonitor, loadedCompetencies] =
+        await Promise.all([
+          api.loadAssignmentReport(requestedAssignmentId),
+          api.loadAssignmentMonitor(requestedAssignmentId),
+          api.loadAssignmentCompetencies(requestedAssignmentId),
+        ]);
       setReport(loadedReport);
+      setMonitor(loadedMonitor);
       setCompetencies(loadedCompetencies);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function refreshMonitor() {
+    if (report === null) return;
+    setMonitorLoading(true);
+    setErrorKey(null);
+    try {
+      setMonitor(
+        await api.loadAssignmentMonitor(
+          report.assignment.assignmentId,
+        ),
+      );
+    } catch (error) {
+      setErrorKey(errorMessageKey(error));
+    } finally {
+      setMonitorLoading(false);
     }
   }
 
@@ -941,6 +978,13 @@ function AssignmentReport({
       )}
       {report === null ? null : (
         <div aria-live="polite">
+          {monitor === null ? null : (
+            <AssignmentLiveMonitor
+              monitor={monitor}
+              isRefreshing={isMonitorLoading}
+              onRefresh={refreshMonitor}
+            />
+          )}
           <div className="instructor-review__export">
             <p>{t("instructorReview.exportHelp")}</p>
             <div className="instructor-review__export-actions">
@@ -1008,6 +1052,144 @@ function AssignmentReport({
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+function AssignmentLiveMonitor({
+  monitor,
+  isRefreshing,
+  onRefresh,
+}: {
+  readonly monitor: HostedAssignmentMonitorV1;
+  readonly isRefreshing: boolean;
+  readonly onRefresh: () => Promise<void>;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="instructor-review__monitor">
+      <div className="instructor-review__monitor-heading">
+        <div>
+          <h3>{t("instructorReview.monitorHeading")}</h3>
+          <p>{t("instructorReview.monitorHelp")}</p>
+        </div>
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={isRefreshing}
+          onClick={() => void onRefresh()}
+        >
+          {isRefreshing
+            ? t("instructorReview.monitorRefreshing")
+            : t("instructorReview.monitorRefresh")}
+        </button>
+      </div>
+      <p className="muted">
+        {t("instructorReview.monitorGeneratedAt")}{" "}
+        <time dateTime={monitor.generatedAt}>
+          {monitor.generatedAt}
+        </time>
+      </p>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th scope="col">{t("instructorReview.learner")}</th>
+              <th scope="col">{t("instructorReview.runId")}</th>
+              <th scope="col">{t("instructorReview.status")}</th>
+              <th scope="col">{t("instructorReview.monitorStage")}</th>
+              <th scope="col">{t("instructorReview.monitorRole")}</th>
+              <th scope="col">{t("instructorReview.monitorElapsed")}</th>
+              <th scope="col">
+                {t("instructorReview.monitorLastActivity")}
+              </th>
+              <th scope="col">
+                {t("instructorReview.monitorPendingActions")}
+              </th>
+              <th scope="col">
+                {t("instructorReview.monitorTechnicalStatus")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {monitor.learners.flatMap((learner) =>
+              learner.runs.length === 0
+                ? [
+                    <tr key={learner.learnerUserId}>
+                      <td>
+                        <code>{learner.learnerUserId}</code>
+                      </td>
+                      <td colSpan={8}>
+                        {t("instructorReview.notStarted")}
+                      </td>
+                    </tr>,
+                  ]
+                : learner.runs.map((run) => (
+                    <tr key={run.runId}>
+                      <td>
+                        <code>{run.learnerUserId}</code>
+                      </td>
+                      <td>
+                        <code>{run.runId}</code>
+                      </td>
+                      <td>
+                        {t(`instructorReview.runStatus.${run.status}`)}
+                      </td>
+                      <td>
+                        {run.currentStageId === null ? (
+                          t("instructorReview.none")
+                        ) : (
+                          <code>{run.currentStageId}</code>
+                        )}
+                      </td>
+                      <td>
+                        {run.activeRoleId === null ? (
+                          t("instructorReview.none")
+                        ) : (
+                          <code>{run.activeRoleId}</code>
+                        )}
+                      </td>
+                      <td>
+                        {run.elapsedSeconds === null
+                          ? t("instructorReview.none")
+                          : t(
+                              "instructorReview.monitorElapsedValue",
+                              { count: run.elapsedSeconds },
+                            )}
+                      </td>
+                      <td>
+                        {run.lastActivityAt === null ? (
+                          t("instructorReview.none")
+                        ) : (
+                          <time dateTime={run.lastActivityAt}>
+                            {run.lastActivityAt}
+                          </time>
+                        )}
+                      </td>
+                      <td>
+                        {run.pendingActionIds.length === 0
+                          ? t("instructorReview.none")
+                          : run.pendingActionIds.join(", ")}
+                      </td>
+                      <td>
+                        <StatusPill
+                          tone={
+                            run.technicalStatus === "ok"
+                              ? "pass"
+                              : "fail"
+                          }
+                        >
+                          {t(
+                            `instructorReview.monitorTechnical.${run.technicalStatus}`,
+                          )}
+                        </StatusPill>
+                      </td>
+                    </tr>
+                  )),
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
