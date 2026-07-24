@@ -1,143 +1,306 @@
 <?php
 /**
- * Replace the demo instance's SCORM package with the one just built.
+ * Deploy the current Guided and Challenge packages into two demo activities.
  *
- * `scorm_parse()` does the real work: it clears the content area, extracts the
- * new zip into it, re-reads imsmanifest.xml, and bumps `revision`. That bump
- * matters -- extracted content is served from a URL containing the revision, so
- * without it a browser keeps showing the previous build from cache. Doing this
- * by hand instead of through the Moodle UI keeps the edit-build-look loop to
- * one command.
+ * The first run adopts the existing TraceChain activity as Guided and
+ * duplicates it once for Challenge. Later runs find both activities by their
+ * stable names. Every deployment clears attempts, grades, and completion state
+ * before replacing both packages.
  *
- * The activity is found rather than hardcoded. One SCORM activity in the demo
- * is the normal case; more than one is ambiguous, so it asks instead of
- * guessing which one to overwrite.
+ * `scorm_parse()` rebuilds the extracted content and bumps `revision`. The
+ * revision change prevents Moodle from serving a cached previous build.
  */
 
 define('CLI_SCRIPT', true);
 require('/bitnami/moodle/config.php');
+require_once($CFG->dirroot.'/course/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
+require_once($CFG->libdir.'/completionlib.php');
+
+const TRACECHAIN_ACTIVITY_GUIDED = 'TraceChain Guided';
+const TRACECHAIN_ACTIVITY_CHALLENGE = 'TraceChain Challenge';
 
 function fail(string $message): void {
     fwrite(STDERR, "deploy: $message\n");
     exit(1);
 }
 
-// The shell side copies in exactly one package and keeps its real filename,
-// because that name becomes $scorm->reference and shows in the Moodle UI.
-$candidates = glob('/tmp/tracechain-scorm-*.zip');
-if (count($candidates) !== 1) {
-    fail('expected exactly one /tmp/tracechain-scorm-*.zip, found '.count($candidates));
-}
-$zip = $candidates[0];
-$name = basename($zip);
-
-$wanted = getenv('TRACECHAIN_SCORM_CMID');
-if ($wanted !== false && $wanted !== '') {
-    $cm = get_coursemodule_from_id('scorm', (int)$wanted, 0, false, MUST_EXIST);
-    $scorm = $DB->get_record('scorm', ['id' => $cm->instance], '*', MUST_EXIST);
-} else {
-    $all = $DB->get_records('scorm');
-    if (count($all) === 0) {
-        fail('no SCORM activity in this Moodle -- add one, then re-run');
+function package_from_environment(string $variable): string {
+    $path = getenv($variable);
+    if ($path === false || $path === '') {
+        fail("$variable is required");
     }
-    if (count($all) > 1) {
-        $ids = [];
-        foreach ($all as $candidate) {
-            $candidatecm = get_coursemodule_from_instance('scorm', $candidate->id, $candidate->course);
-            $ids[] = "cmid={$candidatecm->id} ({$candidate->name})";
+    if (dirname($path) !== '/tmp' || !is_file($path)) {
+        fail("$variable must name an existing package in /tmp");
+    }
+    return $path;
+}
+
+function rename_activity(object $scorm, string $name): object {
+    global $DB;
+
+    $cm = get_coursemodule_from_instance(
+        'scorm',
+        $scorm->id,
+        $scorm->course,
+        false,
+        MUST_EXIST
+    );
+    if (!set_coursemodule_name($cm->id, $name)) {
+        fail("could not rename cmid={$cm->id} to \"$name\"");
+    }
+    rebuild_course_cache($scorm->course, true);
+    return $DB->get_record('scorm', ['id' => $scorm->id], '*', MUST_EXIST);
+}
+
+function ensure_managed_activities(): array {
+    global $DB;
+
+    $guided = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_GUIDED],
+        '*',
+        IGNORE_MISSING
+    );
+    $challenge = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_CHALLENGE],
+        '*',
+        IGNORE_MISSING
+    );
+
+    if ($guided === false) {
+        $candidates = [];
+        foreach ($DB->get_records('scorm', [], 'id ASC') as $candidate) {
+            if ($candidate->name !== TRACECHAIN_ACTIVITY_CHALLENGE) {
+                $candidates[] = $candidate;
+            }
         }
-        fail('several SCORM activities; set TRACECHAIN_SCORM_CMID to one of: '.implode(', ', $ids));
+        if (count($candidates) !== 1) {
+            fail(
+                'could not identify one existing TraceChain activity to adopt as Guided'
+            );
+        }
+        $guided = rename_activity($candidates[0], TRACECHAIN_ACTIVITY_GUIDED);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        echo "adopted:  cmid={$guidedcm->id} as \"".TRACECHAIN_ACTIVITY_GUIDED."\"\n";
     }
-    $scorm = reset($all);
-    $cm = get_coursemodule_from_instance('scorm', $scorm->id, $scorm->course, false, MUST_EXIST);
-}
 
-if ($scorm->scormtype !== SCORM_TYPE_LOCAL) {
-    fail("activity cmid={$cm->id} is not a locally uploaded package (scormtype={$scorm->scormtype})");
-}
-
-$context = context_module::instance($cm->id);
-$fs = get_file_storage();
-
-echo "activity: cmid={$cm->id} \"{$scorm->name}\" in course {$scorm->course}\n";
-echo "before:   revision={$scorm->revision} version={$scorm->version} sha1={$scorm->sha1hash}\n";
-
-// Read before the call, not after: PHP hands objects over by handle, and
-// scorm_parse increments $scorm->revision on the very object passed to it.
-$revisionbefore = (int)$scorm->revision;
-
-// Only the package area is ours to clear -- scorm_parse rebuilds the content
-// area itself, and doing it here as well would just hide a failure to do so.
-$fs->delete_area_files($context->id, 'mod_scorm', 'package');
-$fs->create_file_from_pathname([
-    'contextid' => $context->id,
-    'component' => 'mod_scorm',
-    'filearea' => 'package',
-    'itemid' => 0,
-    'filepath' => '/',
-    'filename' => $name,
-], $zip);
-
-$scorm->reference = $name;
-$scorm->cmid = $cm->id;
-// Forced: the hash differs on any real change, but a rebuild that happens to
-// be byte-identical should still redeploy rather than silently do nothing.
-scorm_parse($scorm, true);
-
-$after = $DB->get_record('scorm', ['id' => $scorm->id], '*', MUST_EXIST);
-echo "after:    revision={$after->revision} version={$after->version} sha1={$after->sha1hash}\n";
-
-if ($after->version === 'ERROR') {
-    fail('Moodle could not parse the manifest -- the activity is now broken, re-upload by hand');
-}
-if ((int)$after->revision <= $revisionbefore) {
-    fail('revision did not advance, so browsers would keep serving the previous build');
-}
-
-// Every entry in the zip must have landed in the content area at the same
-// size. Comparing against the archive rather than a hardcoded list keeps this
-// honest across builds, whose asset filenames change on every content change.
-$packer = get_file_packer('application/zip');
-$entries = $packer->list_files($zip);
-if ($entries === false) {
-    fail("could not read $zip");
-}
-$missing = [];
-$mismatched = [];
-$checked = 0;
-foreach ($entries as $entry) {
-    if ($entry->is_directory) {
-        continue;
+    if ($challenge === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Challenge');
+        }
+        $challenge = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $challenge = rename_activity(
+            $challenge,
+            TRACECHAIN_ACTIVITY_CHALLENGE
+        );
+        $challengecm = get_coursemodule_from_instance(
+            'scorm',
+            $challenge->id,
+            $challenge->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$challengecm->id} as \"".TRACECHAIN_ACTIVITY_CHALLENGE."\"\n";
     }
-    $checked++;
-    $path = '/'.ltrim($entry->pathname, '/');
-    $dir = rtrim(substr($path, 0, strrpos($path, '/')), '/').'/';
-    $stored = $fs->get_file($context->id, 'mod_scorm', 'content', 0, $dir, basename($path));
-    if ($stored === false) {
-        $missing[] = $path;
-    } else if ((int)$stored->get_filesize() !== (int)$entry->size) {
-        $mismatched[] = sprintf('%s (%d in package, %d stored)', $path, $entry->size, $stored->get_filesize());
+
+    if ((int)$guided->course !== (int)$challenge->course) {
+        fail('Guided and Challenge activities must be in the same course');
     }
-}
-if ($missing !== [] || $mismatched !== []) {
-    foreach ($missing as $path) {
-        fwrite(STDERR, "  missing: $path\n");
-    }
-    foreach ($mismatched as $detail) {
-        fwrite(STDERR, "  wrong size: $detail\n");
-    }
-    fail('the extracted content does not match the package');
+
+    return [
+        'guided' => $guided,
+        'challenge' => $challenge,
+    ];
 }
 
-if ($fs->get_file($context->id, 'mod_scorm', 'content', 0, '/', 'imsmanifest.xml') === false) {
-    fail('no imsmanifest.xml in the content area');
-}
-$launch = $DB->get_record('scorm_scoes', ['id' => $after->launch]);
-if ($launch === false) {
-    fail("launch sco {$after->launch} does not exist");
+function reset_activity(object $scorm, object $cm): void {
+    global $DB;
+
+    $attemptsbefore = $DB->count_records(
+        'scorm_attempt',
+        ['scormid' => $scorm->id]
+    );
+    scorm_delete_tracks($scorm->id);
+    scorm_grade_item_update($scorm, 'reset');
+
+    $completion = new completion_info(get_course($scorm->course));
+    $completion->delete_all_state($cm);
+
+    $attemptsafter = $DB->count_records(
+        'scorm_attempt',
+        ['scormid' => $scorm->id]
+    );
+    if ($attemptsafter !== 0) {
+        fail("cmid={$cm->id} still has $attemptsafter attempt(s) after reset");
+    }
+    echo "reset:     removed $attemptsbefore attempt(s), grades, and completion state\n";
 }
 
-echo "launch:   sco {$after->launch} -> {$launch->launch}\n";
-echo "deployed: $name, $checked file(s) verified against the package\n";
+function deploy_package(object $scorm, string $zip): void {
+    global $DB;
+
+    $cm = get_coursemodule_from_instance(
+        'scorm',
+        $scorm->id,
+        $scorm->course,
+        false,
+        MUST_EXIST
+    );
+    if ($scorm->scormtype !== SCORM_TYPE_LOCAL) {
+        fail(
+            "activity cmid={$cm->id} is not a locally uploaded package ".
+            "(scormtype={$scorm->scormtype})"
+        );
+    }
+
+    $context = context_module::instance($cm->id);
+    $fs = get_file_storage();
+    $name = basename($zip);
+
+    echo "activity:  cmid={$cm->id} \"{$scorm->name}\" in course {$scorm->course}\n";
+    echo "before:    revision={$scorm->revision} version={$scorm->version} sha1={$scorm->sha1hash}\n";
+
+    reset_activity($scorm, $cm);
+
+    // Read before parsing: Moodle mutates the object passed to scorm_parse().
+    $revisionbefore = (int)$scorm->revision;
+
+    $fs->delete_area_files($context->id, 'mod_scorm', 'package');
+    $fs->create_file_from_pathname([
+        'contextid' => $context->id,
+        'component' => 'mod_scorm',
+        'filearea' => 'package',
+        'itemid' => 0,
+        'filepath' => '/',
+        'filename' => $name,
+    ], $zip);
+
+    $scorm->reference = $name;
+    $scorm->cmid = $cm->id;
+    // Force byte-identical rebuilds to advance the cache revision too.
+    scorm_parse($scorm, true);
+
+    $after = $DB->get_record('scorm', ['id' => $scorm->id], '*', MUST_EXIST);
+    echo "after:     revision={$after->revision} version={$after->version} sha1={$after->sha1hash}\n";
+
+    if ($after->version === 'ERROR') {
+        fail(
+            "Moodle could not parse $name; re-upload this activity by hand"
+        );
+    }
+    if ((int)$after->revision <= $revisionbefore) {
+        fail("cmid={$cm->id} revision did not advance");
+    }
+
+    // Every archive entry must exist in Moodle's extracted content at the same
+    // size. This catches partial extraction and stale content immediately.
+    $packer = get_file_packer('application/zip');
+    $entries = $packer->list_files($zip);
+    if ($entries === false) {
+        fail("could not read $zip");
+    }
+    $missing = [];
+    $mismatched = [];
+    $checked = 0;
+    foreach ($entries as $entry) {
+        if ($entry->is_directory) {
+            continue;
+        }
+        $checked++;
+        $path = '/'.ltrim($entry->pathname, '/');
+        $dir = rtrim(substr($path, 0, strrpos($path, '/')), '/').'/';
+        $stored = $fs->get_file(
+            $context->id,
+            'mod_scorm',
+            'content',
+            0,
+            $dir,
+            basename($path)
+        );
+        if ($stored === false) {
+            $missing[] = $path;
+        } else if ((int)$stored->get_filesize() !== (int)$entry->size) {
+            $mismatched[] = sprintf(
+                '%s (%d in package, %d stored)',
+                $path,
+                $entry->size,
+                $stored->get_filesize()
+            );
+        }
+    }
+    if ($missing !== [] || $mismatched !== []) {
+        foreach ($missing as $path) {
+            fwrite(STDERR, "  missing: $path\n");
+        }
+        foreach ($mismatched as $detail) {
+            fwrite(STDERR, "  wrong size: $detail\n");
+        }
+        fail("cmid={$cm->id} extracted content does not match $name");
+    }
+
+    if (
+        $fs->get_file(
+            $context->id,
+            'mod_scorm',
+            'content',
+            0,
+            '/',
+            'imsmanifest.xml'
+        ) === false
+    ) {
+        fail("cmid={$cm->id} has no imsmanifest.xml in its content area");
+    }
+    $launch = $DB->get_record('scorm_scoes', ['id' => $after->launch]);
+    if ($launch === false) {
+        fail("launch SCO {$after->launch} does not exist");
+    }
+
+    echo "launch:    sco {$after->launch} -> {$launch->launch}\n";
+    echo "deployed:  $name, $checked file(s) verified\n";
+}
+
+\core\session\manager::set_user(get_admin());
+
+$packages = [
+    'guided' => package_from_environment('TRACECHAIN_GUIDED_PACKAGE'),
+    'challenge' => package_from_environment('TRACECHAIN_CHALLENGE_PACKAGE'),
+];
+$activities = ensure_managed_activities();
+
+deploy_package($activities['guided'], $packages['guided']);
+deploy_package($activities['challenge'], $packages['challenge']);
+
+echo "managed activities are ready and empty:\n";
+foreach ($activities as $mode => $activity) {
+    $cm = get_coursemodule_from_instance(
+        'scorm',
+        $activity->id,
+        $activity->course,
+        false,
+        MUST_EXIST
+    );
+    echo "  $mode: cmid={$cm->id} \"{$activity->name}\"\n";
+}

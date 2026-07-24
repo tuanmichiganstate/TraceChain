@@ -12,12 +12,34 @@ require_once($CFG->libdir.'/enrollib.php');
 $FULL = 'TC3.' . str_repeat('A', 512) . '.00000000';
 $MID  = 'TC3.' . str_repeat('B', 220) . '.00000000';
 
-$cmid = 2;
-[$course, $cm] = get_course_and_cm_from_cmid($cmid, 'scorm');
+$mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
+$activitynames = [
+    'guided' => 'TraceChain Guided',
+    'challenge' => 'TraceChain Challenge',
+];
+if (!isset($activitynames[$mode])) {
+    throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
+}
+$scorm = $DB->get_record(
+    'scorm',
+    ['name' => $activitynames[$mode]],
+    '*',
+    MUST_EXIST
+);
+$cm = get_coursemodule_from_instance(
+    'scorm',
+    $scorm->id,
+    $scorm->course,
+    false,
+    MUST_EXIST
+);
+$course = get_course($scorm->course);
 $scorm = $DB->get_record('scorm', ['id' => $cm->instance], '*', MUST_EXIST);
 $sco = $DB->get_records('scorm_scoes', ['scorm' => $scorm->id, 'scormtype' => 'sco'], 'id', '*', 0, 1);
 $sco = reset($sco);
 $user = get_admin();                       // existing account; nothing created
+
+echo "activity: $mode, cmid={$cm->id}, \"{$scorm->name}\"\n";
 
 function require_true($condition, $message) {
     if (!$condition) { throw new RuntimeException($message); }

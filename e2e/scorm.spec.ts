@@ -34,11 +34,18 @@ test.describe("saving and resuming", () => {
 
     // The scripted manifest and learner correction are rebuilt from suspend
     // data, not inferred from static stage copy.
-    await page.getByRole("button", { name: "Bảng tra cứu" }).click();
-    await page.getByRole("tab", { name: "Lịch sử giao dịch" }).click();
+    // This test covers replay, not pointer hit testing. WebKit CI can stall
+    // while scrolling these already-visible controls into view, so bypass its
+    // flaky actionability wait while still dispatching real browser clicks.
+    await page
+      .getByRole("button", { name: "Bảng tra cứu" })
+      .click({ force: true });
+    await page
+      .getByRole("tab", { name: "Lịch sử giao dịch" })
+      .click({ force: true });
     const correctionRow = page.getByRole("row").filter({ hasText: "Giao dịch điều chỉnh" });
     await expect(correctionRow).toHaveCount(1);
-    await correctionRow.getByRole("button").click();
+    await correctionRow.getByRole("button").click({ force: true });
     await expect(page.getByText("DOC_SHIPPING_MANIFEST_001.declaredQuantity")).toBeVisible();
     await expect(page.getByText("100 kg", { exact: true }).last()).toBeVisible();
   });

@@ -108,8 +108,10 @@ npm run verify:scorm
 Strict release generation produces
 `TraceChain_Guided_StandardCoffee_vi_v2.2.0.zip` and
 `TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip`. The local command appends
-`_NON_RELEASE` to both archive names and to the legacy guided deployment alias
-used by the Docker demo. Release packaging fails on a dirty tree;
+`_NON_RELEASE` to both archive names and to the legacy guided alias. The Docker
+demo selects the current Guided and Challenge archives by their embedded build
+metadata, deploys them into separate reset activities, and ignores stale ZIPs.
+Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
 
 ## Developer mode

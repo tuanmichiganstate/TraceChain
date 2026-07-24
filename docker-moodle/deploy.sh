@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
-# Build the SCORM package and put it into the local Docker Moodle, replacing
-# whatever is there. One command for the edit-build-look loop; see deploy.php
-# for why the revision bump matters.
+# Build both SCORM packages and deploy them into separate, reset Moodle
+# activities. See deploy.php for the revision, verification, and reset logic.
 #
-#   ./docker-moodle/deploy.sh              build, package, verify, deploy
-#   ./docker-moodle/deploy.sh --no-build   deploy the package already on disk
-#
-# Set TRACECHAIN_SCORM_CMID if the demo ever holds more than one SCORM activity.
+#   ./docker-moodle/deploy.sh              build, package, verify, deploy both
+#   ./docker-moodle/deploy.sh --no-build   deploy the current packages on disk
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,15 +25,33 @@ if [ "$build" -eq 1 ]; then
   npm --prefix "$root" run verify:scorm
 fi
 
-# Named from package.json exactly as build-scorm.mjs names it, rather than
-# globbed: a stale zip from an older version sitting in the root must not make
-# the deploy either ambiguous or wrong.
-version="$(node -p "require('$root/package.json').version")"
-package="$root/tracechain-scorm-v${version}_NON_RELEASE.zip"
-if [ ! -f "$package" ]; then
-  echo "no package at $package -- run without --no-build" >&2
-  exit 1
-fi
+find_current_package() {
+  local mode=$1
+  local filename_pattern=$2
+  local expected="$root/dist-scorm/$mode/build-info.json"
+  local matches=()
+
+  if [ ! -f "$expected" ]; then
+    echo "missing $expected -- run without --no-build" >&2
+    return 1
+  fi
+
+  for candidate in "$root"/$filename_pattern; do
+    [ -f "$candidate" ] || continue
+    if unzip -p "$candidate" build-info.json | cmp -s - "$expected"; then
+      matches+=("$candidate")
+    fi
+  done
+
+  if [ "${#matches[@]}" -ne 1 ]; then
+    echo "expected one current $mode package, found ${#matches[@]} -- run without --no-build" >&2
+    return 1
+  fi
+  printf '%s\n' "${matches[0]}"
+}
+
+guided_package="$(find_current_package guided 'TraceChain_Guided_*_NON_RELEASE.zip')"
+challenge_package="$(find_current_package challenge 'TraceChain_Challenge_*_NON_RELEASE.zip')"
 
 "${compose[@]}" up -d
 
@@ -47,19 +62,24 @@ for _ in $(seq 1 60); do
 done
 curl -fsS -o /dev/null http://localhost:8080/login/index.php
 
-# Clear any package left by an earlier run, so the glob in deploy.php stays
-# unambiguous when the version number changes.
-"${compose[@]}" exec -T --user root moodle sh -c 'rm -f /tmp/tracechain-scorm-*.zip /tmp/deploy.php'
-"${compose[@]}" cp "$package" "moodle:/tmp/$(basename "$package")"
+# Clear only temporary deployment inputs. Activity content and learner data are
+# reset through Moodle APIs in deploy.php.
+"${compose[@]}" exec -T --user root moodle sh -c \
+  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/deploy.php'
+"${compose[@]}" cp "$guided_package" "moodle:/tmp/$(basename "$guided_package")"
+"${compose[@]}" cp "$challenge_package" "moodle:/tmp/$(basename "$challenge_package")"
 "${compose[@]}" cp "$here/deploy.php" moodle:/tmp/deploy.php
-"${compose[@]}" exec -T --user root moodle chmod 644 "/tmp/$(basename "$package")" /tmp/deploy.php
+"${compose[@]}" exec -T --user root moodle chmod 644 \
+  "/tmp/$(basename "$guided_package")" \
+  "/tmp/$(basename "$challenge_package")" \
+  /tmp/deploy.php
 
-echo "--- deploy ---"
-# Always --user daemon: root leaves root-owned files in moodledata that Apache
-# cannot write, and Moodle then fails with "Invalid permissions detected".
+echo "--- deploy and reset Guided + Challenge ---"
 "${compose[@]}" exec -T --user daemon \
-  -e TRACECHAIN_SCORM_CMID="${TRACECHAIN_SCORM_CMID:-}" \
+  -e TRACECHAIN_GUIDED_PACKAGE="/tmp/$(basename "$guided_package")" \
+  -e TRACECHAIN_CHALLENGE_PACKAGE="/tmp/$(basename "$challenge_package")" \
   moodle /opt/bitnami/php/bin/php /tmp/deploy.php
 
-"${compose[@]}" exec -T --user root moodle sh -c 'rm -f /tmp/tracechain-scorm-*.zip /tmp/deploy.php'
+"${compose[@]}" exec -T --user root moodle sh -c \
+  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/deploy.php'
 echo "--- done: http://localhost:8080 ---"

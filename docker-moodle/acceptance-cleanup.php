@@ -5,10 +5,32 @@ require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/gradelib.php');
 
-$cmid = 2;
-[$course, $cm] = get_course_and_cm_from_cmid($cmid, 'scorm');
+$mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
+$activitynames = [
+    'guided' => 'TraceChain Guided',
+    'challenge' => 'TraceChain Challenge',
+];
+if (!isset($activitynames[$mode])) {
+    throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
+}
+$scorm = $DB->get_record(
+    'scorm',
+    ['name' => $activitynames[$mode]],
+    '*',
+    MUST_EXIST
+);
+$cm = get_coursemodule_from_instance(
+    'scorm',
+    $scorm->id,
+    $scorm->course,
+    false,
+    MUST_EXIST
+);
+$course = get_course($scorm->course);
 $scorm = $DB->get_record('scorm', ['id' => $cm->instance], '*', MUST_EXIST);
 $user = get_admin();
+
+echo "activity: $mode, cmid={$cm->id}, \"{$scorm->name}\"\n";
 
 // Remove the synthetic attempts written by the acceptance run.
 $attempts = $DB->get_records('scorm_attempt', ['scormid' => $scorm->id, 'userid' => $user->id]);

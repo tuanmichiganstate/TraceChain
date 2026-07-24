@@ -41,8 +41,8 @@ These have each already cost time on this repo.
 ## Deploying to the Moodle demo
 
 ```bash
-./docker-moodle/deploy.sh              # build, package, verify, deploy
-./docker-moodle/deploy.sh --no-build   # deploy the package already on disk
+./docker-moodle/deploy.sh              # build, verify, deploy, reset both
+./docker-moodle/deploy.sh --no-build   # deploy current packages, reset both
 ```
 
 Docker Moodle on <http://localhost:8080>; see `docker-moodle/README.md`. The
@@ -50,6 +50,10 @@ script goes through `scorm_parse()` so the SCORM `revision` is bumped —
 without that the browser keeps serving the previous build and your change looks
 like it silently failed. It verifies every zip entry against what landed in the
 content area, so a half-extracted package fails loudly.
+
+The command manages separate `TraceChain Guided` and `TraceChain Challenge`
+activities. It resets attempts, grades, and completion state for both before
+replacing their packages.
 
 Any PHP run inside the container must use `--user daemon`. Root leaves
 root-owned files in `moodledata` that Apache cannot write.
@@ -132,7 +136,6 @@ createdAt`, as `integrity.ts` does.
   the translator like everything else.
 - **Attempts completed under the old stage-wide hint policy** display scores
   recomputed under the current item-scoped one.
-- The Moodle demo (cmid=2) carries leftover test attempts.
 - Branch protection is unavailable on the current GitHub plan, so `master` is
   protected by the pre-commit hook and CI alone.
 
