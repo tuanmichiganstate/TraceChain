@@ -1,12 +1,13 @@
-import { copyFile, mkdir, readdir, rename } from "node:fs/promises";
+import { mkdir, readdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const buildDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
 const clientDirectory = fileURLToPath(new URL("../dist/client/", import.meta.url));
 const workerSource = fileURLToPath(
-  new URL("../sites/worker.mjs", import.meta.url),
+  new URL("../sites/worker.ts", import.meta.url),
 );
 const serverDirectory = fileURLToPath(
   new URL("../dist/server/", import.meta.url),
@@ -28,6 +29,14 @@ for (const entry of clientEntries) {
 }
 
 await mkdir(serverDirectory, { recursive: true });
-await copyFile(workerSource, workerOutput);
+await build({
+  entryPoints: [workerSource],
+  outfile: workerOutput,
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  logLevel: "info",
+});
 
 console.log(`Sites build prepared from ${repositoryRoot}`);

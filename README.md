@@ -27,6 +27,15 @@ causal final report. The current follow-on increment adds genuine Ed25519
 signing and verification plus scenario-authored authorization; organizational
 identity and key custody remain explicitly educational simulations.
 
+The additive instructor-platform vertical slice now defines versioned
+competency, rubric, scenario-pack, publication, hosted-event, replay, and
+role-projection contracts. A server-authoritative Stage 3 service maps the
+existing certificate flow through a compatibility adapter, persists ordered
+events through memory or D1, returns role-filtered learner state, and exposes
+authenticated timeline, rubric-evidence, and competency APIs. It does not yet
+provide the instructor portal or complete hosted coffee journey and does not
+alter the current SCORM activity.
+
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
@@ -110,6 +119,12 @@ src/
 │   ├── persistence/   compact state codec, standalone adapter
 │   ├── scorm/         API discovery, SCORM 1.2 adapter
 │   └── time/          deterministic scenario clock
+├── platform/
+│   ├── contracts/     scenario-pack, competency, rubric and hosted-event V1
+│   ├── hosted/        Stage 3 orchestration, trusted access and API services
+│   ├── persistence/   D1 event, pack and application-principal adapters
+│   ├── runs/          event-store port, replay guard and role projection
+│   └── scenario-packs validation and immutable publication
 ├── scenarios/
 │   ├── coffee-traceability/
 │   └── challenge-a/
@@ -123,6 +138,10 @@ test/
 └── support/           domain fixtures
 
 scripts/               locale + scenario validators, SCORM build + verify
+sites/                 authenticated Sites worker and hosted API boundary
+db/                    D1 schema and ordered migration history
+scenario-packs/        declarative hosted-platform pack sources
+schemas/               published versioned JSON Schemas
 ```
 
 ## Scripts
@@ -131,10 +150,13 @@ scripts/               locale + scenario validators, SCORM build + verify
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Static production build |
+| `npm run build:site` | Build the shared client and bundled Sites worker |
 | `npm test` | Unit, component and integration tests |
+| `npm run test:site` | Test static routing, authentication, D1 and hosted API replay |
 | `npm run lint` / `typecheck` | ESLint / TypeScript |
 | `npm run validate:locales` | Key parity, placeholders, no stray Vietnamese in source |
 | `npm run validate:scenario` | Schema consistency plus executable cross-layer contracts |
+| `npm run validate:platform-pack [-- <pack.json> …]` | Validate declarative platform packs with path-specific diagnostics |
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
@@ -151,6 +173,14 @@ scripts/               locale + scenario validators, SCORM build + verify
 - `docs/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md` — the approved,
   two-increment follow-on plan for genuine Ed25519 signatures, authorization,
   and endorsement policies
+- `docs/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md` — the approved stopping
+  point B roadmap for the hosted instructor-ready platform
+- `docs/current-architecture.md` / `docs/target-architecture.md` — the
+  repository audit, migration seams, and target hosted/SCORM boundaries
+- `docs/SCENARIO_PACK_V1.md` — the V1 pack schema, validation, publication,
+  compatibility-adapter, and security contract
+- `docs/HOSTED_STAGE3_API.md` — the authenticated Stage 3 API, D1 schema,
+  role boundaries, and bootstrap procedure
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
