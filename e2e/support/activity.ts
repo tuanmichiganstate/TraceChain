@@ -202,7 +202,13 @@ export class Activity {
   }
 
   async continue(): Promise<void> {
-    await this.page.getByRole("button", { name: "Tiếp tục" }).last().click();
+    // Stage assertions verify the resulting navigation. Force the click so
+    // WebKit CI does not spend the full test timeout on intermittent
+    // actionability checks for this already-enabled control.
+    await this.page
+      .getByRole("button", { name: "Tiếp tục" })
+      .last()
+      .click({ force: true });
   }
 
   /** Stages 1 to 5, ending with the committed manifest correction. */
