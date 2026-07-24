@@ -29,14 +29,24 @@ are integrated into custody transfer and append-only quantity correction.
 Organizational identity and key custody remain explicitly educational
 simulations.
 
-The additive instructor-platform vertical slice now defines versioned
+The additive instructor-platform migration now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
-role-projection contracts. A server-authoritative Stage 3 service maps the
-existing certificate flow through a compatibility adapter, persists ordered
-events through memory or D1, returns role-filtered learner state, and exposes
-authenticated timeline, rubric-evidence, and competency APIs. It does not yet
-provide the instructor portal or complete hosted coffee journey and does not
-alter the current SCORM activity.
+role-projection contracts. The server-authoritative coffee service now carries
+an authorized run through Stage 3 certificate handling, Stage 4 endorsed
+custody transfer and transport recording, and Stage 5 receipt, discrepancy
+mitigation, and endorsed append-only correction. It then continues through
+Stage 6 transformation and provenance reasoning and Stage 7 packaging,
+ownership transfer, and retail dispatch, Stage 8 integrity and data-governance
+reasoning, and Stage 9 scoped recall with a trusted regulator handoff and final
+blockchain-suitability debrief. It reuses the existing simulation and
+endorsement services, persists ordered events through memory or D1, returns
+role-filtered learner state, and exposes authenticated timeline,
+rubric-evidence, and competency APIs. The hosted `/instructor` route provides a
+deliberately small authenticated workspace for exact-version assignment
+creation, those evidence projections, evidence-linked rubric ratings,
+one-way feedback release, and assignment reports. It does not yet provide a
+learner portal, course or roster administration, moderation, or exports and
+does not alter the current SCORM activity.
 
 | | |
 |---|---|
@@ -123,7 +133,8 @@ src/
 │   └── time/          deterministic scenario clock
 ├── platform/
 │   ├── contracts/     scenario-pack, competency, rubric and hosted-event V1
-│   ├── hosted/        Stage 3 orchestration, trusted access and API services
+│   ├── hosted/        incremental coffee orchestration, trusted access and APIs
+│   ├── instructor/    thin assignment, evidence and assessment workspace
 │   ├── persistence/   D1 event, pack and application-principal adapters
 │   ├── runs/          event-store port, replay guard and role projection
 │   └── scenario-packs validation and immutable publication
@@ -181,7 +192,7 @@ schemas/               published versioned JSON Schemas
   repository audit, migration seams, and target hosted/SCORM boundaries
 - `docs/SCENARIO_PACK_V1.md` — the V1 pack schema, validation, publication,
   compatibility-adapter, and security contract
-- `docs/HOSTED_STAGE3_API.md` — the authenticated Stage 3 API, D1 schema,
+- `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning

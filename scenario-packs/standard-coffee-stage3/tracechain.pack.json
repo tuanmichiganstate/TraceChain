@@ -2,7 +2,7 @@
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
   "schemaVersion": "1.0.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -521,12 +521,166 @@
       ],
       "operator": "EVENT_OCCURRED",
       "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_CUSTODY_ENDORSEMENT_SATISFIED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC4.PI1",
+        "PC9.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "ENDORSEMENT_RECORDED"
+    },
+    {
+      "evidenceRuleId": "RULE_TRANSPORT_CONDITION_RECORDED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC6.PI3"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "TRANSACTION_COMMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_DISCREPANCY_DECISION_SUBMITTED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC6.PI4",
+        "PC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_DISCREPANCY_REJECTED_ATTEMPT",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC6.PI4",
+        "PC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_REJECTED"
+    },
+    {
+      "evidenceRuleId": "RULE_CORRECTION_ENDORSEMENT_SATISFIED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC4.PI1",
+        "PC9.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "ENDORSEMENT_RECORDED"
+    },
+    {
+      "evidenceRuleId": "RULE_APPEND_ONLY_CORRECTION_COMMITTED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC5.PI1",
+        "PC6.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "ENDORSED_TRANSACTION_COMMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_TRANSFORMATION_PROVENANCE_CREATED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC2.PI1",
+        "BC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "TRANSACTION_COMMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_TRANSFORMATION_PROVENANCE_RECOGNIZED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC2.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_RETAIL_DISPATCH_RECORDED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "TRANSACTION_COMMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_TAMPER_DEMONSTRATION_COMPLETED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC1.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_TAMPER_EVIDENCE_INTERPRETED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC5.PI1",
+        "BC6.PI4"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_DATA_GOVERNANCE_CLASSIFIED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC7.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_RECALL_SCOPE_SUBMITTED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC2.PI1",
+        "BC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_UNAUTHORIZED_RECALL_RETAINED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC3.PI1",
+        "PC9.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "TRANSACTION_REJECTED"
+    },
+    {
+      "evidenceRuleId": "RULE_AUTHORIZED_RECALL_COMMITTED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC4.PI1",
+        "BC5.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "TRANSACTION_COMMITTED"
+    },
+    {
+      "evidenceRuleId": "RULE_BLOCKCHAIN_SUITABILITY_RECOGNIZED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "BC8.PI1"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "DECISION_SUBMITTED"
     }
   ],
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",
-      "version": "1.0.0",
+      "version": "1.4.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
@@ -548,7 +702,9 @@
           "competencyId": "BC6",
           "indicatorIds": [
             "BC6.PI1",
-            "BC6.PI2"
+            "BC6.PI2",
+            "BC6.PI3",
+            "BC6.PI4"
           ],
           "targetType": "primary"
         },
@@ -572,9 +728,71 @@
             "PC7.PI1"
           ],
           "targetType": "supporting"
+        },
+        {
+          "competencyId": "BC4",
+          "indicatorIds": [
+            "BC4.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "PC9",
+          "indicatorIds": [
+            "PC9.PI1"
+          ],
+          "targetType": "supporting"
+        },
+        {
+          "competencyId": "BC2",
+          "indicatorIds": [
+            "BC2.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "BC5",
+          "indicatorIds": [
+            "BC5.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "PC6",
+          "indicatorIds": [
+            "PC6.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "BC1",
+          "indicatorIds": [
+            "BC1.PI1"
+          ],
+          "targetType": "supporting"
+        },
+        {
+          "competencyId": "BC7",
+          "indicatorIds": [
+            "BC7.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "BC8",
+          "indicatorIds": [
+            "BC8.PI1"
+          ],
+          "targetType": "primary"
         }
       ],
       "organizations": [
+        {
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_PRODUCER_COOP.displayName"
+          }
+        },
         {
           "organizationId": "ORG_CERTIFICATION_BODY",
           "displayName": {
@@ -586,9 +804,40 @@
           "displayName": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_LOGISTICS_PROVIDER.displayName"
           }
+        },
+        {
+          "organizationId": "ORG_COFFEE_PROCESSOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_COFFEE_PROCESSOR.displayName"
+          }
+        },
+        {
+          "organizationId": "ORG_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_DISTRIBUTOR.displayName"
+          }
+        },
+        {
+          "organizationId": "ORG_RETAILER",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_RETAILER.displayName"
+          }
+        },
+        {
+          "organizationId": "ORG_REGULATOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.organizations.ORG_REGULATOR.displayName"
+          }
         }
       ],
       "roles": [
+        {
+          "roleId": "PRODUCER_MANAGER",
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_PRODUCER_COOP.displayName"
+          }
+        },
         {
           "roleId": "CERTIFICATION_OFFICER",
           "organizationId": "ORG_CERTIFICATION_BODY",
@@ -601,6 +850,34 @@
           "organizationId": "ORG_LOGISTICS_PROVIDER",
           "displayName": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_LOGISTICS_PROVIDER.displayName"
+          }
+        },
+        {
+          "roleId": "PROCESSING_MANAGER",
+          "organizationId": "ORG_COFFEE_PROCESSOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_COFFEE_PROCESSOR.displayName"
+          }
+        },
+        {
+          "roleId": "DISTRIBUTION_MANAGER",
+          "organizationId": "ORG_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_DISTRIBUTOR.displayName"
+          }
+        },
+        {
+          "roleId": "RETAIL_MANAGER",
+          "organizationId": "ORG_RETAILER",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_RETAILER.displayName"
+          }
+        },
+        {
+          "roleId": "REGULATORY_AUDITOR",
+          "organizationId": "ORG_REGULATOR",
+          "displayName": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_REGULATOR.displayName"
           }
         }
       ],
@@ -643,6 +920,50 @@
           "configuration": {
             "adapterId": "tracechain-coffee-v2",
             "legacyPolicyId": "AUTH_ISSUE_CERTIFICATE"
+          }
+        },
+        {
+          "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+          "policyType": "LEGACY_POLICY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CUSTODY_SENDER_AND_RECEIVER.title"
+          },
+          "configuration": {
+            "adapterId": "tracechain-coffee-v2",
+            "legacyPolicyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
+          }
+        },
+        {
+          "policyId": "POLICY_DISCREPANCY_DECISION",
+          "policyType": "LEGACY_POLICY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.POLICY_DISCREPANCY_DECISION.title"
+          },
+          "configuration": {
+            "adapterId": "tracechain-coffee-v2",
+            "legacyPolicyId": "POLICY_DISCREPANCY_DECISION"
+          }
+        },
+        {
+          "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+          "policyType": "LEGACY_POLICY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR.title"
+          },
+          "configuration": {
+            "adapterId": "tracechain-coffee-v2",
+            "legacyPolicyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
+          }
+        },
+        {
+          "policyId": "AUTH_RECALL",
+          "policyType": "LEGACY_POLICY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_RECALL.title"
+          },
+          "configuration": {
+            "adapterId": "tracechain-coffee-v2",
+            "legacyPolicyId": "AUTH_RECALL"
           }
         }
       ],
@@ -899,13 +1220,1464 @@
           },
           "transitions": [
             {
-              "transitionId": "TRANSITION_ACCEPTED_TO_COMPLETE",
-              "toNodeId": "NODE_CERTIFICATE_COMPLETE",
+              "transitionId": "TRANSITION_ACCEPTED_TO_CUSTODY",
+              "toNodeId": "NODE_CUSTODY_BRIEFING",
               "when": {
                 "kind": "ALWAYS"
               }
             }
           ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_BRIEFING.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_BRIEFING.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_BRIEFING_TO_DECISION",
+              "toNodeId": "NODE_CUSTODY_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_DECISION.title"
+          },
+          "decisionId": "DECISION_CUSTODY_SCOPE",
+          "prompt": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_DECISION.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "transferScope",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_DECISION.fields.transferScope.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CUSTODY_ONLY",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_DECISION.fields.transferScope.options.CUSTODY_ONLY.label"
+                  },
+                  "authoredValue": false
+                },
+                {
+                  "optionId": "OWNERSHIP_AND_CUSTODY",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_DECISION.fields.transferScope.options.OWNERSHIP_AND_CUSTODY.label"
+                  },
+                  "authoredValue": true
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_DECISION_TO_PROPOSAL",
+              "toNodeId": "NODE_CUSTODY_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_PROPOSAL.title"
+          },
+          "proposalType": "TRANSFER_CUSTODY",
+          "sourceDecisionId": "DECISION_CUSTODY_SCOPE",
+          "policyIds": [
+            "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
+          ],
+          "legacyActionBindingId": "BIND_STAGE4_CUSTODY",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_PROPOSAL_TO_ENDORSEMENT",
+              "toNodeId": "NODE_CUSTODY_ENDORSEMENT",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_ENDORSEMENT",
+          "nodeType": "ENDORSEMENT",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_ENDORSEMENT.title"
+          },
+          "proposalNodeId": "NODE_CUSTODY_PROPOSAL",
+          "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+          "permittedRoleIds": [
+            "LOGISTICS_COORDINATOR"
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_ENDORSEMENT_TO_POLICY",
+              "toNodeId": "NODE_CUSTODY_POLICY",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_POLICY",
+          "nodeType": "POLICY_CHECK",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_POLICY.title"
+          },
+          "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+          "proposalNodeId": "NODE_CUSTODY_PROPOSAL",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_POLICY_PASS",
+              "toNodeId": "NODE_CUSTODY_ACCEPTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+                "outcome": "pass"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_CUSTODY_POLICY_FAIL",
+              "toNodeId": "NODE_CUSTODY_REJECTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
+                "outcome": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_ACCEPTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_ACCEPTED.title"
+          },
+          "consequenceCode": "CUSTODY_TRANSFER_COMMITTED",
+          "message": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_ACCEPTED.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_ACCEPTED_TO_TRANSPORT",
+              "toNodeId": "NODE_TRANSPORT_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CUSTODY_REJECTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_REJECTED.title"
+          },
+          "consequenceCode": "CUSTODY_PROPOSAL_REJECTED",
+          "message": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CUSTODY_REJECTED.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CUSTODY_REJECTED_TO_DECISION",
+              "toNodeId": "NODE_CUSTODY_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TRANSPORT_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSPORT_PROPOSAL.title"
+          },
+          "proposalType": "RECORD_TRANSPORT_CONDITION",
+          "sourceDecisionId": "DECISION_CUSTODY_SCOPE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE4_TRANSPORT",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TRANSPORT_TO_STAGE5",
+              "toNodeId": "NODE_STAGE5_BRIEFING",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_STAGE5_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_STAGE5_BRIEFING.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_STAGE5_BRIEFING.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_STAGE5_BRIEFING_TO_RECEIPT_DECISION",
+              "toNodeId": "NODE_RECEIPT_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECEIPT_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.title"
+          },
+          "decisionId": "DECISION_RECEIPT_AND_PURCHASE",
+          "prompt": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "receiptAction",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.receiptAction.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "RECEIVE_BATCH",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.receiptAction.options.RECEIVE_BATCH.label"
+                  },
+                  "authoredValue": true
+                },
+                {
+                  "optionId": "HOLD_FOR_REVIEW",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.receiptAction.options.HOLD_FOR_REVIEW.label"
+                  },
+                  "authoredValue": false
+                }
+              ]
+            },
+            {
+              "fieldId": "ownershipAction",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.ownershipAction.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "PURCHASE_ON_RECEIPT",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.ownershipAction.options.PURCHASE_ON_RECEIPT.label"
+                  },
+                  "authoredValue": true
+                },
+                {
+                  "optionId": "DEFER_PURCHASE",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_DECISION.fields.ownershipAction.options.DEFER_PURCHASE.label"
+                  },
+                  "authoredValue": false
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECEIPT_DECISION_TO_RECEIPT",
+              "toNodeId": "NODE_RECEIPT_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECEIPT_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_RECEIPT_PROPOSAL.title"
+          },
+          "proposalType": "RECEIVE_BATCH",
+          "sourceDecisionId": "DECISION_RECEIPT_AND_PURCHASE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE5_RECEIPT",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECEIPT_TO_OWNERSHIP",
+              "toNodeId": "NODE_OWNERSHIP_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_OWNERSHIP_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_OWNERSHIP_PROPOSAL.title"
+          },
+          "proposalType": "TRANSFER_OWNERSHIP",
+          "sourceDecisionId": "DECISION_RECEIPT_AND_PURCHASE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE5_PURCHASE",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_OWNERSHIP_TO_DISCREPANCY",
+              "toNodeId": "NODE_DISCREPANCY_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISCREPANCY_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.title"
+          },
+          "decisionId": "INT_DISCREPANCY_INITIAL_SUBMITTED",
+          "prompt": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "action",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "IGNORE",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.options.IGNORE.label"
+                  },
+                  "authoredValue": "IGNORE"
+                },
+                {
+                  "optionId": "OVERWRITE",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.options.OVERWRITE.label"
+                  },
+                  "authoredValue": "OVERWRITE"
+                },
+                {
+                  "optionId": "DELETE",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.options.DELETE.label"
+                  },
+                  "authoredValue": "DELETE"
+                },
+                {
+                  "optionId": "APPEND_CORRECTION",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.options.APPEND_CORRECTION.label"
+                  },
+                  "authoredValue": "APPEND_CORRECTION"
+                },
+                {
+                  "optionId": "INVESTIGATE_THEN_CORRECT",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.action.options.INVESTIGATE_THEN_CORRECT.label"
+                  },
+                  "authoredValue": "INVESTIGATE_THEN_CORRECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "causeCode",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "TYPING_ERROR",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.options.TYPING_ERROR.label"
+                  },
+                  "authoredValue": "TYPING_ERROR"
+                },
+                {
+                  "optionId": "UNIT_MISMATCH",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.options.UNIT_MISMATCH.label"
+                  },
+                  "authoredValue": "UNIT_MISMATCH"
+                },
+                {
+                  "optionId": "PHYSICAL_LOSS",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.options.PHYSICAL_LOSS.label"
+                  },
+                  "authoredValue": "PHYSICAL_LOSS"
+                },
+                {
+                  "optionId": "FRAUD",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.options.FRAUD.label"
+                  },
+                  "authoredValue": "FRAUD"
+                },
+                {
+                  "optionId": "UNKNOWN",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_DECISION.fields.causeCode.options.UNKNOWN.label"
+                  },
+                  "authoredValue": "UNKNOWN"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DISCREPANCY_TO_POLICY",
+              "toNodeId": "NODE_DISCREPANCY_POLICY",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISCREPANCY_POLICY",
+          "nodeType": "POLICY_CHECK",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_POLICY.title"
+          },
+          "policyId": "POLICY_DISCREPANCY_DECISION",
+          "proposalNodeId": "NODE_RECEIPT_PROPOSAL",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DISCREPANCY_POLICY_PASS",
+              "toNodeId": "NODE_CORRECTION_PROPOSAL",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "POLICY_DISCREPANCY_DECISION",
+                "outcome": "pass"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_DISCREPANCY_POLICY_FAIL",
+              "toNodeId": "NODE_DISCREPANCY_MITIGATION",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "POLICY_DISCREPANCY_DECISION",
+                "outcome": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISCREPANCY_MITIGATION",
+          "nodeType": "FEEDBACK",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_MITIGATION.title"
+          },
+          "feedbackCode": "INVESTIGATE_DISCREPANCY_REQUIRED",
+          "message": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISCREPANCY_MITIGATION.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_MITIGATION_TO_CORRECTION",
+              "toNodeId": "NODE_CORRECTION_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CORRECTION_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_PROPOSAL.title"
+          },
+          "proposalType": "RECORD_CORRECTION",
+          "sourceDecisionId": "INT_DISCREPANCY_INITIAL_SUBMITTED",
+          "policyIds": [
+            "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
+          ],
+          "legacyActionBindingId": "BIND_STAGE5_CORRECTION",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CORRECTION_TO_ENDORSEMENT",
+              "toNodeId": "NODE_CORRECTION_ENDORSEMENT",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CORRECTION_ENDORSEMENT",
+          "nodeType": "ENDORSEMENT",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_ENDORSEMENT.title"
+          },
+          "proposalNodeId": "NODE_CORRECTION_PROPOSAL",
+          "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+          "permittedRoleIds": [
+            "PRODUCER_MANAGER"
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CORRECTION_ENDORSEMENT_TO_POLICY",
+              "toNodeId": "NODE_CORRECTION_POLICY",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CORRECTION_POLICY",
+          "nodeType": "POLICY_CHECK",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_POLICY.title"
+          },
+          "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+          "proposalNodeId": "NODE_CORRECTION_PROPOSAL",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CORRECTION_POLICY_PASS",
+              "toNodeId": "NODE_CORRECTION_ACCEPTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+                "outcome": "pass"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_CORRECTION_POLICY_FAIL",
+              "toNodeId": "NODE_CORRECTION_REJECTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
+                "outcome": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CORRECTION_ACCEPTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_ACCEPTED.title"
+          },
+          "consequenceCode": "APPEND_ONLY_CORRECTION_COMMITTED",
+          "message": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_ACCEPTED.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CORRECTION_ACCEPTED_TO_TRANSFORMATION",
+              "toNodeId": "NODE_TRANSFORMATION_BRIEFING",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_CORRECTION_REJECTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_REJECTED.title"
+          },
+          "consequenceCode": "CORRECTION_PROPOSAL_REJECTED",
+          "message": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CORRECTION_REJECTED.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_CORRECTION_REJECTED_TO_PROPOSAL",
+              "toNodeId": "NODE_CORRECTION_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TRANSFORMATION_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_BRIEFING.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_BRIEFING.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TRANSFORMATION_BRIEFING_TO_DECISION",
+              "toNodeId": "NODE_TRANSFORMATION_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TRANSFORMATION_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_DECISION.title"
+          },
+          "decisionId": "DECISION_TRANSFORMATION_ACTION",
+          "prompt": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_DECISION.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "transformationAction",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_DECISION.fields.transformationAction.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "TRANSFORM_BATCH",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_DECISION.fields.transformationAction.options.TRANSFORM_BATCH.label"
+                  },
+                  "authoredValue": "TRANSFORM_BATCH"
+                },
+                {
+                  "optionId": "HOLD_INPUT",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_DECISION.fields.transformationAction.options.HOLD_INPUT.label"
+                  },
+                  "authoredValue": "HOLD_INPUT"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TRANSFORMATION_DECISION_TO_PROPOSAL",
+              "toNodeId": "NODE_TRANSFORMATION_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TRANSFORMATION_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROPOSAL.title"
+          },
+          "proposalType": "TRANSFORM_BATCH",
+          "sourceDecisionId": "DECISION_TRANSFORMATION_ACTION",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE6_TRANSFORM",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TRANSFORMATION_TO_PROVENANCE_DECISION",
+              "toNodeId": "NODE_TRANSFORMATION_PROVENANCE_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TRANSFORMATION_PROVENANCE_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.title"
+          },
+          "decisionId": "INT_TRANSFORMATION_PROVENANCE",
+          "prompt": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "provenanceRelationship",
+              "prompt": {
+                "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.fields.provenanceRelationship.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "OPT_NEW_INDEPENDENT_BATCH",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.fields.provenanceRelationship.options.OPT_NEW_INDEPENDENT_BATCH.label"
+                  },
+                  "authoredValue": "OPT_NEW_INDEPENDENT_BATCH"
+                },
+                {
+                  "optionId": "OPT_LINKED_TO_INPUT",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.fields.provenanceRelationship.options.OPT_LINKED_TO_INPUT.label"
+                  },
+                  "authoredValue": "OPT_LINKED_TO_INPUT"
+                },
+                {
+                  "optionId": "OPT_INPUT_DELETED",
+                  "label": {
+                    "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_TRANSFORMATION_PROVENANCE_DECISION.fields.provenanceRelationship.options.OPT_INPUT_DELETED.label"
+                  },
+                  "authoredValue": "OPT_INPUT_DELETED"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PROVENANCE_DECISION_TO_DISTRIBUTION",
+              "toNodeId": "NODE_DISTRIBUTION_BRIEFING",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISTRIBUTION_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISTRIBUTION_BRIEFING.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISTRIBUTION_BRIEFING.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DISTRIBUTION_BRIEFING_TO_PACKAGE",
+              "toNodeId": "NODE_PACKAGING_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PACKAGING_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_PACKAGING_PROPOSAL.title"
+          },
+          "proposalType": "PACKAGE_BATCH",
+          "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE7_PACKAGE",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PACKAGE_TO_DISTRIBUTION_OWNERSHIP",
+              "toNodeId": "NODE_DISTRIBUTION_OWNERSHIP_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISTRIBUTION_OWNERSHIP_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISTRIBUTION_OWNERSHIP_PROPOSAL.title"
+          },
+          "proposalType": "TRANSFER_OWNERSHIP",
+          "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE7_DISTRIBUTION_OWNERSHIP",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DISTRIBUTION_OWNERSHIP_TO_DISPATCH",
+              "toNodeId": "NODE_DISPATCH_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DISPATCH_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_DISPATCH_PROPOSAL.title"
+          },
+          "proposalType": "DISPATCH_BATCH",
+          "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
+          "policyIds": [],
+          "legacyActionBindingId": "BIND_STAGE7_DISPATCH",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DISPATCH_TO_STAGE8",
+              "toNodeId": "NODE_STAGE8_BRIEFING",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_STAGE8_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "stage.verifyAndTamper.title"
+          },
+          "body": {
+            "localizationKey": "stage.verifyAndTamper.instruction"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_STAGE8_BRIEFING_TO_TAMPER",
+              "toNodeId": "NODE_TAMPER_DEMONSTRATION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TAMPER_DEMONSTRATION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "stage.verifyAndTamper.tamperHeading"
+          },
+          "decisionId": "DECISION_RUN_TAMPER_DEMONSTRATION",
+          "prompt": {
+            "localizationKey": "stage.verifyAndTamper.tamperIntro"
+          },
+          "fields": [
+            {
+              "fieldId": "tamperAction",
+              "prompt": {
+                "localizationKey": "stage.verifyAndTamper.tamperHeading"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "RUN_TAMPER_DEMONSTRATION",
+                  "label": {
+                    "localizationKey": "stage.verifyAndTamper.runTamper"
+                  },
+                  "authoredValue": true
+                },
+                {
+                  "optionId": "REVIEW_PUBLIC_EVIDENCE",
+                  "label": {
+                    "localizationKey": "stage.verifyAndTamper.publicHeading"
+                  },
+                  "authoredValue": false
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TAMPER_TO_INTERPRETATION",
+              "toNodeId": "NODE_TAMPER_KNOWLEDGE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_TAMPER_KNOWLEDGE",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "check.tamperIntegrity.question"
+          },
+          "decisionId": "INT_TAMPER_DEMONSTRATION",
+          "prompt": {
+            "localizationKey": "check.tamperIntegrity.question"
+          },
+          "fields": [
+            {
+              "fieldId": "integrityInterpretation",
+              "prompt": {
+                "localizationKey": "check.tamperIntegrity.question"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "OPT_PREVENTS_EDITING",
+                  "label": {
+                    "localizationKey": "check.tamperIntegrity.optionPrevents"
+                  },
+                  "authoredValue": "OPT_PREVENTS_EDITING"
+                },
+                {
+                  "optionId": "OPT_MAKES_EDIT_DETECTABLE",
+                  "label": {
+                    "localizationKey": "check.tamperIntegrity.optionDetectable"
+                  },
+                  "authoredValue": "OPT_MAKES_EDIT_DETECTABLE"
+                },
+                {
+                  "optionId": "OPT_ONLY_LAST_BLOCK",
+                  "label": {
+                    "localizationKey": "check.tamperIntegrity.optionLastBlock"
+                  },
+                  "authoredValue": "OPT_ONLY_LAST_BLOCK"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_TAMPER_KNOWLEDGE_TO_GOVERNANCE",
+              "toNodeId": "NODE_DATA_GOVERNANCE_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_DATA_GOVERNANCE_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "check.dataGovernance.question"
+          },
+          "decisionId": "INT_DATA_GOVERNANCE_CLASSIFICATION",
+          "prompt": {
+            "localizationKey": "check.dataGovernance.question"
+          },
+          "fields": [
+            {
+              "fieldId": "ITEM_BATCH_ID",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemBatchId"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "ITEM_RECALL_STATUS",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemRecallStatus"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "ITEM_CERTIFICATE_PDF",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemCertificatePdf"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "ITEM_SENSOR_DATASET",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemSensorDataset"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "ITEM_WHOLESALE_PRICE",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemWholesalePrice"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            },
+            {
+              "fieldId": "ITEM_CUSTOMER_ADDRESS",
+              "prompt": {
+                "localizationKey": "check.dataGovernance.itemCustomerAddress"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "CAT_ON_CHAIN",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOnChain"
+                  },
+                  "authoredValue": "CAT_ON_CHAIN"
+                },
+                {
+                  "optionId": "CAT_OFF_CHAIN_HASH",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryOffChainHash"
+                  },
+                  "authoredValue": "CAT_OFF_CHAIN_HASH"
+                },
+                {
+                  "optionId": "CAT_AUTHORIZED_ONLY",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryAuthorizedOnly"
+                  },
+                  "authoredValue": "CAT_AUTHORIZED_ONLY"
+                },
+                {
+                  "optionId": "CAT_DO_NOT_COLLECT",
+                  "label": {
+                    "localizationKey": "check.dataGovernance.categoryDoNotCollect"
+                  },
+                  "authoredValue": "CAT_DO_NOT_COLLECT"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_GOVERNANCE_TO_STAGE9",
+              "toNodeId": "NODE_STAGE9_BRIEFING",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_STAGE9_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.title"
+          },
+          "body": {
+            "localizationKey": "stage.recallAndDebrief.instruction"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_STAGE9_BRIEFING_TO_SCOPE",
+              "toNodeId": "NODE_RECALL_SCOPE_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_SCOPE_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.scopeHeading"
+          },
+          "decisionId": "INT_RECALL_SCOPE",
+          "prompt": {
+            "localizationKey": "check.recallScope.question"
+          },
+          "fields": [
+            {
+              "fieldId": "selectedAssetIds",
+              "prompt": {
+                "localizationKey": "check.recallScope.question"
+              },
+              "selection": "multiple",
+              "options": [
+                {
+                  "optionId": "BAT_PACKAGED_COFFEE_001",
+                  "label": {
+                    "localizationKey": "check.recallScope.optionAffectedLot"
+                  },
+                  "authoredValue": "BAT_PACKAGED_COFFEE_001"
+                },
+                {
+                  "optionId": "BAT_PACKAGED_COFFEE_002",
+                  "label": {
+                    "localizationKey": "check.recallScope.optionNearMissLot"
+                  },
+                  "authoredValue": "BAT_PACKAGED_COFFEE_002"
+                },
+                {
+                  "optionId": "BAT_PACKAGED_COFFEE_003",
+                  "label": {
+                    "localizationKey": "check.recallScope.optionUnrelatedLot"
+                  },
+                  "authoredValue": "BAT_PACKAGED_COFFEE_003"
+                },
+                {
+                  "optionId": "BAT_ROASTED_COFFEE_001",
+                  "label": {
+                    "localizationKey": "check.recallScope.optionRoastedBatch"
+                  },
+                  "authoredValue": "BAT_ROASTED_COFFEE_001"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_SCOPE_TO_ROLE",
+              "toNodeId": "NODE_RECALL_ROLE_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_ROLE_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.authorizationHeading"
+          },
+          "decisionId": "DECISION_RECALL_ROLE_HANDOFF",
+          "prompt": {
+            "localizationKey": "stage.recallAndDebrief.precommitHandoffPrompt"
+          },
+          "fields": [
+            {
+              "fieldId": "recallAuthorityAction",
+              "prompt": {
+                "localizationKey": "stage.recallAndDebrief.authorizationHeading"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "SUBMIT_ACTIVE_ROLE",
+                  "label": {
+                    "localizationKey": "stage.recallAndDebrief.recallAction"
+                  },
+                  "authoredValue": "SUBMIT_ACTIVE_ROLE"
+                },
+                {
+                  "optionId": "REQUEST_REGULATOR_HANDOFF",
+                  "label": {
+                    "localizationKey": "stage.recallAndDebrief.handoffRegulator"
+                  },
+                  "authoredValue": "REQUEST_REGULATOR_HANDOFF"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_ROLE_TO_PROPOSAL",
+              "toNodeId": "NODE_RECALL_PROPOSAL",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_PROPOSAL",
+          "nodeType": "TRANSACTION_PROPOSAL",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.recallAction"
+          },
+          "proposalType": "RECALL_BATCH",
+          "sourceDecisionId": "INT_RECALL_SCOPE",
+          "policyIds": [
+            "AUTH_RECALL"
+          ],
+          "legacyActionBindingId": "BIND_STAGE9_RECALL",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_PROPOSAL_TO_POLICY",
+              "toNodeId": "NODE_RECALL_POLICY",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_POLICY",
+          "nodeType": "POLICY_CHECK",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_RECALL.title"
+          },
+          "policyId": "AUTH_RECALL",
+          "proposalNodeId": "NODE_RECALL_PROPOSAL",
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_POLICY_PASS",
+              "toNodeId": "NODE_RECALL_ACCEPTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "AUTH_RECALL",
+                "outcome": "pass"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_RECALL_POLICY_FAIL",
+              "toNodeId": "NODE_RECALL_REJECTED",
+              "when": {
+                "kind": "POLICY_RESULT",
+                "policyId": "AUTH_RECALL",
+                "outcome": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_ACCEPTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.authorizationHeading"
+          },
+          "consequenceCode": "AUTHORIZED_RECALL_COMMITTED",
+          "message": {
+            "localizationKey": "report.causal.recallSignatureAccepted"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_ACCEPTED_TO_DEBRIEF",
+              "toNodeId": "NODE_BLOCKCHAIN_NECESSITY_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_RECALL_REJECTED",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.authorizationHeading"
+          },
+          "consequenceCode": "UNAUTHORIZED_RECALL_RETAINED",
+          "message": {
+            "localizationKey": "stage.recallAndDebrief.unauthorizedFeedback"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_RECALL_REJECTED_TO_ROLE",
+              "toNodeId": "NODE_RECALL_ROLE_DECISION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_BLOCKCHAIN_NECESSITY_DECISION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "check.blockchainNecessity.question"
+          },
+          "decisionId": "INT_BLOCKCHAIN_NECESSITY",
+          "prompt": {
+            "localizationKey": "check.blockchainNecessity.question"
+          },
+          "fields": [
+            {
+              "fieldId": "blockchainSuitability",
+              "prompt": {
+                "localizationKey": "check.blockchainNecessity.question"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "OPT_ALWAYS_BETTER",
+                  "label": {
+                    "localizationKey": "check.blockchainNecessity.optionAlwaysBetter"
+                  },
+                  "authoredValue": "OPT_ALWAYS_BETTER"
+                },
+                {
+                  "optionId": "OPT_INDEPENDENT_ORGANIZATIONS",
+                  "label": {
+                    "localizationKey": "check.blockchainNecessity.optionIndependent"
+                  },
+                  "authoredValue": "OPT_INDEPENDENT_ORGANIZATIONS"
+                },
+                {
+                  "optionId": "OPT_FASTER_THAN_DATABASE",
+                  "label": {
+                    "localizationKey": "check.blockchainNecessity.optionFaster"
+                  },
+                  "authoredValue": "OPT_FASTER_THAN_DATABASE"
+                },
+                {
+                  "optionId": "OPT_GUARANTEES_TRUTH",
+                  "label": {
+                    "localizationKey": "check.blockchainNecessity.optionGuarantees"
+                  },
+                  "authoredValue": "OPT_GUARANTEES_TRUTH"
+                }
+              ]
+            }
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_DEBRIEF_TO_COMPLETE",
+              "toNodeId": "NODE_COFFEE_JOURNEY_COMPLETE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_COFFEE_JOURNEY_COMPLETE",
+          "nodeType": "COMPLETION",
+          "title": {
+            "localizationKey": "stage.recallAndDebrief.title"
+          },
+          "outcomeCode": "COFFEE_JOURNEY_MIGRATION_COMPLETE",
+          "transitions": []
         },
         {
           "nodeId": "NODE_CERTIFICATE_REJECTED",
@@ -943,7 +2715,23 @@
       "evidenceRuleIds": [
         "RULE_CERTIFICATE_INSPECTED",
         "RULE_UNAUTHORIZED_CERTIFICATE_RECOGNIZED",
-        "RULE_CERTIFICATE_DECISION_SUBMITTED"
+        "RULE_CERTIFICATE_DECISION_SUBMITTED",
+        "RULE_CUSTODY_ENDORSEMENT_SATISFIED",
+        "RULE_TRANSPORT_CONDITION_RECORDED",
+        "RULE_DISCREPANCY_DECISION_SUBMITTED",
+        "RULE_DISCREPANCY_REJECTED_ATTEMPT",
+        "RULE_CORRECTION_ENDORSEMENT_SATISFIED",
+        "RULE_APPEND_ONLY_CORRECTION_COMMITTED",
+        "RULE_TRANSFORMATION_PROVENANCE_CREATED",
+        "RULE_TRANSFORMATION_PROVENANCE_RECOGNIZED",
+        "RULE_RETAIL_DISPATCH_RECORDED",
+        "RULE_TAMPER_DEMONSTRATION_COMPLETED",
+        "RULE_TAMPER_EVIDENCE_INTERPRETED",
+        "RULE_DATA_GOVERNANCE_CLASSIFIED",
+        "RULE_RECALL_SCOPE_SUBMITTED",
+        "RULE_UNAUTHORIZED_RECALL_RETAINED",
+        "RULE_AUTHORIZED_RECALL_COMMITTED",
+        "RULE_BLOCKCHAIN_SUITABILITY_RECOGNIZED"
       ],
       "legacyCompatibility": {
         "adapterId": "tracechain-coffee-v2",
@@ -956,6 +2744,66 @@
             "nodeId": "NODE_CERTIFICATE_PROPOSAL",
             "commandType": "SUBMIT_CERTIFICATE_DECISION",
             "legacyActionId": "ISSUE_CERTIFICATE"
+          },
+          {
+            "bindingId": "BIND_STAGE4_CUSTODY",
+            "nodeId": "NODE_CUSTODY_PROPOSAL",
+            "commandType": "CREATE_CUSTODY_TRANSFER_PROPOSAL",
+            "legacyActionId": "TRANSFER_CUSTODY"
+          },
+          {
+            "bindingId": "BIND_STAGE4_TRANSPORT",
+            "nodeId": "NODE_TRANSPORT_PROPOSAL",
+            "commandType": "RECORD_TRANSPORT_CONDITION",
+            "legacyActionId": "RECORD_TRANSPORT"
+          },
+          {
+            "bindingId": "BIND_STAGE5_RECEIPT",
+            "nodeId": "NODE_RECEIPT_PROPOSAL",
+            "commandType": "RECEIVE_BATCH",
+            "legacyActionId": "RECEIVE_BATCH"
+          },
+          {
+            "bindingId": "BIND_STAGE5_PURCHASE",
+            "nodeId": "NODE_OWNERSHIP_PROPOSAL",
+            "commandType": "PURCHASE_ON_RECEIPT",
+            "legacyActionId": "PURCHASE_ON_RECEIPT"
+          },
+          {
+            "bindingId": "BIND_STAGE5_CORRECTION",
+            "nodeId": "NODE_CORRECTION_PROPOSAL",
+            "commandType": "CREATE_CORRECTION_PROPOSAL",
+            "legacyActionId": "RECORD_CORRECTION"
+          },
+          {
+            "bindingId": "BIND_STAGE6_TRANSFORM",
+            "nodeId": "NODE_TRANSFORMATION_PROPOSAL",
+            "commandType": "TRANSFORM_BATCH",
+            "legacyActionId": "TRANSFORM_BATCH"
+          },
+          {
+            "bindingId": "BIND_STAGE7_PACKAGE",
+            "nodeId": "NODE_PACKAGING_PROPOSAL",
+            "commandType": "PACKAGE_BATCH",
+            "legacyActionId": "PACKAGE_BATCH"
+          },
+          {
+            "bindingId": "BIND_STAGE7_DISTRIBUTION_OWNERSHIP",
+            "nodeId": "NODE_DISTRIBUTION_OWNERSHIP_PROPOSAL",
+            "commandType": "TRANSFER_DISTRIBUTION_OWNERSHIP",
+            "legacyActionId": "TRANSFER_OWNERSHIP"
+          },
+          {
+            "bindingId": "BIND_STAGE7_DISPATCH",
+            "nodeId": "NODE_DISPATCH_PROPOSAL",
+            "commandType": "DISPATCH_BATCH",
+            "legacyActionId": "DISPATCH_BATCH"
+          },
+          {
+            "bindingId": "BIND_STAGE9_RECALL",
+            "nodeId": "NODE_RECALL_PROPOSAL",
+            "commandType": "SUBMIT_RECALL_TRANSACTION",
+            "legacyActionId": "RECALL_BATCH"
           }
         ]
       }

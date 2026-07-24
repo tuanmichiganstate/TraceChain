@@ -2,7 +2,10 @@ import { canonicalize } from "../../infrastructure/hashing/canonicalize";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   CERTIFICATE_ASSESSMENTS,
+  DISCREPANCY_ACTIONS,
+  DISCREPANCY_CAUSES,
   evaluateCertificateDecision,
+  evaluateDiscrepancyDecision,
   ISSUER_ASSESSMENTS,
   LOT_DISPOSITIONS,
   STORAGE_CHOICES,
@@ -16,7 +19,9 @@ import {
   type IdGenerator,
 } from "../../domain/simulation/environment";
 import type {
+  MitigationDecisionCommand,
   SubmitCertificateDecisionCommand,
+  SubmitDiscrepancyDecisionCommand,
   TrustedExecutionContext,
 } from "../../domain/simulation/types";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
@@ -44,11 +49,19 @@ import { CoffeeStage3HostedAdapter } from "./coffee-stage3-adapter";
 import type {
   CompetencyEvidenceProjection,
   CreateHostedStage3RunRequest,
+  HostedClassificationDecision,
   HostedCompetencyEvidence,
+  HostedCorrectionProposalSummary,
+  HostedCustodyProposalSummary,
+  HostedDiscrepancyDecision,
+  HostedEndorsementSummary,
+  HostedKnowledgeDecision,
+  HostedRecallScopeDecision,
   HostedStage3Command,
   HostedStage3Decision,
   HostedStage3RunResult,
   HostedStage3RunState,
+  HostedTamperSummary,
   HostedTransactionSummary,
   InstructorTimelineItem,
   RubricEvidenceProjection,
@@ -57,6 +70,7 @@ import type {
 
 const EVIDENCE_ID = "EVID_CERTIFICATE_RECORD";
 const MAXIMUM_JUSTIFICATION_LENGTH = 1_000;
+const MINIMUM_CORRECTION_REASON_LENGTH = 10;
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actorId",
   "authenticatedUserId",
@@ -153,6 +167,16 @@ function requiredBoolean(value: unknown, path: string): boolean {
   return value;
 }
 
+function requiredNumber(value: unknown, path: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      `${path} must be a finite number.`,
+    );
+  }
+  return value;
+}
+
 function isCaseVariant(value: string): value is Stage3CaseVariant {
   return (
     value === "authorized-certifier" ||
@@ -236,6 +260,255 @@ function decisionFromPayload(payload: JsonObject): HostedStage3Decision {
   };
 }
 
+function discrepancyDecisionFromPayload(
+  payload: JsonObject,
+): HostedDiscrepancyDecision {
+  const decisionValue = payload.decision;
+  if (!isJsonObject(decisionValue)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Discrepancy event is missing its structured decision.",
+    );
+  }
+  const action = requiredString(
+    decisionValue.action,
+    "decision.action",
+  );
+  const causeCode = requiredString(
+    decisionValue.causeCode,
+    "decision.causeCode",
+  );
+  if (
+    !DISCREPANCY_ACTIONS.includes(
+      action as (typeof DISCREPANCY_ACTIONS)[number],
+    ) ||
+    !DISCREPANCY_CAUSES.includes(
+      causeCode as (typeof DISCREPANCY_CAUSES)[number],
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Discrepancy event contains an unsupported authored option.",
+    );
+  }
+  const decision: SubmitDiscrepancyDecisionCommand = {
+    commandType: "SUBMIT_DISCREPANCY_DECISION",
+    action:
+      action as SubmitDiscrepancyDecisionCommand["action"],
+    causeCode:
+      causeCode as SubmitDiscrepancyDecisionCommand["causeCode"],
+  };
+  const evaluation = evaluateDiscrepancyDecision(
+    decision,
+    coffeeScenario,
+  );
+  return {
+    decision,
+    ...evaluation,
+  };
+}
+
+function hostedKnowledgeDecision(
+  decisionId: string,
+  selectedOptionId: string,
+): HostedKnowledgeDecision {
+  const definition = coffeeScenario.stages
+    .flatMap((stage) => stage.knowledgeChecks)
+    .find(
+      (candidate) =>
+        candidate.knowledgeCheckId === decisionId,
+    );
+  if (
+    definition === undefined ||
+    !definition.options.some(
+      (option) => option.optionId === selectedOptionId,
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Knowledge decision contains an unsupported authored option.",
+    );
+  }
+  return {
+    decisionId,
+    selectedOptionId,
+    isAuthoredCorrect:
+      definition.correctOptionIds.includes(selectedOptionId),
+  };
+}
+
+function hostedClassificationDecision(
+  decisionId: string,
+  categoryByItem: Readonly<Record<string, string>>,
+): HostedClassificationDecision {
+  const definition = coffeeScenario.stages
+    .flatMap((stage) => stage.knowledgeChecks)
+    .find(
+      (candidate) =>
+        candidate.knowledgeCheckId === decisionId,
+    );
+  const categories = definition?.categories ?? [];
+  if (
+    definition === undefined ||
+    categories.length === 0 ||
+    definition.options.some(
+      (option) => option.categoryId === undefined,
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Classification decision is not authored for this scenario.",
+    );
+  }
+  const optionIds = definition.options.map(
+    (option) => option.optionId,
+  );
+  const suppliedIds = Object.keys(categoryByItem);
+  const categoryIds = new Set(
+    categories.map((category) => category.categoryId),
+  );
+  if (
+    suppliedIds.length !== optionIds.length ||
+    suppliedIds.some((itemId) => !optionIds.includes(itemId)) ||
+    optionIds.some(
+      (itemId) =>
+        !categoryIds.has(categoryByItem[itemId] ?? ""),
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Classification decision must assign every authored item to one authored category.",
+    );
+  }
+  const normalized = Object.fromEntries(
+    optionIds.map((itemId) => [
+      itemId,
+      categoryByItem[itemId] as string,
+    ]),
+  );
+  return {
+    decisionId,
+    categoryByItem: normalized,
+    isAuthoredCorrect: definition.options.every(
+      (option) =>
+        normalized[option.optionId] === option.categoryId,
+    ),
+  };
+}
+
+function hostedRecallScopeDecision(
+  selectedAssetIds: readonly string[],
+): HostedRecallScopeDecision {
+  const definition = coffeeScenario.stages
+    .flatMap((stage) => stage.knowledgeChecks)
+    .find(
+      (candidate) =>
+        candidate.knowledgeCheckId === "INT_RECALL_SCOPE",
+    );
+  if (definition === undefined) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Recall-scope decision is missing from the coffee scenario.",
+    );
+  }
+  const optionIds = definition.options.map(
+    (option) => option.optionId,
+  );
+  if (
+    selectedAssetIds.length === 0 ||
+    new Set(selectedAssetIds).size !== selectedAssetIds.length ||
+    selectedAssetIds.some(
+      (assetId) => !optionIds.includes(assetId),
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Recall scope must contain unique authored asset options.",
+    );
+  }
+  const normalized = optionIds.filter((optionId) =>
+    selectedAssetIds.includes(optionId),
+  );
+  return {
+    decisionId: "INT_RECALL_SCOPE",
+    selectedAssetIds: normalized,
+    isAuthoredCorrect:
+      normalized.length === definition.correctOptionIds.length &&
+      definition.correctOptionIds.every((optionId) =>
+        normalized.includes(optionId),
+      ),
+  };
+}
+
+function tamperSummaryToJson(
+  summary: HostedTamperSummary,
+): JsonObject {
+  return {
+    transactionId: summary.transactionId,
+    originalQuantity: summary.originalQuantity,
+    tamperedQuantity: summary.tamperedQuantity,
+    beforeValid: summary.beforeValid,
+    invalidTransactionIdsAfterEdit:
+      summary.invalidTransactionIdsAfterEdit,
+    invalidBlockIdsAfterForgingTransaction:
+      summary.invalidBlockIdsAfterForgingTransaction,
+    invalidBlockIdsAfterForgingBlock:
+      summary.invalidBlockIdsAfterForgingBlock,
+    cascadingBlockIds: summary.cascadingBlockIds,
+    realLedgerIntact: summary.realLedgerIntact,
+  };
+}
+
+function tamperSummaryFromPayload(
+  payload: JsonObject,
+): HostedTamperSummary {
+  const summary = payload.summary;
+  if (!isJsonObject(summary)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Tamper demonstration event is missing its summary.",
+    );
+  }
+  return {
+    transactionId: requiredString(
+      summary.transactionId,
+      "summary.transactionId",
+    ),
+    originalQuantity: requiredNumber(
+      summary.originalQuantity,
+      "summary.originalQuantity",
+    ),
+    tamperedQuantity: requiredNumber(
+      summary.tamperedQuantity,
+      "summary.tamperedQuantity",
+    ),
+    beforeValid: requiredBoolean(
+      summary.beforeValid,
+      "summary.beforeValid",
+    ),
+    invalidTransactionIdsAfterEdit: requiredStringArray(
+      summary.invalidTransactionIdsAfterEdit,
+      "summary.invalidTransactionIdsAfterEdit",
+    ),
+    invalidBlockIdsAfterForgingTransaction: requiredStringArray(
+      summary.invalidBlockIdsAfterForgingTransaction,
+      "summary.invalidBlockIdsAfterForgingTransaction",
+    ),
+    invalidBlockIdsAfterForgingBlock: requiredStringArray(
+      summary.invalidBlockIdsAfterForgingBlock,
+      "summary.invalidBlockIdsAfterForgingBlock",
+    ),
+    cascadingBlockIds: requiredStringArray(
+      summary.cascadingBlockIds,
+      "summary.cascadingBlockIds",
+    ),
+    realLedgerIntact: requiredBoolean(
+      summary.realLedgerIntact,
+      "summary.realLedgerIntact",
+    ),
+  };
+}
+
 function summaryToJson(summary: HostedTransactionSummary): JsonObject {
   return {
     actionId: summary.actionId,
@@ -305,6 +578,210 @@ function assertSummaryMatches(
     throw new HostedRunCommandError(
       "PACK_CONTRACT_MISMATCH",
       "Replayed transaction evidence differs from its recorded outcome.",
+    );
+  }
+}
+
+function custodyProposalSummaryToJson(
+  summary: HostedCustodyProposalSummary,
+): JsonObject {
+  return {
+    actionId: summary.actionId,
+    coreCommandId: summary.coreCommandId,
+    isAccepted: summary.isAccepted,
+    proposalId: summary.proposalId,
+    proposalDigest: summary.proposalDigest,
+    endorsementPolicyId: summary.endorsementPolicyId,
+    policySatisfied: summary.policySatisfied,
+    validationRuleIds: summary.validationRuleIds,
+  };
+}
+
+function nullableString(value: unknown, path: string): string | null {
+  if (value !== null && typeof value !== "string") {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      `${path} must be a string or null.`,
+    );
+  }
+  return value;
+}
+
+function custodyProposalSummaryFromPayload(
+  payload: JsonObject,
+): HostedCustodyProposalSummary {
+  const summary = payload.summary;
+  if (!isJsonObject(summary)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Custody proposal event is missing its outcome summary.",
+    );
+  }
+  const actionId = requiredString(summary.actionId, "summary.actionId");
+  if (actionId !== "TRANSFER_CUSTODY") {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Custody proposal summary has an unsupported action.",
+    );
+  }
+  return {
+    actionId,
+    coreCommandId: requiredString(
+      summary.coreCommandId,
+      "summary.coreCommandId",
+    ),
+    isAccepted: requiredBoolean(
+      summary.isAccepted,
+      "summary.isAccepted",
+    ),
+    proposalId: nullableString(
+      summary.proposalId,
+      "summary.proposalId",
+    ),
+    proposalDigest: nullableString(
+      summary.proposalDigest,
+      "summary.proposalDigest",
+    ),
+    endorsementPolicyId: nullableString(
+      summary.endorsementPolicyId,
+      "summary.endorsementPolicyId",
+    ),
+    policySatisfied: requiredBoolean(
+      summary.policySatisfied,
+      "summary.policySatisfied",
+    ),
+    validationRuleIds: requiredStringArray(
+      summary.validationRuleIds,
+      "summary.validationRuleIds",
+    ),
+  };
+}
+
+function correctionProposalSummaryToJson(
+  summary: HostedCorrectionProposalSummary,
+): JsonObject {
+  return {
+    actionId: summary.actionId,
+    coreCommandId: summary.coreCommandId,
+    isAccepted: summary.isAccepted,
+    proposalId: summary.proposalId,
+    proposalDigest: summary.proposalDigest,
+    endorsementPolicyId: summary.endorsementPolicyId,
+    policySatisfied: summary.policySatisfied,
+    validationRuleIds: summary.validationRuleIds,
+  };
+}
+
+function correctionProposalSummaryFromPayload(
+  payload: JsonObject,
+): HostedCorrectionProposalSummary {
+  const summary = payload.summary;
+  if (!isJsonObject(summary)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Correction proposal event is missing its outcome summary.",
+    );
+  }
+  const actionId = requiredString(summary.actionId, "summary.actionId");
+  if (actionId !== "RECORD_CORRECTION") {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Correction proposal summary has an unsupported action.",
+    );
+  }
+  return {
+    actionId,
+    coreCommandId: requiredString(
+      summary.coreCommandId,
+      "summary.coreCommandId",
+    ),
+    isAccepted: requiredBoolean(
+      summary.isAccepted,
+      "summary.isAccepted",
+    ),
+    proposalId: nullableString(
+      summary.proposalId,
+      "summary.proposalId",
+    ),
+    proposalDigest: nullableString(
+      summary.proposalDigest,
+      "summary.proposalDigest",
+    ),
+    endorsementPolicyId: nullableString(
+      summary.endorsementPolicyId,
+      "summary.endorsementPolicyId",
+    ),
+    policySatisfied: requiredBoolean(
+      summary.policySatisfied,
+      "summary.policySatisfied",
+    ),
+    validationRuleIds: requiredStringArray(
+      summary.validationRuleIds,
+      "summary.validationRuleIds",
+    ),
+  };
+}
+
+function endorsementSummaryToJson(
+  summary: HostedEndorsementSummary,
+): JsonObject {
+  return {
+    coreCommandId: summary.coreCommandId,
+    isAccepted: summary.isAccepted,
+    proposalId: summary.proposalId,
+    organizationId: summary.organizationId,
+    policySatisfied: summary.policySatisfied,
+    validationRuleIds: summary.validationRuleIds,
+  };
+}
+
+function endorsementSummaryFromPayload(
+  payload: JsonObject,
+): HostedEndorsementSummary {
+  const summary = payload.summary;
+  if (!isJsonObject(summary)) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "Custody endorsement event is missing its outcome summary.",
+    );
+  }
+  return {
+    coreCommandId: requiredString(
+      summary.coreCommandId,
+      "summary.coreCommandId",
+    ),
+    isAccepted: requiredBoolean(
+      summary.isAccepted,
+      "summary.isAccepted",
+    ),
+    proposalId: requiredString(
+      summary.proposalId,
+      "summary.proposalId",
+    ),
+    organizationId: requiredString(
+      summary.organizationId,
+      "summary.organizationId",
+    ),
+    policySatisfied: requiredBoolean(
+      summary.policySatisfied,
+      "summary.policySatisfied",
+    ),
+    validationRuleIds: requiredStringArray(
+      summary.validationRuleIds,
+      "summary.validationRuleIds",
+    ),
+  };
+}
+
+function assertReplayEvidenceMatches(
+  expected: unknown,
+  actual: unknown,
+  label: string,
+): void {
+  if (canonicalize(expected) !== canonicalize(actual)) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      `Replayed ${label} evidence differs from its recorded outcome.`,
     );
   }
 }
@@ -617,6 +1094,8 @@ export class HostedStage3RunService {
             built.push(evidence);
             state = evidence.nextState;
           }
+          const certificateCommitted =
+            state.transactionStatus === "committed";
           const completed = await this.buildEvent({
             runId: command.runId,
             state,
@@ -625,16 +1104,1067 @@ export class HostedStage3RunService {
             commandId: command.commandId,
             commandDigest: digest,
             batchIndex: built.length,
-            eventType: "RUN_COMPLETED",
-            payload: {
-              outcome:
-                state.transactionStatus === "committed"
-                  ? "certificate-committed"
-                  : "certificate-rejected",
-            },
+            eventType: certificateCommitted
+              ? "WORKFLOW_ADVANCED"
+              : "RUN_COMPLETED",
+            payload: certificateCommitted
+              ? {
+                  workflowStep: "custody-proposal",
+                  contextId: "CTX_PRODUCER",
+                }
+              : { outcome: "certificate-rejected" },
           });
           built.push(completed);
           state = completed.nextState;
+        }
+        break;
+      case "CREATE_CUSTODY_TRANSFER_PROPOSAL":
+        this.requireWorkflow(state, "custody-proposal");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PRODUCER",
+          );
+          const coreCommandId = `${command.commandId}_TRANSFER_CUSTODY`;
+          const preview = await this.adapter.createCustodyProposal({
+            runId: command.runId,
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            scenarioSeed: state.scenarioSeed,
+            alsoTransfersOwnership: command.alsoTransfersOwnership,
+          });
+          const proposal = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSEMENT_PROPOSAL_CREATED"
+              : "ENDORSEMENT_PROPOSAL_REJECTED",
+            payload: {
+              coreCommandId,
+              alsoTransfersOwnership:
+                command.alsoTransfersOwnership,
+              summary: custodyProposalSummaryToJson(
+                preview.summary,
+              ),
+            },
+          });
+          built.push(proposal);
+          state = proposal.nextState;
+        }
+        break;
+      case "ENDORSE_CUSTODY_TRANSFER":
+        this.requireWorkflow(state, "custody-endorsement");
+        if (command.proposalId !== state.pendingProposalId) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The custody endorsement must refer to the active proposal.",
+          );
+        }
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_LOGISTICS",
+          );
+          const coreCommandId = `${command.commandId}_ENDORSE`;
+          const preview = await this.adapter.endorseCustodyProposal({
+            runId: command.runId,
+            proposalId: command.proposalId,
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const endorsement = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSEMENT_RECORDED"
+              : "ENDORSEMENT_REJECTED",
+            payload: {
+              coreCommandId,
+              proposalId: command.proposalId,
+              summary: endorsementSummaryToJson(
+                preview.summary,
+              ),
+            },
+          });
+          built.push(endorsement);
+          state = endorsement.nextState;
+          if (
+            preview.summary.isAccepted &&
+            preview.summary.policySatisfied
+          ) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_CUSTODY_ENDORSEMENT_SATISFIED",
+              sourceEventIds: [endorsement.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+          }
+        }
+        break;
+      case "COMMIT_CUSTODY_TRANSFER":
+        this.requireWorkflow(state, "custody-commit");
+        if (command.proposalId !== state.pendingProposalId) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The custody commitment must refer to the active proposal.",
+          );
+        }
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_LOGISTICS",
+          );
+          const coreCommandId = `${command.commandId}_COMMIT`;
+          const preview = this.adapter.commitCustodyProposal({
+            runId: command.runId,
+            proposalId: command.proposalId,
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const commitment = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSED_TRANSACTION_COMMITTED"
+              : "ENDORSED_TRANSACTION_REJECTED",
+            payload: {
+              actionId: "TRANSFER_CUSTODY",
+              coreCommandId,
+              proposalId: command.proposalId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(commitment);
+          state = commitment.nextState;
+        }
+        break;
+      case "RECORD_TRANSPORT_CONDITION":
+        this.requireWorkflow(state, "transport-transaction");
+        {
+          const coreCommandId = `${command.commandId}_RECORD_TRANSPORT`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "RECORD_TRANSPORT",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: state.activeTrustedContext,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context: state.activeTrustedContext,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "RECORD_TRANSPORT",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+          if (preview.summary.isAccepted) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context: state.activeTrustedContext,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_TRANSPORT_CONDITION_RECORDED",
+              sourceEventIds: [transaction.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+            const advanced = await this.buildEvent({
+              runId: command.runId,
+              state,
+              principal: learner,
+              context: state.activeTrustedContext,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              eventType: "WORKFLOW_ADVANCED",
+              payload: {
+                workflowStep: "receipt-transaction",
+                contextId: "CTX_PROCESSOR",
+              },
+            });
+            built.push(advanced);
+            state = advanced.nextState;
+          }
+        }
+        break;
+      case "RECEIVE_BATCH":
+        this.requireWorkflow(state, "receipt-transaction");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const coreCommandId = `${command.commandId}_RECEIVE_BATCH`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "RECEIVE_BATCH",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "RECEIVE_BATCH",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+        }
+        break;
+      case "PURCHASE_ON_RECEIPT":
+        this.requireWorkflow(state, "ownership-transaction");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PRODUCER",
+          );
+          const coreCommandId =
+            `${command.commandId}_PURCHASE_ON_RECEIPT`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "PURCHASE_ON_RECEIPT",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "PURCHASE_ON_RECEIPT",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+        }
+        break;
+      case "SUBMIT_DISCREPANCY_DECISION":
+        this.requireWorkflow(state, "discrepancy-decision");
+        {
+          this.validateDiscrepancyDecision(command);
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const decision = {
+            commandType: "SUBMIT_DISCREPANCY_DECISION" as const,
+            ...command.decision,
+          };
+          const evaluation = evaluateDiscrepancyDecision(
+            decision,
+            coffeeScenario,
+          );
+          const submitted = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: evaluation.isRejectedAttempt
+              ? "DECISION_REJECTED"
+              : "DECISION_SUBMITTED",
+            payload: { decision },
+          });
+          built.push(submitted);
+          state = submitted.nextState;
+          const evidence = await this.buildCompetencyEvidenceEvent({
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            evidenceRuleId: evaluation.isRejectedAttempt
+              ? "RULE_DISCREPANCY_REJECTED_ATTEMPT"
+              : "RULE_DISCREPANCY_DECISION_SUBMITTED",
+            sourceEventIds: [submitted.sequenced.eventId],
+          });
+          built.push(evidence);
+          state = evidence.nextState;
+        }
+        break;
+      case "INVESTIGATE_DISCREPANCY":
+        this.requireWorkflow(state, "discrepancy-mitigation");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const mitigation = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "MITIGATION_RECORDED",
+            payload: {
+              mitigationType: "INVESTIGATE_DISCREPANCY",
+            },
+          });
+          built.push(mitigation);
+          state = mitigation.nextState;
+        }
+        break;
+      case "CREATE_CORRECTION_PROPOSAL":
+        this.requireWorkflow(state, "correction-proposal");
+        this.validateCorrectionReason(command.reason);
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const coreCommandId =
+            `${command.commandId}_RECORD_CORRECTION`;
+          const preview =
+            await this.adapter.createCorrectionProposal({
+              runId: command.runId,
+              coreCommandId,
+              eventSequence: state.version + 1,
+              simulation: state.simulation,
+              scenarioSeed: state.scenarioSeed,
+              reason: command.reason,
+            });
+          const proposal = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSEMENT_PROPOSAL_CREATED"
+              : "ENDORSEMENT_PROPOSAL_REJECTED",
+            payload: {
+              coreCommandId,
+              reason: command.reason,
+              summary: correctionProposalSummaryToJson(
+                preview.summary,
+              ),
+            },
+          });
+          built.push(proposal);
+          state = proposal.nextState;
+        }
+        break;
+      case "ENDORSE_CORRECTION":
+        this.requireWorkflow(state, "correction-endorsement");
+        if (command.proposalId !== state.correctionPendingProposalId) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The correction endorsement must refer to the active proposal.",
+          );
+        }
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PRODUCER",
+          );
+          const coreCommandId = `${command.commandId}_ENDORSE`;
+          const preview =
+            await this.adapter.endorseCorrectionProposal({
+              runId: command.runId,
+              proposalId: command.proposalId,
+              coreCommandId,
+              eventSequence: state.version + 1,
+              simulation: state.simulation,
+              scenarioSeed: state.scenarioSeed,
+            });
+          const endorsement = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSEMENT_RECORDED"
+              : "ENDORSEMENT_REJECTED",
+            payload: {
+              actionId: "RECORD_CORRECTION",
+              coreCommandId,
+              proposalId: command.proposalId,
+              summary: endorsementSummaryToJson(
+                preview.summary,
+              ),
+            },
+          });
+          built.push(endorsement);
+          state = endorsement.nextState;
+          if (
+            preview.summary.isAccepted &&
+            preview.summary.policySatisfied
+          ) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_CORRECTION_ENDORSEMENT_SATISFIED",
+              sourceEventIds: [endorsement.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+          }
+        }
+        break;
+      case "COMMIT_CORRECTION":
+        this.requireWorkflow(state, "correction-commit");
+        if (command.proposalId !== state.correctionPendingProposalId) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The correction commitment must refer to the active proposal.",
+          );
+        }
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PRODUCER",
+          );
+          const coreCommandId = `${command.commandId}_COMMIT`;
+          const preview = this.adapter.commitCorrectionProposal({
+            runId: command.runId,
+            proposalId: command.proposalId,
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const commitment = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "ENDORSED_TRANSACTION_COMMITTED"
+              : "ENDORSED_TRANSACTION_REJECTED",
+            payload: {
+              actionId: "RECORD_CORRECTION",
+              coreCommandId,
+              proposalId: command.proposalId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(commitment);
+          state = commitment.nextState;
+          if (preview.summary.isAccepted) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_APPEND_ONLY_CORRECTION_COMMITTED",
+              sourceEventIds: [commitment.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+            const advanced = await this.buildEvent({
+              runId: command.runId,
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              eventType: "WORKFLOW_ADVANCED",
+              payload: {
+                workflowStep: "transformation-transaction",
+                contextId: "CTX_PROCESSOR",
+              },
+            });
+            built.push(advanced);
+            state = advanced.nextState;
+          }
+        }
+        break;
+      case "TRANSFORM_BATCH":
+        this.requireWorkflow(state, "transformation-transaction");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const coreCommandId = `${command.commandId}_TRANSFORM_BATCH`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "TRANSFORM_BATCH",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "TRANSFORM_BATCH",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+          if (preview.summary.isAccepted) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_TRANSFORMATION_PROVENANCE_CREATED",
+              sourceEventIds: [transaction.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+          }
+        }
+        break;
+      case "SUBMIT_KNOWLEDGE_DECISION":
+        {
+          const expectedDecisionId =
+            state.workflowStep === "transformation-knowledge"
+              ? "INT_TRANSFORMATION_PROVENANCE"
+              : state.workflowStep === "tamper-knowledge"
+                ? "INT_TAMPER_DEMONSTRATION"
+                : state.workflowStep ===
+                    "blockchain-necessity-decision"
+                  ? "INT_BLOCKCHAIN_NECESSITY"
+                  : null;
+          if (
+            expectedDecisionId === null ||
+            command.decisionId !== expectedDecisionId
+          ) {
+            throw new HostedRunCommandError(
+              "WORKFLOW_PRECONDITION_FAILED",
+              "This knowledge decision is not available at the current workflow step.",
+            );
+          }
+          const context = state.activeTrustedContext;
+          const decision = hostedKnowledgeDecision(
+            command.decisionId,
+            command.selectedOptionId,
+          );
+          const submitted = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "DECISION_SUBMITTED",
+            payload: {
+              decision: {
+                commandType: "SUBMIT_KNOWLEDGE_DECISION",
+                decisionId: decision.decisionId,
+                selectedOptionId: decision.selectedOptionId,
+              },
+            },
+          });
+          built.push(submitted);
+          state = submitted.nextState;
+          const evidenceRuleId =
+            decision.decisionId ===
+            "INT_TRANSFORMATION_PROVENANCE"
+              ? "RULE_TRANSFORMATION_PROVENANCE_RECOGNIZED"
+              : decision.decisionId ===
+                  "INT_TAMPER_DEMONSTRATION"
+                ? "RULE_TAMPER_EVIDENCE_INTERPRETED"
+                : "RULE_BLOCKCHAIN_SUITABILITY_RECOGNIZED";
+          if (decision.isAuthoredCorrect) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId,
+              sourceEventIds: [submitted.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+          }
+          if (
+            decision.decisionId ===
+            "INT_BLOCKCHAIN_NECESSITY"
+          ) {
+            const completed = await this.buildEvent({
+              runId: command.runId,
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              eventType: "RUN_COMPLETED",
+              payload: { outcome: "coffee-journey-complete" },
+            });
+            built.push(completed);
+            state = completed.nextState;
+          }
+        }
+        break;
+      case "PACKAGE_BATCH":
+        this.requireWorkflow(state, "packaging-transaction");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const coreCommandId = `${command.commandId}_PACKAGE_BATCH`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "PACKAGE_BATCH",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "PACKAGE_BATCH",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+        }
+        break;
+      case "TRANSFER_DISTRIBUTION_OWNERSHIP":
+        this.requireWorkflow(
+          state,
+          "distribution-ownership-transaction",
+        );
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_PROCESSOR",
+          );
+          const coreCommandId =
+            `${command.commandId}_TRANSFER_OWNERSHIP`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "TRANSFER_OWNERSHIP",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "TRANSFER_OWNERSHIP",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+        }
+        break;
+      case "DISPATCH_BATCH":
+        this.requireWorkflow(state, "dispatch-transaction");
+        {
+          const context = this.adapter.trustedContextForId(
+            "CTX_DISTRIBUTOR",
+          );
+          const coreCommandId = `${command.commandId}_DISPATCH_BATCH`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "DISPATCH_BATCH",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "DISPATCH_BATCH",
+              coreCommandId,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+          if (preview.summary.isAccepted) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_RETAIL_DISPATCH_RECORDED",
+              sourceEventIds: [transaction.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+            const advanced = await this.buildEvent({
+              runId: command.runId,
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              eventType: "WORKFLOW_ADVANCED",
+              payload: {
+                workflowStep: "tamper-demonstration",
+                contextId: "CTX_RETAILER",
+              },
+            });
+            built.push(advanced);
+            state = advanced.nextState;
+          }
+        }
+        break;
+      case "RUN_TAMPER_DEMONSTRATION":
+        this.requireWorkflow(state, "tamper-demonstration");
+        {
+          const context =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const summary = this.adapter.tamperDemonstration(
+            state.simulation,
+          );
+          const demonstrated = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "DECISION_SUBMITTED",
+            payload: {
+              decision: {
+                commandType: "RUN_TAMPER_DEMONSTRATION",
+                transactionId: summary.transactionId,
+                tamperedQuantity: summary.tamperedQuantity,
+              },
+              summary: tamperSummaryToJson(summary),
+            },
+          });
+          built.push(demonstrated);
+          state = demonstrated.nextState;
+          const evidence = await this.buildCompetencyEvidenceEvent({
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            evidenceRuleId:
+              "RULE_TAMPER_DEMONSTRATION_COMPLETED",
+            sourceEventIds: [demonstrated.sequenced.eventId],
+          });
+          built.push(evidence);
+          state = evidence.nextState;
+        }
+        break;
+      case "SUBMIT_DATA_GOVERNANCE_DECISION":
+        this.requireWorkflow(state, "data-governance-decision");
+        {
+          const context =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const decision = hostedClassificationDecision(
+            command.decisionId,
+            command.categoryByItem,
+          );
+          const submitted = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "DECISION_SUBMITTED",
+            payload: {
+              decision: {
+                commandType:
+                  "SUBMIT_DATA_GOVERNANCE_DECISION",
+                decisionId: decision.decisionId,
+                categoryByItem: decision.categoryByItem,
+              },
+            },
+          });
+          built.push(submitted);
+          state = submitted.nextState;
+          if (decision.isAuthoredCorrect) {
+            const evidence = await this.buildCompetencyEvidenceEvent({
+              state,
+              principal: learner,
+              context,
+              commandId: command.commandId,
+              commandDigest: digest,
+              batchIndex: built.length,
+              evidenceRuleId:
+                "RULE_DATA_GOVERNANCE_CLASSIFIED",
+              sourceEventIds: [submitted.sequenced.eventId],
+            });
+            built.push(evidence);
+            state = evidence.nextState;
+          }
+        }
+        break;
+      case "SUBMIT_RECALL_SCOPE_DECISION":
+        this.requireWorkflow(state, "recall-scope-decision");
+        {
+          const context =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const decision = hostedRecallScopeDecision(
+            command.selectedAssetIds,
+          );
+          const submitted = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "DECISION_SUBMITTED",
+            payload: {
+              decision: {
+                commandType: "SUBMIT_RECALL_SCOPE_DECISION",
+                decisionId: decision.decisionId,
+                selectedOptionIds: decision.selectedAssetIds,
+              },
+            },
+          });
+          built.push(submitted);
+          state = submitted.nextState;
+          const evidence = await this.buildCompetencyEvidenceEvent({
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            evidenceRuleId: "RULE_RECALL_SCOPE_SUBMITTED",
+            sourceEventIds: [submitted.sequenced.eventId],
+          });
+          built.push(evidence);
+          state = evidence.nextState;
+        }
+        break;
+      case "REQUEST_RECALL_HANDOFF":
+        if (
+          state.workflowStep !== "recall-transaction" &&
+          state.workflowStep !== "recall-handoff"
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The regulator handoff is not available at the current workflow step.",
+          );
+        }
+        {
+          const context = state.activeTrustedContext;
+          const advanced = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "WORKFLOW_ADVANCED",
+            payload: {
+              workflowStep: "recall-authorized-transaction",
+              contextId: "CTX_REGULATOR",
+            },
+          });
+          built.push(advanced);
+          state = advanced.nextState;
+        }
+        break;
+      case "SUBMIT_RECALL_TRANSACTION":
+      case "RESUBMIT_AUTHORIZED_RECALL":
+        if (
+          command.commandType === "SUBMIT_RECALL_TRANSACTION"
+            ? (state.workflowStep !== "recall-transaction" &&
+                state.workflowStep !==
+                  "recall-authorized-transaction") ||
+              state.recallStatus !== "not-started"
+            : state.workflowStep !==
+                  "recall-authorized-transaction" ||
+              state.recallStatus !== "rejected"
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The recall submission is not available at the current workflow step.",
+          );
+        }
+        if (state.recallScopeDecision === null) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "A recall transaction requires the recorded initial scope.",
+          );
+        }
+        {
+          const context = state.activeTrustedContext;
+          const coreCommandId = `${command.commandId}_RECALL_BATCH`;
+          const preview = await this.adapter.executeAction({
+            runId: command.runId,
+            actionId: "RECALL_BATCH",
+            coreCommandId,
+            eventSequence: state.version + 1,
+            simulation: state.simulation,
+            trustedContext: context,
+            scenarioSeed: state.scenarioSeed,
+            selectedAssetIds:
+              state.recallScopeDecision.selectedAssetIds,
+          });
+          const transaction = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: preview.summary.isAccepted
+              ? "TRANSACTION_COMMITTED"
+              : "TRANSACTION_REJECTED",
+            payload: {
+              actionId: "RECALL_BATCH",
+              coreCommandId,
+              submissionType: command.commandType,
+              summary: summaryToJson(preview.summary),
+            },
+          });
+          built.push(transaction);
+          state = transaction.nextState;
+          const evidence = await this.buildCompetencyEvidenceEvent({
+            state,
+            principal: learner,
+            context,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            evidenceRuleId: preview.summary.isAccepted
+              ? "RULE_AUTHORIZED_RECALL_COMMITTED"
+              : "RULE_UNAUTHORIZED_RECALL_RETAINED",
+            sourceEventIds: [transaction.sequenced.eventId],
+          });
+          built.push(evidence);
+          state = evidence.nextState;
         }
         break;
     }
@@ -748,7 +2278,11 @@ export class HostedStage3RunService {
         );
         return {
           rubricId,
+          rubricVersion: rubric.version,
           criterionId: criterion.criterionId,
+          allowedLevelValues: rubric.levels.map(
+            (level) => level.value,
+          ),
           evidenceRuleIds: criterion.evidenceRuleIds,
           observedEvidenceIds: observed.map(
             (evidence) => evidence.competencyEvidenceId,
@@ -888,6 +2422,29 @@ export class HostedStage3RunService {
           decision: null,
           transactionStatus: "not-started",
           transactions: [],
+          custodyStatus: "not-started",
+          custodyProposal: null,
+          custodyEndorsement: null,
+          pendingProposalId: null,
+          transportStatus: "not-started",
+          receiptStatus: "not-started",
+          ownershipStatus: "not-started",
+          discrepancyDecision: null,
+          discrepancyMitigationStatus: "not-started",
+          correctionStatus: "not-started",
+          correctionProposal: null,
+          correctionEndorsement: null,
+          correctionPendingProposalId: null,
+          transformationStatus: "not-started",
+          knowledgeDecisions: {},
+          packagingStatus: "not-started",
+          distributionOwnershipStatus: "not-started",
+          dispatchStatus: "not-started",
+          tamperDemonstration: null,
+          dataGovernanceDecision: null,
+          recallScopeDecision: null,
+          recallStatus: "not-started",
+          recallHandoffStatus: "not-started",
           competencyEvidence: [],
           simulation: this.adapter.createInitialSimulation(),
         };
@@ -918,8 +2475,399 @@ export class HostedStage3RunService {
           workflowStep: "certificate-decision",
         });
       }
-      case "DECISION_SUBMITTED": {
+      case "DECISION_SUBMITTED":
+      case "DECISION_REJECTED": {
         const state = this.stateOrThrow(current);
+        const decisionValue = event.payload.decision;
+        if (!isJsonObject(decisionValue)) {
+          throw new HostedRunCommandError(
+            "INVALID_COMMAND",
+            "Decision event is missing its structured decision.",
+          );
+        }
+        const commandType = requiredString(
+          decisionValue.commandType,
+          "decision.commandType",
+        );
+        if (commandType === "SUBMIT_DISCREPANCY_DECISION") {
+          const decision = discrepancyDecisionFromPayload(
+            event.payload,
+          );
+          const shouldBeRejected =
+            event.eventType === "DECISION_REJECTED";
+          if (
+            decision.isRejectedAttempt !== shouldBeRejected ||
+            state.workflowStep !== "discrepancy-decision"
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Discrepancy decision outcome does not match deterministic replay.",
+            );
+          }
+          const trusted =
+            this.adapter.trustedContextForId("CTX_PROCESSOR");
+          const decisionCommand = {
+            metadata: {
+              commandId: event.causationId,
+              sessionId: state.runId,
+              actorId: trusted.actorId,
+              organizationId: trusted.organizationId,
+              roleId: trusted.roleId,
+              submittedAt: event.serverTimestampUtc,
+              expectedStateVersions: {},
+            },
+            payload: decision.decision,
+          };
+          const outcome = handleSimulationDecision({
+            runtime: state.simulation,
+            command: decisionCommand,
+            trustedContext: trusted,
+            isAccepted: !decision.isRejectedAttempt,
+            decisionType: "SUBMIT_DISCREPANCY_DECISION",
+            decisionPayload: decision.decision,
+            rejectionFailures: [
+              {
+                code: "DOMAIN_RULE_FAILED",
+                messageKey: "validation.appendOnlyRequired",
+              },
+            ],
+            environment: {
+              clock: new FixedClock(event.serverTimestampUtc),
+              random: new SeededRandomSource(
+                `${state.scenarioSeed}:${event.sequenceNumber}`,
+              ),
+              ids: new SequenceIdGenerator(
+                event.sequenceNumber * 100,
+              ),
+            },
+          });
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: decision.requiresMitigation
+              ? "discrepancy-mitigation"
+              : "correction-proposal",
+            activeTrustedContext: trusted,
+            discrepancyDecision: decision,
+            discrepancyMitigationStatus:
+              decision.requiresMitigation
+                ? "required"
+                : "not-required",
+            simulation: outcome.state,
+          };
+        }
+        if (commandType === "RUN_TAMPER_DEMONSTRATION") {
+          if (
+            event.eventType !== "DECISION_SUBMITTED" ||
+            state.workflowStep !== "tamper-demonstration"
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Tamper demonstration is not valid for the current workflow.",
+            );
+          }
+          const expected = tamperSummaryFromPayload(event.payload);
+          const actual = this.adapter.tamperDemonstration(
+            state.simulation,
+          );
+          if (
+            canonicalize(expected) !== canonicalize(actual) ||
+            requiredString(
+              decisionValue.transactionId,
+              "decision.transactionId",
+            ) !== actual.transactionId ||
+            requiredNumber(
+              decisionValue.tamperedQuantity,
+              "decision.tamperedQuantity",
+            ) !== actual.tamperedQuantity
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Tamper demonstration differs from deterministic replay.",
+            );
+          }
+          const trusted =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const payload = {
+            commandType: "RUN_TAMPER_DEMONSTRATION" as const,
+            transactionId: actual.transactionId,
+            tamperedQuantity: actual.tamperedQuantity,
+          };
+          const command = {
+            metadata: {
+              commandId: event.causationId,
+              sessionId: state.runId,
+              actorId: trusted.actorId,
+              organizationId: trusted.organizationId,
+              roleId: trusted.roleId,
+              submittedAt: event.serverTimestampUtc,
+              expectedStateVersions: {},
+            },
+            payload,
+          };
+          const outcome = handleSimulationDecision({
+            runtime: state.simulation,
+            command,
+            trustedContext: trusted,
+            isAccepted: true,
+            decisionType: payload.commandType,
+            decisionPayload: payload,
+            environment: {
+              clock: new FixedClock(event.serverTimestampUtc),
+              random: new SeededRandomSource(
+                `${state.scenarioSeed}:${event.sequenceNumber}`,
+              ),
+              ids: new SequenceIdGenerator(
+                event.sequenceNumber * 100,
+              ),
+            },
+          });
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: "tamper-knowledge",
+            activeTrustedContext: trusted,
+            tamperDemonstration: actual,
+            simulation: outcome.state,
+          };
+        }
+        if (
+          commandType === "SUBMIT_DATA_GOVERNANCE_DECISION"
+        ) {
+          if (
+            event.eventType !== "DECISION_SUBMITTED" ||
+            state.workflowStep !== "data-governance-decision"
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Data-governance decision is not valid for the current workflow.",
+            );
+          }
+          const categoryValue = decisionValue.categoryByItem;
+          if (!isJsonObject(categoryValue)) {
+            throw new HostedRunCommandError(
+              "INVALID_COMMAND",
+              "Data-governance decision is missing its classifications.",
+            );
+          }
+          const categoryByItem = Object.fromEntries(
+            Object.entries(categoryValue).map(
+              ([itemId, categoryId]) => [
+                itemId,
+                requiredString(
+                  categoryId,
+                  `decision.categoryByItem.${itemId}`,
+                ),
+              ],
+            ),
+          );
+          const decision = hostedClassificationDecision(
+            requiredString(
+              decisionValue.decisionId,
+              "decision.decisionId",
+            ),
+            categoryByItem,
+          );
+          const trusted =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const payload = {
+            commandType:
+              "SUBMIT_DATA_GOVERNANCE_DECISION" as const,
+            decisionId: decision.decisionId,
+            categoryByItem: decision.categoryByItem,
+          };
+          const command = {
+            metadata: {
+              commandId: event.causationId,
+              sessionId: state.runId,
+              actorId: trusted.actorId,
+              organizationId: trusted.organizationId,
+              roleId: trusted.roleId,
+              submittedAt: event.serverTimestampUtc,
+              expectedStateVersions: {},
+            },
+            payload,
+          };
+          const outcome = handleSimulationDecision({
+            runtime: state.simulation,
+            command,
+            trustedContext: trusted,
+            isAccepted: true,
+            decisionType: payload.commandType,
+            decisionPayload: payload,
+            environment: {
+              clock: new FixedClock(event.serverTimestampUtc),
+              random: new SeededRandomSource(
+                `${state.scenarioSeed}:${event.sequenceNumber}`,
+              ),
+              ids: new SequenceIdGenerator(
+                event.sequenceNumber * 100,
+              ),
+            },
+          });
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: "recall-scope-decision",
+            activeTrustedContext: trusted,
+            dataGovernanceDecision: decision,
+            simulation: outcome.state,
+          };
+        }
+        if (commandType === "SUBMIT_RECALL_SCOPE_DECISION") {
+          if (
+            event.eventType !== "DECISION_SUBMITTED" ||
+            state.workflowStep !== "recall-scope-decision"
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Recall-scope decision is not valid for the current workflow.",
+            );
+          }
+          const decision = hostedRecallScopeDecision(
+            requiredStringArray(
+              decisionValue.selectedOptionIds,
+              "decision.selectedOptionIds",
+            ),
+          );
+          const trusted =
+            this.adapter.trustedContextForId("CTX_RETAILER");
+          const payload = {
+            commandType:
+              "SUBMIT_RECALL_SCOPE_DECISION" as const,
+            decisionId: decision.decisionId,
+            selectedOptionIds: decision.selectedAssetIds,
+          };
+          const command = {
+            metadata: {
+              commandId: event.causationId,
+              sessionId: state.runId,
+              actorId: trusted.actorId,
+              organizationId: trusted.organizationId,
+              roleId: trusted.roleId,
+              submittedAt: event.serverTimestampUtc,
+              expectedStateVersions: {},
+            },
+            payload,
+          };
+          const outcome = handleSimulationDecision({
+            runtime: state.simulation,
+            command,
+            trustedContext: trusted,
+            isAccepted: true,
+            decisionType: payload.commandType,
+            decisionPayload: payload,
+            environment: {
+              clock: new FixedClock(event.serverTimestampUtc),
+              random: new SeededRandomSource(
+                `${state.scenarioSeed}:${event.sequenceNumber}`,
+              ),
+              ids: new SequenceIdGenerator(
+                event.sequenceNumber * 100,
+              ),
+            },
+          });
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: "recall-transaction",
+            activeTrustedContext: trusted,
+            recallScopeDecision: decision,
+            simulation: outcome.state,
+          };
+        }
+        if (commandType === "SUBMIT_KNOWLEDGE_DECISION") {
+          const expectedDecisionId =
+            state.workflowStep === "transformation-knowledge"
+              ? "INT_TRANSFORMATION_PROVENANCE"
+              : state.workflowStep === "tamper-knowledge"
+                ? "INT_TAMPER_DEMONSTRATION"
+                : state.workflowStep ===
+                    "blockchain-necessity-decision"
+                  ? "INT_BLOCKCHAIN_NECESSITY"
+                  : null;
+          const decision = hostedKnowledgeDecision(
+            requiredString(
+              decisionValue.decisionId,
+              "decision.decisionId",
+            ),
+            requiredString(
+              decisionValue.selectedOptionId,
+              "decision.selectedOptionId",
+            ),
+          );
+          if (
+            event.eventType !== "DECISION_SUBMITTED" ||
+            expectedDecisionId === null ||
+            decision.decisionId !== expectedDecisionId
+          ) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Knowledge decision is not authored for this workflow step.",
+            );
+          }
+          const trusted = state.activeTrustedContext;
+          const decisionCommand = {
+            metadata: {
+              commandId: event.causationId,
+              sessionId: state.runId,
+              actorId: trusted.actorId,
+              organizationId: trusted.organizationId,
+              roleId: trusted.roleId,
+              submittedAt: event.serverTimestampUtc,
+              expectedStateVersions: {},
+            },
+            payload: {
+              commandType: "SUBMIT_KNOWLEDGE_DECISION" as const,
+              decisionId: decision.decisionId,
+              selectedOptionId: decision.selectedOptionId,
+            },
+          };
+          const outcome = handleSimulationDecision({
+            runtime: state.simulation,
+            command: decisionCommand,
+            trustedContext: trusted,
+            isAccepted: true,
+            decisionType: "SUBMIT_KNOWLEDGE_DECISION",
+            decisionPayload: decisionCommand.payload,
+            environment: {
+              clock: new FixedClock(event.serverTimestampUtc),
+              random: new SeededRandomSource(
+                `${state.scenarioSeed}:${event.sequenceNumber}`,
+              ),
+              ids: new SequenceIdGenerator(
+                event.sequenceNumber * 100,
+              ),
+            },
+          });
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep:
+              decision.decisionId ===
+              "INT_TRANSFORMATION_PROVENANCE"
+                ? "packaging-transaction"
+                : decision.decisionId ===
+                    "INT_TAMPER_DEMONSTRATION"
+                  ? "data-governance-decision"
+                  : "blockchain-necessity-decision",
+            activeTrustedContext: trusted,
+            knowledgeDecisions: {
+              ...state.knowledgeDecisions,
+              [decision.decisionId]: decision,
+            },
+            simulation: outcome.state,
+          };
+        }
+        if (
+          commandType !== "SUBMIT_CERTIFICATE_DECISION" ||
+          event.eventType !== "DECISION_SUBMITTED"
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Decision event contains an unsupported command type.",
+          );
+        }
         const decision = decisionFromPayload(event.payload);
         const decisionCommand = {
           metadata: {
@@ -959,10 +2907,401 @@ export class HostedStage3RunService {
           simulation: outcome.state,
         };
       }
+      case "MITIGATION_RECORDED": {
+        const state = this.stateOrThrow(current);
+        if (
+          state.workflowStep !== "discrepancy-mitigation" ||
+          requiredString(
+            event.payload.mitigationType,
+            "mitigationType",
+          ) !== "INVESTIGATE_DISCREPANCY"
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Hosted mitigation event is not valid for the current workflow.",
+          );
+        }
+        const trusted =
+          this.adapter.trustedContextForId("CTX_PROCESSOR");
+        const payload: MitigationDecisionCommand = {
+          commandType: "INVESTIGATE_DISCREPANCY",
+        };
+        const command = {
+          metadata: {
+            commandId: event.causationId,
+            sessionId: state.runId,
+            actorId: trusted.actorId,
+            organizationId: trusted.organizationId,
+            roleId: trusted.roleId,
+            submittedAt: event.serverTimestampUtc,
+            expectedStateVersions: {},
+          },
+          payload,
+        };
+        const outcome = handleSimulationDecision({
+          runtime: state.simulation,
+          command,
+          trustedContext: trusted,
+          isAccepted: true,
+          decisionType: payload.commandType,
+          decisionPayload: payload,
+          environment: {
+            clock: new FixedClock(event.serverTimestampUtc),
+            random: new SeededRandomSource(
+              `${state.scenarioSeed}:${event.sequenceNumber}`,
+            ),
+            ids: new SequenceIdGenerator(event.sequenceNumber * 100),
+          },
+        });
+        return {
+          ...state,
+          version: event.sequenceNumber,
+          workflowStep: "correction-proposal",
+          activeTrustedContext: trusted,
+          discrepancyMitigationStatus: "completed",
+          simulation: outcome.state,
+        };
+      }
       case "TRANSACTION_PROPOSED":
         return this.updateRequiredState(current, event, {
           transactionStatus: "proposed",
         });
+      case "WORKFLOW_ADVANCED": {
+        const state = this.stateOrThrow(current);
+        const workflowStep = requiredString(
+          event.payload.workflowStep,
+          "workflowStep",
+        );
+        const contextId = requiredString(
+          event.payload.contextId,
+          "contextId",
+        );
+        const isSupported =
+          (workflowStep === "custody-proposal" &&
+            contextId === "CTX_PRODUCER") ||
+          (workflowStep === "receipt-transaction" &&
+            contextId === "CTX_PROCESSOR") ||
+          (workflowStep === "transformation-transaction" &&
+            contextId === "CTX_PROCESSOR") ||
+          (workflowStep === "tamper-demonstration" &&
+            contextId === "CTX_RETAILER" &&
+            state.workflowStep === "dispatch-transaction") ||
+          (workflowStep === "recall-authorized-transaction" &&
+            contextId === "CTX_REGULATOR" &&
+            (state.workflowStep === "recall-transaction" ||
+              state.workflowStep === "recall-handoff"));
+        if (!isSupported) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Hosted workflow advanced to an unsupported migration step.",
+          );
+        }
+        return this.updateRequiredState(current, event, {
+          workflowStep,
+          activeTrustedContext:
+            this.adapter.trustedContextForId(contextId),
+          ...(workflowStep === "recall-authorized-transaction"
+            ? { recallHandoffStatus: "completed" as const }
+            : {}),
+        });
+      }
+      case "ENDORSEMENT_PROPOSAL_CREATED":
+      case "ENDORSEMENT_PROPOSAL_REJECTED": {
+        const state = this.stateOrThrow(current);
+        const coreCommandId = requiredString(
+          event.payload.coreCommandId,
+          "coreCommandId",
+        );
+        if (state.workflowStep === "correction-proposal") {
+          const reason = requiredString(
+            event.payload.reason,
+            "reason",
+          );
+          this.validateCorrectionReason(reason);
+          const executed =
+            await this.adapter.createCorrectionProposal({
+              runId: state.runId,
+              coreCommandId,
+              eventSequence: event.sequenceNumber,
+              simulation: state.simulation,
+              scenarioSeed: state.scenarioSeed,
+              reason,
+            });
+          const expected = correctionProposalSummaryFromPayload(
+            event.payload,
+          );
+          assertReplayEvidenceMatches(
+            expected,
+            executed.summary,
+            "correction proposal",
+          );
+          const shouldBeAccepted =
+            event.eventType === "ENDORSEMENT_PROPOSAL_CREATED";
+          if (executed.summary.isAccepted !== shouldBeAccepted) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Correction proposal event type does not match replayed acceptance.",
+            );
+          }
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: executed.summary.isAccepted
+              ? "correction-endorsement"
+              : "correction-proposal",
+            correctionStatus: executed.summary.isAccepted
+              ? "awaiting-endorsement"
+              : "rejected",
+            correctionProposal: executed.summary,
+            correctionPendingProposalId:
+              executed.summary.proposalId,
+            simulation: executed.simulation,
+          };
+        }
+        if (state.workflowStep !== "custody-proposal") {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Proposal event is not valid for the current workflow.",
+          );
+        }
+        const alsoTransfersOwnership = requiredBoolean(
+          event.payload.alsoTransfersOwnership,
+          "alsoTransfersOwnership",
+        );
+        const executed = await this.adapter.createCustodyProposal({
+          runId: state.runId,
+          coreCommandId,
+          eventSequence: event.sequenceNumber,
+          simulation: state.simulation,
+          scenarioSeed: state.scenarioSeed,
+          alsoTransfersOwnership,
+        });
+        const expected = custodyProposalSummaryFromPayload(
+          event.payload,
+        );
+        assertReplayEvidenceMatches(
+          expected,
+          executed.summary,
+          "custody proposal",
+        );
+        const shouldBeAccepted =
+          event.eventType === "ENDORSEMENT_PROPOSAL_CREATED";
+        if (executed.summary.isAccepted !== shouldBeAccepted) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Custody proposal event type does not match replayed acceptance.",
+          );
+        }
+        return {
+          ...state,
+          version: event.sequenceNumber,
+          workflowStep: executed.summary.isAccepted
+            ? "custody-endorsement"
+            : "custody-proposal",
+          custodyStatus: executed.summary.isAccepted
+            ? "awaiting-endorsement"
+            : "rejected",
+          custodyProposal: executed.summary,
+          pendingProposalId: executed.summary.proposalId,
+          simulation: executed.simulation,
+        };
+      }
+      case "ENDORSEMENT_RECORDED":
+      case "ENDORSEMENT_REJECTED": {
+        const state = this.stateOrThrow(current);
+        const proposalId = requiredString(
+          event.payload.proposalId,
+          "proposalId",
+        );
+        const coreCommandId = requiredString(
+          event.payload.coreCommandId,
+          "coreCommandId",
+        );
+        if (state.workflowStep === "correction-endorsement") {
+          const executed =
+            await this.adapter.endorseCorrectionProposal({
+              runId: state.runId,
+              proposalId,
+              coreCommandId,
+              eventSequence: event.sequenceNumber,
+              simulation: state.simulation,
+              scenarioSeed: state.scenarioSeed,
+            });
+          const expected = endorsementSummaryFromPayload(
+            event.payload,
+          );
+          assertReplayEvidenceMatches(
+            expected,
+            executed.summary,
+            "correction endorsement",
+          );
+          const shouldBeAccepted =
+            event.eventType === "ENDORSEMENT_RECORDED";
+          if (executed.summary.isAccepted !== shouldBeAccepted) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Correction endorsement event type does not match replayed acceptance.",
+            );
+          }
+          const policySatisfied =
+            executed.summary.isAccepted &&
+            executed.summary.policySatisfied;
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            workflowStep: policySatisfied
+              ? "correction-commit"
+              : "correction-endorsement",
+            correctionStatus: policySatisfied
+              ? "policy-satisfied"
+              : "awaiting-endorsement",
+            correctionEndorsement: executed.summary,
+            activeTrustedContext:
+              this.adapter.trustedContextForId("CTX_PRODUCER"),
+            simulation: executed.simulation,
+          };
+        }
+        if (state.workflowStep !== "custody-endorsement") {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Endorsement event is not valid for the current workflow.",
+          );
+        }
+        const executed = await this.adapter.endorseCustodyProposal({
+          runId: state.runId,
+          proposalId,
+          coreCommandId,
+          eventSequence: event.sequenceNumber,
+          simulation: state.simulation,
+          scenarioSeed: state.scenarioSeed,
+        });
+        const expected = endorsementSummaryFromPayload(event.payload);
+        assertReplayEvidenceMatches(
+          expected,
+          executed.summary,
+          "custody endorsement",
+        );
+        const shouldBeAccepted =
+          event.eventType === "ENDORSEMENT_RECORDED";
+        if (executed.summary.isAccepted !== shouldBeAccepted) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Custody endorsement event type does not match replayed acceptance.",
+          );
+        }
+        const policySatisfied =
+          executed.summary.isAccepted &&
+          executed.summary.policySatisfied;
+        return {
+          ...state,
+          version: event.sequenceNumber,
+          workflowStep: policySatisfied
+            ? "custody-commit"
+            : "custody-endorsement",
+          custodyStatus: policySatisfied
+            ? "policy-satisfied"
+            : "awaiting-endorsement",
+          custodyEndorsement: executed.summary,
+          activeTrustedContext:
+            this.adapter.trustedContextForId("CTX_LOGISTICS"),
+          simulation: executed.simulation,
+        };
+      }
+      case "ENDORSED_TRANSACTION_COMMITTED":
+      case "ENDORSED_TRANSACTION_REJECTED": {
+        const state = this.stateOrThrow(current);
+        const actionId = requiredString(
+          event.payload.actionId,
+          "actionId",
+        );
+        const proposalId = requiredString(
+          event.payload.proposalId,
+          "proposalId",
+        );
+        const coreCommandId = requiredString(
+          event.payload.coreCommandId,
+          "coreCommandId",
+        );
+        if (actionId === "RECORD_CORRECTION") {
+          if (state.workflowStep !== "correction-commit") {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Correction commitment event is not valid for the current workflow.",
+            );
+          }
+          const executed =
+            this.adapter.commitCorrectionProposal({
+              runId: state.runId,
+              proposalId,
+              coreCommandId,
+              eventSequence: event.sequenceNumber,
+              simulation: state.simulation,
+              scenarioSeed: state.scenarioSeed,
+            });
+          const expected = summaryFromPayload(event.payload);
+          assertSummaryMatches(expected, executed.summary);
+          const shouldBeAccepted =
+            event.eventType ===
+            "ENDORSED_TRANSACTION_COMMITTED";
+          if (executed.summary.isAccepted !== shouldBeAccepted) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "Endorsed correction event type does not match replayed acceptance.",
+            );
+          }
+          return {
+            ...state,
+            version: event.sequenceNumber,
+            correctionStatus: executed.summary.isAccepted
+              ? "committed"
+              : "policy-satisfied",
+            transactions: [
+              ...state.transactions,
+              executed.summary,
+            ],
+            simulation: executed.simulation,
+          };
+        }
+        if (
+          actionId !== "TRANSFER_CUSTODY" ||
+          state.workflowStep !== "custody-commit"
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Endorsed transaction event is not valid for the current workflow.",
+          );
+        }
+        const executed = this.adapter.commitCustodyProposal({
+          runId: state.runId,
+          proposalId,
+          coreCommandId,
+          eventSequence: event.sequenceNumber,
+          simulation: state.simulation,
+          scenarioSeed: state.scenarioSeed,
+        });
+        const expected = summaryFromPayload(event.payload);
+        assertSummaryMatches(expected, executed.summary);
+        const shouldBeAccepted =
+          event.eventType === "ENDORSED_TRANSACTION_COMMITTED";
+        if (executed.summary.isAccepted !== shouldBeAccepted) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Endorsed custody event type does not match replayed acceptance.",
+          );
+        }
+        return {
+          ...state,
+          version: event.sequenceNumber,
+          workflowStep: executed.summary.isAccepted
+            ? "transport-transaction"
+            : "custody-commit",
+          custodyStatus: executed.summary.isAccepted
+            ? "committed"
+            : "policy-satisfied",
+          transactions: [...state.transactions, executed.summary],
+          simulation: executed.simulation,
+        };
+      }
       case "TRANSACTION_COMMITTED":
       case "TRANSACTION_REJECTED": {
         const state = this.stateOrThrow(current);
@@ -974,6 +3313,13 @@ export class HostedStage3RunService {
           event.payload.coreCommandId,
           "coreCommandId",
         );
+        const isRecall = actionId === "RECALL_BATCH";
+        if (isRecall && state.recallScopeDecision === null) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Recall transaction event has no recorded scope.",
+          );
+        }
         const executed = await this.adapter.executeAction({
           runId: state.runId,
           actionId,
@@ -982,6 +3328,12 @@ export class HostedStage3RunService {
           simulation: state.simulation,
           trustedContext: state.activeTrustedContext,
           scenarioSeed: state.scenarioSeed,
+          ...(isRecall
+            ? {
+                selectedAssetIds:
+                  state.recallScopeDecision?.selectedAssetIds ?? [],
+              }
+            : {}),
         });
         const expected = summaryFromPayload(event.payload);
         assertSummaryMatches(expected, executed.summary);
@@ -993,16 +3345,94 @@ export class HostedStage3RunService {
             "Transaction event type does not match replayed acceptance.",
           );
         }
+        const isReceipt = actionId === "RECEIVE_BATCH";
+        const isOwnership = actionId === "PURCHASE_ON_RECEIPT";
+        const isTransformation = actionId === "TRANSFORM_BATCH";
+        const isPackaging = actionId === "PACKAGE_BATCH";
+        const isDistributionOwnership =
+          actionId === "TRANSFER_OWNERSHIP";
+        const isDispatch = actionId === "DISPATCH_BATCH";
         return {
           ...state,
           version: event.sequenceNumber,
+          workflowStep:
+            isReceipt && executed.summary.isAccepted
+              ? "ownership-transaction"
+              : isOwnership && executed.summary.isAccepted
+                ? "discrepancy-decision"
+                : isTransformation && executed.summary.isAccepted
+                  ? "transformation-knowledge"
+                  : isPackaging && executed.summary.isAccepted
+                    ? "distribution-ownership-transaction"
+                    : isDistributionOwnership &&
+                        executed.summary.isAccepted
+                      ? "dispatch-transaction"
+                      : isRecall
+                        ? executed.summary.isAccepted
+                          ? "blockchain-necessity-decision"
+                          : "recall-handoff"
+                : state.workflowStep,
+          activeTrustedContext:
+            isReceipt && executed.summary.isAccepted
+              ? this.adapter.trustedContextForId("CTX_PRODUCER")
+              : isOwnership && executed.summary.isAccepted
+                ? this.adapter.trustedContextForId("CTX_PROCESSOR")
+                : isDistributionOwnership &&
+                    executed.summary.isAccepted
+                  ? this.adapter.trustedContextForId(
+                      "CTX_DISTRIBUTOR",
+                    )
+                : state.activeTrustedContext,
           transactionStatus:
-            executed.summary.isAccepted &&
-            actionId === "ISSUE_CERTIFICATE"
+            actionId === "RECORD_TRANSPORT"
+              ? state.transactionStatus
+              : executed.summary.isAccepted &&
+                  actionId === "ISSUE_CERTIFICATE"
+                ? "committed"
+                : executed.summary.isAccepted
+                  ? "proposed"
+                  : "rejected",
+          transportStatus:
+            actionId === "RECORD_TRANSPORT"
+              ? executed.summary.isAccepted
+                ? "committed"
+                : "rejected"
+              : state.transportStatus,
+          receiptStatus: isReceipt
+            ? executed.summary.isAccepted
               ? "committed"
-              : executed.summary.isAccepted
-                ? "proposed"
-                : "rejected",
+              : "rejected"
+            : state.receiptStatus,
+          ownershipStatus: isOwnership
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.ownershipStatus,
+          transformationStatus: isTransformation
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.transformationStatus,
+          packagingStatus: isPackaging
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.packagingStatus,
+          distributionOwnershipStatus: isDistributionOwnership
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.distributionOwnershipStatus,
+          dispatchStatus: isDispatch
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.dispatchStatus,
+          recallStatus: isRecall
+            ? executed.summary.isAccepted
+              ? "committed"
+              : "rejected"
+            : state.recallStatus,
           transactions: [...state.transactions, executed.summary],
           simulation: executed.simulation,
         };
@@ -1249,6 +3679,44 @@ export class HostedStage3RunService {
     }
   }
 
+  private validateDiscrepancyDecision(
+    command: Extract<
+      HostedStage3Command,
+      { readonly commandType: "SUBMIT_DISCREPANCY_DECISION" }
+    >,
+  ): void {
+    if (
+      !DISCREPANCY_ACTIONS.includes(
+        command.decision
+          .action as (typeof DISCREPANCY_ACTIONS)[number],
+      ) ||
+      !DISCREPANCY_CAUSES.includes(
+        command.decision
+          .causeCode as (typeof DISCREPANCY_CAUSES)[number],
+      )
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Discrepancy decision contains an unsupported authored option.",
+      );
+    }
+  }
+
+  private validateCorrectionReason(reason: string): void {
+    const maximumBytes =
+      coffeeScenario.runtime.journalLimits
+        .correctionReasonMaximumUtf8Bytes;
+    if (
+      reason.trim().length < MINIMUM_CORRECTION_REASON_LENGTH ||
+      new TextEncoder().encode(reason).length > maximumBytes
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        `A correction reason of at least ${String(MINIMUM_CORRECTION_REASON_LENGTH)} characters and at most ${String(maximumBytes)} UTF-8 bytes is required.`,
+      );
+    }
+  }
+
   private packContentHash(): string {
     const contentHash = this.pack.publication?.contentHash;
     if (contentHash === undefined) {
@@ -1290,17 +3758,90 @@ export class HostedStage3RunService {
           content: item.content,
         } satisfies JsonValue,
       }));
-    const policyRecords = state.transactions.map((transaction, index) => ({
-      recordId: `POLICY_RESULT_${String(index + 1)}`,
-      visibleToRoleIds: [roleId],
-      value: {
-        actionId: transaction.actionId,
-        signatureValid: transaction.signatureValid,
-        recognizedIdentity: transaction.recognizedIdentity,
-        authorized: transaction.authorized,
-        validationRuleIds: transaction.validationRuleIds,
-      } satisfies JsonValue,
-    }));
+    const policyRecords = [
+      ...state.transactions.map((transaction, index) => ({
+        recordId: `POLICY_RESULT_${String(index + 1)}`,
+        visibleToRoleIds: [roleId],
+        value: {
+          actionId: transaction.actionId,
+          signatureValid: transaction.signatureValid,
+          recognizedIdentity: transaction.recognizedIdentity,
+          authorized: transaction.authorized,
+          validationRuleIds: transaction.validationRuleIds,
+        } satisfies JsonValue,
+      })),
+      ...(state.custodyProposal === null
+        ? []
+        : [
+            {
+              recordId: "CUSTODY_PROPOSAL_POLICY",
+              visibleToRoleIds: [roleId],
+              value: {
+                actionId: state.custodyProposal.actionId,
+                proposalId: state.custodyProposal.proposalId,
+                endorsementPolicyId:
+                  state.custodyProposal.endorsementPolicyId,
+                policySatisfied:
+                  state.custodyProposal.policySatisfied,
+                validationRuleIds:
+                  state.custodyProposal.validationRuleIds,
+              } satisfies JsonValue,
+            },
+          ]),
+      ...(state.custodyEndorsement === null
+        ? []
+        : [
+            {
+              recordId: "CUSTODY_ENDORSEMENT_POLICY",
+              visibleToRoleIds: [roleId],
+              value: {
+                proposalId: state.custodyEndorsement.proposalId,
+                organizationId:
+                  state.custodyEndorsement.organizationId,
+                policySatisfied:
+                  state.custodyEndorsement.policySatisfied,
+                validationRuleIds:
+                  state.custodyEndorsement.validationRuleIds,
+              } satisfies JsonValue,
+            },
+          ]),
+      ...(state.correctionProposal === null
+        ? []
+        : [
+            {
+              recordId: "CORRECTION_PROPOSAL_POLICY",
+              visibleToRoleIds: [roleId],
+              value: {
+                actionId: state.correctionProposal.actionId,
+                proposalId: state.correctionProposal.proposalId,
+                endorsementPolicyId:
+                  state.correctionProposal.endorsementPolicyId,
+                policySatisfied:
+                  state.correctionProposal.policySatisfied,
+                validationRuleIds:
+                  state.correctionProposal.validationRuleIds,
+              } satisfies JsonValue,
+            },
+          ]),
+      ...(state.correctionEndorsement === null
+        ? []
+        : [
+            {
+              recordId: "CORRECTION_ENDORSEMENT_POLICY",
+              visibleToRoleIds: [roleId],
+              value: {
+                proposalId:
+                  state.correctionEndorsement.proposalId,
+                organizationId:
+                  state.correctionEndorsement.organizationId,
+                policySatisfied:
+                  state.correctionEndorsement.policySatisfied,
+                validationRuleIds:
+                  state.correctionEndorsement.validationRuleIds,
+              } satisfies JsonValue,
+            },
+          ]),
+    ];
     const permittedActionIds =
       state.workflowStep === "certificate-evidence"
         ? ["INSPECT_EVIDENCE"]
@@ -1308,7 +3849,92 @@ export class HostedStage3RunService {
           ? ["SUBMIT_CERTIFICATE_DECISION"]
           : state.workflowStep === "certificate-transaction"
             ? ["SUBMIT_CERTIFICATE_TRANSACTION"]
-            : [];
+            : state.workflowStep === "custody-proposal"
+              ? ["CREATE_CUSTODY_TRANSFER_PROPOSAL"]
+              : state.workflowStep === "custody-endorsement"
+                ? ["ENDORSE_CUSTODY_TRANSFER"]
+                : state.workflowStep === "custody-commit"
+                  ? ["COMMIT_CUSTODY_TRANSFER"]
+                  : state.workflowStep === "transport-transaction"
+                    ? ["RECORD_TRANSPORT_CONDITION"]
+                    : state.workflowStep === "receipt-transaction"
+                      ? ["RECEIVE_BATCH"]
+                      : state.workflowStep === "ownership-transaction"
+                        ? ["PURCHASE_ON_RECEIPT"]
+                        : state.workflowStep === "discrepancy-decision"
+                          ? ["SUBMIT_DISCREPANCY_DECISION"]
+                          : state.workflowStep === "discrepancy-mitigation"
+                            ? ["INVESTIGATE_DISCREPANCY"]
+                            : state.workflowStep === "correction-proposal"
+                              ? ["CREATE_CORRECTION_PROPOSAL"]
+                              : state.workflowStep === "correction-endorsement"
+                                ? ["ENDORSE_CORRECTION"]
+                                : state.workflowStep === "correction-commit"
+                                  ? ["COMMIT_CORRECTION"]
+                                  : state.workflowStep ===
+                                      "transformation-transaction"
+                                    ? ["TRANSFORM_BATCH"]
+                                    : state.workflowStep ===
+                                        "transformation-knowledge"
+                                      ? ["SUBMIT_KNOWLEDGE_DECISION"]
+                                      : state.workflowStep ===
+                                          "packaging-transaction"
+                                        ? ["PACKAGE_BATCH"]
+                                        : state.workflowStep ===
+                                            "distribution-ownership-transaction"
+                                          ? [
+                                              "TRANSFER_DISTRIBUTION_OWNERSHIP",
+                                            ]
+                                          : state.workflowStep ===
+                                              "dispatch-transaction"
+                                            ? ["DISPATCH_BATCH"]
+                                            : state.workflowStep ===
+                                                "tamper-demonstration"
+                                              ? [
+                                                  "RUN_TAMPER_DEMONSTRATION",
+                                                ]
+                                              : state.workflowStep ===
+                                                  "tamper-knowledge"
+                                                ? [
+                                                    "SUBMIT_KNOWLEDGE_DECISION",
+                                                  ]
+                                                : state.workflowStep ===
+                                                    "data-governance-decision"
+                                                  ? [
+                                                      "SUBMIT_DATA_GOVERNANCE_DECISION",
+                                                    ]
+                                                  : state.workflowStep ===
+                                                      "recall-scope-decision"
+                                                    ? [
+                                                        "SUBMIT_RECALL_SCOPE_DECISION",
+                                                      ]
+                                                    : state.workflowStep ===
+                                                        "recall-transaction"
+                                                      ? [
+                                                          "SUBMIT_RECALL_TRANSACTION",
+                                                          "REQUEST_RECALL_HANDOFF",
+                                                        ]
+                                                      : state.workflowStep ===
+                                                          "recall-handoff"
+                                                        ? [
+                                                            "REQUEST_RECALL_HANDOFF",
+                                                          ]
+                                                        : state.workflowStep ===
+                                                            "recall-authorized-transaction"
+                                                          ? state.recallStatus ===
+                                                            "rejected"
+                                                            ? [
+                                                                "RESUBMIT_AUTHORIZED_RECALL",
+                                                              ]
+                                                            : [
+                                                                "SUBMIT_RECALL_TRANSACTION",
+                                                              ]
+                                                          : state.workflowStep ===
+                                                              "blockchain-necessity-decision"
+                                                            ? [
+                                                                "SUBMIT_KNOWLEDGE_DECISION",
+                                                              ]
+                                            : [];
     return {
       schemaVersion: "1.0.0" as const,
       runId: state.runId,
@@ -1329,6 +3955,100 @@ export class HostedStage3RunService {
           recordId: "TRANSACTION_STATUS",
           visibleToRoleIds: [roleId],
           value: state.transactionStatus,
+        },
+        {
+          recordId: "CUSTODY_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.custodyStatus,
+        },
+        {
+          recordId: "TRANSPORT_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.transportStatus,
+        },
+        {
+          recordId: "RECEIPT_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.receiptStatus,
+        },
+        {
+          recordId: "OWNERSHIP_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.ownershipStatus,
+        },
+        {
+          recordId: "DISCREPANCY_STATUS",
+          visibleToRoleIds: [roleId],
+          value: {
+            submitted: state.discrepancyDecision !== null,
+            rejected:
+              state.discrepancyDecision?.isRejectedAttempt ?? false,
+            mitigationStatus:
+              state.discrepancyMitigationStatus,
+          },
+        },
+        {
+          recordId: "CORRECTION_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.correctionStatus,
+        },
+        {
+          recordId: "TRANSFORMATION_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.transformationStatus,
+        },
+        {
+          recordId: "TRANSFORMATION_KNOWLEDGE_DECISION",
+          visibleToRoleIds: [roleId],
+          value:
+            state.knowledgeDecisions[
+              "INT_TRANSFORMATION_PROVENANCE"
+            ]?.selectedOptionId ?? null,
+        },
+        {
+          recordId: "PACKAGING_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.packagingStatus,
+        },
+        {
+          recordId: "DISTRIBUTION_OWNERSHIP_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.distributionOwnershipStatus,
+        },
+        {
+          recordId: "DISPATCH_STATUS",
+          visibleToRoleIds: [roleId],
+          value: state.dispatchStatus,
+        },
+        {
+          recordId: "TAMPER_DEMONSTRATION",
+          visibleToRoleIds: [roleId],
+          value:
+            state.tamperDemonstration === null
+              ? null
+              : tamperSummaryToJson(
+                  state.tamperDemonstration,
+                ),
+        },
+        {
+          recordId: "DATA_GOVERNANCE_DECISION",
+          visibleToRoleIds: [roleId],
+          value:
+            state.dataGovernanceDecision?.categoryByItem ?? null,
+        },
+        {
+          recordId: "RECALL_SCOPE_DECISION",
+          visibleToRoleIds: [roleId],
+          value:
+            state.recallScopeDecision?.selectedAssetIds ?? null,
+        },
+        {
+          recordId: "RECALL_STATUS",
+          visibleToRoleIds: [roleId],
+          value: {
+            status: state.recallStatus,
+            handoffStatus: state.recallHandoffStatus,
+          },
         },
       ],
       ledgerState: {
@@ -1358,9 +4078,39 @@ export class HostedStage3RunService {
       "certificate-evidence",
       "certificate-decision",
       "certificate-transaction",
+      "custody-proposal",
+      "custody-endorsement",
+      "custody-commit",
+      "transport-transaction",
+      "receipt-transaction",
+      "ownership-transaction",
+      "discrepancy-decision",
+      "discrepancy-mitigation",
+      "correction-proposal",
+      "correction-endorsement",
+      "correction-commit",
+      "transformation-transaction",
+      "transformation-knowledge",
+      "packaging-transaction",
+      "distribution-ownership-transaction",
+      "dispatch-transaction",
+      "tamper-demonstration",
+      "tamper-knowledge",
+      "data-governance-decision",
+      "recall-scope-decision",
+      "recall-transaction",
+      "recall-handoff",
+      "recall-authorized-transaction",
+      "blockchain-necessity-decision",
       "complete",
     ] as const;
     const index = ordered.indexOf(state.workflowStep);
-    return ordered.slice(0, index);
+    return ordered
+      .slice(0, index)
+      .filter(
+        (step) =>
+          step !== "discrepancy-mitigation" ||
+          state.discrepancyMitigationStatus === "completed",
+      );
   }
 }

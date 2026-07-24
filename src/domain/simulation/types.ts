@@ -82,6 +82,30 @@ export type ConsequentialDecisionCommand =
   | SubmitDiscrepancyDecisionCommand
   | MitigationDecisionCommand;
 
+export interface SubmitKnowledgeDecisionCommand {
+  readonly commandType: "SUBMIT_KNOWLEDGE_DECISION";
+  readonly decisionId: string;
+  readonly selectedOptionId: string;
+}
+
+export interface SubmitClassificationDecisionCommand {
+  readonly commandType: "SUBMIT_DATA_GOVERNANCE_DECISION";
+  readonly decisionId: string;
+  readonly categoryByItem: Readonly<Record<string, string>>;
+}
+
+export interface SubmitMultipleChoiceDecisionCommand {
+  readonly commandType: "SUBMIT_RECALL_SCOPE_DECISION";
+  readonly decisionId: string;
+  readonly selectedOptionIds: readonly string[];
+}
+
+export interface RunTamperDemonstrationCommand {
+  readonly commandType: "RUN_TAMPER_DEMONSTRATION";
+  readonly transactionId: string;
+  readonly tamperedQuantity: number;
+}
+
 export interface CreateTransactionProposalCommand {
   readonly commandType: "CREATE_TRANSACTION_PROPOSAL";
   readonly actionId: string;
@@ -112,6 +136,10 @@ export type EndorsementWorkflowCommand =
 export type SimulationCommandPayload =
   | SupplyChainCommand
   | ConsequentialDecisionCommand
+  | SubmitKnowledgeDecisionCommand
+  | SubmitClassificationDecisionCommand
+  | SubmitMultipleChoiceDecisionCommand
+  | RunTamperDemonstrationCommand
   | EndorsementWorkflowCommand;
 
 export interface DomainSimulationCommand extends SimulationCommand {

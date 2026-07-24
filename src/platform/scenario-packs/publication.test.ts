@@ -57,8 +57,8 @@ describe("scenario-pack publication", () => {
     const repository = new MemoryScenarioPackRepository();
     await repository.saveDraft(draftPack());
     const published = await repository.publish(
-      "PACK_STANDARD_COFFEE_STAGE3",
-      "1.0.0",
+      packJson.packId,
+      packJson.version,
       publication,
     );
 
@@ -67,13 +67,13 @@ describe("scenario-pack publication", () => {
     );
     await expect(
       repository.publish(
-        "PACK_STANDARD_COFFEE_STAGE3",
-        "1.0.0",
+        packJson.packId,
+        packJson.version,
         publication,
       ),
     ).rejects.toBeInstanceOf(ScenarioPackPublicationError);
     expect(
-      await repository.find("PACK_STANDARD_COFFEE_STAGE3", "1.0.0"),
+      await repository.find(packJson.packId, packJson.version),
     ).toBe(published);
   });
 });

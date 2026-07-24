@@ -118,9 +118,13 @@ runs keep their exact pack and scenario versions.
 
 ## Existing coffee compatibility
 
-The first pack decomposes the Stage 3 certificate experience into declarative
-briefing, evidence, decision, proposal, policy, consequence, and completion
-nodes. Its compatibility block points to:
+The first pack began with the Stage 3 certificate experience and now continues
+through Stage 4 custody and transport plus Stage 5 receipt, discrepancy
+mitigation, and append-only correction, then Stage 6 transformation and Stage 7
+distribution, Stage 8 tamper and data-governance reasoning, and Stage 9 recall
+scope, trusted regulator handoff, and final debrief. It decomposes those stages into
+declarative briefing, evidence, decision, proposal, endorsement, policy,
+consequence, feedback, and completion nodes. Its compatibility block points to:
 
 ```text
 adapter: tracechain-coffee-v2
@@ -128,10 +132,13 @@ scenario: SCN_COFFEE_001@2.2.0
 stage: STG_03_ANCHOR_CERTIFICATE
 ```
 
-The proposal binds to the existing `SUBMIT_CERTIFICATE_DECISION` command,
-`ISSUE_CERTIFICATE` action, and `AUTH_ISSUE_CERTIFICATE` policy. The pack does
-not copy certificate authorization, ledger mutation, scoring, mitigation, or
-audit-event rules. Those remain in the existing simulation core.
+The compatibility bindings reuse the existing certificate, custody-transfer,
+transport, receipt, ownership-transfer, and correction actions. Certificate
+authorization, sender-and-receiver custody endorsement, and
+producer-and-processor correction endorsement remain in the existing
+simulation core, as do transformation, provenance, packaging, dispatch, ledger
+mutation, tamper detection, recall, scoring, mitigation, scripted manifest, and
+audit-event rules.
 
 The compatibility adapter is a migration seam. It may be removed only after a
 generic capability passes behavior-equivalence tests against the existing
@@ -161,10 +168,14 @@ The first hosted vertical slice now provides:
 
 - deployment-authenticated identity mapped to server-owned application roles;
 - a D1 schema plus event, pack, and principal repositories;
-- a server-authoritative, single-learner Stage 3 run;
+- a server-authoritative, single-learner run through Stages 3 through 9;
 - role-filtered evidence, atomic decision submission, a real signed
-  authorization check, accepted or rejected transaction history, competency
-  evidence, exact replay, and instructor timeline/rubric APIs;
+  authorization check, real custody and correction endorsements, accepted or
+  rejected transaction history, deterministic tamper evidence, a scoped recall
+  with trusted regulator handoff, competency evidence, exact replay, and
+  instructor timeline/rubric APIs;
+- exact-version assignments, assignment-bound run creation, append-only manual
+  rating revisions, one-way feedback release, and a focused assignment report;
 - request idempotency, optimistic run versions, same-origin mutation checks,
   immutable pack content hashes, and hidden-state filtering; and
 - an optional server-managed initial-administrator allowlist for an empty D1
@@ -172,11 +183,10 @@ The first hosted vertical slice now provides:
 
 It does not yet provide:
 
-- application-role administration screens or general assignment management;
-- the complete server-backed coffee journey;
-- instructor timeline, rubric, learner, or author portal screens;
-- a graphical SCORM builder; or
-- cryptographically verified endorsement-policy integration.
+- application-role, course, or roster-provisioning screens;
+- learner or author portal screens and broader instructor moderation screens;
+- rich exports;
+- a graphical SCORM builder.
 
 Those remain sequenced in `docs/target-architecture.md`. SCORM continues to use
 the current compact deterministic TC3 journal.

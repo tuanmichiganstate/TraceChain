@@ -160,6 +160,85 @@
   color: var(--colour-text-muted);
 }
 
+/* ---- Hosted instructor review ---- */
+
+.instructor-review__header {
+  margin-bottom: var(--space-5);
+}
+
+.instructor-review__facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.instructor-review__facts div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.instructor-review__facts dt {
+  color: var(--colour-text-muted);
+  font-size: var(--size-caption);
+  font-weight: 650;
+}
+
+.instructor-review__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.instructor-review__message,
+.instructor-review__results {
+  margin-top: var(--space-4);
+}
+
+.instructor-review__evidence-list {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.instructor-review__evidence-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-4);
+}
+
+.instructor-review__form-actions {
+  display: flex;
+  align-items: end;
+}
+
+.instructor-review__inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.instructor-review__inline-form .field {
+  flex: 1 1 16rem;
+}
+
+.instructor-review__rating {
+  display: grid;
+  min-inline-size: min(18rem, 75vw);
+  gap: var(--space-2);
+}
+
 /* ---- Dialog ---- */
 
 .dialog-backdrop {

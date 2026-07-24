@@ -16,13 +16,23 @@ event storage, replay, assessment, reporting, exports, and package-generation
 jobs around the reusable simulation core. It does not introduce collaborative
 multi-learner runs.
 
-As of 24 July 2026, the authenticated Stage 3 vertical slice implements the
-memory and D1 event stores, D1 pack publication, server-authoritative commands,
+As of 24 July 2026, the authenticated hosted migration implements the memory and
+D1 event stores, D1 pack publication, server-authoritative commands,
 role-filtered learner projection, exact replay, and instructor evidence APIs.
-The portals, full coffee migration, assignments, ratings, exports, and hosted
-package jobs remain later gates. The SCORM Guided and Challenge application now
-has genuine Ed25519 endorsements for custody transfer and quantity correction;
-the hosted compatibility adapter has not yet migrated those complete flows.
+It carries an authorized run through Stage 3 certificate handling, Stage 4
+sender-and-receiver custody endorsement plus transport recording, and Stage 5
+receipt, discrepancy mitigation, and producer-and-processor append-only
+correction. It continues through Stage 6 transformation and provenance plus
+Stage 7 packaging, distribution ownership, and retail dispatch, Stage 8
+integrity and data-governance reasoning, and Stage 9 scoped recall with a
+trusted regulator handoff and final debrief. A focused authenticated instructor
+run-evidence screen presents
+the existing timeline, competency, and rubric projections without duplicating
+them. It now also provides exact-version assignment creation, assignment-bound
+run start, evidence-linked manual rating revisions, one-way feedback release,
+and a focused assignment report. Learner and author portals, course and roster
+administration, moderation, exports, and hosted package jobs remain later
+gates.
 
 ## Target layers
 
@@ -320,7 +330,7 @@ competency result, and optional overall score are distinct records.
 
 10. Migrate the complete coffee scenario into the pack envelope.
 11. Complete cryptographic endorsement Increment B. (Complete for the
-    Guided/Challenge SCORM engine; hosted flow migration remains in item 10.)
+    Guided/Challenge SCORM engine and the hosted custody/correction stages.)
 12. Add assignments, ratings, feedback release, reports, replay, and exports.
 13. Extract the Node package generator into a hosted job service and build the
     graphical builder.

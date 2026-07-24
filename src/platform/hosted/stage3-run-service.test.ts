@@ -1,5 +1,7 @@
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import { FixedClock, SequenceIdGenerator } from "../../domain/simulation/environment";
+import { TransactionType } from "../../domain/types/enums";
+import type { RecordCorrectionCommand } from "../../domain/commands/commands";
 import type { RunEventV1 } from "../contracts/run-events";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import {
@@ -148,6 +150,153 @@ async function progressToTransaction(
   return submitted.state;
 }
 
+async function progressThroughStage4(
+  service: HostedStage3RunService,
+  runId: string,
+): Promise<HostedStage3RunState> {
+  const certificate = await progressToTransaction(
+    service,
+    "authorized-certifier",
+    runId,
+  );
+  const proposal = await service.submit(learner, {
+    commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
+    commandId: `COMMAND_CUSTODY_PROPOSAL_${runId}`,
+    runId,
+    expectedRunVersion: certificate.version,
+    alsoTransfersOwnership: false,
+  });
+  const proposalId = proposal.state.pendingProposalId;
+  if (proposalId === null) {
+    throw new Error("Expected a pending custody proposal.");
+  }
+  const endorsed = await service.submit(learner, {
+    commandType: "ENDORSE_CUSTODY_TRANSFER",
+    commandId: `COMMAND_CUSTODY_ENDORSE_${runId}`,
+    runId,
+    expectedRunVersion: proposal.state.version,
+    proposalId,
+  });
+  const committed = await service.submit(learner, {
+    commandType: "COMMIT_CUSTODY_TRANSFER",
+    commandId: `COMMAND_CUSTODY_COMMIT_${runId}`,
+    runId,
+    expectedRunVersion: endorsed.state.version,
+    proposalId,
+  });
+  const transported = await service.submit(learner, {
+    commandType: "RECORD_TRANSPORT_CONDITION",
+    commandId: `COMMAND_TRANSPORT_${runId}`,
+    runId,
+    expectedRunVersion: committed.state.version,
+  });
+  return transported.state;
+}
+
+async function progressToStage5Decision(
+  service: HostedStage3RunService,
+  runId: string,
+): Promise<HostedStage3RunState> {
+  const transported = await progressThroughStage4(service, runId);
+  const received = await service.submit(learner, {
+    commandType: "RECEIVE_BATCH",
+    commandId: `COMMAND_RECEIVE_${runId}`,
+    runId,
+    expectedRunVersion: transported.version,
+  });
+  const purchased = await service.submit(learner, {
+    commandType: "PURCHASE_ON_RECEIPT",
+    commandId: `COMMAND_PURCHASE_${runId}`,
+    runId,
+    expectedRunVersion: received.state.version,
+  });
+  return purchased.state;
+}
+
+async function progressThroughStage5(
+  service: HostedStage3RunService,
+  runId: string,
+): Promise<HostedStage3RunState> {
+  const ready = await progressToStage5Decision(service, runId);
+  const decided = await service.submit(learner, {
+    commandType: "SUBMIT_DISCREPANCY_DECISION",
+    commandId: `COMMAND_DISCREPANCY_${runId}`,
+    runId,
+    expectedRunVersion: ready.version,
+    decision: {
+      action: "APPEND_CORRECTION",
+      causeCode: "TYPING_ERROR",
+    },
+  });
+  const proposed = await service.submit(learner, {
+    commandType: "CREATE_CORRECTION_PROPOSAL",
+    commandId: `COMMAND_CORRECTION_PROPOSAL_${runId}`,
+    runId,
+    expectedRunVersion: decided.state.version,
+    reason:
+      "The processor verified the committed manifest against the physical measurement.",
+  });
+  const proposalId = proposed.state.correctionPendingProposalId;
+  if (proposalId === null) {
+    throw new Error("Expected a pending correction proposal.");
+  }
+  const endorsed = await service.submit(learner, {
+    commandType: "ENDORSE_CORRECTION",
+    commandId: `COMMAND_CORRECTION_ENDORSE_${runId}`,
+    runId,
+    expectedRunVersion: proposed.state.version,
+    proposalId,
+  });
+  const committed = await service.submit(learner, {
+    commandType: "COMMIT_CORRECTION",
+    commandId: `COMMAND_CORRECTION_COMMIT_${runId}`,
+    runId,
+    expectedRunVersion: endorsed.state.version,
+    proposalId,
+  });
+  return committed.state;
+}
+
+async function progressThroughStage7(
+  service: HostedStage3RunService,
+  runId: string,
+): Promise<HostedStage3RunState> {
+  const corrected = await progressThroughStage5(service, runId);
+  const transformed = await service.submit(learner, {
+    commandType: "TRANSFORM_BATCH",
+    commandId: `COMMAND_TRANSFORM_${runId}`,
+    runId,
+    expectedRunVersion: corrected.version,
+  });
+  const provenance = await service.submit(learner, {
+    commandType: "SUBMIT_KNOWLEDGE_DECISION",
+    commandId: `COMMAND_PROVENANCE_${runId}`,
+    runId,
+    expectedRunVersion: transformed.state.version,
+    decisionId: "INT_TRANSFORMATION_PROVENANCE",
+    selectedOptionId: "OPT_LINKED_TO_INPUT",
+  });
+  const packaged = await service.submit(learner, {
+    commandType: "PACKAGE_BATCH",
+    commandId: `COMMAND_PACKAGE_${runId}`,
+    runId,
+    expectedRunVersion: provenance.state.version,
+  });
+  const transferred = await service.submit(learner, {
+    commandType: "TRANSFER_DISTRIBUTION_OWNERSHIP",
+    commandId: `COMMAND_DISTRIBUTION_OWNERSHIP_${runId}`,
+    runId,
+    expectedRunVersion: packaged.state.version,
+  });
+  const dispatched = await service.submit(learner, {
+    commandType: "DISPATCH_BATCH",
+    commandId: `COMMAND_DISPATCH_${runId}`,
+    runId,
+    expectedRunVersion: transferred.state.version,
+  });
+  return dispatched.state;
+}
+
 class ReadOnlyEventStore implements RunEventStore {
   constructor(private readonly events: readonly RunEventV1[]) {}
 
@@ -179,7 +328,9 @@ describe("server-authoritative hosted Stage 3 run", () => {
       "authorized-certifier",
       "RUN_AUTHORIZED_SEPARATE",
     );
-    expect(final.status).toBe("completed");
+    expect(final.status).toBe("active");
+    expect(final.workflowStep).toBe("custody-proposal");
+    expect(final.activeTrustedContext.contextId).toBe("CTX_PRODUCER");
     expect(final.version).toBe(10);
     expect(final.transactionStatus).toBe("committed");
     expect(final.transactions).toHaveLength(2);
@@ -228,6 +379,783 @@ describe("server-authoritative hosted Stage 3 run", () => {
         `COMMAND_TRANSACTION_${persisted.runId}_ISSUE_CERTIFICATE`
       ]?.signatureEvidence?.signature.signatureBase64Url,
     );
+  });
+
+  it("continues the authorized run through endorsed custody and transport", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const certificate = await progressToTransaction(
+      service,
+      "authorized-certifier",
+      "RUN_STAGE4",
+    );
+    const ledgerBeforeProposal =
+      certificate.simulation.domain.transactionOrder.length;
+
+    const proposal = await service.submit(learner, {
+      commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
+      commandId: "COMMAND_STAGE4_PROPOSAL",
+      runId: certificate.runId,
+      expectedRunVersion: certificate.version,
+      alsoTransfersOwnership: false,
+    });
+    expect(proposal.state.custodyStatus).toBe("awaiting-endorsement");
+    expect(proposal.state.simulation.domain.transactionOrder).toHaveLength(
+      ledgerBeforeProposal,
+    );
+
+    const proposalId = proposal.state.pendingProposalId;
+    if (proposalId === null) {
+      throw new Error("Expected a pending Stage 4 proposal.");
+    }
+    const endorsed = await service.submit(learner, {
+      commandType: "ENDORSE_CUSTODY_TRANSFER",
+      commandId: "COMMAND_STAGE4_ENDORSE",
+      runId: certificate.runId,
+      expectedRunVersion: proposal.state.version,
+      proposalId,
+    });
+    expect(endorsed.state.custodyStatus).toBe("policy-satisfied");
+    expect(endorsed.state.activeTrustedContext.contextId).toBe(
+      "CTX_LOGISTICS",
+    );
+    expect(endorsed.state.simulation.domain.transactionOrder).toHaveLength(
+      ledgerBeforeProposal,
+    );
+
+    const resumed = await serviceFor(store).loadState(certificate.runId);
+    expect(resumed).toEqual(endorsed.state);
+
+    const completeStore = new MemoryRunEventStore();
+    const completeService = serviceFor(completeStore);
+    const final = await progressThroughStage4(
+      completeService,
+      "RUN_STAGE4_COMPLETE",
+    );
+    expect(final.status).toBe("active");
+    expect(final.custodyStatus).toBe("committed");
+    expect(final.transportStatus).toBe("committed");
+    expect(final.workflowStep).toBe("receipt-transaction");
+    expect(
+      Object.values(final.simulation.domain.transactionsById).filter(
+        (transaction) =>
+          transaction.transactionType === TransactionType.TRANSFER_CUSTODY,
+      ),
+    ).toHaveLength(1);
+    expect(
+      Object.values(final.simulation.domain.transactionsById).filter(
+        (transaction) =>
+          transaction.transactionType ===
+          TransactionType.RECORD_TRANSPORT_CONDITION,
+      ),
+    ).toHaveLength(1);
+    const sourceBatch =
+      final.simulation.domain.assetsById["BAT_GREEN_COFFEE_001"];
+    expect(sourceBatch).toMatchObject({
+      currentOwnerId: "ORG_PRODUCER_COOP",
+      currentCustodianId: "ORG_LOGISTICS_PROVIDER",
+    });
+    expect(
+      final.competencyEvidence.map(
+        (evidence) => evidence.evidenceRuleId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "RULE_CUSTODY_ENDORSEMENT_SATISFIED",
+        "RULE_TRANSPORT_CONDITION_RECORDED",
+      ]),
+    );
+    const projection = await completeService.learnerProjection(
+      learner,
+      final.runId,
+    );
+    expect(projection.roleId).toBe("PROCESSING_MANAGER");
+    expect(JSON.stringify(projection)).not.toContain(final.scenarioSeed);
+    const timeline = await completeService.instructorTimeline(
+      instructor,
+      final.runId,
+    );
+    expect(
+      timeline.find(
+        (event) =>
+          event.eventType === "ENDORSEMENT_PROPOSAL_CREATED",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_PRODUCER_COOP",
+      roleId: "PRODUCER_MANAGER",
+    });
+    expect(
+      timeline.find(
+        (event) => event.eventType === "ENDORSEMENT_RECORDED",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_LOGISTICS_PROVIDER",
+      roleId: "LOGISTICS_COORDINATOR",
+    });
+  });
+
+  it("hands the transported batch to the processor for Stage 5 receipt", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const transported = await progressThroughStage4(
+      service,
+      "RUN_STAGE5_ENTRY",
+    );
+
+    expect(transported.status).toBe("active");
+    expect(transported.workflowStep).toBe("receipt-transaction");
+    expect(transported.activeTrustedContext.contextId).toBe(
+      "CTX_PROCESSOR",
+    );
+    const projection = await service.learnerProjection(
+      learner,
+      transported.runId,
+    );
+    expect(projection.workflowState.permittedActionIds).toEqual([
+      "RECEIVE_BATCH",
+    ]);
+  });
+
+  it("retains a rejected discrepancy attempt and completes one endorsed append-only correction", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const ready = await progressToStage5Decision(
+      service,
+      "RUN_STAGE5_REPAIR",
+    );
+    expect(ready.workflowStep).toBe("discrepancy-decision");
+    expect(ready.receiptStatus).toBe("committed");
+    expect(ready.ownershipStatus).toBe("committed");
+    expect(
+      ready.simulation.domain.assetsById["BAT_GREEN_COFFEE_001"],
+    ).toMatchObject({
+      currentOwnerId: "ORG_COFFEE_PROCESSOR",
+      currentCustodianId: "ORG_COFFEE_PROCESSOR",
+    });
+
+    const ledgerBeforeDecision =
+      ready.simulation.domain.transactionOrder.length;
+    const auditBeforeDecision =
+      ready.simulation.attemptAuditEvents.length;
+    const rejected = await service.submit(learner, {
+      commandType: "SUBMIT_DISCREPANCY_DECISION",
+      commandId: "COMMAND_STAGE5_REJECTED_DECISION",
+      runId: ready.runId,
+      expectedRunVersion: ready.version,
+      decision: {
+        action: "OVERWRITE",
+        causeCode: "TYPING_ERROR",
+      },
+    });
+    expect(rejected.state.workflowStep).toBe(
+      "discrepancy-mitigation",
+    );
+    expect(rejected.state.discrepancyDecision).toMatchObject({
+      isRejectedAttempt: true,
+      decision: {
+        action: "OVERWRITE",
+        causeCode: "TYPING_ERROR",
+      },
+    });
+    expect(
+      rejected.state.simulation.domain.transactionOrder,
+    ).toHaveLength(ledgerBeforeDecision);
+    expect(
+      rejected.state.simulation.attemptAuditEvents,
+    ).toHaveLength(auditBeforeDecision + 1);
+
+    const mitigated = await service.submit(learner, {
+      commandType: "INVESTIGATE_DISCREPANCY",
+      commandId: "COMMAND_STAGE5_INVESTIGATE",
+      runId: ready.runId,
+      expectedRunVersion: rejected.state.version,
+    });
+    expect(mitigated.state.workflowStep).toBe(
+      "correction-proposal",
+    );
+    expect(mitigated.state.discrepancyMitigationStatus).toBe(
+      "completed",
+    );
+
+    const assetVersionBeforeCorrection =
+      mitigated.state.simulation.domain.assetsById[
+        "BAT_GREEN_COFFEE_001"
+      ]?.stateVersion;
+    const proposed = await service.submit(learner, {
+      commandType: "CREATE_CORRECTION_PROPOSAL",
+      commandId: "COMMAND_STAGE5_CORRECTION_PROPOSAL",
+      runId: ready.runId,
+      expectedRunVersion: mitigated.state.version,
+      reason:
+        "The processor investigated the committed manifest and confirmed a typing error.",
+    });
+    expect(proposed.state.correctionStatus).toBe(
+      "awaiting-endorsement",
+    );
+    expect(
+      proposed.state.simulation.domain.transactionOrder,
+    ).toHaveLength(ledgerBeforeDecision);
+    const proposalId = proposed.state.correctionPendingProposalId;
+    if (proposalId === null) {
+      throw new Error("Expected a pending correction proposal.");
+    }
+
+    const endorsed = await service.submit(learner, {
+      commandType: "ENDORSE_CORRECTION",
+      commandId: "COMMAND_STAGE5_CORRECTION_ENDORSE",
+      runId: ready.runId,
+      expectedRunVersion: proposed.state.version,
+      proposalId,
+    });
+    expect(endorsed.state.correctionStatus).toBe(
+      "policy-satisfied",
+    );
+    expect(endorsed.state.activeTrustedContext.contextId).toBe(
+      "CTX_PRODUCER",
+    );
+    expect(
+      endorsed.state.simulation.domain.transactionOrder,
+    ).toHaveLength(ledgerBeforeDecision);
+    expect(await serviceFor(store).loadState(ready.runId)).toEqual(
+      endorsed.state,
+    );
+
+    const corrected = await service.submit(learner, {
+      commandType: "COMMIT_CORRECTION",
+      commandId: "COMMAND_STAGE5_CORRECTION_COMMIT",
+      runId: ready.runId,
+      expectedRunVersion: endorsed.state.version,
+      proposalId,
+    });
+    expect(corrected.state.status).toBe("active");
+    expect(corrected.state.workflowStep).toBe(
+      "transformation-transaction",
+    );
+    expect(corrected.state.correctionStatus).toBe("committed");
+    expect(
+      Object.values(
+        corrected.state.simulation.domain.transactionsById,
+      ).filter(
+        (transaction) =>
+          transaction.transactionType ===
+          TransactionType.RECORD_CORRECTION,
+      ),
+    ).toHaveLength(1);
+    expect(
+      corrected.state.simulation.domain.assetsById[
+        "BAT_GREEN_COFFEE_001"
+      ]?.stateVersion,
+    ).toBe(assetVersionBeforeCorrection);
+    const correction = Object.values(
+      corrected.state.simulation.domain.transactionsById,
+    ).find(
+      (transaction) =>
+        transaction.transactionType ===
+        TransactionType.RECORD_CORRECTION,
+    );
+    expect(
+      correction?.commandPayload as RecordCorrectionCommand,
+    ).toMatchObject({
+      incorrectValue: { amount: 1_000 },
+      correctedValue: { amount: 100 },
+    });
+    expect(
+      corrected.state.competencyEvidence.map(
+        (evidence) => evidence.evidenceRuleId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "RULE_DISCREPANCY_REJECTED_ATTEMPT",
+        "RULE_CORRECTION_ENDORSEMENT_SATISFIED",
+        "RULE_APPEND_ONLY_CORRECTION_COMMITTED",
+      ]),
+    );
+    const timeline = await service.instructorTimeline(
+      instructor,
+      ready.runId,
+    );
+    expect(
+      timeline.find(
+        (event) => event.eventType === "DECISION_REJECTED",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_COFFEE_PROCESSOR",
+      roleId: "PROCESSING_MANAGER",
+    });
+    expect(
+      timeline.find(
+        (event) =>
+          event.eventType === "ENDORSEMENT_RECORDED" &&
+          event.payload.actionId === "RECORD_CORRECTION",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_PRODUCER_COOP",
+      roleId: "PRODUCER_MANAGER",
+    });
+  });
+
+  it("records exactly one sound discrepancy decision and skips mitigation", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const ready = await progressToStage5Decision(
+      service,
+      "RUN_STAGE5_SOUND_DECISION",
+    );
+    const command = {
+      commandType: "SUBMIT_DISCREPANCY_DECISION" as const,
+      commandId: "COMMAND_STAGE5_SOUND_DECISION",
+      runId: ready.runId,
+      expectedRunVersion: ready.version,
+      decision: {
+        action: "APPEND_CORRECTION" as const,
+        causeCode: "TYPING_ERROR" as const,
+      },
+    };
+    const submitted = await service.submit(learner, command);
+    expect(submitted.state.workflowStep).toBe(
+      "correction-proposal",
+    );
+    expect(submitted.state.discrepancyMitigationStatus).toBe(
+      "not-required",
+    );
+    expect(submitted.state.discrepancyDecision).toMatchObject({
+      isRejectedAttempt: false,
+      isScorableCorrect: true,
+    });
+    const projection = await service.learnerProjection(
+      learner,
+      ready.runId,
+    );
+    expect(
+      projection.workflowState.completedNodeIds,
+    ).not.toContain("discrepancy-mitigation");
+    const duplicate = await service.submit(learner, command);
+    expect(duplicate.wasIdempotentReplay).toBe(true);
+    expect(duplicate.state).toEqual(submitted.state);
+    await expect(
+      service.submit(learner, {
+        ...command,
+        commandId: "COMMAND_STAGE5_SECOND_DECISION",
+        expectedRunVersion: submitted.state.version,
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PRECONDITION_FAILED",
+    });
+  });
+
+  it("continues the corrected batch through transformation and distribution", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const corrected = await progressThroughStage5(
+      service,
+      "RUN_STAGE6_ENTRY",
+    );
+
+    expect(corrected.status).toBe("active");
+    expect(corrected.workflowStep).toBe(
+      "transformation-transaction",
+    );
+    expect(corrected.activeTrustedContext.contextId).toBe(
+      "CTX_PROCESSOR",
+    );
+
+    const transformed = await service.submit(learner, {
+      commandType: "TRANSFORM_BATCH",
+      commandId: "COMMAND_STAGE6_TRANSFORM",
+      runId: corrected.runId,
+      expectedRunVersion: corrected.version,
+    });
+    expect(transformed.state.workflowStep).toBe(
+      "transformation-knowledge",
+    );
+    expect(transformed.state.transformationStatus).toBe("committed");
+    expect(
+      transformed.state.simulation.domain.assetsById[
+        "BAT_ROASTED_COFFEE_001"
+      ],
+    ).toMatchObject({
+      quantity: 82,
+      parentAssetIds: ["BAT_GREEN_COFFEE_001"],
+    });
+    expect(
+      transformed.state.simulation.domain.provenanceEdges,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceAssetId: "BAT_GREEN_COFFEE_001",
+          targetAssetId: "BAT_ROASTED_COFFEE_001",
+        }),
+      ]),
+    );
+
+    const knowledge = await service.submit(learner, {
+      commandType: "SUBMIT_KNOWLEDGE_DECISION",
+      commandId: "COMMAND_STAGE6_PROVENANCE",
+      runId: corrected.runId,
+      expectedRunVersion: transformed.state.version,
+      decisionId: "INT_TRANSFORMATION_PROVENANCE",
+      selectedOptionId: "OPT_LINKED_TO_INPUT",
+    });
+    expect(knowledge.state.workflowStep).toBe(
+      "packaging-transaction",
+    );
+    expect(
+      knowledge.state.knowledgeDecisions[
+        "INT_TRANSFORMATION_PROVENANCE"
+      ],
+    ).toMatchObject({
+      selectedOptionId: "OPT_LINKED_TO_INPUT",
+      isAuthoredCorrect: true,
+    });
+    const duplicateKnowledge = await service.submit(learner, {
+      commandType: "SUBMIT_KNOWLEDGE_DECISION",
+      commandId: "COMMAND_STAGE6_PROVENANCE",
+      runId: corrected.runId,
+      expectedRunVersion: transformed.state.version,
+      decisionId: "INT_TRANSFORMATION_PROVENANCE",
+      selectedOptionId: "OPT_LINKED_TO_INPUT",
+    });
+    expect(duplicateKnowledge.wasIdempotentReplay).toBe(true);
+    await expect(
+      service.submit(learner, {
+        commandType: "SUBMIT_KNOWLEDGE_DECISION",
+        commandId: "COMMAND_STAGE6_SECOND_PROVENANCE",
+        runId: corrected.runId,
+        expectedRunVersion: knowledge.state.version,
+        decisionId: "INT_TRANSFORMATION_PROVENANCE",
+        selectedOptionId: "OPT_NEW_INDEPENDENT_BATCH",
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PRECONDITION_FAILED",
+    });
+    const knowledgeProjection = await service.learnerProjection(
+      learner,
+      corrected.runId,
+    );
+    expect(JSON.stringify(knowledgeProjection)).not.toContain(
+      "isAuthoredCorrect",
+    );
+
+    const packaged = await service.submit(learner, {
+      commandType: "PACKAGE_BATCH",
+      commandId: "COMMAND_STAGE7_PACKAGE",
+      runId: corrected.runId,
+      expectedRunVersion: knowledge.state.version,
+    });
+    expect(packaged.state.workflowStep).toBe(
+      "distribution-ownership-transaction",
+    );
+    expect(
+      packaged.state.simulation.domain.assetsById[
+        "BAT_PACKAGED_COFFEE_001"
+      ],
+    ).toMatchObject({
+      quantity: 820,
+      parentAssetIds: ["BAT_ROASTED_COFFEE_001"],
+    });
+
+    const transferred = await service.submit(learner, {
+      commandType: "TRANSFER_DISTRIBUTION_OWNERSHIP",
+      commandId: "COMMAND_STAGE7_TRANSFER_OWNERSHIP",
+      runId: corrected.runId,
+      expectedRunVersion: packaged.state.version,
+    });
+    expect(transferred.state.workflowStep).toBe(
+      "dispatch-transaction",
+    );
+    expect(transferred.state.activeTrustedContext.contextId).toBe(
+      "CTX_DISTRIBUTOR",
+    );
+
+    const dispatched = await service.submit(learner, {
+      commandType: "DISPATCH_BATCH",
+      commandId: "COMMAND_STAGE7_DISPATCH",
+      runId: corrected.runId,
+      expectedRunVersion: transferred.state.version,
+    });
+    expect(dispatched.state.status).toBe("active");
+    expect(dispatched.state.workflowStep).toBe(
+      "tamper-demonstration",
+    );
+    expect(dispatched.state.dispatchStatus).toBe("committed");
+    expect(
+      dispatched.state.simulation.domain.assetsById[
+        "BAT_PACKAGED_COFFEE_001"
+      ],
+    ).toMatchObject({
+      currentOwnerId: "ORG_RETAILER",
+      currentCustodianId: "ORG_RETAILER",
+    });
+    expect(
+      dispatched.state.competencyEvidence.map(
+        (evidence) => evidence.evidenceRuleId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "RULE_TRANSFORMATION_PROVENANCE_CREATED",
+        "RULE_TRANSFORMATION_PROVENANCE_RECOGNIZED",
+        "RULE_RETAIL_DISPATCH_RECORDED",
+      ]),
+    );
+    expect(await serviceFor(store).loadState(corrected.runId)).toEqual(
+      dispatched.state,
+    );
+  });
+
+  it("continues the retail lot into the Stage 8 integrity activity", async () => {
+    const service = serviceFor(new MemoryRunEventStore());
+    const distributed = await progressThroughStage7(
+      service,
+      "RUN_STAGE8_ENTRY",
+    );
+
+    expect(distributed.status).toBe("active");
+    expect(distributed.workflowStep).toBe("tamper-demonstration");
+    expect(distributed.activeTrustedContext.contextId).toBe(
+      "CTX_RETAILER",
+    );
+  });
+
+  it("retains an unauthorized recall attempt before regulator resubmission", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const distributed = await progressThroughStage7(
+      service,
+      "RUN_STAGE8_AND_RECALL",
+    );
+    const domainBeforeTamper = structuredClone(
+      distributed.simulation.domain,
+    );
+    expect(distributed.simulation.domain.blockOrder.length).toBeGreaterThan(
+      1,
+    );
+
+    const demonstrated = await service.submit(learner, {
+      commandType: "RUN_TAMPER_DEMONSTRATION",
+      commandId: "COMMAND_STAGE8_TAMPER",
+      runId: distributed.runId,
+      expectedRunVersion: distributed.version,
+    });
+    expect(demonstrated.state.workflowStep).toBe("tamper-knowledge");
+    expect(demonstrated.state.tamperDemonstration).toMatchObject({
+      beforeValid: true,
+      realLedgerIntact: true,
+      tamperedQuantity: 1,
+    });
+    expect(
+      demonstrated.state.tamperDemonstration?.cascadingBlockIds
+        .length,
+    ).toBeGreaterThan(0);
+    expect(demonstrated.state.simulation.domain).toEqual(
+      domainBeforeTamper,
+    );
+
+    const tamperDecision = await service.submit(learner, {
+      commandType: "SUBMIT_KNOWLEDGE_DECISION",
+      commandId: "COMMAND_STAGE8_TAMPER_DECISION",
+      runId: distributed.runId,
+      expectedRunVersion: demonstrated.state.version,
+      decisionId: "INT_TAMPER_DEMONSTRATION",
+      selectedOptionId: "OPT_MAKES_EDIT_DETECTABLE",
+    });
+    expect(tamperDecision.state.workflowStep).toBe(
+      "data-governance-decision",
+    );
+
+    const governance = await service.submit(learner, {
+      commandType: "SUBMIT_DATA_GOVERNANCE_DECISION",
+      commandId: "COMMAND_STAGE8_GOVERNANCE",
+      runId: distributed.runId,
+      expectedRunVersion: tamperDecision.state.version,
+      decisionId: "INT_DATA_GOVERNANCE_CLASSIFICATION",
+      categoryByItem: {
+        ITEM_BATCH_ID: "CAT_ON_CHAIN",
+        ITEM_RECALL_STATUS: "CAT_ON_CHAIN",
+        ITEM_CERTIFICATE_PDF: "CAT_OFF_CHAIN_HASH",
+        ITEM_SENSOR_DATASET: "CAT_OFF_CHAIN_HASH",
+        ITEM_WHOLESALE_PRICE: "CAT_AUTHORIZED_ONLY",
+        ITEM_CUSTOMER_ADDRESS: "CAT_DO_NOT_COLLECT",
+      },
+    });
+    expect(governance.state.workflowStep).toBe(
+      "recall-scope-decision",
+    );
+
+    const scoped = await service.submit(learner, {
+      commandType: "SUBMIT_RECALL_SCOPE_DECISION",
+      commandId: "COMMAND_STAGE9_SCOPE",
+      runId: distributed.runId,
+      expectedRunVersion: governance.state.version,
+      decisionId: "INT_RECALL_SCOPE",
+      selectedAssetIds: [
+        "BAT_PACKAGED_COFFEE_001",
+        "BAT_ROASTED_COFFEE_001",
+      ],
+    });
+    expect(scoped.state.workflowStep).toBe("recall-transaction");
+    expect(scoped.state.activeTrustedContext.contextId).toBe(
+      "CTX_RETAILER",
+    );
+    expect(scoped.state.recallScopeDecision).toMatchObject({
+      isAuthoredCorrect: true,
+    });
+
+    const transactionCountBeforeRecall =
+      scoped.state.simulation.domain.transactionOrder.length;
+    const auditCountBeforeRecall =
+      scoped.state.simulation.attemptAuditEvents.length;
+    const unauthorized = await service.submit(learner, {
+      commandType: "SUBMIT_RECALL_TRANSACTION",
+      commandId: "COMMAND_STAGE9_UNAUTHORIZED_RECALL",
+      runId: distributed.runId,
+      expectedRunVersion: scoped.state.version,
+    });
+    expect(unauthorized.state.workflowStep).toBe("recall-handoff");
+    expect(unauthorized.state.recallStatus).toBe("rejected");
+    expect(
+      unauthorized.state.simulation.domain.transactionOrder,
+    ).toHaveLength(transactionCountBeforeRecall);
+    expect(
+      unauthorized.state.simulation.attemptAuditEvents,
+    ).toHaveLength(auditCountBeforeRecall + 1);
+    expect(
+      unauthorized.state.transactions.at(-1),
+    ).toMatchObject({
+      actionId: "RECALL_BATCH",
+      isAccepted: false,
+      signatureValid: true,
+      recognizedIdentity: true,
+      authorized: false,
+    });
+    await expect(
+      service.submit(learner, {
+        commandType: "SUBMIT_RECALL_TRANSACTION",
+        commandId: "COMMAND_STAGE9_SECOND_INITIAL_RECALL",
+        runId: distributed.runId,
+        expectedRunVersion: unauthorized.state.version,
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PRECONDITION_FAILED",
+    });
+
+    const handedOff = await service.submit(learner, {
+      commandType: "REQUEST_RECALL_HANDOFF",
+      commandId: "COMMAND_STAGE9_HANDOFF",
+      runId: distributed.runId,
+      expectedRunVersion: unauthorized.state.version,
+    });
+    expect(handedOff.state.workflowStep).toBe(
+      "recall-authorized-transaction",
+    );
+    expect(handedOff.state.activeTrustedContext.contextId).toBe(
+      "CTX_REGULATOR",
+    );
+
+    const recalled = await service.submit(learner, {
+      commandType: "RESUBMIT_AUTHORIZED_RECALL",
+      commandId: "COMMAND_STAGE9_AUTHORIZED_RECALL",
+      runId: distributed.runId,
+      expectedRunVersion: handedOff.state.version,
+    });
+    expect(recalled.state.workflowStep).toBe(
+      "blockchain-necessity-decision",
+    );
+    expect(recalled.state.recallStatus).toBe("committed");
+    expect(
+      Object.values(
+        recalled.state.simulation.domain.transactionsById,
+      ).filter(
+        (transaction) =>
+          transaction.transactionType ===
+          TransactionType.RECALL_BATCH,
+      ),
+    ).toHaveLength(1);
+    expect(
+      recalled.state.simulation.domain.assetsById[
+        "BAT_PACKAGED_COFFEE_001"
+      ]?.lifecycleStatus,
+    ).toBe("RECALLED");
+
+    const debriefed = await service.submit(learner, {
+      commandType: "SUBMIT_KNOWLEDGE_DECISION",
+      commandId: "COMMAND_STAGE9_DEBRIEF",
+      runId: distributed.runId,
+      expectedRunVersion: recalled.state.version,
+      decisionId: "INT_BLOCKCHAIN_NECESSITY",
+      selectedOptionId: "OPT_INDEPENDENT_ORGANIZATIONS",
+    });
+    expect(debriefed.state.status).toBe("completed");
+    expect(debriefed.state.workflowStep).toBe("complete");
+    expect(await serviceFor(store).loadState(distributed.runId)).toEqual(
+      debriefed.state,
+    );
+    const timeline = await service.instructorTimeline(
+      instructor,
+      distributed.runId,
+    );
+    expect(
+      timeline.find(
+        (event) =>
+          event.eventType === "TRANSACTION_REJECTED" &&
+          event.payload.actionId === "RECALL_BATCH",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_RETAILER",
+      roleId: "RETAIL_MANAGER",
+    });
+    expect(
+      timeline.find(
+        (event) =>
+          event.eventType === "TRANSACTION_COMMITTED" &&
+          event.payload.actionId === "RECALL_BATCH",
+      ),
+    ).toMatchObject({
+      organizationId: "ORG_REGULATOR",
+      roleId: "REGULATORY_AUDITOR",
+    });
+  }, 15_000);
+
+  it("keeps an invalid custody proposal as audit evidence and permits correction", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const certificate = await progressToTransaction(
+      service,
+      "authorized-certifier",
+      "RUN_STAGE4_REJECTED",
+    );
+    const transactionCount =
+      certificate.simulation.domain.transactionOrder.length;
+    const rejected = await service.submit(learner, {
+      commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
+      commandId: "COMMAND_STAGE4_INVALID_PROPOSAL",
+      runId: certificate.runId,
+      expectedRunVersion: certificate.version,
+      alsoTransfersOwnership: true,
+    });
+
+    expect(rejected.state.workflowStep).toBe("custody-proposal");
+    expect(rejected.state.custodyStatus).toBe("rejected");
+    expect(rejected.state.pendingProposalId).toBeNull();
+    expect(rejected.state.simulation.domain.transactionOrder).toHaveLength(
+      transactionCount,
+    );
+    expect(
+      rejected.state.simulation.attemptAuditEvents.at(-1),
+    ).toMatchObject({
+      kind: "COMMAND_REJECTED",
+      organizationId: "ORG_PRODUCER_COOP",
+      roleId: "PRODUCER_MANAGER",
+    });
+
+    const corrected = await service.submit(learner, {
+      commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
+      commandId: "COMMAND_STAGE4_CORRECTED_PROPOSAL",
+      runId: certificate.runId,
+      expectedRunVersion: rejected.state.version,
+      alsoTransfersOwnership: false,
+    });
+    expect(corrected.state.custodyStatus).toBe("awaiting-endorsement");
+    expect(corrected.state.pendingProposalId).not.toBeNull();
   });
 
   it("keeps a valid but unauthorized transaction attempt out of the ledger", async () => {

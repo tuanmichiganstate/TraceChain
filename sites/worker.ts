@@ -1,4 +1,5 @@
 import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
+import type { CreateHostedAssignmentRequest } from "../src/platform/contracts/assessment";
 import {
   AuthenticatedPrincipalError,
   AUTHENTICATED_USER_EMAIL_HEADER,
@@ -7,6 +8,7 @@ import {
 import { provisionBootstrapAdministrator } from "../src/platform/hosted/bootstrap-principal";
 import {
   HostedAuthorizationError,
+  requireAssignedLearner,
   requireApplicationRole,
 } from "../src/platform/hosted/access";
 import {
@@ -22,6 +24,10 @@ import type {
   HostedStage3Command,
 } from "../src/platform/hosted/stage3-types";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
+import {
+  AssignmentRepositoryError,
+  D1AssignmentRepository,
+} from "../src/platform/persistence/d1-assignment-repository";
 import { D1RunEventStore } from "../src/platform/persistence/d1-run-event-store";
 import { ensureD1FoundationSchema } from "../src/platform/persistence/d1-schema";
 import { D1ScenarioPackRepository } from "../src/platform/persistence/d1-scenario-pack-repository";
@@ -195,6 +201,23 @@ function errorResponse(error: unknown): Response {
       },
     });
   }
+  if (error instanceof AssignmentRepositoryError) {
+    const status =
+      error.code === "ASSIGNMENT_NOT_FOUND"
+        ? 404
+        : error.code === "ASSIGNMENT_CONFLICT" ||
+            error.code === "RATING_REVISION_CONFLICT" ||
+            error.code === "FEEDBACK_ALREADY_RELEASED" ||
+            error.code === "FEEDBACK_NOT_RELEASED" ||
+            error.code === "RUN_NOT_ASSIGNED"
+          ? 409
+          : error.code === "ASSIGNMENT_STORAGE_FAILED"
+            ? 500
+            : 400;
+    return jsonResponse(status, {
+      error: { code: error.code },
+    });
+  }
   console.error("TraceChain hosted API failure", error);
   return jsonResponse(500, {
     error: {
@@ -217,6 +240,62 @@ function pathRunId(
   return match?.[1] === undefined
     ? null
     : decodeURIComponent(match[1]);
+}
+
+function pathAssignmentId(
+  pathname: string,
+  suffix = "",
+): string | null {
+  const pattern = suffix.length === 0
+    ? /^\/api\/v1\/assignments\/([^/]+)$/u
+    : new RegExp(
+        `^/api/v1/assignments/([^/]+)/${suffix.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`,
+        "u",
+      );
+  const match = pattern.exec(pathname);
+  return match?.[1] === undefined
+    ? null
+    : decodeURIComponent(match[1]);
+}
+
+async function hostedServiceForRun(
+  environment: WorkerEnvironment,
+  principalUserId: string,
+  runId: string,
+): Promise<{
+  readonly pack: ScenarioPackV1;
+  readonly service: HostedStage3RunService;
+}> {
+  const store = new D1RunEventStore(environment.DB);
+  const events = await store.load(runId);
+  const first = events[0];
+  if (first === undefined) {
+    throw new HostedRunCommandError(
+      "RUN_NOT_FOUND",
+      `Run ${runId} does not exist.`,
+    );
+  }
+  const clock = new SystemUtcClock();
+  const pack = await new D1ScenarioPackRepository(
+    environment.DB,
+    clock,
+    principalUserId,
+  ).find(first.packId, first.packVersion);
+  if (pack === null) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "The run's exact published scenario pack is unavailable.",
+    );
+  }
+  return {
+    pack,
+    service: new HostedStage3RunService(
+      pack,
+      store,
+      clock,
+      new WebCryptoIdGenerator(),
+    ),
+  };
 }
 
 async function apiResponse(
@@ -307,6 +386,397 @@ async function apiResponse(
       version: published.version,
       status: published.status,
       contentHash: published.publication?.contentHash,
+    });
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/v1/assignments"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Assignment request must be an object.",
+      );
+    }
+    const packId = requiredText(body.packId, "packId");
+    const packVersion = requiredText(body.packVersion, "packVersion");
+    const scenarioId = requiredText(body.scenarioId, "scenarioId");
+    const scenarioVersion = requiredText(
+      body.scenarioVersion,
+      "scenarioVersion",
+    );
+    const clock = new SystemUtcClock();
+    const publishedPack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(packId, packVersion);
+    const scenario = publishedPack?.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId === scenarioId &&
+        candidate.version === scenarioVersion,
+    );
+    if (
+      publishedPack === null ||
+      publishedPack.status !== "published" ||
+      scenario === undefined
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Assignment must reference one exact published scenario version.",
+      );
+    }
+    const result = await new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    ).create(
+      body as unknown as CreateHostedAssignmentRequest,
+      principal,
+    );
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        assignment: result.assignment,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
+  }
+
+  const assignmentId = pathAssignmentId(url.pathname);
+  if (request.method === "GET" && assignmentId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const assignment = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).find(assignmentId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${assignmentId} does not exist.`,
+      );
+    }
+    return jsonResponse(200, { assignment });
+  }
+
+  const startRunAssignmentId = pathAssignmentId(
+    url.pathname,
+    "start-run",
+  );
+  if (
+    request.method === "POST" &&
+    startRunAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Assignment run request must be an object.",
+      );
+    }
+    const clock = new SystemUtcClock();
+    const assignment = await new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    ).find(startRunAssignmentId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${startRunAssignmentId} does not exist.`,
+      );
+    }
+    const learnerUserId = requiredText(
+      body.learnerUserId,
+      "learnerUserId",
+    );
+    if (
+      assignment.status !== "active" ||
+      !assignment.learnerUserIds.includes(learnerUserId)
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "The run requires an active assignment and assigned learner.",
+      );
+    }
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(assignment.packId, assignment.packVersion);
+    const scenario = pack?.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId === assignment.scenarioId &&
+        candidate.version === assignment.scenarioVersion,
+    );
+    if (
+      pack === null ||
+      pack.status !== "published" ||
+      scenario === undefined
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The assignment's exact published scenario is unavailable.",
+      );
+    }
+    const result = await new HostedStage3RunService(
+      pack,
+      new D1RunEventStore(environment.DB),
+      clock,
+      new WebCryptoIdGenerator(),
+    ).createRun(principal, {
+      commandId: requiredText(body.commandId, "commandId"),
+      runId: requiredText(body.runId, "runId"),
+      assignmentId: assignment.assignmentId,
+      learnerUserId,
+      mode: assignment.mode,
+      scenarioSeed: requiredText(body.scenarioSeed, "scenarioSeed"),
+      caseVariant: requiredText(
+        body.caseVariant,
+        "caseVariant",
+      ) as CreateHostedStage3RunRequest["caseVariant"],
+    });
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        runId: result.state.runId,
+        assignmentId: result.state.assignmentId,
+        learnerUserId: result.state.learnerUserId,
+        status: result.state.status,
+        version: result.state.version,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
+  }
+
+  const reportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "report",
+  );
+  if (request.method === "GET" && reportAssignmentId !== null) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const report = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).report(reportAssignmentId);
+    return jsonResponse(200, { report });
+  }
+
+  const feedbackReleaseAssignmentId = pathAssignmentId(
+    url.pathname,
+    "feedback-release",
+  );
+  if (
+    request.method === "POST" &&
+    feedbackReleaseAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Feedback release request must be an object.",
+      );
+    }
+    const result = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).releaseFeedback(
+      feedbackReleaseAssignmentId,
+      requiredText(body.commandId, "commandId"),
+      principal,
+    );
+    return jsonResponse(200, {
+      assignment: result.assignment,
+      wasIdempotentReplay: result.wasIdempotentReplay,
+    });
+  }
+
+  const ratingRunId = pathRunId(url.pathname, "ratings");
+  if (ratingRunId !== null && request.method === "GET") {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    const assignment = await repository.findForRun(ratingRunId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "RUN_NOT_ASSIGNED",
+        "Run is not linked to an assignment.",
+      );
+    }
+    return jsonResponse(200, {
+      assignment,
+      ratings: await repository.currentRatings(ratingRunId),
+    });
+  }
+  if (ratingRunId !== null && request.method === "POST") {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (
+      !isRecord(body) ||
+      requiredText(body.runId, "runId") !== ratingRunId
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_RATING",
+        "Rating run ID must match the API route.",
+      );
+    }
+    const { pack, service } = await hostedServiceForRun(
+      environment,
+      principal.userId,
+      ratingRunId,
+    );
+    const state = await service.loadState(ratingRunId);
+    if (state.status !== "completed") {
+      throw new AssignmentRepositoryError(
+        "INVALID_RATING",
+        "Manual rating is available after run completion.",
+      );
+    }
+    const rubricId = requiredText(body.rubricId, "rubricId");
+    const criterionId = requiredText(
+      body.criterionId,
+      "criterionId",
+    );
+    const rubric = pack.rubrics.find(
+      (candidate) => candidate.rubricId === rubricId,
+    );
+    const criterion = rubric?.criteria.find(
+      (candidate) => candidate.criterionId === criterionId,
+    );
+    if (
+      rubric === undefined ||
+      criterion === undefined ||
+      typeof body.levelValue !== "number" ||
+      !rubric.levels.some(
+        (level) => level.value === body.levelValue,
+      )
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_RATING",
+        "Rating must use an authored rubric criterion and level.",
+      );
+    }
+    const rubricEvidence = await service.rubricEvidence(
+      principal,
+      ratingRunId,
+    );
+    const evidence = rubricEvidence.find(
+      (candidate) =>
+        candidate.rubricId === rubricId &&
+        candidate.criterionId === criterionId,
+    );
+    const timeline = await service.instructorTimeline(
+      principal,
+      ratingRunId,
+    );
+    const permittedEvidenceIds = new Set([
+      ...(evidence?.observedEvidenceIds ?? []),
+      ...timeline.map((event) => event.eventId),
+    ]);
+    if (
+      !Array.isArray(body.linkedEvidenceIds) ||
+      !body.linkedEvidenceIds.every(
+        (evidenceId) =>
+          typeof evidenceId === "string" &&
+          permittedEvidenceIds.has(evidenceId),
+      )
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_RATING",
+        "Rating evidence must link to this run's observable evidence.",
+      );
+    }
+    const result = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).saveRating(
+      {
+        commandId: requiredText(body.commandId, "commandId"),
+        runId: ratingRunId,
+        rubricId,
+        rubricVersion: rubric.version,
+        criterionId,
+        levelValue: body.levelValue,
+        comment:
+          typeof body.comment === "string" ? body.comment : "",
+        linkedEvidenceIds:
+          body.linkedEvidenceIds as readonly string[],
+        expectedRevision:
+          typeof body.expectedRevision === "number"
+            ? body.expectedRevision
+            : Number.NaN,
+      },
+      principal,
+    );
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        rating: result.rating,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
+  }
+
+  const feedbackRunId = pathRunId(url.pathname, "feedback");
+  if (feedbackRunId !== null && request.method === "GET") {
+    const { service } = await hostedServiceForRun(
+      environment,
+      principal.userId,
+      feedbackRunId,
+    );
+    const state = await service.loadState(feedbackRunId);
+    requireAssignedLearner(principal, state.learnerUserId);
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    const assignment = await repository.findForRun(feedbackRunId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "RUN_NOT_ASSIGNED",
+        "Run is not linked to an assignment.",
+      );
+    }
+    if (assignment.feedbackReleaseStatus !== "released") {
+      throw new AssignmentRepositoryError(
+        "FEEDBACK_NOT_RELEASED",
+        "Instructor feedback has not been released.",
+      );
+    }
+    return jsonResponse(200, {
+      assignmentId: assignment.assignmentId,
+      releasedAt: assignment.feedbackReleasedAt,
+      ratings: await repository.currentRatings(feedbackRunId),
     });
   }
 
