@@ -58,6 +58,12 @@ current rubric ratings linked to that indicator
 An unobserved indicator has zero evidence and an empty observation list. The
 platform does not synthesize a performance level from that absence.
 
+The instructor workspace renders this projection as an expandable profile for
+each assigned learner. It displays the target type, exact scenario identity,
+evidence count and latest observation time, current rubric comments, and the
+run and source-event references supporting each observation. The compact class
+table remains a separate aggregate view.
+
 ## Class projection
 
 For each targeted indicator, the class summary reports:

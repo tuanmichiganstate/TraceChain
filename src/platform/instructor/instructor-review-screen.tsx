@@ -1245,7 +1245,128 @@ function ClassCompetencyReport({
           </tbody>
         </table>
       </div>
+      <LearnerCompetencyProfiles report={report} />
     </div>
+  );
+}
+
+function LearnerCompetencyProfiles({
+  report,
+}: {
+  readonly report: HostedAssignmentCompetencyReportV1;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="instructor-review__learner-profiles">
+      <h3>{t("instructorReview.learnerProfilesHeading")}</h3>
+      <p>{t("instructorReview.learnerProfilesHelp")}</p>
+      {report.learners.map((learner) => (
+        <details
+          className="instructor-review__learner-profile"
+          key={learner.learnerUserId}
+        >
+          <summary>
+            <code>{learner.learnerUserId}</code>
+          </summary>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("instructorReview.indicator")}</th>
+                  <th scope="col">{t("instructorReview.targetType")}</th>
+                  <th scope="col">{t("instructorReview.scenario")}</th>
+                  <th scope="col">
+                    {t("instructorReview.evidenceRecordCount")}
+                  </th>
+                  <th scope="col">
+                    {t("instructorReview.latestEvidence")}
+                  </th>
+                  <th scope="col">
+                    {t("instructorReview.performanceAndComments")}
+                  </th>
+                  <th scope="col">
+                    {t("instructorReview.supportingEvents")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {learner.indicators.map((indicator) => (
+                  <tr key={indicator.indicatorId}>
+                    <td>
+                      <code>{indicator.indicatorId}</code>
+                    </td>
+                    <td>
+                      {t(
+                        `instructorReview.targetType.${indicator.targetType}`,
+                      )}
+                    </td>
+                    <td>
+                      <code>
+                        {report.scenarioId}@{report.scenarioVersion}
+                      </code>
+                    </td>
+                    <td>{indicator.evidenceCount}</td>
+                    <td>
+                      {indicator.latestObservedAt === undefined ? (
+                        t("instructorReview.none")
+                      ) : (
+                        <time dateTime={indicator.latestObservedAt}>
+                          {indicator.latestObservedAt}
+                        </time>
+                      )}
+                    </td>
+                    <td>
+                      {indicator.currentRatings.length === 0 ? (
+                        t("instructorReview.noCurrentRatings")
+                      ) : (
+                        <ul className="instructor-review__compact-list">
+                          {indicator.currentRatings.map((rating) => (
+                            <li key={rating.ratingId}>
+                              <strong>
+                                {t("instructorReview.ratingValue", {
+                                  level: rating.levelValue,
+                                })}
+                              </strong>
+                              {rating.comment.length === 0
+                                ? null
+                                : ` — ${rating.comment}`}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    <td>
+                      {indicator.observations.length === 0 ? (
+                        t("instructorReview.none")
+                      ) : (
+                        <ul className="instructor-review__compact-list">
+                          {indicator.observations.map((observation) => (
+                            <li
+                              key={`${observation.runId}:${observation.competencyEvidenceId}`}
+                            >
+                              <code>{observation.runId}</code>
+                              {": "}
+                              {observation.sourceEventIds.map(
+                                (eventId, index) => (
+                                  <span key={eventId}>
+                                    {index === 0 ? null : ", "}
+                                    <code>{eventId}</code>
+                                  </span>
+                                ),
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ))}
+    </section>
   );
 }
 

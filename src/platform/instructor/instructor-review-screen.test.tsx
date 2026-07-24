@@ -187,7 +187,50 @@ describe("instructor review screen", () => {
             frameworkVersion: "1.0.0",
           },
         ],
-        learners: [],
+        learners: [
+          {
+            learnerUserId: "USER_LEARNER_001",
+            indicators: [
+              {
+                frameworkId: "TRACECHAIN_CORE",
+                frameworkVersion: "1.0.0",
+                competencyId: "BC3",
+                competencyVersion: "1.0.0",
+                competencyTitleKey: "unused.competency.title",
+                indicatorId: "BC3.PI1",
+                indicatorVersion: "1.0.0",
+                indicatorStatementKey: "unused.indicator.statement",
+                targetType: "primary",
+                evidenceCount: 2,
+                latestObservedAt: "2026-07-24T08:04:00.000Z",
+                observations: [
+                  {
+                    runId: "RUN_EXPORT_001",
+                    competencyEvidenceId: "CEV_EXPORT_001",
+                    evidenceRuleId: "RULE_EVIDENCE_USED",
+                    sourceEventIds: ["HEVT_EXPORT_002"],
+                    observedAt: "2026-07-24T08:04:00.000Z",
+                  },
+                ],
+                currentRatings: [
+                  {
+                    runId: "RUN_EXPORT_001",
+                    ratingId: "RATING_EXPORT_001",
+                    rubricId: "RUBRIC_CERTIFICATE_DECISION",
+                    rubricVersion: "1.0.0",
+                    criterionId: "CRITERION_EVIDENCE_USE",
+                    levelValue: 3,
+                    comment: "Evidence was used carefully.",
+                    linkedEvidenceIds: ["CEV_EXPORT_001"],
+                    revision: 1,
+                    raterUserId: "USER_RATER_001",
+                    ratedAt: "2026-07-24T08:05:00.000Z",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
         classIndicators: [
           {
             frameworkId: "TRACECHAIN_CORE",
@@ -321,12 +364,35 @@ describe("instructor review screen", () => {
         name: "Class competency evidence",
       }),
     ).toBeInTheDocument();
-    const competencyRow = report.getByText("BC3.PI1").closest("tr");
-    if (competencyRow === null) {
+    const competencyRow = report.getAllByText("BC3.PI1")[0]?.closest("tr");
+    if (competencyRow === null || competencyRow === undefined) {
       throw new Error("Expected class competency row.");
     }
     expect(within(competencyRow).getByText("1 of 1")).toBeInTheDocument();
     expect(within(competencyRow).getByText("2")).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Learner competency profiles",
+      }),
+    ).toBeInTheDocument();
+    const learnerSummary = report.getByText("USER_LEARNER_001", {
+      selector: "summary code",
+    });
+    const learnerProfile = learnerSummary.closest("details");
+    if (learnerProfile === null) {
+      throw new Error("Expected learner competency profile.");
+    }
+    await user.click(learnerSummary);
+    expect(
+      within(learnerProfile).getByText(/Evidence was used carefully\./),
+    ).toBeVisible();
+    expect(within(learnerProfile).getByText("HEVT_EXPORT_002")).toBeVisible();
+    expect(
+      within(learnerProfile).getByText("SCN_COFFEE_001@2.2.0"),
+    ).toBeVisible();
+    expect(
+      within(learnerProfile).getByText("2026-07-24T08:04:00.000Z"),
+    ).toBeVisible();
   });
 
   it("loads one run's existing timeline, competency, and rubric evidence", async () => {

@@ -272,6 +272,9 @@ as technical failures.
   rating and moderation revisions, and the V1 data dictionary. The assignment competency
   report links targeted indicator versions to observable evidence and current
   ratings while explicitly avoiding a single-simulation competence inference.
+  The instructor workspace exposes the same data as expandable per-learner
+  profiles with evidence recency, rubric comments, and supporting event
+  references.
 - The assignment live monitor reports learner status, current workflow stage,
   elapsed time, last activity, active-role pending actions, and replay health
   without returning hidden outcome state.

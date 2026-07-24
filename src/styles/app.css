@@ -236,6 +236,34 @@
   margin-block-start: var(--space-6);
 }
 
+.instructor-review__learner-profiles {
+  margin-block-start: var(--space-6);
+}
+
+.instructor-review__learner-profile {
+  margin-block-start: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__learner-profile summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.instructor-review__learner-profile[open] summary {
+  margin-block-end: var(--space-3);
+}
+
+.instructor-review__compact-list {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 12rem;
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+
 .instructor-review__monitor {
   margin-block-start: var(--space-5);
 }

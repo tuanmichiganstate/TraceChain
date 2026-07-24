@@ -302,8 +302,68 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
             scenarioId: assignment.scenarioId,
             scenarioVersion: assignment.scenarioVersion,
             frameworks: [],
-            learners: [],
-            classIndicators: [],
+            learners: [
+              {
+                learnerUserId: "USER_MONITOR_LEARNER",
+                indicators: [
+                  {
+                    frameworkId: "TRACECHAIN_CORE",
+                    frameworkVersion: "1.0.0",
+                    competencyId: "BC3",
+                    competencyVersion: "1.0.0",
+                    competencyTitleKey: "unused.competency.title",
+                    indicatorId: "BC3.PI1",
+                    indicatorVersion: "1.0.0",
+                    indicatorStatementKey: "unused.indicator.statement",
+                    targetType: "primary",
+                    evidenceCount: 1,
+                    latestObservedAt: "2026-07-24T08:04:00.000Z",
+                    observations: [
+                      {
+                        runId: "RUN_MONITOR_001",
+                        competencyEvidenceId: "CEV_MONITOR_001",
+                        evidenceRuleId: "RULE_EVIDENCE_USED",
+                        sourceEventIds: ["HEVT_MONITOR_004"],
+                        observedAt: "2026-07-24T08:04:00.000Z",
+                      },
+                    ],
+                    currentRatings: [
+                      {
+                        runId: "RUN_MONITOR_001",
+                        ratingId: "RATING_MONITOR_001",
+                        rubricId: "RUBRIC_CERTIFICATE_DECISION",
+                        rubricVersion: "1.0.0",
+                        criterionId: "CRITERION_EVIDENCE_USE",
+                        levelValue: 3,
+                        comment: "Uses certificate evidence carefully.",
+                        linkedEvidenceIds: ["CEV_MONITOR_001"],
+                        revision: 1,
+                        raterUserId: "USER_MONITOR_RATER",
+                        ratedAt: "2026-07-24T08:05:00.000Z",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            classIndicators: [
+              {
+                frameworkId: "TRACECHAIN_CORE",
+                frameworkVersion: "1.0.0",
+                competencyId: "BC3",
+                competencyVersion: "1.0.0",
+                competencyTitleKey: "unused.competency.title",
+                indicatorId: "BC3.PI1",
+                indicatorVersion: "1.0.0",
+                indicatorStatementKey: "unused.indicator.statement",
+                targetType: "primary",
+                assignedLearnerCount: 1,
+                learnersWithEvidence: 1,
+                evidenceCount: 1,
+                currentRatingCount: 1,
+                ratingDistribution: [{ levelValue: 3, count: 1 }],
+              },
+            ],
           },
         },
       });
@@ -327,6 +387,20 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     page.getByText("SUBMIT_CERTIFICATE_DECISION"),
   ).toBeVisible();
   await expect(page.getByText("No issue detected")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Learner competency profiles" }),
+  ).toBeVisible();
+  const learnerProfile = page
+    .locator("details")
+    .filter({ has: page.locator("summary", { hasText: "USER_MONITOR_LEARNER" }) });
+  await learnerProfile.locator("summary").click();
+  await expect(
+    learnerProfile.getByText("SCN_COFFEE_001@2.2.0"),
+  ).toBeVisible();
+  await expect(
+    learnerProfile.getByText("Uses certificate evidence carefully."),
+  ).toBeVisible();
+  await expect(learnerProfile.getByText("HEVT_MONITOR_004")).toBeVisible();
   expect(monitorRequests).toBe(1);
 
   await page.getByRole("button", { name: "Refresh status" }).click();
