@@ -46,7 +46,8 @@ deliberately small authenticated workspace for exact-version assignment
 creation from the published runnable scenario library and active provisioned
 learner roster, those evidence
 projections, evidence-linked rubric ratings,
-one-way feedback release, moderation, assignment reports, replay-derived live
+one-way assignment closure and feedback release, moderation, assignment
+reports, replay-derived live
 learner status, and graphical SCORM package jobs. The `/learner` route lists
 only the signed-in learner's
 assignments and runs the complete bounded coffee command path from

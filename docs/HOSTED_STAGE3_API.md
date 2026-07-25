@@ -78,7 +78,8 @@ The current schema is in `db/schema.ts`; migration history begins at
 and assessment records in `0002_assignments.sql`, rubric moderation in `0003`,
 resolved assignment-mode configuration in `0004`, pack retirement metadata in
 `0005`, content-addressed SCORM package jobs in `0006`, and idempotent
-application-access audit commands in `0007`.
+application-access audit commands in `0007`. One-way assignment closure
+metadata is added in `0008`.
 
 Tables:
 
@@ -121,6 +122,7 @@ All endpoints use `/api/v1`.
 | `GET /assignment-learners` | instructor or administrator | Active provisioned users carrying the learner role, limited to user ID and email for roster selection |
 | `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario and provisioned learner roster |
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
+| `POST /assignments/:assignmentId/close` | instructor or administrator | One-way idempotent closure that blocks new attempts and preserves existing runs |
 | `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
 | `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration |
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, authoritative event-span timing, event-derived activity, event-count and current-rating report |
@@ -294,6 +296,12 @@ run completes, and keeps the realized outcome separate from that evidence.
 Active runs return no correctness or outcome data. The projection adds no
 score and does not expose the scenario seed or random draw. See
 `docs/DECISION_OUTCOME_REPORT_V1.md`.
+
+Assignment closure is also one-way. The repository stores the idempotency
+command, trusted performer, and server timestamp atomically with the closed
+status. A closed assignment cannot create a new run. An already-started run
+continues under its immutable assignment configuration, and closure does not
+alter its events, score, ratings, or report evidence.
 
 ## Current limits
 

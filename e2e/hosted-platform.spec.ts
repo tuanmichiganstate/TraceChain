@@ -486,6 +486,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
 }) => {
   const assignmentId = "ASSIGNMENT_MONITOR_001";
   let monitorRequests = 0;
+  let closeRequests = 0;
   const assignment = {
     schemaVersion: "1.0.0",
     assignmentId,
@@ -519,9 +520,37 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     if (pathname === "/api/v1/session") {
       await route.fulfill({
         json: {
-          userId: "USER_MONITOR_RATER",
-          email: "monitor-rater@example.edu",
-          roles: ["rater"],
+          userId: "USER_MONITOR_INSTRUCTOR",
+          email: "monitor-instructor@example.edu",
+          roles: ["instructor"],
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/assignment-options") {
+      await route.fulfill({ json: { options: [] } });
+      return;
+    }
+    if (pathname === "/api/v1/assignment-learners") {
+      await route.fulfill({ json: { learners: [] } });
+      return;
+    }
+    if (
+      pathname ===
+        `/api/v1/assignments/${assignmentId}/close` &&
+      route.request().method() === "POST"
+    ) {
+      closeRequests += 1;
+      await route.fulfill({
+        status: 201,
+        json: {
+          assignment: {
+            ...assignment,
+            status: "closed",
+            closedAt: "2026-07-24T08:06:00.000Z",
+            closedByUserId: "USER_MONITOR_INSTRUCTOR",
+          },
+          wasIdempotentReplay: false,
         },
       });
       return;
@@ -871,8 +900,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   });
 
   await page.goto("/instructor?locale=en");
-  await page.getByLabel("Assignment ID").fill(assignmentId);
-  await page.getByRole("button", { name: "Load report" }).click();
+  const reportSection = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Assignment report" }),
+  });
+  await reportSection.getByLabel("Assignment ID").fill(assignmentId);
+  await reportSection
+    .getByRole("button", { name: "Load report" })
+    .click();
 
   await expect(
     page.getByRole("heading", { name: "Live learner status" }),
@@ -991,4 +1025,17 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
 
   await page.getByRole("button", { name: "Refresh status" }).click();
   await expect.poll(() => monitorRequests).toBe(2);
+
+  await page
+    .getByRole("button", { name: "Close new attempts" })
+    .click();
+  await expect.poll(() => closeRequests).toBe(1);
+  await expect(
+    page.getByText("Closed — no new attempts may start."),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Closed at 2026-07-24T08:06:00.000Z by USER_MONITOR_INSTRUCTOR. Existing runs and evidence are unchanged.",
+    ),
+  ).toBeVisible();
 });

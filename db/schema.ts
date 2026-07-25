@@ -81,6 +81,9 @@ export const schemaStatements = [
       CHECK (json_valid(mode_configuration_json)),
     lifecycle_status TEXT NOT NULL DEFAULT 'active'
       CHECK (lifecycle_status IN ('active', 'closed')),
+    close_command_id TEXT UNIQUE,
+    closed_at_utc TEXT,
+    closed_by_user_id TEXT,
     feedback_release_status TEXT NOT NULL DEFAULT 'withheld'
       CHECK (feedback_release_status IN ('withheld', 'released')),
     feedback_release_command_id TEXT UNIQUE,
@@ -88,6 +91,17 @@ export const schemaStatements = [
     feedback_released_by_user_id TEXT,
     created_at_utc TEXT NOT NULL,
     created_by_user_id TEXT NOT NULL,
+    CHECK (
+      (lifecycle_status = 'active'
+        AND close_command_id IS NULL
+        AND closed_at_utc IS NULL
+        AND closed_by_user_id IS NULL)
+      OR
+      (lifecycle_status = 'closed'
+        AND close_command_id IS NOT NULL
+        AND closed_at_utc IS NOT NULL
+        AND closed_by_user_id IS NOT NULL)
+    ),
     CHECK (
       (feedback_release_status = 'withheld'
         AND feedback_release_command_id IS NULL
@@ -102,6 +116,8 @@ export const schemaStatements = [
     FOREIGN KEY (pack_id, pack_version)
       REFERENCES scenario_pack_versions(pack_id, pack_version),
     FOREIGN KEY (created_by_user_id)
+      REFERENCES application_users(user_id),
+    FOREIGN KEY (closed_by_user_id)
       REFERENCES application_users(user_id),
     FOREIGN KEY (feedback_released_by_user_id)
       REFERENCES application_users(user_id)

@@ -68,6 +68,7 @@ describe("instructor review screen", () => {
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
@@ -133,6 +134,7 @@ describe("instructor review screen", () => {
     const createAssignment = vi.fn().mockResolvedValue(assignment);
     const api: InstructorReviewApi = {
       createAssignment,
+      closeAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([
         publishedCoffeeOption,
       ]),
@@ -218,7 +220,7 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers stable JSON and CSV downloads after loading an assignment report", async () => {
+  it("manages access and offers stable downloads after loading an assignment report", async () => {
     const assignment = {
       schemaVersion: "1.0.0" as const,
       assignmentId: "ASSIGNMENT_EXPORT_001",
@@ -255,8 +257,15 @@ describe("instructor review screen", () => {
       ratings: [],
       moderationResolutions: [],
     });
+    const closeAssignment = vi.fn().mockResolvedValue({
+      ...assignment,
+      status: "closed" as const,
+      closedAt: "2026-07-24T08:06:00.000Z",
+      closedByUserId: "USER_INSTRUCTOR_001",
+    });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      closeAssignment,
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn().mockResolvedValue({
@@ -456,6 +465,25 @@ describe("instructor review screen", () => {
         name: "Live learner status",
       }),
     ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Active — assigned learners may start new attempts.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(
+      report.getByRole("button", { name: "Close new attempts" }),
+    );
+    expect(closeAssignment).toHaveBeenCalledWith(
+      "ASSIGNMENT_EXPORT_001",
+    );
+    expect(
+      await report.findByText("Closed — no new attempts may start."),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Closed at 2026-07-24T08:06:00.000Z by USER_INSTRUCTOR_001. Existing runs and evidence are unchanged.",
+      ),
+    ).toBeInTheDocument();
     expect(report.getByText("certificate-transaction")).toBeInTheDocument();
     expect(
       report.getByText("SUBMIT_CERTIFICATE_TRANSACTION"),
@@ -641,6 +669,7 @@ describe("instructor review screen", () => {
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
@@ -871,6 +900,7 @@ describe("instructor review screen", () => {
     const saveModeration = vi.fn().mockResolvedValue(undefined);
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
@@ -969,6 +999,7 @@ describe("instructor review screen", () => {
   it("does not expose run review controls to a learner-only session", async () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
@@ -1070,6 +1101,7 @@ describe("instructor review screen", () => {
         email: "learner@example.edu",
       },
     ]);
+    await api.closeAssignment("ASSIGNMENT / 001");
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
     await api.loadAssignmentMonitor("ASSIGNMENT / 001");
@@ -1078,6 +1110,7 @@ describe("instructor review screen", () => {
       "/api/v1/session",
       "/api/v1/assignment-options",
       "/api/v1/assignment-learners",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/close",
       "/api/v1/runs/RUN%20%2F%20001/timeline",
       "/api/v1/runs/RUN%20%2F%20001/competencies",
       "/api/v1/runs/RUN%20%2F%20001/rubric-evidence",

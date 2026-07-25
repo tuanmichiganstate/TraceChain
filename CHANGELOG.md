@@ -10,6 +10,9 @@
 - Active provisioned learners now populate the instructor assignment form.
   Instructors select the bounded assignment roster without copying internal
   user IDs; disabled users and accounts without the learner role are excluded.
+- Instructors and administrators can close an assignment through a one-way,
+  idempotent command. Closure records trusted performer and time metadata,
+  blocks new attempts, and preserves runs and evidence already recorded.
 - An administrator-only, read-only access-change audit showing the latest 100
   append-only role and account-status commands with their trusted performer.
 - Optional pseudonymous JSON and CSV assignment evidence exports. Learner user

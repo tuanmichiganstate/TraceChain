@@ -297,6 +297,17 @@
   margin-block-start: 0.2em;
 }
 
+.instructor-review__assignment-access {
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__assignment-access h3 {
+  margin-block-start: 0;
+}
+
 .instructor-review__export {
   margin-block: var(--space-4);
 }

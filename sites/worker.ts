@@ -336,6 +336,7 @@ function errorResponse(error: unknown): Response {
       error.code === "ASSIGNMENT_NOT_FOUND"
         ? 404
         : error.code === "ASSIGNMENT_CONFLICT" ||
+            error.code === "ASSIGNMENT_ALREADY_CLOSED" ||
             error.code === "RATING_REVISION_CONFLICT" ||
             error.code === "MODERATION_REVISION_CONFLICT" ||
             error.code === "FEEDBACK_ALREADY_RELEASED" ||
@@ -1322,6 +1323,42 @@ async function apiResponse(
       );
     }
     return jsonResponse(200, { assignment });
+  }
+
+  const closeAssignmentId = pathAssignmentId(
+    url.pathname,
+    "close",
+  );
+  if (
+    request.method === "POST" &&
+    closeAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Assignment close request must be an object.",
+      );
+    }
+    const result = await new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    ).close(
+      closeAssignmentId,
+      requiredText(body.commandId, "commandId"),
+      principal,
+    );
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        assignment: result.assignment,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
   }
 
   const startRunAssignmentId = pathAssignmentId(

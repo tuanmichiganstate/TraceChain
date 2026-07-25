@@ -1268,6 +1268,113 @@ test("creates an exact published assignment for a provisioned learner", async ()
       wasIdempotentReplay: false,
     });
 
+    const closed = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/close",
+        {
+          method: "POST",
+          email: "assignment-instructor@example.edu",
+          body: {
+            commandId: "COMMAND_ASSIGNMENT_CLOSE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(closed.status, 201, await closed.clone().text());
+    const closedBody = await closed.json();
+    assert.equal(closedBody.assignment.status, "closed");
+    assert.equal(
+      closedBody.assignment.closedByUserId,
+      "USER_INSTRUCTOR_ASSIGNMENT",
+    );
+    assert.match(
+      closedBody.assignment.closedAt,
+      /^\d{4}-\d{2}-\d{2}T/u,
+    );
+    assert.equal(closedBody.wasIdempotentReplay, false);
+
+    const repeatedClose = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/close",
+        {
+          method: "POST",
+          email: "assignment-instructor@example.edu",
+          body: {
+            commandId: "COMMAND_ASSIGNMENT_CLOSE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      repeatedClose.status,
+      200,
+      await repeatedClose.clone().text(),
+    );
+    assert.equal(
+      (await repeatedClose.json()).wasIdempotentReplay,
+      true,
+    );
+
+    const conflictingClose = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/close",
+        {
+          method: "POST",
+          email: "assignment-instructor@example.edu",
+          body: {
+            commandId: "COMMAND_ASSIGNMENT_CLOSE_CONFLICT",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(conflictingClose.status, 409);
+    assert.equal(
+      (await conflictingClose.json()).error.code,
+      "ASSIGNMENT_ALREADY_CLOSED",
+    );
+
+    const learnerClose = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/close",
+        {
+          method: "POST",
+          email: "assignment-learner@example.edu",
+          body: {
+            commandId: "COMMAND_LEARNER_CLOSE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(learnerClose.status, 403);
+    assert.equal(
+      (await learnerClose.json()).error.code,
+      "APPLICATION_ROLE_REQUIRED",
+    );
+
+    const closedStart = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_COFFEE_001/start-run",
+        {
+          method: "POST",
+          email: "assignment-learner@example.edu",
+          body: {
+            commandId: "COMMAND_CLOSED_RUN_001",
+            runId: "RUN_CLOSED_COFFEE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(closedStart.status, 400);
+    assert.equal(
+      (await closedStart.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
+
     const resumedAssignments = await worker.fetch(
       apiRequest("/api/v1/learner/assignments", {
         email: "assignment-learner@example.edu",

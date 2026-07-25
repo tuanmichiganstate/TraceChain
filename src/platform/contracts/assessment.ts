@@ -16,6 +16,8 @@ export interface HostedAssignmentV1 {
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
+  readonly closedAt?: string;
+  readonly closedByUserId?: string;
   readonly feedbackReleaseStatus: "withheld" | "released";
   readonly feedbackReleasedAt?: string;
   readonly feedbackReleasedByUserId?: string;

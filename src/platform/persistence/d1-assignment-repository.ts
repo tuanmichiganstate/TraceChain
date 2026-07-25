@@ -33,6 +33,9 @@ interface AssignmentRow {
   readonly run_mode: string;
   readonly mode_configuration_json: string;
   readonly lifecycle_status: string;
+  readonly close_command_id: string | null;
+  readonly closed_at_utc: string | null;
+  readonly closed_by_user_id: string | null;
   readonly feedback_release_status: string;
   readonly feedback_release_command_id: string | null;
   readonly feedback_released_at_utc: string | null;
@@ -107,6 +110,9 @@ const FIND_ASSIGNMENT = `SELECT
   run_mode,
   mode_configuration_json,
   lifecycle_status,
+  close_command_id,
+  closed_at_utc,
+  closed_by_user_id,
   feedback_release_status,
   feedback_release_command_id,
   feedback_released_at_utc,
@@ -120,6 +126,10 @@ const FIND_ASSIGNMENT_BY_COMMAND = `SELECT assignment_id
 FROM assignments
 WHERE creation_command_id = ?`;
 
+const FIND_ASSIGNMENT_BY_CLOSE_COMMAND = `SELECT assignment_id
+FROM assignments
+WHERE close_command_id = ?`;
+
 const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.assignment_id,
   assignments.creation_command_id,
@@ -131,6 +141,9 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.run_mode,
   assignments.mode_configuration_json,
   assignments.lifecycle_status,
+  assignments.close_command_id,
+  assignments.closed_at_utc,
+  assignments.closed_by_user_id,
   assignments.feedback_release_status,
   assignments.feedback_release_command_id,
   assignments.feedback_released_at_utc,
@@ -324,6 +337,14 @@ SET feedback_release_status = 'released',
 WHERE assignment_id = ?
   AND feedback_release_status = 'withheld'`;
 
+const CLOSE_ASSIGNMENT = `UPDATE assignments
+SET lifecycle_status = 'closed',
+    close_command_id = ?,
+    closed_at_utc = ?,
+    closed_by_user_id = ?
+WHERE assignment_id = ?
+  AND lifecycle_status = 'active'`;
+
 const FIND_ASSIGNMENT_RUNS = `SELECT
   created.run_id AS run_id,
   json_extract(
@@ -452,6 +473,7 @@ export class AssignmentRepositoryError extends Error {
       | "INVALID_ASSIGNMENT"
       | "LEARNER_NOT_PROVISIONED"
       | "ASSIGNMENT_STORAGE_FAILED"
+      | "ASSIGNMENT_ALREADY_CLOSED"
       | "RUN_NOT_ASSIGNED"
       | "INVALID_RATING"
       | "RATING_REVISION_CONFLICT"
@@ -943,10 +965,26 @@ function assignmentFrom(
   row: AssignmentRow,
   learnerUserIds: readonly string[],
 ): HostedAssignmentV1 {
+  const closeMetadata = [
+    row.close_command_id,
+    row.closed_at_utc,
+    row.closed_by_user_id,
+  ];
+  const hasAnyCloseMetadata = closeMetadata.some(
+    (value) => value !== null,
+  );
+  const hasCompleteCloseMetadata = closeMetadata.every(
+    (value) => value !== null,
+  );
   if (
     !ASSIGNMENT_MODES.includes(row.run_mode as AssignmentRunMode) ||
     (row.lifecycle_status !== "active" &&
       row.lifecycle_status !== "closed") ||
+    (row.lifecycle_status === "active" &&
+      hasAnyCloseMetadata) ||
+    (row.lifecycle_status === "closed" &&
+      hasAnyCloseMetadata &&
+      !hasCompleteCloseMetadata) ||
     (row.feedback_release_status !== "withheld" &&
       row.feedback_release_status !== "released")
   ) {
@@ -981,6 +1019,12 @@ function assignmentFrom(
     runConfiguration,
     learnerUserIds,
     status: row.lifecycle_status,
+    ...(row.closed_at_utc === null
+      ? {}
+      : { closedAt: row.closed_at_utc }),
+    ...(row.closed_by_user_id === null
+      ? {}
+      : { closedByUserId: row.closed_by_user_id }),
     feedbackReleaseStatus: row.feedback_release_status,
     ...(row.feedback_released_at_utc === null
       ? {}
@@ -1452,6 +1496,105 @@ export class D1AssignmentRepository {
       );
     }
     return result.results.map(moderationFrom);
+  }
+
+  async close(
+    assignmentId: string,
+    commandId: string,
+    principal: ApplicationPrincipal,
+  ): Promise<HostedAssignmentCreationResult> {
+    const normalizedAssignmentId = identifier(
+      assignmentId,
+      "assignmentId",
+    );
+    const normalizedCommandId = identifier(commandId, "commandId");
+    const row = await this.database
+      .prepare(FIND_ASSIGNMENT)
+      .bind(normalizedAssignmentId)
+      .first<AssignmentRow>();
+    if (row === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${normalizedAssignmentId} does not exist.`,
+      );
+    }
+    if (row.lifecycle_status === "closed") {
+      if (row.close_command_id !== normalizedCommandId) {
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_ALREADY_CLOSED",
+          "The assignment was already closed by another command.",
+        );
+      }
+      return {
+        assignment: await this.assignmentFromRow(row),
+        wasIdempotentReplay: true,
+      };
+    }
+    const commandMatch = await this.database
+      .prepare(FIND_ASSIGNMENT_BY_CLOSE_COMMAND)
+      .bind(normalizedCommandId)
+      .first<{ readonly assignment_id: string }>();
+    if (
+      commandMatch !== null &&
+      commandMatch.assignment_id !== normalizedAssignmentId
+    ) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_CONFLICT",
+        "The assignment close command ID is already bound to another assignment.",
+      );
+    }
+    const now = this.clock.now();
+    const result = await this.database
+      .prepare(CLOSE_ASSIGNMENT)
+      .bind(
+        normalizedCommandId,
+        now,
+        principal.userId,
+        normalizedAssignmentId,
+      )
+      .run();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment closure could not be stored.",
+      );
+    }
+    if (result.meta?.changes !== 1) {
+      const latestRow = await this.database
+        .prepare(FIND_ASSIGNMENT)
+        .bind(normalizedAssignmentId)
+        .first<AssignmentRow>();
+      if (
+        latestRow !== null &&
+        latestRow.lifecycle_status === "closed"
+      ) {
+        if (latestRow.close_command_id === normalizedCommandId) {
+          return {
+            assignment: await this.assignmentFromRow(latestRow),
+            wasIdempotentReplay: true,
+          };
+        }
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_ALREADY_CLOSED",
+          "The assignment was closed concurrently by another command.",
+        );
+      }
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment closure did not update the stored assignment.",
+      );
+    }
+    const assignment = await this.find(normalizedAssignmentId);
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Closed assignment could not be reloaded.",
+      );
+    }
+    return {
+      assignment,
+      wasIdempotentReplay: false,
+    };
   }
 
   async releaseFeedback(

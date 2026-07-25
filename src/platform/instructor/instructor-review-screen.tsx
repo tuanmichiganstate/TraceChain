@@ -112,6 +112,7 @@ export interface InstructorReviewApi {
     runId: string,
     input: SaveInstructorModerationInput,
   ): Promise<RubricModerationResolutionV1>;
+  closeAssignment(assignmentId: string): Promise<HostedAssignmentV1>;
   releaseFeedback(assignmentId: string): Promise<HostedAssignmentV1>;
   loadScormPackageJobs?(): Promise<
     readonly (ScormPackageJobV1 & { readonly downloadUrl: string })[]
@@ -324,6 +325,16 @@ export function createInstructorReviewApi(
       );
       return result.resolution;
     },
+    async closeAssignment(assignmentId) {
+      const result = await mutationJson<{
+        readonly assignment: HostedAssignmentV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/close`,
+        { commandId: newCommandId("COMMAND_ASSIGNMENT_CLOSE") },
+      );
+      return result.assignment;
+    },
     async releaseFeedback(assignmentId) {
       const result = await mutationJson<{
         readonly assignment: HostedAssignmentV1;
@@ -390,6 +401,9 @@ function errorMessageKey(error: unknown): string {
     }
     if (error.code === "INVALID_COMMAND") {
       return "instructorReview.error.replay";
+    }
+    if (error.code === "ASSIGNMENT_ALREADY_CLOSED") {
+      return "instructorReview.error.assignmentLifecycle";
     }
     if (
       error.code === "FEEDBACK_ALREADY_RELEASED" ||
@@ -519,6 +533,7 @@ export function InstructorReviewScreen({
           {mayReview ? (
             <AssignmentReport
               api={api}
+              mayManage={mayManage}
               onReviewEvent={(requestedRunId, eventId) =>
                 loadRequestedReview(requestedRunId, eventId)
               }
@@ -1194,9 +1209,11 @@ function assignmentRejectionFindings(
 
 function AssignmentReport({
   api,
+  mayManage,
   onReviewEvent,
 }: {
   readonly api: InstructorReviewApi;
+  readonly mayManage: boolean;
   readonly onReviewEvent: (
     runId: string,
     eventId: string,
@@ -1214,6 +1231,7 @@ function AssignmentReport({
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isMonitorLoading, setMonitorLoading] = useState(false);
+  const [isClosing, setClosing] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   async function load(event: FormEvent<HTMLFormElement>) {
@@ -1268,6 +1286,28 @@ function AssignmentReport({
     }
   }
 
+  async function closeAssignment() {
+    if (report === null || report.assignment.status === "closed") {
+      return;
+    }
+    setClosing(true);
+    setErrorKey(null);
+    try {
+      const assignment = await api.closeAssignment(
+        report.assignment.assignmentId,
+      );
+      setReport((current) =>
+        current === null
+          ? current
+          : { ...current, assignment },
+      );
+    } catch (error) {
+      setErrorKey(errorMessageKey(error));
+    } finally {
+      setClosing(false);
+    }
+  }
+
   const rejectionFindings =
     report === null ? [] : assignmentRejectionFindings(report);
 
@@ -1301,6 +1341,50 @@ function AssignmentReport({
       )}
       {report === null ? null : (
         <div aria-live="polite">
+          <section className="instructor-review__assignment-access">
+            <h3>{t("instructorReview.assignmentAccessHeading")}</h3>
+            <p>
+              {t(
+                `instructorReview.assignmentStatus.${report.assignment.status}`,
+              )}
+            </p>
+            {report.assignment.status === "closed" ? (
+              <p>
+                {report.assignment.closedAt === undefined ||
+                report.assignment.closedByUserId === undefined
+                  ? t(
+                      "instructorReview.assignmentClosedLegacy",
+                    )
+                  : t(
+                      "instructorReview.assignmentClosedDetail",
+                      {
+                        closedAt:
+                          report.assignment.closedAt,
+                        closedBy:
+                          report.assignment.closedByUserId,
+                      },
+                    )}
+              </p>
+            ) : (
+              <>
+                <p>
+                  {t("instructorReview.assignmentCloseHelp")}
+                </p>
+                {mayManage ? (
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={isClosing}
+                    onClick={() => void closeAssignment()}
+                  >
+                    {isClosing
+                      ? t("instructorReview.assignmentClosing")
+                      : t("instructorReview.assignmentClose")}
+                  </button>
+                ) : null}
+              </>
+            )}
+          </section>
           {monitor === null ? null : (
             <AssignmentLiveMonitor
               monitor={monitor}

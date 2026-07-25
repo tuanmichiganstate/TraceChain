@@ -8,7 +8,7 @@ An assignment export is a point-in-time evidence snapshot for one exact
 assignment. It preserves the identifiers and versions required to interpret
 the evidence and contains:
 
-- assignment and feedback-release metadata;
+- assignment lifecycle and feedback-release metadata;
 - the provisioned learner roster;
 - hosted run status, event counts, authoritative event-span timing, and
   event-derived activity counts and rejection findings;
@@ -61,7 +61,9 @@ moderationResolutions complete RubricModerationResolutionV1 history
 dataDictionary      versioned dataset and field definitions
 ```
 
-The assignment carries the exact pack and scenario identity. Every event
+The assignment carries the exact pack and scenario identity, active or closed
+status, and trusted closure time and performer when lifecycle audit metadata is
+available. Every event
 retains its pack, scenario, actor, organization, role, causation, sequence,
 state-hash, and payload evidence. Every rating revision retains its rubric
 version, criterion, evidence links, rater, and timestamp. Every moderation
