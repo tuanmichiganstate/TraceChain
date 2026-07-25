@@ -1071,7 +1071,12 @@
           },
           "valueType": "NUMBER",
           "direction": "HIGHER_IS_BETTER",
-          "unit": "points"
+          "unit": "points",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "ACADEMIC_SCORE",
+            "changedValueAttribution": "DIRECT_INTERVENTION_EFFECT"
+          }
         },
         {
           "dimensionId": "DIM_PROCESS_SCORE",
@@ -1083,7 +1088,12 @@
           },
           "valueType": "NUMBER",
           "direction": "HIGHER_IS_BETTER",
-          "unit": "points"
+          "unit": "points",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "PROCESS_QUALITY_PERCENT",
+            "changedValueAttribution": "DIRECT_INTERVENTION_EFFECT"
+          }
         },
         {
           "dimensionId": "DIM_CONSUMER_SAFETY",
@@ -1094,7 +1104,12 @@
             "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.consumerSafety.description"
           },
           "valueType": "ORDINAL",
-          "direction": "HIGHER_IS_BETTER"
+          "direction": "HIGHER_IS_BETTER",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "CONSUMER_SAFETY_LEVEL",
+            "changedValueAttribution": "DOWNSTREAM_STATE_EFFECT"
+          }
         },
         {
           "dimensionId": "DIM_BUSINESS_COST",
@@ -1105,7 +1120,13 @@
             "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.businessCost.description"
           },
           "valueType": "NUMBER",
-          "direction": "LOWER_IS_BETTER"
+          "direction": "LOWER_IS_BETTER",
+          "unit": "cost-index",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "BUSINESS_COST_INDEX",
+            "changedValueAttribution": "DOWNSTREAM_STATE_EFFECT"
+          }
         },
         {
           "dimensionId": "DIM_COMPLIANCE",
@@ -1116,7 +1137,12 @@
             "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.compliance.description"
           },
           "valueType": "ORDINAL",
-          "direction": "HIGHER_IS_BETTER"
+          "direction": "HIGHER_IS_BETTER",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "COMPLIANCE_LEVEL",
+            "changedValueAttribution": "DOWNSTREAM_STATE_EFFECT"
+          }
         },
         {
           "dimensionId": "DIM_EVIDENCE_QUALITY",
@@ -1127,7 +1153,53 @@
             "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.evidenceQuality.description"
           },
           "valueType": "ORDINAL",
-          "direction": "HIGHER_IS_BETTER"
+          "direction": "HIGHER_IS_BETTER",
+          "evaluation": {
+            "kind": "RUNTIME_METRIC",
+            "metricId": "EVIDENCE_QUALITY_LEVEL",
+            "changedValueAttribution": "DOWNSTREAM_STATE_EFFECT"
+          }
+        }
+      ],
+      "counterfactualConditions": [
+        {
+          "enabled": true,
+          "conditionId": "CONDITION_CERTIFICATE_SIGNER_CONTEXT",
+          "availability": "AFTER_FEEDBACK_RELEASE",
+          "permittedCreators": [
+            "LEARNER",
+            "INSTRUCTOR"
+          ],
+          "forkNodeId": "NODE_CERTIFICATE_DECISION",
+          "runtimeConditionKey": "COFFEE_CASE_VARIANT",
+          "allowedValues": [
+            {
+              "conditionValueId": "AUTHORIZED_CERTIFIER",
+              "runtimeValue": "authorized-certifier",
+              "label": {
+                "localizationKey": "counterfactual.condition.certificateSigner.authorized"
+              }
+            },
+            {
+              "conditionValueId": "UNAUTHORIZED_TRANSPORTER",
+              "runtimeValue": "unauthorized-transporter",
+              "label": {
+                "localizationKey": "counterfactual.condition.certificateSigner.unauthorized"
+              }
+            }
+          ],
+          "affectsInformationBeforeFork": true,
+          "comparisonDimensionIds": [
+            "DIM_ACADEMIC_SCORE",
+            "DIM_PROCESS_SCORE",
+            "DIM_CONSUMER_SAFETY",
+            "DIM_BUSINESS_COST",
+            "DIM_COMPLIANCE",
+            "DIM_EVIDENCE_QUALITY"
+          ],
+          "maxBranchesPerLearner": 2,
+          "reflectionRequired": true,
+          "localizationKey": "counterfactual.condition.certificateSigner.title"
         }
       ],
       "entryNodeId": "NODE_CERTIFICATE_BRIEFING",

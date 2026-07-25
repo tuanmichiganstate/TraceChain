@@ -59,11 +59,14 @@ import {
   createCounterfactualComparison,
 } from "../src/platform/hosted/counterfactual-comparison";
 import {
+  counterfactualConditionPoints,
   counterfactualDecisionPoints,
+  validateConditionDecisionReuse,
   validateCounterfactualIntervention,
 } from "../src/platform/hosted/counterfactual-points";
 import {
   commandForCounterfactualReplay,
+  sourceDecisionCommandAtFork,
   sourceCommandBatchesAfterFork,
 } from "../src/platform/hosted/counterfactual-replay";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
@@ -120,6 +123,7 @@ import {
   serializeCounterfactualComparisonCsv,
   serializeCounterfactualComparisonJson,
 } from "../src/platform/reporting/counterfactual-export";
+import { createAssignmentCounterfactualReportSummary } from "../src/platform/reporting/counterfactual-report";
 import {
   AssignmentCompetencyReportError,
   createAssignmentCompetencyReport,
@@ -850,6 +854,25 @@ async function loadCounterfactualComparison(options: {
       "The counterfactual point is missing from the exact source scenario.",
     );
   }
+  const conditionConfiguration =
+    options.metadata.counterfactualType === "CONDITION"
+      ? scenario.counterfactualConditions.find(
+          (candidate) =>
+            candidate.conditionId ===
+              options.metadata.conditionIntervention?.conditionId &&
+            candidate.forkNodeId ===
+              options.metadata.forkNodeId,
+        )
+      : undefined;
+  if (
+    options.metadata.counterfactualType === "CONDITION" &&
+    conditionConfiguration === undefined
+  ) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "The authored condition is missing from the exact source scenario.",
+    );
+  }
   const sourceCommandIds = new Set(
     sourceCommandBatchesAfterFork(
       sourceEvents,
@@ -873,6 +896,9 @@ async function loadCounterfactualComparison(options: {
     comparison: createCounterfactualComparison({
       metadata: options.metadata,
       point,
+      comparisonDimensionIds:
+        conditionConfiguration?.comparisonDimensionIds ??
+        point.configuration.comparisonDimensionIds,
       dimensions:
         scenario.counterfactualComparisonDimensions,
       sourceEvents,
@@ -891,6 +917,16 @@ async function loadCounterfactualComparison(options: {
         ),
       alternativeProjection:
         await context.service.counterfactualProjection(
+          options.actor,
+          options.metadata.branchRunId,
+        ),
+      originalMetrics:
+        await context.service.counterfactualMetrics(
+          options.actor,
+          options.metadata.sourceRunId,
+        ),
+      alternativeMetrics:
+        await context.service.counterfactualMetrics(
           options.actor,
           options.metadata.branchRunId,
         ),
@@ -2208,6 +2244,8 @@ async function apiResponse(
         "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
       assignmentId: counterfactualReportAssignmentId,
       generatedAt: clock.now(),
+      summary:
+        createAssignmentCounterfactualReportSummary(branches),
       branches,
     };
     return jsonResponse(200, { report });
@@ -2627,10 +2665,26 @@ async function apiResponse(
       actor,
       counterfactualPointsRunId,
     );
+    const sourceEvents = await context.store.load(
+      counterfactualPointsRunId,
+    );
     const points = counterfactualDecisionPoints({
       pack: context.pack,
       sourceRunId: counterfactualPointsRunId,
-      events: await context.store.load(counterfactualPointsRunId),
+      events: sourceEvents,
+    }).filter((point) =>
+      counterfactualPointIsAvailable(
+        point.configuration,
+        context.creatorType,
+        context.assignment.feedbackReleaseStatus === "released",
+        context.assignment.counterfactualReplay,
+        point.forkNodeId,
+      ),
+    );
+    const conditions = counterfactualConditionPoints({
+      pack: context.pack,
+      sourceRunId: counterfactualPointsRunId,
+      events: sourceEvents,
     }).filter((point) =>
       counterfactualPointIsAvailable(
         point.configuration,
@@ -2644,6 +2698,30 @@ async function apiResponse(
       sourceRunId: counterfactualPointsRunId,
       points: await Promise.all(
         points.map(async (point) => ({
+          ...point,
+          configuration: {
+            ...point.configuration,
+            maxBranchesPerLearner: Math.min(
+              point.configuration.maxBranchesPerLearner ?? 20,
+              context.assignment.counterfactualReplay
+                .maximumBranchesPerLearner,
+            ),
+            reflectionRequired:
+              (point.configuration.reflectionRequired ?? false) ||
+              context.assignment.counterfactualReplay
+                .requireReflection,
+          },
+          forkProjection:
+            await context.service.counterfactualForkProjection(
+              actor,
+              point.sourceRunId,
+              point.forkSequenceNumber,
+              point.roleId,
+            ),
+        })),
+      ),
+      conditions: await Promise.all(
+        conditions.map(async (point) => ({
           ...point,
           configuration: {
             ...point.configuration,
@@ -2694,11 +2772,30 @@ async function apiResponse(
       actor,
       createCounterfactualRunId,
     );
+    const sourceEvents = await context.store.load(
+      createCounterfactualRunId,
+    );
     const points = counterfactualDecisionPoints({
       pack: context.pack,
       sourceRunId: createCounterfactualRunId,
-      events: await context.store.load(createCounterfactualRunId),
+      events: sourceEvents,
     });
+    const conditionPoints = counterfactualConditionPoints({
+      pack: context.pack,
+      sourceRunId: createCounterfactualRunId,
+      events: sourceEvents,
+    });
+    const counterfactualType =
+      body.counterfactualType === "CONDITION"
+        ? ("CONDITION" as const)
+        : body.counterfactualType === "DECISION"
+          ? ("DECISION" as const)
+          : (() => {
+              throw new HostedRunCommandError(
+                "INVALID_COMMAND",
+                "Counterfactual type must be DECISION or CONDITION.",
+              );
+            })();
     const forkSequenceNumber =
       typeof body.forkSequenceNumber === "number"
         ? body.forkSequenceNumber
@@ -2707,11 +2804,26 @@ async function apiResponse(
       body.forkNodeId,
       "forkNodeId",
     );
-    const point = points.find(
+    const decisionPoint = points.find(
       (candidate) =>
         candidate.forkSequenceNumber === forkSequenceNumber &&
         candidate.forkNodeId === forkNodeId,
     );
+    const conditionPoint =
+      counterfactualType === "CONDITION"
+        ? conditionPoints.find(
+            (candidate) =>
+              candidate.forkSequenceNumber ===
+                forkSequenceNumber &&
+              candidate.forkNodeId === forkNodeId &&
+              candidate.configuration.conditionId ===
+                body.conditionId,
+          )
+        : undefined;
+    const point =
+      counterfactualType === "CONDITION"
+        ? conditionPoint
+        : decisionPoint;
     if (
       point === undefined ||
       !counterfactualPointIsAvailable(
@@ -2727,6 +2839,42 @@ async function apiResponse(
         "The selected decision is not available for counterfactual replay.",
       );
     }
+    const alternativeConditionValue =
+      conditionPoint?.configuration.allowedValues.find(
+        (candidate) =>
+          candidate.conditionValueId ===
+          body.conditionValueId,
+      );
+    if (
+      counterfactualType === "CONDITION" &&
+      (conditionPoint === undefined ||
+        alternativeConditionValue === undefined ||
+        alternativeConditionValue.conditionValueId ===
+          conditionPoint.originalConditionValueId)
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "A condition counterfactual requires one different author-approved value.",
+      );
+    }
+    const conditionIntervention =
+      conditionPoint === undefined ||
+      alternativeConditionValue === undefined
+        ? undefined
+        : {
+            conditionId:
+              conditionPoint.configuration.conditionId,
+            runtimeConditionKey:
+              conditionPoint.configuration.runtimeConditionKey,
+            originalValueId:
+              conditionPoint.originalConditionValueId,
+            alternativeValueId:
+              alternativeConditionValue.conditionValueId,
+            runtimeValue: alternativeConditionValue.runtimeValue,
+            affectsInformationBeforeFork:
+              conditionPoint.configuration
+                .affectsInformationBeforeFork,
+          };
     const branchRunId = requiredText(
       body.branchRunId,
       "branchRunId",
@@ -2742,7 +2890,11 @@ async function apiResponse(
       const creatorBranches = priorBranches.filter(
         (metadata) =>
           metadata.createdByUserId === actor.userId &&
-          metadata.forkNodeId === point.forkNodeId,
+          metadata.forkNodeId === point.forkNodeId &&
+          metadata.counterfactualType === counterfactualType &&
+          (counterfactualType === "DECISION" ||
+            metadata.conditionIntervention?.conditionId ===
+              conditionPoint?.configuration.conditionId),
       );
       const maximum = Math.min(
         point.configuration.maxBranchesPerLearner ?? 20,
@@ -2756,6 +2908,10 @@ async function apiResponse(
         );
       }
     }
+    const interventionId = requiredText(
+      body.interventionId,
+      "interventionId",
+    );
     const result = await context.service.createCounterfactualBranch(
       actor,
       {
@@ -2763,15 +2919,48 @@ async function apiResponse(
         sourceRunId: createCounterfactualRunId,
         forkSequenceNumber,
         forkNodeId,
-        interventionId: requiredText(
-          body.interventionId,
-          "interventionId",
-        ),
+        interventionId,
         comparisonMode: "SINGLE_INTERVENTION",
         createdByUserId: actor.userId,
-        createdAt: new SystemUtcClock().now(),
+        createdAt:
+          existing?.createdAt ?? new SystemUtcClock().now(),
+        ...(conditionIntervention === undefined
+          ? {}
+          : { conditionIntervention }),
       },
     );
+    if (counterfactualType === "CONDITION") {
+      const sourceDecision = sourceDecisionCommandAtFork(
+        sourceEvents,
+        forkSequenceNumber,
+      );
+      const replayCommand =
+        sourceDecision === null
+          ? null
+          : commandForCounterfactualReplay(
+              sourceDecision,
+              branchRunId,
+              0,
+            );
+      if (replayCommand === null || conditionPoint === undefined) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "The condition fork does not retain its original decision command.",
+        );
+      }
+      const interventionCommand = {
+        ...replayCommand,
+        commandId: interventionId,
+      } as HostedRuntimeCommand;
+      validateConditionDecisionReuse(
+        conditionPoint,
+        interventionCommand,
+      );
+      await context.service.submitCounterfactual(
+        actor,
+        interventionCommand,
+      );
+    }
     return jsonResponse(
       result.wasIdempotentReplay ? 200 : 201,
       {
@@ -2870,10 +3059,13 @@ async function apiResponse(
       counterfactualCommandId,
     );
     if (branchEvents.length === 0) {
+      const sourceEvents = await context.store.load(
+        metadata.sourceRunId,
+      );
       const point = counterfactualDecisionPoints({
         pack: context.pack,
         sourceRunId: metadata.sourceRunId,
-        events: await context.store.load(metadata.sourceRunId),
+        events: sourceEvents,
       }).find(
         (candidate) =>
           candidate.forkSequenceNumber ===
@@ -2904,10 +3096,38 @@ async function apiResponse(
           "The first branch command must use the recorded intervention ID.",
         );
       }
-      validateCounterfactualIntervention(
-        point,
-        body as unknown as HostedRuntimeCommand,
-      );
+      const command = body as unknown as HostedRuntimeCommand;
+      if (metadata.counterfactualType === "CONDITION") {
+        const conditionPoint = counterfactualConditionPoints({
+          pack: context.pack,
+          sourceRunId: metadata.sourceRunId,
+          events: sourceEvents,
+        }).find(
+          (candidate) =>
+            candidate.forkNodeId === metadata.forkNodeId &&
+            candidate.configuration.conditionId ===
+              metadata.conditionIntervention?.conditionId,
+        );
+        if (
+          conditionPoint === undefined ||
+          !counterfactualPointIsAvailable(
+            conditionPoint.configuration,
+            context.creatorType,
+            context.assignment.feedbackReleaseStatus ===
+              "released",
+            context.assignment.counterfactualReplay,
+            conditionPoint.forkNodeId,
+          )
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The condition intervention is no longer available.",
+          );
+        }
+        validateConditionDecisionReuse(conditionPoint, command);
+      } else {
+        validateCounterfactualIntervention(point, command);
+      }
     }
     const result = await context.service.submitCounterfactual(
       actor,

@@ -22,7 +22,7 @@
 <li><a href="#group-check"><span>check</span><b>82</b></a></li>
 <li><a href="#group-common"><span>common</span><b>1</b></a></li>
 <li><a href="#group-compliance"><span>compliance</span><b>5</b></a></li>
-<li><a href="#group-counterfactual"><span>counterfactual</span><b>56</b></a></li>
+<li><a href="#group-counterfactual"><span>counterfactual</span><b>75</b></a></li>
 <li><a href="#group-documentType"><span>documentType</span><b>4</b></a></li>
 <li><a href="#group-endorsement"><span>endorsement</span><b>30</b></a></li>
 <li><a href="#group-errors"><span>errors</span><b>17</b></a></li>
@@ -76,7 +76,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>1557/1557</b>chuỗi song ngữ</li>
+    <li><b>1576/1576</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -858,7 +858,7 @@
 </article>
 </section>
 <section id="group-counterfactual">
-  <h2>counterfactual <span>56 chuỗi</span></h2>
+  <h2>counterfactual <span>75 chuỗi</span></h2>
   <article class="entry" data-locale-key="counterfactual.alternative">
   <header><code>counterfactual.alternative</code></header>
   <p class="vi" lang="vi">Thay thế</p>
@@ -878,6 +878,41 @@
   <header><code>counterfactual.assessed</code></header>
   <p class="vi" lang="vi">Kết quả được đánh giá</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assessed result</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.CONDITION_OVERRIDE_EFFECT">
+  <header><code>counterfactual.attribution.CONDITION_OVERRIDE_EFFECT</code></header>
+  <p class="vi" lang="vi">Chênh lệch này phát sinh từ điều kiện kịch bản được thay đổi rõ ràng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This difference came from the explicitly changed scenario condition.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.DIRECT_INTERVENTION_EFFECT">
+  <header><code>counterfactual.attribution.DIRECT_INTERVENTION_EFFECT</code></header>
+  <p class="vi" lang="vi">Quy tắc do tác giả xác định liên kết trực tiếp thay đổi này với quyết định thay thế.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The authored rule links this change directly to the alternative decision.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.DOWNSTREAM_STATE_EFFECT">
+  <header><code>counterfactual.attribution.DOWNSTREAM_STATE_EFFECT</code></header>
+  <p class="vi" lang="vi">Quy tắc do tác giả xác định liên kết thay đổi này với trạng thái về sau chịu ảnh hưởng của phương án thay thế.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The authored rule links this change to downstream state affected by the alternative.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.LATER_DECISION_EFFECT">
+  <header><code>counterfactual.attribution.LATER_DECISION_EFFECT</code></header>
+  <p class="vi" lang="vi">Các lựa chọn về sau cũng thay đổi, vì vậy không thể quy toàn bộ chênh lệch này cho phương án thay thế đầu tiên.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Later choices also changed, so this difference cannot be attributed only to the first alternative.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.NOT_ATTRIBUTABLE">
+  <header><code>counterfactual.attribution.NOT_ATTRIBUTABLE</code></header>
+  <p class="vi" lang="vi">Bằng chứng do tác giả xác định hiện có chưa đủ để quy kết nguyên nhân.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The available authored evidence does not support a causal attribution.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.STOCHASTIC_OUTCOME_EFFECT">
+  <header><code>counterfactual.attribution.STOCHASTIC_OUTCOME_EFFECT</code></header>
+  <p class="vi" lang="vi">Chênh lệch này phát sinh từ một kết quả ngẫu nhiên có định danh.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This difference came from a named stochastic outcome.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.attribution.UNCHANGED">
+  <header><code>counterfactual.attribution.UNCHANGED</code></header>
+  <p class="vi" lang="vi">Khía cạnh này không thay đổi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This dimension did not change.</p></details>
 </article>
   <article class="entry" data-locale-key="counterfactual.availableEvidence">
   <header><code>counterfactual.availableEvidence</code></header>
@@ -909,6 +944,46 @@
   <p class="vi" lang="vi">Quyết định được chọn đã thay đổi và nhánh này cần hoặc có thêm các quyết định về sau. Không thể quy mọi khác biệt cho thay đổi đầu tiên.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The selected decision changed and the branch requires or contains later decisions. Not every difference can be attributed to the first change.</p></details>
 </article>
+  <article class="entry" data-locale-key="counterfactual.condition.certificateSigner.authorized">
+  <header><code>counterfactual.condition.certificateSigner.authorized</code></header>
+  <p class="vi" lang="vi">Tổ chức chứng nhận được công nhận và có thẩm quyền</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Recognized, authorized certifier</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.condition.certificateSigner.title">
+  <header><code>counterfactual.condition.certificateSigner.title</code></header>
+  <p class="vi" lang="vi">Thay đổi bối cảnh bên ký chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Change the certificate signer context</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.condition.certificateSigner.unauthorized">
+  <header><code>counterfactual.condition.certificateSigner.unauthorized</code></header>
+  <p class="vi" lang="vi">Đơn vị vận chuyển được công nhận nhưng không có thẩm quyền chứng nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Recognized transporter without certificate authority</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.conditionChanged">
+  <header><code>counterfactual.conditionChanged</code></header>
+  <p class="vi" lang="vi">Điều kiện đã đổi: {original} → {alternative}. Quyết định của người học được giữ nguyên.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Condition changed: {original} → {alternative}. The learner decision stayed the same.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.conditionEvidenceChanged">
+  <header><code>counterfactual.conditionEvidenceChanged</code></header>
+  <p class="vi" lang="vi">Đây là cùng một quyết định trong bối cảnh bằng chứng hiển thị khác.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This is the same decision under different visible evidence.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.conditionEvidenceUnchanged">
+  <header><code>counterfactual.conditionEvidenceUnchanged</code></header>
+  <p class="vi" lang="vi">Đây là cùng một quyết định với cùng bằng chứng hiển thị; chỉ điều kiện ẩn do kịch bản quy định thay đổi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This is the same decision under the same visible evidence; only the hidden authored condition changed.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.conditionHeading">
+  <header><code>counterfactual.conditionHeading</code></header>
+  <p class="vi" lang="vi">So sánh điều kiện</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Condition comparison</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.conditionHelp">
+  <header><code>counterfactual.conditionHelp</code></header>
+  <p class="vi" lang="vi">Quyết định ban đầu của người học được giữ nguyên. Hãy chọn một điều kiện kịch bản do tác giả cho phép để thay đổi.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The original learner decision is kept unchanged. Select one author-approved scenario condition to change.</p></details>
+</article>
   <article class="entry" data-locale-key="counterfactual.confidence">
   <header><code>counterfactual.confidence</code></header>
   <p class="vi" lang="vi">Mức tự tin, từ 1 đến 5</p>
@@ -939,10 +1014,15 @@
   <p class="vi" lang="vi">Khác biệt trạng thái quan sát được</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Observed state differences</p></details>
 </article>
-  <article class="entry" data-locale-key="counterfactual.dimensionPending">
-  <header><code>counterfactual.dimensionPending</code></header>
-  <p class="vi" lang="vi">Khía cạnh này được mô tả để xem xét, nhưng phiên bản kịch bản này chưa có quy tắc tính giá trị do tác giả xác định.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This dimension is described for review, but this scenario version does not yet contain an authored value rule.</p></details>
+  <article class="entry" data-locale-key="counterfactual.dimensionDifference">
+  <header><code>counterfactual.dimensionDifference</code></header>
+  <p class="vi" lang="vi">Chênh lệch (phương án thay thế trừ ban đầu): {difference}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Difference (alternative minus original): {difference}.</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.dimensionValues">
+  <header><code>counterfactual.dimensionValues</code></header>
+  <p class="vi" lang="vi">Ban đầu: {original}. Phương án thay thế: {alternative}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original: {original}. Alternative: {alternative}.</p></details>
 </article>
   <article class="entry" data-locale-key="counterfactual.dimensionsHeading">
   <header><code>counterfactual.dimensionsHeading</code></header>
@@ -1049,6 +1129,11 @@
   <p class="vi" lang="vi">Lựa chọn ban đầu</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original choice</p></details>
 </article>
+  <article class="entry" data-locale-key="counterfactual.originalCondition">
+  <header><code>counterfactual.originalCondition</code></header>
+  <p class="vi" lang="vi">Điều kiện ban đầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Original condition</p></details>
+</article>
   <article class="entry" data-locale-key="counterfactual.originalTimeline">
   <header><code>counterfactual.originalTimeline</code></header>
   <p class="vi" lang="vi">Dòng thời gian ban đầu</p>
@@ -1109,10 +1194,20 @@
   <p class="vi" lang="vi">Chạy nhánh thay thế</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run alternative branch</p></details>
 </article>
+  <article class="entry" data-locale-key="counterfactual.runCondition">
+  <header><code>counterfactual.runCondition</code></header>
+  <p class="vi" lang="vi">Chạy so sánh điều kiện</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Run condition comparison</p></details>
+</article>
   <article class="entry" data-locale-key="counterfactual.running">
   <header><code>counterfactual.running</code></header>
   <p class="vi" lang="vi">Đang chạy phương án thay thế…</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Running alternative…</p></details>
+</article>
+  <article class="entry" data-locale-key="counterfactual.selectCondition">
+  <header><code>counterfactual.selectCondition</code></header>
+  <p class="vi" lang="vi">Khám phá một điều kiện khác do tác giả cho phép</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Explore a different authored condition</p></details>
 </article>
   <article class="entry" data-locale-key="counterfactual.selectPoint">
   <header><code>counterfactual.selectPoint</code></header>
@@ -8037,7 +8132,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>042f7ec7f7685f30e712f227539b0cb3e15f541e</code> · SHA-256 nguồn: <code>563aed43e1b7dba442a925df52a4149fdc91295ddd4e137c35104c681e371abe</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>1b77f9ea4d3abba2a2a147a61efb3471fec657d0</code> · SHA-256 nguồn: <code>7ec50549c1a47289297e01019b2d0a03773d25cca86dcca01e8b4874e872c0c1</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

@@ -8,6 +8,7 @@ import {
 } from "./counterfactual-explorer";
 import type {
   CounterfactualComparisonViewV1,
+  CounterfactualConditionPointViewV1,
   CounterfactualExplorerApi,
   CounterfactualPointViewV1,
 } from "./counterfactual-api";
@@ -148,6 +149,7 @@ const comparison: CounterfactualComparisonViewV1 = {
     "ORIGINAL_ASSESSED_ALTERNATIVE_EXPLORATORY",
   counterfactualId: "RUN_COUNTERFACTUAL_001",
   sourceRunId: "RUN_SOURCE_001",
+  counterfactualType: "DECISION",
   forkNodeId: "NODE_DISCREPANCY_DECISION",
   decisionId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
   classification: "SINGLE_INTERVENTION",
@@ -219,20 +221,83 @@ const comparison: CounterfactualComparisonViewV1 = {
         localizationKey:
           "platformPack.standardCoffeeStage3.counterfactual.dimensions.academicScore.description",
       },
-      originalValue: null,
-      alternativeValue: null,
-      difference: null,
-      evaluationStatus:
-        "AWAITING_AUTHORED_EVALUATION_RULE",
+      originalValue: 72,
+      alternativeValue: 82,
+      difference: 10,
+      evaluationStatus: "EVALUATED",
+      attribution: "DIRECT_INTERVENTION_EFFECT",
     },
   ],
+};
+
+const conditionPoint: CounterfactualConditionPointViewV1 = {
+  schemaVersion: "1.0.0",
+  sourceRunId: "RUN_SOURCE_001",
+  forkSequenceNumber: 8,
+  forkNodeId: "NODE_CERTIFICATE_DECISION",
+  decisionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+  originalDecisionEventId: "EVENT_CERTIFICATE_DECISION",
+  originalOptionIds: [
+    "VALID",
+    "RECOGNIZED",
+    "AUTHORIZED",
+    "HASH_ON_CHAIN",
+    "CONTINUE",
+  ],
+  actorId: "ACTOR_CERTIFIER",
+  organizationId: "ORG_CERTIFICATION_BODY",
+  roleId: "CERTIFICATION_OFFICER",
+  title: {
+    localizationKey:
+      "counterfactual.condition.certificateSigner.title",
+  },
+  originalConditionValueId: "AUTHORIZED_CERTIFIER",
+  configuration: {
+    enabled: true,
+    conditionId: "CONDITION_CERTIFICATE_SIGNER_CONTEXT",
+    availability: "AFTER_FEEDBACK_RELEASE",
+    permittedCreators: ["LEARNER", "INSTRUCTOR"],
+    forkNodeId: "NODE_CERTIFICATE_DECISION",
+    runtimeConditionKey: "COFFEE_CASE_VARIANT",
+    allowedValues: [
+      {
+        conditionValueId: "AUTHORIZED_CERTIFIER",
+        runtimeValue: "authorized-certifier",
+        label: {
+          localizationKey:
+            "counterfactual.condition.certificateSigner.authorized",
+        },
+      },
+      {
+        conditionValueId: "UNAUTHORIZED_TRANSPORTER",
+        runtimeValue: "unauthorized-transporter",
+        label: {
+          localizationKey:
+            "counterfactual.condition.certificateSigner.unauthorized",
+        },
+      },
+    ],
+    affectsInformationBeforeFork: true,
+    comparisonDimensionIds: ["DIM_ACADEMIC_SCORE"],
+    maxBranchesPerLearner: 2,
+    reflectionRequired: true,
+    localizationKey:
+      "counterfactual.condition.certificateSigner.title",
+  },
+  forkProjection: projection("RUN_SOURCE_001", [
+    "SUBMIT_CERTIFICATE_DECISION",
+  ]),
 };
 
 describe("counterfactual explorer", () => {
   it("runs a changed decision against the reconstructed context and saves reflection", async () => {
     const api: CounterfactualExplorerApi = {
-      loadPoints: vi.fn().mockResolvedValue([point]),
+      loadPoints: vi.fn().mockResolvedValue({
+        decisions: [point],
+        conditions: [],
+      }),
       explore: vi.fn().mockResolvedValue(comparison),
+      exploreCondition: vi.fn(),
       continueBranch: vi.fn().mockResolvedValue(comparison),
       submitReflection: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
@@ -392,8 +457,12 @@ describe("counterfactual explorer", () => {
       .fn()
       .mockResolvedValue(comparison);
     const api: CounterfactualExplorerApi = {
-      loadPoints: vi.fn().mockResolvedValue([point]),
+      loadPoints: vi.fn().mockResolvedValue({
+        decisions: [point],
+        conditions: [],
+      }),
       explore: vi.fn().mockResolvedValue(pausedComparison),
+      exploreCondition: vi.fn(),
       continueBranch,
       submitReflection: vi.fn(),
     };
@@ -461,6 +530,105 @@ describe("counterfactual explorer", () => {
       await screen.findByRole("heading", {
         name: "Reflect on the comparison",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the original decision while exploring an authored condition", async () => {
+    const conditionComparison: CounterfactualComparisonViewV1 = {
+      ...comparison,
+      counterfactualId: "RUN_COUNTERFACTUAL_CONDITION",
+      counterfactualType: "CONDITION",
+      forkNodeId: conditionPoint.forkNodeId,
+      decisionId: conditionPoint.decisionId,
+      conditionChange: {
+        conditionId:
+          conditionPoint.configuration.conditionId,
+        originalValueId: "AUTHORIZED_CERTIFIER",
+        alternativeValueId: "UNAUTHORIZED_TRANSPORTER",
+        affectsInformationBeforeFork: true,
+      },
+      alternativeExploratoryResult: {
+        ...comparison.alternativeExploratoryResult,
+        decision: comparison.originalAssessedResult.decision,
+      },
+      differences: {
+        ...comparison.differences,
+        attribution: "CONDITION_OVERRIDE_EFFECT",
+      },
+      dimensions: comparison.dimensions.map((dimension) => ({
+        ...dimension,
+        attribution: "CONDITION_OVERRIDE_EFFECT",
+      })),
+    };
+    const api: CounterfactualExplorerApi = {
+      loadPoints: vi.fn().mockResolvedValue({
+        decisions: [],
+        conditions: [conditionPoint],
+      }),
+      explore: vi.fn(),
+      exploreCondition: vi
+        .fn()
+        .mockResolvedValue(conditionComparison),
+      continueBranch: vi.fn(),
+      submitReflection: vi.fn(),
+    };
+    const user = userEvent.setup();
+    render(
+      <LocaleProvider locale="en">
+        <CounterfactualExplorer
+          api={api}
+          sourceRunId="RUN_SOURCE_001"
+        />
+      </LocaleProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Choose a decision to explore",
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Change the certificate signer context",
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "The original learner decision is kept unchanged. Select one author-approved scenario condition to change.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", {
+        name: /Recognized, authorized certifier/u,
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("radio", {
+        name: "Recognized transporter without certificate authority",
+      }),
+    ).toBeChecked();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Run condition comparison",
+      }),
+    );
+
+    expect(api.exploreCondition).toHaveBeenCalledWith(
+      "RUN_SOURCE_001",
+      conditionPoint,
+      "UNAUTHORIZED_TRANSPORTER",
+    );
+    expect(
+      await screen.findByText(
+        "Condition changed: AUTHORIZED_CERTIFIER → UNAUTHORIZED_TRANSPORTER. The learner decision stayed the same.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This is the same decision under different visible evidence.",
+      ),
     ).toBeInTheDocument();
   });
 });

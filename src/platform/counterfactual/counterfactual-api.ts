@@ -1,5 +1,6 @@
 import type {
   CounterfactualComparisonV1,
+  CounterfactualConditionPointV1,
   CounterfactualDecisionPointV1,
   CounterfactualReflectionResponseV1,
   CounterfactualReflectionV1,
@@ -12,6 +13,17 @@ export interface CounterfactualPointViewV1
   readonly forkProjection: LearnerRunProjectionV1;
 }
 
+export interface CounterfactualConditionPointViewV1
+  extends CounterfactualConditionPointV1 {
+  readonly forkProjection: LearnerRunProjectionV1;
+}
+
+export interface CounterfactualAvailablePointsV1 {
+  readonly decisions: readonly CounterfactualPointViewV1[];
+  readonly conditions:
+    readonly CounterfactualConditionPointViewV1[];
+}
+
 export type CounterfactualComparisonViewV1 =
   CounterfactualComparisonV1;
 
@@ -20,11 +32,16 @@ export type { CounterfactualTimelineItemV1 };
 export interface CounterfactualExplorerApi {
   loadPoints(
     sourceRunId: string,
-  ): Promise<readonly CounterfactualPointViewV1[]>;
+  ): Promise<CounterfactualAvailablePointsV1>;
   explore(
     sourceRunId: string,
     point: CounterfactualPointViewV1,
     commandIntent: Readonly<Record<string, unknown>>,
+  ): Promise<CounterfactualComparisonViewV1>;
+  exploreCondition(
+    sourceRunId: string,
+    point: CounterfactualConditionPointViewV1,
+    conditionValueId: string,
   ): Promise<CounterfactualComparisonViewV1>;
   continueBranch(
     counterfactualId: string,
@@ -119,20 +136,46 @@ async function submitCompleteAndCompare(
   ).comparison;
 }
 
+async function completeAndCompare(
+  fetcher: FetchLike,
+  branchRunId: string,
+): Promise<CounterfactualComparisonViewV1> {
+  await requestJson(
+    fetcher,
+    `/api/v1/counterfactuals/${encodeURIComponent(branchRunId)}/complete`,
+    {
+      method: "POST",
+      body: "{}",
+    },
+  );
+  return (
+    await requestJson<{
+      readonly comparison:
+        CounterfactualComparisonViewV1;
+    }>(
+      fetcher,
+      `/api/v1/counterfactuals/${encodeURIComponent(branchRunId)}/comparison`,
+    )
+  ).comparison;
+}
+
 export function createCounterfactualExplorerApi(
   fetcher: FetchLike = globalThis.fetch.bind(globalThis),
 ): CounterfactualExplorerApi {
   return {
     async loadPoints(sourceRunId) {
-      return (
-        await requestJson<{
-          readonly points:
-            readonly CounterfactualPointViewV1[];
-        }>(
+      const response = await requestJson<{
+        readonly points: readonly CounterfactualPointViewV1[];
+        readonly conditions:
+          readonly CounterfactualConditionPointViewV1[];
+      }>(
           fetcher,
           `/api/v1/runs/${encodeURIComponent(sourceRunId)}/counterfactual-points`,
-        )
-      ).points;
+        );
+      return {
+        decisions: response.points,
+        conditions: response.conditions,
+      };
     },
     async explore(sourceRunId, point, commandIntent) {
       const branchRunId = identifier("RUN_COUNTERFACTUAL");
@@ -145,6 +188,7 @@ export function createCounterfactualExplorerApi(
         {
           method: "POST",
           body: JSON.stringify({
+            counterfactualType: "DECISION",
             branchRunId,
             forkSequenceNumber: point.forkSequenceNumber,
             forkNodeId: point.forkNodeId,
@@ -159,6 +203,33 @@ export function createCounterfactualExplorerApi(
         0,
         commandIntent,
       );
+    },
+    async exploreCondition(
+      sourceRunId,
+      point,
+      conditionValueId,
+    ) {
+      const branchRunId = identifier("RUN_COUNTERFACTUAL");
+      const interventionId = identifier(
+        "COMMAND_COUNTERFACTUAL",
+      );
+      await requestJson(
+        fetcher,
+        `/api/v1/runs/${encodeURIComponent(sourceRunId)}/counterfactuals`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            counterfactualType: "CONDITION",
+            branchRunId,
+            forkSequenceNumber: point.forkSequenceNumber,
+            forkNodeId: point.forkNodeId,
+            interventionId,
+            conditionId: point.configuration.conditionId,
+            conditionValueId,
+          }),
+        },
+      );
+      return completeAndCompare(fetcher, branchRunId);
     },
     async continueBranch(
       counterfactualId,

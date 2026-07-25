@@ -1,4 +1,6 @@
 import { SeededRandomSource } from "../../domain/simulation/environment";
+import { canonicalize } from "../../infrastructure/hashing/canonicalize";
+import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
   HostedOutcomeStrategy,
   StochasticOutcomeModelV1,
@@ -9,6 +11,7 @@ export interface StochasticOutcomeResolutionV1 {
   readonly outcomeModelId: string;
   readonly distribution: StochasticOutcomeModelV1["distribution"];
   readonly randomStreamId: string;
+  readonly drawKey: string;
   readonly strategy: HostedOutcomeStrategy;
   readonly probabilityParameters: Readonly<Record<string, unknown>>;
   readonly draw?: number;
@@ -91,7 +94,10 @@ function validateModel(model: StochasticOutcomeModelV1): void {
 
 export function resolveStochasticOutcome(options: {
   readonly model: StochasticOutcomeModelV1;
+  readonly scenarioVersion: string;
   readonly scenarioSeed: string;
+  readonly occurrenceKey: string;
+  readonly relevantEntityId: string;
   readonly strategy: HostedOutcomeStrategy;
   readonly forcedOutcomeCode?: string;
 }): StochasticOutcomeResolutionV1 {
@@ -100,6 +106,26 @@ export function resolveStochasticOutcome(options: {
   if (options.scenarioSeed.length === 0) {
     throw new StochasticOutcomeError("A scenario seed is required.");
   }
+  if (
+    options.scenarioVersion.length === 0 ||
+    options.occurrenceKey.length === 0 ||
+    options.relevantEntityId.length === 0
+  ) {
+    throw new StochasticOutcomeError(
+      "A named stochastic event requires scenario, occurrence, and entity identifiers.",
+    );
+  }
+  const drawKey = sha256Hex(
+    canonicalize({
+      domain: "TRACECHAIN_STOCHASTIC_DRAW_V1",
+      scenarioVersion: options.scenarioVersion,
+      scenarioSeed: options.scenarioSeed,
+      outcomeModelId: model.outcomeModelId,
+      randomStreamId: model.randomStreamId,
+      occurrenceKey: options.occurrenceKey,
+      relevantEntityId: options.relevantEntityId,
+    }),
+  );
   const parameters = probabilityParameters(model);
   if (options.strategy === "forced") {
     if (
@@ -115,15 +141,14 @@ export function resolveStochasticOutcome(options: {
       outcomeModelId: model.outcomeModelId,
       distribution: model.distribution,
       randomStreamId: model.randomStreamId,
+      drawKey,
       strategy: "forced",
       probabilityParameters: parameters,
       outcomeCode: options.forcedOutcomeCode,
     };
   }
 
-  const random = new SeededRandomSource(
-    `${options.scenarioSeed}:${model.randomStreamId}`,
-  );
+  const random = new SeededRandomSource(drawKey);
   const draw = random.next();
   let outcomeCode: string;
   if (model.distribution === "bernoulli") {
@@ -156,6 +181,7 @@ export function resolveStochasticOutcome(options: {
     outcomeModelId: model.outcomeModelId,
     distribution: model.distribution,
     randomStreamId: model.randomStreamId,
+    drawKey,
     strategy: "probabilistic",
     probabilityParameters: parameters,
     draw,

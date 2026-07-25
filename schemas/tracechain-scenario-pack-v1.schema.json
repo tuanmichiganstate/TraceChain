@@ -557,7 +557,8 @@
         "title",
         "description",
         "valueType",
-        "direction"
+        "direction",
+        "evaluation"
       ],
       "properties": {
         "dimensionId": { "$ref": "#/$defs/identifier" },
@@ -573,7 +574,102 @@
             "CONTEXT_DEPENDENT"
           ]
         },
-        "unit": { "$ref": "#/$defs/identifier" }
+        "unit": { "$ref": "#/$defs/identifier" },
+        "evaluation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "metricId",
+            "changedValueAttribution"
+          ],
+          "properties": {
+            "kind": { "const": "RUNTIME_METRIC" },
+            "metricId": { "$ref": "#/$defs/identifier" },
+            "changedValueAttribution": {
+              "enum": [
+                "DIRECT_INTERVENTION_EFFECT",
+                "DOWNSTREAM_STATE_EFFECT",
+                "LATER_DECISION_EFFECT",
+                "STOCHASTIC_OUTCOME_EFFECT",
+                "CONDITION_OVERRIDE_EFFECT"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "counterfactualConditionValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conditionValueId", "runtimeValue", "label"],
+      "properties": {
+        "conditionValueId": { "$ref": "#/$defs/identifier" },
+        "runtimeValue": { "$ref": "#/$defs/identifier" },
+        "label": { "$ref": "#/$defs/localizedText" }
+      }
+    },
+    "counterfactualCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "conditionId",
+        "availability",
+        "permittedCreators",
+        "forkNodeId",
+        "runtimeConditionKey",
+        "allowedValues",
+        "affectsInformationBeforeFork",
+        "comparisonDimensionIds",
+        "localizationKey"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "conditionId": { "$ref": "#/$defs/identifier" },
+        "availability": {
+          "enum": [
+            "AFTER_RUN_COMPLETION",
+            "AFTER_FEEDBACK_RELEASE",
+            "INSTRUCTOR_ONLY"
+          ]
+        },
+        "permittedCreators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["LEARNER", "INSTRUCTOR", "RATER"]
+          }
+        },
+        "forkNodeId": { "$ref": "#/$defs/identifier" },
+        "runtimeConditionKey": {
+          "const": "COFFEE_CASE_VARIANT"
+        },
+        "allowedValues": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/counterfactualConditionValue"
+          }
+        },
+        "affectsInformationBeforeFork": { "type": "boolean" },
+        "comparisonDimensionIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "maxBranchesPerLearner": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "reflectionRequired": { "type": "boolean" },
+        "localizationKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+        }
       }
     },
     "stochasticOutcome": {
@@ -993,6 +1089,7 @@
         "policies",
         "evidenceItems",
         "counterfactualComparisonDimensions",
+        "counterfactualConditions",
         "entryNodeId",
         "nodes",
         "rubricIds",
@@ -1070,6 +1167,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/counterfactualComparisonDimension"
+          }
+        },
+        "counterfactualConditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/counterfactualCondition"
           }
         },
         "entryNodeId": { "$ref": "#/$defs/identifier" },

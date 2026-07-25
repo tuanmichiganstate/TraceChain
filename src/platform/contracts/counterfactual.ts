@@ -2,6 +2,8 @@ import type { LocalizedText } from "./content";
 import type { JsonValue } from "./json";
 import type { LearnerRunProjectionV1 } from "./run-events";
 import type {
+  CounterfactualCausalAttributionV1,
+  CounterfactualConditionDefinitionV1,
   CounterfactualDecisionDefinitionV1,
   DecisionFieldV1,
 } from "./scenario-pack";
@@ -27,7 +29,15 @@ export interface CounterfactualRunMetadataV1 {
   readonly sourceSeed: string;
   readonly sourceStateHash: string;
   readonly sourceInformationStateHash: string;
-  readonly counterfactualType: "DECISION";
+  readonly counterfactualType: "DECISION" | "CONDITION";
+  readonly conditionIntervention?: {
+    readonly conditionId: string;
+    readonly runtimeConditionKey: "COFFEE_CASE_VARIANT";
+    readonly originalValueId: string;
+    readonly alternativeValueId: string;
+    readonly runtimeValue: string;
+    readonly affectsInformationBeforeFork: boolean;
+  };
   readonly interventionId: string;
   readonly comparisonMode: CounterfactualComparisonModeV1;
   readonly createdByUserId: string;
@@ -43,6 +53,8 @@ export interface CreateCounterfactualBranchRequestV1 {
   readonly comparisonMode: CounterfactualComparisonModeV1;
   readonly createdByUserId: string;
   readonly createdAt: string;
+  readonly conditionIntervention?:
+    CounterfactualRunMetadataV1["conditionIntervention"];
 }
 
 export interface CounterfactualDecisionPointV1 {
@@ -59,6 +71,22 @@ export interface CounterfactualDecisionPointV1 {
   readonly title: LocalizedText;
   readonly fields: readonly DecisionFieldV1[];
   readonly configuration: CounterfactualDecisionDefinitionV1;
+}
+
+export interface CounterfactualConditionPointV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly sourceRunId: string;
+  readonly forkSequenceNumber: number;
+  readonly forkNodeId: string;
+  readonly decisionId: string;
+  readonly originalDecisionEventId: string;
+  readonly originalOptionIds: readonly string[];
+  readonly actorId: string;
+  readonly organizationId: string;
+  readonly roleId: string;
+  readonly title: LocalizedText;
+  readonly originalConditionValueId: string;
+  readonly configuration: CounterfactualConditionDefinitionV1;
 }
 
 export interface CounterfactualReflectionResponseV1 {
@@ -93,8 +121,8 @@ export interface CounterfactualComparisonDimensionResultV1 {
   readonly originalValue: JsonValue | null;
   readonly alternativeValue: JsonValue | null;
   readonly difference: JsonValue | null;
-  readonly evaluationStatus:
-    "AWAITING_AUTHORED_EVALUATION_RULE";
+  readonly evaluationStatus: "EVALUATED";
+  readonly attribution: CounterfactualCausalAttributionV1;
 }
 
 export interface CounterfactualComparisonV1 {
@@ -103,8 +131,15 @@ export interface CounterfactualComparisonV1 {
     "ORIGINAL_ASSESSED_ALTERNATIVE_EXPLORATORY";
   readonly counterfactualId: string;
   readonly sourceRunId: string;
+  readonly counterfactualType: "DECISION" | "CONDITION";
   readonly forkNodeId: string;
   readonly decisionId: string;
+  readonly conditionChange?: {
+    readonly conditionId: string;
+    readonly originalValueId: string;
+    readonly alternativeValueId: string;
+    readonly affectsInformationBeforeFork: boolean;
+  };
   readonly classification: CounterfactualComparisonModeV1;
   readonly hindsightLimitation:
     "REFLECTIVE_EXPLORATION_AFTER_COMPLETED_ATTEMPT";
@@ -131,10 +166,7 @@ export interface CounterfactualComparisonV1 {
     readonly changedBusinessRecordIds: readonly string[];
     readonly ledgerChanged: boolean;
     readonly workflowNodeChanged: boolean;
-    readonly attribution:
-      | "DOWNSTREAM_STATE_EFFECT"
-      | "NOT_ATTRIBUTABLE"
-      | "UNCHANGED";
+    readonly attribution: CounterfactualCausalAttributionV1;
   };
   readonly dimensions:
     readonly CounterfactualComparisonDimensionResultV1[];
@@ -161,12 +193,29 @@ export interface AssignmentCounterfactualReportEntryV1 {
   readonly originalOfficialGradeChanged: false;
 }
 
+export interface AssignmentCounterfactualReportSummaryV1 {
+  readonly totalBranches: number;
+  readonly completedBranches: number;
+  readonly reflectedBranches: number;
+  readonly decisionBranches: number;
+  readonly conditionBranches: number;
+  readonly isolatedComparisons: number;
+  readonly compoundComparisons: number;
+  readonly branchesByForkNode: readonly {
+    readonly forkNodeId: string;
+    readonly branchCount: number;
+  }[];
+  readonly averageAcademicScoreDifference: number | null;
+  readonly averageProcessScoreDifference: number | null;
+}
+
 export interface AssignmentCounterfactualReportV1 {
   readonly schemaVersion: "1.0.0";
   readonly reportType:
     "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT";
   readonly assignmentId: string;
   readonly generatedAt: string;
+  readonly summary: AssignmentCounterfactualReportSummaryV1;
   readonly branches:
     readonly AssignmentCounterfactualReportEntryV1[];
 }

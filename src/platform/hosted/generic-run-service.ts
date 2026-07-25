@@ -75,6 +75,7 @@ import type {
   InstructorTimelineItem,
   RubricEvidenceProjection,
 } from "./stage3-types";
+import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
 
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actorId",
@@ -383,6 +384,7 @@ export class GenericHostedRunService {
           outcomeModelId: resolved.outcomeResolution.outcomeModelId,
           distribution: resolved.outcomeResolution.distribution,
           randomStreamId: resolved.outcomeResolution.randomStreamId,
+          drawKey: resolved.outcomeResolution.drawKey,
           probabilityParameters:
             resolved.outcomeResolution
               .probabilityParameters as JsonObject,
@@ -831,6 +833,18 @@ export class GenericHostedRunService {
     };
   }
 
+  async counterfactualMetrics(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<CounterfactualRuntimeMetrics> {
+    const loaded = await this.loadRun(runId);
+    this.requireCounterfactualActor(
+      principal,
+      loaded.state.learnerUserId,
+    );
+    return {};
+  }
+
   async instructorTimeline(
     principal: ApplicationPrincipal | null,
     runId: string,
@@ -1186,6 +1200,12 @@ export class GenericHostedRunService {
     sourceState: Readonly<GenericHostedRunState>,
     metadata: CounterfactualRunMetadataV1,
   ): GenericHostedRunState {
+    if (metadata.counterfactualType === "CONDITION") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "This generic scenario has no authored runtime condition adapter.",
+      );
+    }
     if (
       sourceState.activeTrustedContext.actorId !==
         metadata.forkActorId ||
@@ -1387,7 +1407,8 @@ export class GenericHostedRunService {
           state.rngState.recordedDraws.length !== 0 ||
           event.payload.draw !== resolution.draw ||
           event.payload.outcomeModelId !==
-            resolution.outcomeModelId
+            resolution.outcomeModelId ||
+          event.payload.drawKey !== resolution.drawKey
         ) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
@@ -2097,7 +2118,10 @@ export class GenericHostedRunService {
       scenarioSeed,
       outcomeResolution: resolveStochasticOutcome({
         model,
+        scenarioVersion: this.scenario.version,
         scenarioSeed,
+        occurrenceKey: "RUN_INITIAL_OUTCOME",
+        relevantEntityId: request.assignmentId,
         strategy: modeConfiguration.outcomeStrategy,
         ...(modeConfiguration.outcomeStrategy === "forced"
           ? {

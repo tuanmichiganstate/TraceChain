@@ -128,7 +128,7 @@ All endpoints use `/api/v1`.
 | `GET /assignments/:assignmentId/decision-outcomes` | instructor, rater or administrator | Completed-run authored decision evidence beside realized outcomes; active-run correctness and outcomes remain hidden |
 | `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary; `?identity=pseudonymous` replaces learner user IDs with assignment-scoped codes |
 | `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same identified or pseudonymous evidence in the documented flat CSV V1 layout |
-| `GET /assignments/:assignmentId/counterfactual-report` | managing instructor or administrator | Assignment-scoped branch, comparison, status, and reflection records without changing assessed runs |
+| `GET /assignments/:assignmentId/counterfactual-report` | managing instructor or administrator | Assignment-scoped branch, comparison, status, reflection, and descriptive exploration summary without changing assessed runs |
 | `POST /assignments/:assignmentId/feedback-release` | instructor or administrator | One-way release of current feedback |
 | `POST /runs` | instructor, scenario author or administrator | New assigned hosted coffee run metadata |
 | `GET /runs/:runId` | assigned learner | Role-filtered projection only |
@@ -141,8 +141,8 @@ All endpoints use `/api/v1`.
 | `POST /runs/:runId/ratings` | instructor, rater or administrator | Evidence-linked append-only manual rating revision |
 | `POST /runs/:runId/moderation` | instructor or administrator | Evidence-linked append-only rubric score resolution |
 | `GET /runs/:runId/feedback` | assigned learner | Released manual feedback and that learner's evidence-only competency profile, or an explicit withheld result |
-| `GET /runs/:runId/counterfactual-points` | assigned Sandbox learner, managing instructor or administrator | Authored and assignment-enabled historical decision points with the exact role-visible fork projection |
-| `POST /runs/:runId/counterfactuals` | assigned Sandbox learner, managing instructor or administrator | Immutable copy-on-write branch metadata for one eligible completed-run decision |
+| `GET /runs/:runId/counterfactual-points` | assigned Sandbox learner, managing instructor or administrator | Authored and assignment-enabled historical decision and condition points with the exact role-visible fork projection |
+| `POST /runs/:runId/counterfactuals` | assigned Sandbox learner, managing instructor or administrator | Immutable copy-on-write branch metadata for one eligible decision or constrained authored condition |
 | `GET /counterfactuals/:branchId` | authorized branch learner, managing instructor or administrator | Branch metadata, current role-filtered projection, and optional reflection |
 | `POST /counterfactuals/:branchId/commands` | authorized branch learner, managing instructor or administrator | Alternative or divergent command through the ordinary hosted runtime |
 | `POST /counterfactuals/:branchId/complete` | authorized branch learner, managing instructor or administrator | Reuse compatible source commands and pause rather than inventing choices |

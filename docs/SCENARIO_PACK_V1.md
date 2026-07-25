@@ -60,10 +60,11 @@ application values only inside that pack. Competency, indicator, rubric, evidenc
 organization, role, policy, evidence, decision, node, transition, and native
 runtime references are validated.
 
-Every scenario must provide `modeConfigurations`, `outcomeModels`, and
-`counterfactualComparisonDimensions`; no application default or older pack
-shape is accepted. An empty comparison-dimension array is valid for scenarios
-that do not yet support counterfactual exploration.
+Every scenario must provide `modeConfigurations`, `outcomeModels`,
+`counterfactualComparisonDimensions`, and `counterfactualConditions`; no
+application default or older pack shape is accepted. Empty comparison and
+condition arrays are valid for scenarios that do not support those
+counterfactual capabilities.
 
 ## Workflow nodes
 
@@ -114,8 +115,16 @@ expressions.
 The coffee scenario currently enables this contract for the certificate,
 quantity-discrepancy, and recall-scope decisions. The comparison dimensions are
 academic score, non-grade process quality, consumer safety, business cost,
-compliance, and evidence quality. This schema addition does not itself expose
-a learner workflow or change any official grade.
+compliance, and evidence quality. Each dimension declares a constrained runtime
+metric ID and an authored causal classification for changed values.
+
+An authored `counterfactualConditions` entry defines a stable condition ID,
+fork node, release boundary, permitted creators, bounded value IDs, constrained
+runtime condition key, information-fidelity flag, dimension references, branch
+limit, and reflection requirement. V1 accepts no arbitrary state path or
+executable expression. The coffee runtime currently supports one key,
+`COFFEE_CASE_VARIANT`, at the certificate decision. The server keeps the
+original decision unchanged and applies only an author-approved value.
 
 ## Competencies and rubrics
 
@@ -247,16 +256,17 @@ Other V1 node types remain unavailable for assignment until their runtime
 behavior is implemented. SCORM continues to use the current compact
 deterministic TC3 journal.
 
-The hosted decision-counterfactual workflow is available for completed source
-runs at authored decision points. It reconstructs the exact role-visible fork
-projection, submits a real alternative command, reuses compatible downstream
-commands, pauses instead of inventing a choice when the path diverges, and
-compares the assessed source with the ungraded branch. Learners may create
-branches only for their own Sandbox runs after the authored release boundary;
-managing instructors and administrators remain assignment-scoped. Reflections
-are stored as practice evidence and never modify the source run or official
-grade. Assignment configuration selects a subset of the authored points,
-applies a stricter bounded branch maximum where requested, and controls
-instructor-only or Sandbox learner availability. Branch comparison JSON/CSV
-and the managing instructor's assignment counterfactual report retain exact
-source-version identity without exporting hidden actual state to learners.
+The hosted counterfactual workflow is available for completed source runs at
+authored decision and condition points. A decision branch submits a real
+alternative command. A condition branch changes one approved runtime condition
+and has the server resubmit the original decision. Both reconstruct the exact
+role-visible fork boundary, reuse compatible downstream commands, pause
+instead of inventing a choice when the path diverges, and compare the assessed
+source with the ungraded branch. Learners may create branches only for their
+own Sandbox runs after the authored release boundary; managing instructors and
+administrators remain assignment-scoped. Reflections are stored as practice
+evidence and never modify the source run or official grade. Assignment
+configuration applies the authored point selection and stricter bounded branch
+maximum. Branch comparison JSON/CSV and the managing instructor's assignment
+report retain exact source-version identity without exporting hidden actual
+state to learners.

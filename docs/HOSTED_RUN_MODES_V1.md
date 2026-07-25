@@ -75,17 +75,24 @@ Scenario packs may define:
 - Bernoulli models with one probability and true/false outcome codes; and
 - weighted categorical models with unique positive-weight outcome codes.
 
-Each model has a named random stream. Probabilistic resolution seeds the
-existing deterministic random source with:
+Each model has a named random stream. Probabilistic resolution derives a
+stable draw key from:
 
 ```text
-scenarioSeed + ":" + randomStreamId
+scenario version
+source seed
+outcome model ID
+random stream ID
+semantic occurrence key
+relevant entity ID
 ```
 
-The result records the model, distribution, probability parameters, exact draw,
-and realized outcome separately. `RANDOM_DRAW_MADE` and `OUTCOME_REALIZED`
-events are appended before scenario evidence is released. Replay recomputes the
-draw and result and rejects disagreement.
+The result records the draw key, model, distribution, probability parameters,
+exact draw, and realized outcome separately. `RANDOM_DRAW_MADE` and
+`OUTCOME_REALIZED` events are appended before scenario evidence is released.
+Replay recomputes the draw key, draw, and result and rejects disagreement.
+Counterfactual branches therefore share a draw for the same semantic event
+without suffering sequential draw drift.
 
 A forced outcome must be one of the model's authored result codes and consumes
 no random draw. This keeps standardized cases fixed while retaining the same

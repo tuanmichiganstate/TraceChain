@@ -67,11 +67,48 @@ function parseMetadata(serialized: string): CounterfactualRunMetadataV1 {
       (value as { forkSequenceNumber?: unknown }).forkSequenceNumber,
     ) ||
     (value as { counterfactualType?: unknown }).counterfactualType !==
-      "DECISION"
+      "DECISION" &&
+    (value as { counterfactualType?: unknown }).counterfactualType !==
+      "CONDITION"
   ) {
     throw new D1CounterfactualRunRepositoryError(
       "CORRUPT_COUNTERFACTUAL_METADATA",
       "Stored counterfactual metadata does not satisfy its versioned contract.",
+    );
+  }
+  const typed = value as {
+    counterfactualType: "DECISION" | "CONDITION";
+    conditionIntervention?: {
+      conditionId?: unknown;
+      originalValueId?: unknown;
+      alternativeValueId?: unknown;
+      runtimeConditionKey?: unknown;
+      runtimeValue?: unknown;
+      affectsInformationBeforeFork?: unknown;
+    };
+  };
+  if (
+    (typed.counterfactualType === "DECISION" &&
+      typed.conditionIntervention !== undefined) ||
+    (typed.counterfactualType === "CONDITION" &&
+      (typeof typed.conditionIntervention?.conditionId !== "string" ||
+      typeof typed.conditionIntervention.originalValueId !== "string" ||
+      typeof typed.conditionIntervention.alternativeValueId !==
+        "string" ||
+      typed.conditionIntervention.originalValueId ===
+        typed.conditionIntervention.alternativeValueId ||
+      typed.conditionIntervention.runtimeConditionKey !==
+        "COFFEE_CASE_VARIANT" ||
+      (typed.conditionIntervention.runtimeValue !==
+        "authorized-certifier" &&
+        typed.conditionIntervention.runtimeValue !==
+          "unauthorized-transporter") ||
+      typeof typed.conditionIntervention
+        .affectsInformationBeforeFork !== "boolean"))
+  ) {
+    throw new D1CounterfactualRunRepositoryError(
+      "CORRUPT_COUNTERFACTUAL_METADATA",
+      "Stored condition intervention does not satisfy its current contract.",
     );
   }
   return value as CounterfactualRunMetadataV1;

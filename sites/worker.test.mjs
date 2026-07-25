@@ -2784,7 +2784,11 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await pointsResponse.clone().text(),
     );
-    const points = (await pointsResponse.json()).points;
+    const availableCounterfactuals =
+      await pointsResponse.json();
+    const points = availableCounterfactuals.points;
+    const conditionPoints =
+      availableCounterfactuals.conditions;
     assert.deepEqual(
       points.map((point) => point.decisionId),
       ["INT_CERTIFICATE_INITIAL_SUBMITTED"],
@@ -2794,6 +2798,15 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       1,
     );
     assert.equal(points[0].configuration.reflectionRequired, true);
+    assert.equal(conditionPoints.length, 1);
+    assert.equal(
+      conditionPoints[0].configuration.conditionId,
+      "CONDITION_CERTIFICATE_SIGNER_CONTEXT",
+    );
+    assert.equal(
+      conditionPoints[0].originalConditionValueId,
+      "AUTHORIZED_CERTIFIER",
+    );
     const outsideAssignmentPoints = await worker.fetch(
       apiRequest(
         `/api/v1/runs/${runId}/counterfactual-points`,
@@ -2823,6 +2836,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         method: "POST",
         email: "instructor@example.edu",
         body: {
+          counterfactualType: "DECISION",
           branchRunId,
           forkSequenceNumber:
             certificatePoint.forkSequenceNumber,
@@ -3056,8 +3070,9 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.equal(
       comparison.dimensions.every(
         (dimension) =>
-          dimension.evaluationStatus ===
-          "AWAITING_AUTHORED_EVALUATION_RULE",
+          dimension.evaluationStatus === "EVALUATED" &&
+          typeof dimension.originalValue === "number" &&
+          typeof dimension.alternativeValue === "number",
       ),
       true,
     );
@@ -3187,6 +3202,102 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.match(counterfactualCsv, /comparison_dimension/u);
     assert.match(counterfactualCsv, /reflection/u);
 
+    const conditionBranchRunId =
+      "RUN_SITE_STAGE3_COUNTERFACTUAL_CONDITION_001";
+    const conditionInterventionId =
+      "COMMAND_SITE_STAGE3_COUNTERFACTUAL_CONDITION_001";
+    const conditionCreate = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/counterfactuals`, {
+        method: "POST",
+        email: "instructor@example.edu",
+        body: {
+          counterfactualType: "CONDITION",
+          branchRunId: conditionBranchRunId,
+          forkSequenceNumber:
+            conditionPoints[0].forkSequenceNumber,
+          forkNodeId: conditionPoints[0].forkNodeId,
+          interventionId: conditionInterventionId,
+          conditionId:
+            conditionPoints[0].configuration.conditionId,
+          conditionValueId: "UNAUTHORIZED_TRANSPORTER",
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      conditionCreate.status,
+      201,
+      await conditionCreate.clone().text(),
+    );
+    const conditionCreated = await conditionCreate.json();
+    assert.equal(
+      conditionCreated.counterfactual.counterfactualType,
+      "CONDITION",
+    );
+    assert.equal(
+      conditionCreated.counterfactual.conditionIntervention
+        .alternativeValueId,
+      "UNAUTHORIZED_TRANSPORTER",
+    );
+    assert.equal(conditionCreated.projection.version > 0, true);
+
+    const conditionComplete = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${conditionBranchRunId}/complete`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: {},
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      conditionComplete.status,
+      200,
+      await conditionComplete.clone().text(),
+    );
+    assert.equal(
+      (await conditionComplete.json()).status,
+      "completed",
+    );
+    const conditionComparisonResponse = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${conditionBranchRunId}/comparison`,
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      conditionComparisonResponse.status,
+      200,
+      await conditionComparisonResponse.clone().text(),
+    );
+    const conditionComparison =
+      (await conditionComparisonResponse.json()).comparison;
+    assert.equal(
+      conditionComparison.counterfactualType,
+      "CONDITION",
+    );
+    assert.deepEqual(
+      conditionComparison.originalAssessedResult.decision,
+      conditionComparison.alternativeExploratoryResult.decision,
+    );
+    assert.deepEqual(conditionComparison.conditionChange, {
+      conditionId: "CONDITION_CERTIFICATE_SIGNER_CONTEXT",
+      originalValueId: "AUTHORIZED_CERTIFIER",
+      alternativeValueId: "UNAUTHORIZED_TRANSPORTER",
+      affectsInformationBeforeFork: true,
+    });
+    assert.equal(
+      conditionComparison.dimensions.some(
+        (dimension) =>
+          dimension.attribution ===
+          "CONDITION_OVERRIDE_EFFECT",
+      ),
+      true,
+    );
+
     const counterfactualReportResponse = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_SITE_001/counterfactual-report",
@@ -3205,22 +3316,67 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       counterfactualReport.reportType,
       "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
     );
-    assert.equal(counterfactualReport.branches.length, 1);
+    assert.equal(counterfactualReport.branches.length, 2);
+    assert.equal(counterfactualReport.summary.totalBranches, 2);
     assert.equal(
-      counterfactualReport.branches[0].learnerUserId,
+      counterfactualReport.summary.completedBranches,
+      2,
+    );
+    assert.equal(
+      counterfactualReport.summary.reflectedBranches,
+      1,
+    );
+    assert.equal(counterfactualReport.summary.decisionBranches, 1);
+    assert.equal(
+      counterfactualReport.summary.conditionBranches,
+      1,
+    );
+    assert.equal(
+      counterfactualReport.summary.isolatedComparisons,
+      2,
+    );
+    assert.equal(
+      counterfactualReport.summary.compoundComparisons,
+      0,
+    );
+    assert.deepEqual(
+      counterfactualReport.summary.branchesByForkNode,
+      [
+        {
+          forkNodeId: "NODE_CERTIFICATE_DECISION",
+          branchCount: 2,
+        },
+      ],
+    );
+    assert.equal(
+      typeof counterfactualReport.summary
+        .averageAcademicScoreDifference,
+      "number",
+    );
+    assert.equal(
+      typeof counterfactualReport.summary
+        .averageProcessScoreDifference,
+      "number",
+    );
+    const decisionBranchReport =
+      counterfactualReport.branches.find(
+        (branch) =>
+          branch.metadata.branchRunId === branchRunId,
+      );
+    assert.equal(
+      decisionBranchReport.learnerUserId,
       "USER_LEARNER_001",
     );
     assert.equal(
-      counterfactualReport.branches[0].branchStatus,
+      decisionBranchReport.branchStatus,
       "COMPLETED",
     );
     assert.equal(
-      counterfactualReport.branches[0]
-        .originalOfficialGradeChanged,
+      decisionBranchReport.originalOfficialGradeChanged,
       false,
     );
     assert.equal(
-      counterfactualReport.branches[0].reflection.reflectionId,
+      decisionBranchReport.reflection.reflectionId,
       reflectionBody.reflectionId,
     );
 

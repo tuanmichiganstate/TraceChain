@@ -71,6 +71,7 @@ const comparison: CounterfactualComparisonV1 = {
     "ORIGINAL_ASSESSED_ALTERNATIVE_EXPLORATORY",
   counterfactualId: metadata.branchRunId,
   sourceRunId: metadata.sourceRunId,
+  counterfactualType: "DECISION",
   forkNodeId: metadata.forkNodeId,
   decisionId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
   classification: "SINGLE_INTERVENTION",
@@ -128,11 +129,11 @@ const comparison: CounterfactualComparisonV1 = {
       description: {
         localizationKey: "dimension.score.description",
       },
-      originalValue: null,
-      alternativeValue: null,
-      difference: null,
-      evaluationStatus:
-        "AWAITING_AUTHORED_EVALUATION_RULE",
+      originalValue: 72,
+      alternativeValue: 82,
+      difference: 10,
+      evaluationStatus: "EVALUATED",
+      attribution: "DIRECT_INTERVENTION_EFFECT",
     },
   ],
 };

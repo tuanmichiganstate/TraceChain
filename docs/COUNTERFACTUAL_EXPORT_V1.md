@@ -4,9 +4,9 @@ Status: implemented for the hosted instructor-ready platform.
 
 ## Scope
 
-The export contract covers hosted decision-counterfactual branches. It does
-not add branch persistence to SCORM, expose hidden actual state, or alter an
-official grade.
+The export contract covers hosted decision and authored-condition
+counterfactual branches. It does not add branch persistence to SCORM, expose
+hidden actual state, or alter an official grade.
 
 Authenticated branch participants may download:
 
@@ -43,11 +43,15 @@ Metadata fixes the source and branch identifiers, fork sequence and node,
 trusted fork context, exact pack and scenario versions, configuration hash,
 source seed, source state and information-state hashes, intervention,
 classification mode, creator, and creation time.
+Condition branches additionally record the authored condition identifier,
+original and alternative value identifiers, constrained runtime value, and
+whether the condition changes information visible before the fork.
 
 The comparison contains only role-visible source, fork, and alternative
 projections. It labels the source as assessed and the alternative as
-exploratory, preserves both timelines, names information revealed later, and
-states that the official grade did not change.
+exploratory, preserves both timelines, names information revealed later,
+contains evaluated authored dimensions with causal classifications, and states
+that the official grade did not change.
 
 ## Branch CSV
 
@@ -104,6 +108,7 @@ schemaVersion   1.0.0
 reportType      TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT
 assignmentId
 generatedAt
+summary
 branches
 ```
 
@@ -111,6 +116,18 @@ Each branch record names the source learner, immutable branch metadata,
 `CREATED`, `IN_PROGRESS`, or `COMPLETED` status, an available comparison,
 an optional reflection, and `originalOfficialGradeChanged: false`.
 
-The report contains no inferred class-level competence or claim that the
-explored choice caused every difference. Dimensions without authored value
-rules retain `AWAITING_AUTHORED_EVALUATION_RULE`.
+The summary contains:
+
+```text
+total, completed, and reflected branch counts
+decision and condition branch counts
+isolated and compound comparison counts
+branch counts by authored fork node
+average academic-score difference
+average process-quality difference
+```
+
+Only completed comparisons with numeric authored dimensions contribute to an
+average; an unavailable average is `null`. These descriptive exploration
+statistics do not infer class-level competence or claim that the explored
+choice caused every difference.

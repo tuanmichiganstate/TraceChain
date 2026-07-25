@@ -75,6 +75,10 @@ import {
   type ApplicationPrincipal,
 } from "./access";
 import { CoffeeHostedDomainRuntime } from "./coffee-domain-runtime";
+import {
+  hostedCoffeeCounterfactualMetrics,
+  type CounterfactualRuntimeMetrics,
+} from "./counterfactual-metrics";
 import type {
   CompetencyEvidenceProjection,
   CreateHostedStage3RunRequest,
@@ -1050,6 +1054,7 @@ export class HostedStage3RunService {
           outcomeModelId: outcomeResolution.outcomeModelId,
           distribution: outcomeResolution.distribution,
           randomStreamId: outcomeResolution.randomStreamId,
+          drawKey: outcomeResolution.drawKey,
           probabilityParameters:
             outcomeResolution.probabilityParameters as JsonObject,
           draw: outcomeResolution.draw ?? -1,
@@ -2620,6 +2625,18 @@ export class HostedStage3RunService {
     );
   }
 
+  async counterfactualMetrics(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<CounterfactualRuntimeMetrics> {
+    const loaded = await this.loadRun(runId);
+    this.requireCounterfactualActor(
+      principal,
+      loaded.state.learnerUserId,
+    );
+    return hostedCoffeeCounterfactualMetrics(loaded.state);
+  }
+
   async instructorTimeline(
     principal: ApplicationPrincipal | null,
     runId: string,
@@ -3018,6 +3035,35 @@ export class HostedStage3RunService {
         "The source state does not retain the trusted context at the fork.",
       );
     }
+    const condition = metadata.conditionIntervention;
+    if (condition !== undefined) {
+      if (
+        metadata.counterfactualType !== "CONDITION" ||
+        condition.runtimeConditionKey !==
+          "COFFEE_CASE_VARIANT" ||
+        sourceState.workflowStep !== "certificate-decision" ||
+        (condition.runtimeValue !== "authorized-certifier" &&
+          condition.runtimeValue !==
+            "unauthorized-transporter")
+      ) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "The authored condition is not supported at this coffee fork.",
+        );
+      }
+      return {
+        ...structuredClone(sourceState),
+        runId: metadata.branchRunId,
+        version: 0,
+        caseVariant: condition.runtimeValue,
+        activeTrustedContext:
+          this.domainRuntime.trustedContextForId(
+            condition.runtimeValue === "authorized-certifier"
+              ? "CTX_CERTIFIER"
+              : "CTX_LOGISTICS",
+          ),
+      };
+    }
     return {
       ...structuredClone(sourceState),
       runId: metadata.branchRunId,
@@ -3255,6 +3301,7 @@ export class HostedStage3RunService {
             distribution: state.outcomeResolution.distribution,
             randomStreamId:
               state.outcomeResolution.randomStreamId,
+            drawKey: state.outcomeResolution.drawKey,
             probabilityParameters:
               state.outcomeResolution.probabilityParameters,
             draw: state.outcomeResolution.draw,
@@ -5001,7 +5048,10 @@ export class HostedStage3RunService {
       scenarioSeed,
       outcomeResolution: resolveStochasticOutcome({
         model,
+        scenarioVersion: scenario.version,
         scenarioSeed,
+        occurrenceKey: "RUN_INITIAL_OUTCOME",
+        relevantEntityId: request.assignmentId,
         strategy: modeConfiguration.outcomeStrategy,
         ...(modeConfiguration.outcomeStrategy === "forced"
           ? {

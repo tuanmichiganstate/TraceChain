@@ -9,6 +9,7 @@ import type {
 } from "../contracts/counterfactual";
 import type {
   CounterfactualComparisonViewV1,
+  CounterfactualConditionPointViewV1,
   CounterfactualExplorerApi,
   CounterfactualPointViewV1,
   CounterfactualTimelineItemV1,
@@ -212,6 +213,14 @@ function Timeline({
   );
 }
 
+function comparisonValue(value: unknown): string {
+  return typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+    ? String(value)
+    : JSON.stringify(value);
+}
+
 export function CounterfactualExplorer({
   api,
   sourceRunId,
@@ -233,8 +242,13 @@ export function CounterfactualExplorer({
     useState<readonly CounterfactualPointViewV1[] | null>(
       null,
     );
+  const [conditionPoints, setConditionPoints] =
+    useState<readonly CounterfactualConditionPointViewV1[]>([]);
   const [selectedPoint, setSelectedPoint] =
     useState<CounterfactualPointViewV1 | null>(null);
+  const [selectedCondition, setSelectedCondition] =
+    useState<CounterfactualConditionPointViewV1 | null>(null);
+  const [conditionValueId, setConditionValueId] = useState("");
   const [selections, setSelections] = useState<
     Readonly<Record<string, readonly string[]>>
   >({});
@@ -255,7 +269,9 @@ export function CounterfactualExplorer({
     setBusy(true);
     setError(false);
     try {
-      setPoints(await api.loadPoints(sourceRunId));
+      const available = await api.loadPoints(sourceRunId);
+      setPoints(available.decisions);
+      setConditionPoints(available.conditions);
     } catch {
       setError(true);
     } finally {
@@ -265,6 +281,7 @@ export function CounterfactualExplorer({
 
   function choosePoint(point: CounterfactualPointViewV1) {
     setSelectedPoint(point);
+    setSelectedCondition(null);
     setSelections(initialSelections(point));
     setEvidenceId(
       point.forkProjection.informationState[0]?.recordId ?? "",
@@ -273,6 +290,23 @@ export function CounterfactualExplorer({
       point.forkProjection.policyState[0]?.recordId ?? "",
     );
     setJustification("");
+    setComparison(null);
+    setReflectionSubmitted(false);
+    setError(false);
+  }
+
+  function chooseCondition(
+    point: CounterfactualConditionPointViewV1,
+  ) {
+    setSelectedPoint(null);
+    setSelectedCondition(point);
+    setConditionValueId(
+      point.configuration.allowedValues.find(
+        (value) =>
+          value.conditionValueId !==
+          point.originalConditionValueId,
+      )?.conditionValueId ?? "",
+    );
     setComparison(null);
     setReflectionSubmitted(false);
     setError(false);
@@ -315,6 +349,33 @@ export function CounterfactualExplorer({
             confidence,
             adverseProbability,
           }),
+        ),
+      );
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exploreCondition(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (
+      selectedCondition === null ||
+      conditionValueId.length === 0
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(false);
+    try {
+      setComparison(
+        await api.exploreCondition(
+          sourceRunId,
+          selectedCondition,
+          conditionValueId,
         ),
       );
     } catch {
@@ -404,7 +465,7 @@ export function CounterfactualExplorer({
             ? t("counterfactual.loading")
             : t("counterfactual.loadPoints")}
         </button>
-      ) : points.length === 0 ? (
+      ) : points.length === 0 && conditionPoints.length === 0 ? (
         <p>{t("counterfactual.noPoints")}</p>
       ) : (
         <>
@@ -423,7 +484,91 @@ export function CounterfactualExplorer({
               </li>
             ))}
           </ol>
+          {conditionPoints.length === 0 ? null : (
+            <>
+              <h3>{t("counterfactual.selectCondition")}</h3>
+              <ol className="counterfactual-explorer__points">
+                {conditionPoints.map((point) => (
+                  <li key={point.configuration.conditionId}>
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => chooseCondition(point)}
+                    >
+                      {t(point.title.localizationKey)}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
         </>
+      )}
+
+      {selectedCondition === null ? null : (
+        <form
+          onSubmit={(event) => void exploreCondition(event)}
+        >
+          <h3>{t("counterfactual.conditionHeading")}</h3>
+          <p>{t("counterfactual.conditionHelp")}</p>
+          <ContextRecords
+            heading={t("counterfactual.availableEvidence")}
+            records={
+              selectedCondition.forkProjection.informationState
+            }
+            emptyText={t("counterfactual.noAvailableEvidence")}
+          />
+          <fieldset className="fieldset">
+            <legend>
+              {t(selectedCondition.title.localizationKey)}
+            </legend>
+            {selectedCondition.configuration.allowedValues.map(
+              (value) => {
+                const isOriginal =
+                  value.conditionValueId ===
+                  selectedCondition.originalConditionValueId;
+                const id =
+                  `counterfactual-condition-${value.conditionValueId}`;
+                return (
+                  <label className="choice" htmlFor={id} key={id}>
+                    <input
+                      id={id}
+                      name="counterfactual-condition"
+                      type="radio"
+                      value={value.conditionValueId}
+                      checked={
+                        conditionValueId ===
+                        value.conditionValueId
+                      }
+                      disabled={isOriginal}
+                      onChange={(event) =>
+                        setConditionValueId(
+                          event.currentTarget.value,
+                        )
+                      }
+                    />
+                    <span>{t(value.label.localizationKey)}</span>
+                    {isOriginal ? (
+                      <small className="counterfactual-explorer__original-choice">
+                        {t("counterfactual.originalCondition")}
+                      </small>
+                    ) : null}
+                  </label>
+                );
+              },
+            )}
+          </fieldset>
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={busy || conditionValueId.length === 0}
+          >
+            {busy
+              ? t("counterfactual.running")
+              : t("counterfactual.runCondition")}
+          </button>
+        </form>
       )}
 
       {selectedPoint === null ? null : (
@@ -626,6 +771,26 @@ export function CounterfactualExplorer({
                 : "counterfactual.compound",
             )}
           </p>
+          {comparison.conditionChange === undefined ? null : (
+            <div className="notice notice--standalone">
+              <p>
+                {t("counterfactual.conditionChanged", {
+                  original:
+                    comparison.conditionChange.originalValueId,
+                  alternative:
+                    comparison.conditionChange.alternativeValueId,
+                })}
+              </p>
+              <p>
+                {t(
+                  comparison.conditionChange
+                    .affectsInformationBeforeFork
+                    ? "counterfactual.conditionEvidenceChanged"
+                    : "counterfactual.conditionEvidenceUnchanged",
+                )}
+              </p>
+            </div>
+          )}
           <div className="counterfactual-explorer__comparison">
             <section>
               <h4>{t("counterfactual.original")}</h4>
@@ -688,8 +853,27 @@ export function CounterfactualExplorer({
                   <p>
                     {t(dimension.description.localizationKey)}
                   </p>
+                  <p>
+                    {t("counterfactual.dimensionValues", {
+                      original: comparisonValue(
+                        dimension.originalValue,
+                      ),
+                      alternative: comparisonValue(
+                        dimension.alternativeValue,
+                      ),
+                    })}
+                  </p>
+                  <p>
+                    {t("counterfactual.dimensionDifference", {
+                      difference: comparisonValue(
+                        dimension.difference,
+                      ),
+                    })}
+                  </p>
                   <p className="field__hint">
-                    {t("counterfactual.dimensionPending")}
+                    {t(
+                      `counterfactual.attribution.${dimension.attribution}`,
+                    )}
                   </p>
                 </dd>
               </div>

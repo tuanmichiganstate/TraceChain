@@ -43,6 +43,7 @@ import type {
   RubricEvidenceProjection,
   Stage3CaseVariant,
 } from "./stage3-types";
+import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
 
 export interface CreateHostedRuntimeRunRequest {
   readonly commandId: string;
@@ -109,6 +110,10 @@ export interface HostedRuntimeService {
     forkSequenceNumber: number,
     roleId: string,
   ): Promise<LearnerRunProjectionV1>;
+  counterfactualMetrics(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<CounterfactualRuntimeMetrics>;
   learnerProjection(
     principal: ApplicationPrincipal | null,
     runId: string,
@@ -226,6 +231,8 @@ export function createHostedRuntimeService(options: {
           sequence,
           roleId,
         ),
+      counterfactualMetrics: (principal, runId) =>
+        service.counterfactualMetrics(principal, runId),
       learnerProjection: (principal, runId) =>
         service.learnerProjection(principal, runId),
       instructorTimeline: (principal, runId) =>
@@ -308,6 +315,8 @@ export function createHostedRuntimeService(options: {
         sequence,
         roleId,
       ),
+    counterfactualMetrics: (principal, runId) =>
+      service.counterfactualMetrics(principal, runId),
     learnerProjection: (principal, runId) =>
       service.learnerProjection(principal, runId),
     instructorTimeline: (principal, runId) =>

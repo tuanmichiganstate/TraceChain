@@ -284,6 +284,13 @@ describe("scenario-pack validation", () => {
       availability: "AFTER_FEEDBACK_RELEASE",
       downstreamPolicy: "REUSE_BASELINE_WHERE_VALID",
     });
+    expect(scenario.counterfactualConditions).toContainEqual(
+      expect.objectContaining({
+        conditionId: "CONDITION_CERTIFICATE_SIGNER_CONTEXT",
+        runtimeConditionKey: "COFFEE_CASE_VARIANT",
+        affectsInformationBeforeFork: true,
+      }),
+    );
   });
 
   it("rejects counterfactual references outside the authored decision contract", () => {
@@ -330,6 +337,33 @@ describe("scenario-pack validation", () => {
             code: "UNKNOWN_COUNTERFACTUAL_COMPARISON_DIMENSION",
           }),
         ]),
+      );
+    }
+  });
+
+  it("rejects arbitrary counterfactual condition paths", () => {
+    const invalid = structuredClone(packJson) as unknown as {
+      scenarios: {
+        counterfactualConditions: {
+          runtimeConditionKey: string;
+        }[];
+      }[];
+    };
+    const condition =
+      invalid.scenarios[0]?.counterfactualConditions[0];
+    if (condition === undefined) {
+      throw new Error("Expected certificate condition.");
+    }
+    condition.runtimeConditionKey = "actualState.secret";
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INVALID_COUNTERFACTUAL_CONDITION_KEY",
+        }),
       );
     }
   });

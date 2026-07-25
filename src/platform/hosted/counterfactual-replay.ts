@@ -11,6 +11,31 @@ export interface ReplayableSourceCommandBatch {
   readonly sourceEventIds: readonly string[];
 }
 
+export function sourceDecisionCommandAtFork(
+  events: readonly RunEventV1[],
+  forkSequenceNumber: number,
+): ReplayableSourceCommandBatch | null {
+  const first = events[forkSequenceNumber];
+  if (first === undefined) return null;
+  const batchEvents = events.slice(forkSequenceNumber).filter(
+    (event) => event.causationId === first.causationId,
+  );
+  const submitted = first.payload.submittedCommand;
+  const submittedCommand = isJsonObject(submitted)
+    ? structuredClone(submitted)
+    : null;
+  return {
+    commandId: first.causationId,
+    commandType:
+      submittedCommand !== null &&
+      typeof submittedCommand.commandType === "string"
+        ? submittedCommand.commandType
+        : null,
+    submittedCommand,
+    sourceEventIds: batchEvents.map((event) => event.eventId),
+  };
+}
+
 export function sourceCommandBatchesAfterFork(
   events: readonly RunEventV1[],
   forkSequenceNumber: number,
@@ -67,4 +92,3 @@ export function commandForCounterfactualReplay(
     expectedRunVersion,
   } as HostedRuntimeCommand;
 }
-

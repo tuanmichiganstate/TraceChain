@@ -12,6 +12,10 @@ import type {
 import type {
   CounterfactualComparisonDimensionV1,
 } from "../contracts/scenario-pack";
+import type {
+  CounterfactualRuntimeMetrics,
+  CounterfactualRuntimeMetricValue,
+} from "./counterfactual-metrics";
 
 interface VisibleRecord {
   readonly recordId: string;
@@ -77,9 +81,49 @@ function timeline(
   }));
 }
 
+function metricValue(
+  metrics: CounterfactualRuntimeMetrics,
+  metricId: string,
+): CounterfactualRuntimeMetricValue {
+  const value = metrics[metricId];
+  if (value === undefined) {
+    throw new Error(
+      `Runtime did not provide authored counterfactual metric ${metricId}.`,
+    );
+  }
+  return value;
+}
+
+function metricDifference(
+  definition: CounterfactualComparisonDimensionV1,
+  original: CounterfactualRuntimeMetricValue,
+  alternative: CounterfactualRuntimeMetricValue,
+): JsonValue {
+  if (
+    definition.valueType === "NUMBER" ||
+    definition.valueType === "ORDINAL"
+  ) {
+    if (
+      typeof original !== "number" ||
+      typeof alternative !== "number"
+    ) {
+      throw new Error(
+        `Counterfactual metric ${definition.evaluation.metricId} must be numeric.`,
+      );
+    }
+    return Math.round((alternative - original) * 10) / 10;
+  }
+  return {
+    changed: original !== alternative,
+    original,
+    alternative,
+  };
+}
+
 export function createCounterfactualComparison(options: {
   readonly metadata: CounterfactualRunMetadataV1;
   readonly point: CounterfactualDecisionPointV1;
+  readonly comparisonDimensionIds: readonly string[];
   readonly dimensions:
     readonly CounterfactualComparisonDimensionV1[];
   readonly sourceEvents: readonly RunEventV1[];
@@ -87,6 +131,8 @@ export function createCounterfactualComparison(options: {
   readonly forkProjection: LearnerRunProjectionV1;
   readonly originalProjection: LearnerRunProjectionV1;
   readonly alternativeProjection: LearnerRunProjectionV1;
+  readonly originalMetrics: CounterfactualRuntimeMetrics;
+  readonly alternativeMetrics: CounterfactualRuntimeMetrics;
   readonly classification:
     | "SINGLE_INTERVENTION"
     | "EXPLORATORY_BRANCH";
@@ -116,17 +162,35 @@ export function createCounterfactualComparison(options: {
     canonicalize(options.originalProjection.ledgerState) !==
     canonicalize(options.alternativeProjection.ledgerState);
   const attribution =
-    options.classification === "SINGLE_INTERVENTION"
-      ? ("DOWNSTREAM_STATE_EFFECT" as const)
-      : ("NOT_ATTRIBUTABLE" as const);
+    options.classification === "EXPLORATORY_BRANCH"
+      ? ("NOT_ATTRIBUTABLE" as const)
+      : options.metadata.counterfactualType === "CONDITION"
+      ? ("CONDITION_OVERRIDE_EFFECT" as const)
+      : ("DOWNSTREAM_STATE_EFFECT" as const);
   return {
     schemaVersion: "1.0.0" as const,
     interpretation:
       "ORIGINAL_ASSESSED_ALTERNATIVE_EXPLORATORY" as const,
     counterfactualId: options.metadata.branchRunId,
     sourceRunId: options.metadata.sourceRunId,
+    counterfactualType: options.metadata.counterfactualType,
     forkNodeId: options.metadata.forkNodeId,
     decisionId: options.point.decisionId,
+    ...(options.metadata.conditionIntervention === undefined
+      ? {}
+      : {
+          conditionChange: {
+            conditionId:
+              options.metadata.conditionIntervention.conditionId,
+            originalValueId:
+              options.metadata.conditionIntervention.originalValueId,
+            alternativeValueId:
+              options.metadata.conditionIntervention.alternativeValueId,
+            affectsInformationBeforeFork:
+              options.metadata.conditionIntervention
+                .affectsInformationBeforeFork,
+          },
+        }),
     classification: options.classification,
     hindsightLimitation:
       "REFLECTIVE_EXPLORATION_AFTER_COMPLETED_ATTEMPT" as const,
@@ -164,17 +228,42 @@ export function createCounterfactualComparison(options: {
     },
     dimensions: options.dimensions
       .filter((dimension) =>
-        options.point.configuration.comparisonDimensionIds.includes(
+        options.comparisonDimensionIds.includes(
           dimension.dimensionId,
         ),
       )
-      .map((dimension) => ({
-        ...dimension,
-        originalValue: null,
-        alternativeValue: null,
-        difference: null,
-        evaluationStatus:
-          "AWAITING_AUTHORED_EVALUATION_RULE" as const,
-      })),
+      .map((dimension) => {
+        const originalValue = metricValue(
+          options.originalMetrics,
+          dimension.evaluation.metricId,
+        );
+        const alternativeValue = metricValue(
+          options.alternativeMetrics,
+          dimension.evaluation.metricId,
+        );
+        const difference = metricDifference(
+          dimension,
+          originalValue,
+          alternativeValue,
+        );
+        const unchanged =
+          canonicalize(originalValue) ===
+          canonicalize(alternativeValue);
+        return {
+          ...dimension,
+          originalValue,
+          alternativeValue,
+          difference,
+          evaluationStatus: "EVALUATED" as const,
+          attribution: unchanged
+            ? ("UNCHANGED" as const)
+            : options.classification === "EXPLORATORY_BRANCH"
+              ? ("LATER_DECISION_EFFECT" as const)
+              : options.metadata.counterfactualType ===
+                  "CONDITION"
+                ? ("CONDITION_OVERRIDE_EFFECT" as const)
+              : dimension.evaluation.changedValueAttribution,
+        };
+      }),
   };
 }

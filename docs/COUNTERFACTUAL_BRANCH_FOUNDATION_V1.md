@@ -1,8 +1,9 @@
-# Hosted decision-counterfactual replay V1
+# Hosted counterfactual replay V1
 
 This contract covers hosted-only scenario eligibility, copy-on-write replay,
-authenticated alternative-command execution, comparison, and reflection. It
-does not add learner-created branches to SCORM or alter an official grade.
+authenticated decision and authored-condition interventions, comparison, and
+reflection. It does not add learner-created branches to SCORM or alter an
+official grade.
 
 ## Repository decision
 
@@ -24,10 +25,12 @@ The repository already provides the reusable prerequisites used here:
 - instructor timeline and point-in-time replay; and
 - Sandbox assignment mode.
 
-The current authored coffee paths do not create new stochastic events after a
-fork. General branch-only stochastic events require stable named draw keys
-before they may be authored; sequential RNG consumption is not accepted as a
-counterfactual alignment mechanism.
+Probabilistic outcomes use stable named draw keys derived from the exact
+scenario version, source seed, stochastic model, named random stream,
+occurrence key, and relevant entity. A branch reuses the same draw for the
+same semantic event, while a branch-only occurrence receives its own
+deterministic draw. Sequential RNG consumption is not a counterfactual
+alignment mechanism.
 
 ## Storage
 
@@ -95,10 +98,14 @@ completed Sandbox run. The scenario-authored availability boundary and creator
 role must permit the request. An instructor must manage the source assignment;
 an administrator remains assignment-scoped through the source run.
 
-The server, not the client, supplies creator identity and creation time. The
-first branch command must use the recorded intervention ID, match the authored
-decision, select only authored alternatives, and differ from the original
-choice.
+The server, not the client, supplies creator identity and creation time. For a
+decision counterfactual, the first branch command must use the recorded
+intervention ID, match the authored decision, select only authored
+alternatives, and differ from the original choice. For a condition
+counterfactual, the server accepts only an authored condition and value,
+reconstructs the alternative trusted runtime condition at the fork, and
+resubmits the original decision itself. The client cannot edit arbitrary
+actual state or replace the original decision in a condition comparison.
 
 ## Assignment controls
 
@@ -140,6 +147,8 @@ is classified as a single intervention.
 The comparison response contains:
 
 - original assessed and alternative exploratory decisions;
+- a decision or condition intervention type and the exact authored condition
+  change where applicable;
 - the exact role-visible information state at the fork;
 - record identifiers revealed only after the fork;
 - original and branch event timelines;
@@ -149,20 +158,23 @@ The comparison response contains:
 - an explicit guarantee that the source grade, completion, ratings, and
   competency evidence were not changed.
 
-The six authored comparison dimensions are returned with their localized
-definitions. Their numeric or ordinal value rules are not inferred from raw
-score differences; until the scenario authors those rules, the API labels them
-`AWAITING_AUTHORED_EVALUATION_RULE`.
+The six authored comparison dimensions resolve through explicit runtime metric
+IDs. Academic score reuses the existing TraceChain scoring engine. Process
+quality, safety, cost, compliance, and evidence quality are deterministic
+non-grade diagnostics. Each changed value carries an authored causal
+classification; a compound branch is marked as involving later decisions
+rather than attributing every result to the first intervention.
 
 ## Interface
 
 The completed-run learner workspace and released-feedback instructor review
 offer the same explorer. It:
 
-- lists only eligible historical decisions;
+- lists only eligible historical decisions and authored condition changes;
 - shows the evidence and policies visible at the fork;
 - prevents submission until at least one original choice changes;
 - submits the alternative through the real runtime;
+- keeps the source decision unchanged for a condition comparison;
 - continues a divergent branch with the existing hosted action controls;
 - presents assessed and exploratory paths distinctly;
 - stacks comparison panels on mobile and uses synchronized columns at wider
@@ -184,9 +196,12 @@ to a learner.
 
 The assignment counterfactual report lists every branch for its source learner
 run, its created, in-progress, or completed state, its comparison when one can
-be produced, and its reflection. Only the managing instructor or an
-administrator may request that class-level report. Every record states that
-the original official grade was not changed. See
+be produced, and its reflection. It also summarizes branch counts, decision
+versus condition exploration, isolated versus compound comparisons,
+frequently explored fork nodes, and average academic/process deltas. These are
+descriptive exploration analytics, not competency inferences. Only the
+managing instructor or an administrator may request the report. Every record
+states that the original official grade was not changed. See
 `docs/COUNTERFACTUAL_EXPORT_V1.md`.
 
 ## Source immutability
@@ -204,8 +219,13 @@ The coffee pack authors three eligible points:
 2. Quantity-discrepancy decision
 3. Recall-scope decision
 
-The current release implements decision counterfactuals only. It deliberately
-does not implement arbitrary condition overrides, comparison across scenario
-versions, aggregate class analytics, AI-generated alternatives, official-grade
-replacement, or persistent SCORM branches. Authored dimension value
-evaluators and named branch-only stochastic events remain later increments.
+It also authors one bounded condition comparison at the certificate fork:
+recognized authorized certifier versus recognized but unauthorized logistics
+signer. The same original certificate decision is replayed under the selected
+condition, and the comparison states that visible evidence changed.
+
+The current release deliberately does not implement arbitrary condition
+editing, comparison across scenario versions, AI-generated alternatives,
+official-grade replacement, or persistent SCORM branches. The one condition
+adapter is specific to the coffee runtime; another runtime must explicitly
+implement and validate its own authored condition keys before enabling them.

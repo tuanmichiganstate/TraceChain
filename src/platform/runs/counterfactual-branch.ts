@@ -104,6 +104,27 @@ function validateRequest(
       "The branch creation time must be an ISO 8601 UTC timestamp.",
     );
   }
+  const condition = request.conditionIntervention;
+  if (condition !== undefined) {
+    for (const [fieldName, value] of [
+      ["conditionId", condition.conditionId],
+      ["originalValueId", condition.originalValueId],
+      ["alternativeValueId", condition.alternativeValueId],
+    ] as const) {
+      requireIdentifier(value, fieldName);
+    }
+    if (
+      condition.runtimeConditionKey !== "COFFEE_CASE_VARIANT" ||
+      (condition.runtimeValue !== "authorized-certifier" &&
+        condition.runtimeValue !== "unauthorized-transporter") ||
+      condition.originalValueId === condition.alternativeValueId
+    ) {
+      throw new CounterfactualBranchError(
+        "INVALID_COUNTERFACTUAL_REQUEST",
+        "A condition counterfactual requires one distinct authored runtime value.",
+      );
+    }
+  }
 }
 
 function sourceConfiguration(firstEvent: RunEventV1): unknown {
@@ -263,7 +284,16 @@ export class CounterfactualBranchEngine {
           originalDecisionEvent.roleId,
         ),
       ),
-      counterfactualType: "DECISION",
+      counterfactualType:
+        request.conditionIntervention === undefined
+          ? "DECISION"
+          : "CONDITION",
+      ...(request.conditionIntervention === undefined
+        ? {}
+        : {
+            conditionIntervention:
+              request.conditionIntervention,
+          }),
       interventionId: request.interventionId,
       comparisonMode: request.comparisonMode,
       createdByUserId: request.createdByUserId,

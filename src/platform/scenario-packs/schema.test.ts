@@ -31,6 +31,7 @@ describe("published scenario-pack JSON Schema", () => {
         "modeConfigurations",
         "outcomeModels",
         "counterfactualComparisonDimensions",
+        "counterfactualConditions",
       ]),
     );
     expect(schema.properties).toHaveProperty("competencyFrameworks");

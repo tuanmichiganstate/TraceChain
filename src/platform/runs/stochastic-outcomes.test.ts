@@ -31,12 +31,18 @@ describe("controlled stochastic outcome engine", () => {
   it("reproduces one weighted result and draw from the same seed and stream", () => {
     const first = resolveStochasticOutcome({
       model: weighted,
+      scenarioVersion: "1.0.0",
       scenarioSeed: "cohort-seed-001",
+      occurrenceKey: "INITIAL_CERTIFICATE_CASE",
+      relevantEntityId: "ASSIGNMENT_001",
       strategy: "probabilistic",
     });
     const replay = resolveStochasticOutcome({
       model: weighted,
+      scenarioVersion: "1.0.0",
       scenarioSeed: "cohort-seed-001",
+      occurrenceKey: "INITIAL_CERTIFICATE_CASE",
+      relevantEntityId: "ASSIGNMENT_001",
       strategy: "probabilistic",
     });
 
@@ -51,7 +57,10 @@ describe("controlled stochastic outcome engine", () => {
   it("records Bernoulli parameters separately from the realized outcome", () => {
     const result = resolveStochasticOutcome({
       model: bernoulli,
+      scenarioVersion: "1.0.0",
       scenarioSeed: "quality-seed-001",
+      occurrenceKey: "QUALITY_INCIDENT_001",
+      relevantEntityId: "BATCH_001",
       strategy: "probabilistic",
     });
 
@@ -66,10 +75,43 @@ describe("controlled stochastic outcome engine", () => {
     ]).toContain(result.outcomeCode);
   });
 
+  it("aligns the same named event and isolates branch-only events", () => {
+    const shared = resolveStochasticOutcome({
+      model: bernoulli,
+      scenarioVersion: "1.0.0",
+      scenarioSeed: "aligned-seed",
+      occurrenceKey: "QUALITY_INCIDENT_001",
+      relevantEntityId: "BATCH_001",
+      strategy: "probabilistic",
+    });
+    const replayedAfterAnotherDraw = resolveStochasticOutcome({
+      model: bernoulli,
+      scenarioVersion: "1.0.0",
+      scenarioSeed: "aligned-seed",
+      occurrenceKey: "QUALITY_INCIDENT_001",
+      relevantEntityId: "BATCH_001",
+      strategy: "probabilistic",
+    });
+    const branchOnly = resolveStochasticOutcome({
+      model: bernoulli,
+      scenarioVersion: "1.0.0",
+      scenarioSeed: "aligned-seed",
+      occurrenceKey: "BRANCH_ONLY_INSPECTION_001",
+      relevantEntityId: "BATCH_001",
+      strategy: "probabilistic",
+    });
+
+    expect(replayedAfterAnotherDraw).toEqual(shared);
+    expect(branchOnly.drawKey).not.toBe(shared.drawKey);
+  });
+
   it("forces an authored result without consuming or recording a draw", () => {
     const result = resolveStochasticOutcome({
       model: weighted,
+      scenarioVersion: "1.0.0",
       scenarioSeed: "unused-but-versioned-seed",
+      occurrenceKey: "INITIAL_CERTIFICATE_CASE",
+      relevantEntityId: "ASSIGNMENT_001",
       strategy: "forced",
       forcedOutcomeCode: "unauthorized-transporter",
     });
@@ -83,7 +125,10 @@ describe("controlled stochastic outcome engine", () => {
     expect(() =>
       resolveStochasticOutcome({
         model: weighted,
+        scenarioVersion: "1.0.0",
         scenarioSeed: "seed",
+        occurrenceKey: "INITIAL_CERTIFICATE_CASE",
+        relevantEntityId: "ASSIGNMENT_001",
         strategy: "forced",
         forcedOutcomeCode: "invented-outcome",
       }),

@@ -364,6 +364,7 @@
         }
       ],
       "counterfactualComparisonDimensions": [],
+      "counterfactualConditions": [],
       "entryNodeId": "NODE_PHARMA_BRIEFING",
       "nodes": [
         {

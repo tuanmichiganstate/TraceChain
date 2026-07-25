@@ -217,6 +217,27 @@ export interface CounterfactualDecisionDefinitionV1 {
   readonly localizationKey: string;
 }
 
+export interface CounterfactualConditionValueV1 {
+  readonly conditionValueId: string;
+  readonly runtimeValue: string;
+  readonly label: LocalizedText;
+}
+
+export interface CounterfactualConditionDefinitionV1 {
+  readonly enabled: boolean;
+  readonly conditionId: string;
+  readonly availability: CounterfactualAvailabilityV1;
+  readonly permittedCreators: readonly CounterfactualCreatorV1[];
+  readonly forkNodeId: string;
+  readonly runtimeConditionKey: "COFFEE_CASE_VARIANT";
+  readonly allowedValues: readonly CounterfactualConditionValueV1[];
+  readonly affectsInformationBeforeFork: boolean;
+  readonly comparisonDimensionIds: readonly string[];
+  readonly maxBranchesPerLearner?: number;
+  readonly reflectionRequired?: boolean;
+  readonly localizationKey: string;
+}
+
 export type CounterfactualComparisonValueTypeV1 =
   | "NUMBER"
   | "ORDINAL"
@@ -227,6 +248,25 @@ export type CounterfactualComparisonDirectionV1 =
   | "LOWER_IS_BETTER"
   | "CONTEXT_DEPENDENT";
 
+export type CounterfactualCausalAttributionV1 =
+  | "DIRECT_INTERVENTION_EFFECT"
+  | "DOWNSTREAM_STATE_EFFECT"
+  | "LATER_DECISION_EFFECT"
+  | "STOCHASTIC_OUTCOME_EFFECT"
+  | "CONDITION_OVERRIDE_EFFECT"
+  | "UNCHANGED"
+  | "NOT_ATTRIBUTABLE";
+
+export interface CounterfactualRuntimeMetricEvaluationV1 {
+  readonly kind: "RUNTIME_METRIC";
+  readonly metricId: string;
+  readonly changedValueAttribution:
+    Exclude<
+      CounterfactualCausalAttributionV1,
+      "UNCHANGED" | "NOT_ATTRIBUTABLE"
+    >;
+}
+
 export interface CounterfactualComparisonDimensionV1 {
   readonly dimensionId: string;
   readonly title: LocalizedText;
@@ -234,6 +274,7 @@ export interface CounterfactualComparisonDimensionV1 {
   readonly valueType: CounterfactualComparisonValueTypeV1;
   readonly direction: CounterfactualComparisonDirectionV1;
   readonly unit?: string;
+  readonly evaluation: CounterfactualRuntimeMetricEvaluationV1;
 }
 
 export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
@@ -366,6 +407,8 @@ export interface ScenarioDefinitionV1 {
   readonly evidenceItems: readonly ScenarioEvidenceItemV1[];
   readonly counterfactualComparisonDimensions:
     readonly CounterfactualComparisonDimensionV1[];
+  readonly counterfactualConditions:
+    readonly CounterfactualConditionDefinitionV1[];
   readonly entryNodeId: string;
   readonly nodes: readonly ScenarioNodeV1[];
   readonly rubricIds: readonly string[];

@@ -1,4 +1,5 @@
 import type {
+  CounterfactualConditionPointV1,
   CounterfactualDecisionPointV1,
 } from "../contracts/counterfactual";
 import { isJsonObject } from "../contracts/json";
@@ -134,6 +135,84 @@ export function counterfactualDecisionPoints(options: {
   });
 }
 
+export function counterfactualConditionPoints(options: {
+  readonly pack: ScenarioPackV1;
+  readonly sourceRunId: string;
+  readonly events: readonly RunEventV1[];
+}): readonly CounterfactualConditionPointV1[] {
+  const first = options.events[0];
+  if (
+    first === undefined ||
+    first.runId !== options.sourceRunId ||
+    first.packId !== options.pack.packId ||
+    first.packVersion !== options.pack.version
+  ) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Condition points require one exact source run and pack.",
+    );
+  }
+  const scenario = options.pack.scenarios.find(
+    (candidate) =>
+      candidate.scenarioId === first.scenarioId &&
+      candidate.version === first.scenarioVersion,
+  );
+  if (scenario === undefined) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Condition points require the source scenario's exact version.",
+    );
+  }
+  const originalRuntimeValue = first.payload.caseVariant;
+  if (typeof originalRuntimeValue !== "string") return [];
+  const decisions = counterfactualDecisionPoints(options);
+  return scenario.counterfactualConditions.flatMap(
+    (configuration) => {
+      if (!configuration.enabled) return [];
+      const decision = decisions.find(
+        (candidate) =>
+          candidate.forkNodeId === configuration.forkNodeId,
+      );
+      const originalValue = configuration.allowedValues.find(
+        (candidate) =>
+          candidate.runtimeValue === originalRuntimeValue,
+      );
+      if (
+        decision === undefined ||
+        originalValue === undefined ||
+        configuration.allowedValues.every(
+          (candidate) =>
+            candidate.conditionValueId ===
+            originalValue.conditionValueId,
+        )
+      ) {
+        return [];
+      }
+      return [
+        {
+          schemaVersion: "1.0.0" as const,
+          sourceRunId: options.sourceRunId,
+          forkSequenceNumber: decision.forkSequenceNumber,
+          forkNodeId: decision.forkNodeId,
+          decisionId: decision.decisionId,
+          originalDecisionEventId:
+            decision.originalDecisionEventId,
+          originalOptionIds: decision.originalOptionIds,
+          actorId: decision.actorId,
+          organizationId: decision.organizationId,
+          roleId: decision.roleId,
+          title: {
+            localizationKey: configuration.localizationKey,
+          },
+          originalConditionValueId:
+            originalValue.conditionValueId,
+          configuration,
+        },
+      ];
+    },
+  );
+}
+
 function commandOptionIds(
   command: HostedRuntimeCommand,
 ): {
@@ -218,3 +297,28 @@ export function validateCounterfactualIntervention(
   }
 }
 
+export function validateConditionDecisionReuse(
+  point: CounterfactualConditionPointV1,
+  command: HostedRuntimeCommand,
+): void {
+  const candidate = commandOptionIds(command);
+  if (candidate.decisionId !== point.decisionId) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "The condition branch must reuse the decision at its authored fork.",
+    );
+  }
+  const original = [...point.originalOptionIds].sort();
+  const reused = [...candidate.optionIds].sort();
+  if (
+    original.length !== reused.length ||
+    original.some(
+      (optionId, index) => optionId !== reused[index],
+    )
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      "A condition counterfactual must keep the original learner decision unchanged.",
+    );
+  }
+}

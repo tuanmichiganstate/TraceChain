@@ -117,6 +117,13 @@ const COUNTERFACTUAL_DIRECTIONS = new Set([
   "LOWER_IS_BETTER",
   "CONTEXT_DEPENDENT",
 ]);
+const COUNTERFACTUAL_CHANGED_VALUE_ATTRIBUTIONS = new Set([
+  "DIRECT_INTERVENTION_EFFECT",
+  "DOWNSTREAM_STATE_EFFECT",
+  "LATER_DECISION_EFFECT",
+  "STOCHASTIC_OUTCOME_EFFECT",
+  "CONDITION_OVERRIDE_EFFECT",
+]);
 
 const LIFECYCLE_STATUSES = new Set([
   "draft",
@@ -1851,6 +1858,7 @@ function validateCounterfactualComparisonDimensions(
         "valueType",
         "direction",
         "unit",
+        "evaluation",
       ],
       dimensionPath,
     );
@@ -1899,8 +1907,257 @@ function validateCounterfactualComparisonDimensions(
         identifier: true,
       });
     }
+    const evaluation = context.object(
+      dimension.evaluation,
+      `${dimensionPath}.evaluation`,
+    );
+    if (evaluation !== null) {
+      context.allowedKeys(
+        evaluation,
+        ["kind", "metricId", "changedValueAttribution"],
+        `${dimensionPath}.evaluation`,
+      );
+      context.check(
+        evaluation.kind === "RUNTIME_METRIC",
+        "INVALID_COUNTERFACTUAL_EVALUATION_KIND",
+        `${dimensionPath}.evaluation.kind`,
+        "must use the constrained RUNTIME_METRIC evaluator",
+      );
+      context.string(
+        evaluation.metricId,
+        `${dimensionPath}.evaluation.metricId`,
+        { identifier: true },
+      );
+      context.check(
+        typeof evaluation.changedValueAttribution === "string" &&
+          COUNTERFACTUAL_CHANGED_VALUE_ATTRIBUTIONS.has(
+            evaluation.changedValueAttribution,
+          ),
+        "INVALID_COUNTERFACTUAL_CAUSAL_ATTRIBUTION",
+        `${dimensionPath}.evaluation.changedValueAttribution`,
+        "must use one supported authored causal classification",
+      );
+    }
   });
   return dimensionIds;
+}
+
+function validateCounterfactualConditions(
+  context: ValidationContext,
+  scenario: Readonly<Record<string, unknown>>,
+  path: string,
+  supportedLocales: readonly string[],
+  counterfactualDimensionIds: ReadonlySet<string>,
+): void {
+  const conditions = context.array(
+    scenario.counterfactualConditions,
+    `${path}.counterfactualConditions`,
+  );
+  if (conditions === null) return;
+  const conditionIds = new Set<string>();
+  const decisionNodeIds = new Set(
+    (Array.isArray(scenario.nodes) ? scenario.nodes : [])
+      .filter(
+        (node): node is Readonly<Record<string, unknown>> =>
+          typeof node === "object" &&
+          node !== null &&
+          !Array.isArray(node) &&
+          (node as { nodeType?: unknown }).nodeType === "DECISION" &&
+          typeof (node as { nodeId?: unknown }).nodeId === "string",
+      )
+      .map((node) => node.nodeId as string),
+  );
+  conditions.forEach((conditionValue, conditionIndex) => {
+    const conditionPath =
+      `${path}.counterfactualConditions[${String(conditionIndex)}]`;
+    const condition = context.object(
+      conditionValue,
+      conditionPath,
+    );
+    if (condition === null) return;
+    context.allowedKeys(
+      condition,
+      [
+        "enabled",
+        "conditionId",
+        "availability",
+        "permittedCreators",
+        "forkNodeId",
+        "runtimeConditionKey",
+        "allowedValues",
+        "affectsInformationBeforeFork",
+        "comparisonDimensionIds",
+        "maxBranchesPerLearner",
+        "reflectionRequired",
+        "localizationKey",
+      ],
+      conditionPath,
+    );
+    context.check(
+      typeof condition.enabled === "boolean",
+      "EXPECTED_BOOLEAN",
+      `${conditionPath}.enabled`,
+      "must be a boolean",
+    );
+    const conditionId = context.string(
+      condition.conditionId,
+      `${conditionPath}.conditionId`,
+      { identifier: true },
+    );
+    if (conditionId !== null) {
+      context.check(
+        !conditionIds.has(conditionId),
+        "DUPLICATE_COUNTERFACTUAL_CONDITION",
+        `${conditionPath}.conditionId`,
+        "must be unique within the scenario",
+      );
+      conditionIds.add(conditionId);
+    }
+    context.check(
+      typeof condition.availability === "string" &&
+        COUNTERFACTUAL_AVAILABILITY.has(condition.availability),
+      "INVALID_COUNTERFACTUAL_AVAILABILITY",
+      `${conditionPath}.availability`,
+      "must use an authored counterfactual release boundary",
+    );
+    validateUniqueStrings(
+      context,
+      condition.permittedCreators,
+      `${conditionPath}.permittedCreators`,
+      { minimumItems: 1 },
+    ).forEach((creator, creatorIndex) => {
+      context.check(
+        COUNTERFACTUAL_CREATORS.has(creator),
+        "INVALID_COUNTERFACTUAL_CREATOR",
+        `${conditionPath}.permittedCreators[${String(creatorIndex)}]`,
+        "must be LEARNER, INSTRUCTOR, or RATER",
+      );
+    });
+    const forkNodeId = context.string(
+      condition.forkNodeId,
+      `${conditionPath}.forkNodeId`,
+      { identifier: true },
+    );
+    if (forkNodeId !== null) {
+      context.check(
+        decisionNodeIds.has(forkNodeId),
+        "UNKNOWN_COUNTERFACTUAL_CONDITION_FORK",
+        `${conditionPath}.forkNodeId`,
+        "must reference a decision node in this scenario",
+      );
+    }
+    context.check(
+      condition.runtimeConditionKey === "COFFEE_CASE_VARIANT",
+      "INVALID_COUNTERFACTUAL_CONDITION_KEY",
+      `${conditionPath}.runtimeConditionKey`,
+      "must use a supported declarative runtime condition",
+    );
+    context.check(
+      typeof condition.affectsInformationBeforeFork === "boolean",
+      "EXPECTED_BOOLEAN",
+      `${conditionPath}.affectsInformationBeforeFork`,
+      "must declare whether visible information changes",
+    );
+    const valueIds = new Set<string>();
+    const runtimeValues = new Set<string>();
+    const values = context.array(
+      condition.allowedValues,
+      `${conditionPath}.allowedValues`,
+    );
+    if (values !== null) {
+      context.check(
+        values.length >= 2,
+        "COUNTERFACTUAL_CONDITION_WITHOUT_ALTERNATIVE",
+        `${conditionPath}.allowedValues`,
+        "must contain at least two authored values",
+      );
+      values.forEach((value, valueIndex) => {
+        const valuePath =
+          `${conditionPath}.allowedValues[${String(valueIndex)}]`;
+        const record = context.object(value, valuePath);
+        if (record === null) return;
+        context.allowedKeys(
+          record,
+          ["conditionValueId", "runtimeValue", "label"],
+          valuePath,
+        );
+        const valueId = context.string(
+          record.conditionValueId,
+          `${valuePath}.conditionValueId`,
+          { identifier: true },
+        );
+        if (valueId !== null) {
+          context.check(
+            !valueIds.has(valueId),
+            "DUPLICATE_COUNTERFACTUAL_CONDITION_VALUE",
+            `${valuePath}.conditionValueId`,
+            "must be unique within the condition",
+          );
+          valueIds.add(valueId);
+        }
+        const runtimeValue = context.string(
+          record.runtimeValue,
+          `${valuePath}.runtimeValue`,
+          { identifier: true },
+        );
+        if (runtimeValue !== null) {
+          context.check(
+            runtimeValue === "authorized-certifier" ||
+              runtimeValue === "unauthorized-transporter",
+            "INVALID_COUNTERFACTUAL_CONDITION_VALUE",
+            `${valuePath}.runtimeValue`,
+            "must be one supported coffee case variant",
+          );
+          context.check(
+            !runtimeValues.has(runtimeValue),
+            "DUPLICATE_COUNTERFACTUAL_RUNTIME_VALUE",
+            `${valuePath}.runtimeValue`,
+            "must be unique within the condition",
+          );
+          runtimeValues.add(runtimeValue);
+        }
+        validateLocalizedText(
+          context,
+          record.label,
+          `${valuePath}.label`,
+          supportedLocales,
+        );
+      });
+    }
+    validateUniqueStrings(
+      context,
+      condition.comparisonDimensionIds,
+      `${conditionPath}.comparisonDimensionIds`,
+      { minimumItems: 1, identifiers: true },
+    ).forEach((dimensionId, dimensionIndex) => {
+      context.check(
+        counterfactualDimensionIds.has(dimensionId),
+        "UNKNOWN_COUNTERFACTUAL_COMPARISON_DIMENSION",
+        `${conditionPath}.comparisonDimensionIds[${String(dimensionIndex)}]`,
+        "must reference a scenario comparison dimension",
+      );
+    });
+    if (condition.maxBranchesPerLearner !== undefined) {
+      context.number(
+        condition.maxBranchesPerLearner,
+        `${conditionPath}.maxBranchesPerLearner`,
+        { integer: true, minimum: 1, maximum: 20 },
+      );
+    }
+    if (condition.reflectionRequired !== undefined) {
+      context.check(
+        typeof condition.reflectionRequired === "boolean",
+        "EXPECTED_BOOLEAN",
+        `${conditionPath}.reflectionRequired`,
+        "must be a boolean",
+      );
+    }
+    context.string(
+      condition.localizationKey,
+      `${conditionPath}.localizationKey`,
+      { identifier: true },
+    );
+  });
 }
 
 function validateScenarioNodes(
@@ -2072,6 +2329,7 @@ function validateScenario(
       "policies",
       "evidenceItems",
       "counterfactualComparisonDimensions",
+      "counterfactualConditions",
       "entryNodeId",
       "nodes",
       "rubricIds",
@@ -2795,6 +3053,13 @@ function validateScenario(
       `${path}.counterfactualComparisonDimensions`,
       supportedLocales,
     );
+  validateCounterfactualConditions(
+    context,
+    scenario,
+    path,
+    supportedLocales,
+    counterfactualDimensionIds,
+  );
   validateScenarioNodes(
     context,
     scenario,
