@@ -358,9 +358,12 @@ limit remains unlimited.
   course creation and institutional directory synchronization remain
   deployment concerns.
 - The learner, instructor/rater, author, and administrator workspaces are
-  implemented. The author workspace includes a self-localized pharmaceutical
-  starter for validation and preview; the complete hosted runtime remains the
-  coffee journey.
+  implemented. The complete coffee journey uses its compatibility runtime. A
+  bounded generic runtime also makes the self-localized pharmaceutical starter
+  publishable, assignable, and completable through authored briefing,
+  evidence-release, structured-decision, consequence, feedback, and completion
+  nodes. Authored feedback is returned only after the instructor releases
+  assignment feedback.
 - Graphical Guided and Challenge package jobs reuse the exact Node-generated
   artifacts and content-addressed R2 storage.
 - The hosted service exposes both the custody-transfer and quantity-correction

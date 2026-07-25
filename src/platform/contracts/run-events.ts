@@ -1,4 +1,8 @@
 import type { JsonObject, JsonValue } from "./json";
+import type {
+  HostedRunModeConfigurationV1,
+  StructuredDecisionResponseConfigurationV1,
+} from "./scenario-pack";
 
 export type ApplicationRole =
   | "learner"
@@ -125,4 +129,66 @@ export interface LearnerRunProjectionV1 {
     readonly deadline?: string;
     readonly timeLimitMinutes?: number;
   };
+  readonly presentation?: LearnerRunPresentationV1;
+}
+
+export interface LearnerRunLocalizedTextV1 {
+  readonly localizationKey: string;
+  readonly valuesByLocale: Readonly<Record<string, string>>;
+}
+
+export interface LearnerRunDecisionOptionV1 {
+  readonly optionId: string;
+  readonly label: LearnerRunLocalizedTextV1;
+}
+
+export interface LearnerRunDecisionFieldV1 {
+  readonly fieldId: string;
+  readonly prompt: LearnerRunLocalizedTextV1;
+  readonly selection: "single" | "multiple";
+  readonly options: readonly LearnerRunDecisionOptionV1[];
+}
+
+export interface LearnerRunNodePresentationV1 {
+  readonly nodeId: string;
+  readonly nodeType:
+    | "BRIEFING"
+    | "EVIDENCE_RELEASE"
+    | "DECISION"
+    | "CONSEQUENCE"
+    | "FEEDBACK"
+    | "COMPLETION";
+  readonly title: LearnerRunLocalizedTextV1;
+  readonly body?: LearnerRunLocalizedTextV1;
+  readonly decisionId?: string;
+  readonly prompt?: LearnerRunLocalizedTextV1;
+  readonly fields?: readonly LearnerRunDecisionFieldV1[];
+  readonly justification?: {
+    readonly required: boolean;
+    readonly maximumLength: number;
+  };
+  readonly structuredResponse?:
+    StructuredDecisionResponseConfigurationV1;
+  readonly consequenceCode?: string;
+  readonly feedbackCode?: string;
+  readonly message?: LearnerRunLocalizedTextV1;
+}
+
+export interface LearnerRunAuthoredFeedbackV1 {
+  readonly feedbackCode: string;
+  readonly title: LearnerRunLocalizedTextV1;
+  readonly message: LearnerRunLocalizedTextV1;
+}
+
+export interface LearnerRunPresentationV1 {
+  readonly scenarioTitle: LearnerRunLocalizedTextV1;
+  readonly roleName: LearnerRunLocalizedTextV1;
+  readonly currentNode: LearnerRunNodePresentationV1;
+  readonly evidenceTitles: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
+  readonly policyTitles: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
+  readonly modeConfiguration: HostedRunModeConfigurationV1;
 }

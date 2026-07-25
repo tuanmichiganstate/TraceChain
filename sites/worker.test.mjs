@@ -794,6 +794,12 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       "pharma-author@example.edu",
       ["scenario-author", "instructor"],
     );
+    seedUser(
+      database,
+      "USER_LEARNER_PHARMA",
+      "pharma-learner@example.edu",
+      ["learner"],
+    );
     const pack = await pharmaceuticalColdChainPack();
     const imported = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -850,9 +856,14 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       200,
       await assignmentOptions.clone().text(),
     );
-    assert.deepEqual((await assignmentOptions.json()).options, []);
+    const options = (await assignmentOptions.json()).options;
+    assert.equal(options.length, 1);
+    assert.equal(
+      options[0].scenarioId,
+      "SCN_PHARMA_COLD_CHAIN_STARTER",
+    );
 
-    const unsupportedAssignment = await worker.fetch(
+    const assignment = await worker.fetch(
       apiRequest("/api/v1/assignments", {
         method: "POST",
         email: "pharma-author@example.edu",
@@ -865,21 +876,248 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           scenarioId: pack.scenarios[0].scenarioId,
           scenarioVersion: pack.scenarios[0].version,
           mode: "tutorial",
-          learnerUserIds: ["USER_LEARNER_NOT_REQUIRED_FOR_GUARD"],
+          learnerUserIds: ["USER_LEARNER_PHARMA"],
         },
       }),
       env,
     );
     assert.equal(
-      unsupportedAssignment.status,
-      400,
-      await unsupportedAssignment.clone().text(),
+      assignment.status,
+      201,
+      await assignment.clone().text(),
     );
-    assert.deepEqual(await unsupportedAssignment.json(), {
-      error: {
-        code: "INVALID_ASSIGNMENT",
-      },
-    });
+    const runId = "RUN_PHARMA_GENERIC_001";
+    const started = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/start-run",
+        {
+          method: "POST",
+          email: "pharma-learner@example.edu",
+          body: {
+            commandId: "CMD_START_PHARMA_001",
+            runId,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(started.status, 201, await started.clone().text());
+    assert.equal((await started.json()).version, 1);
+
+    const briefing = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}`, {
+        email: "pharma-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(briefing.status, 200, await briefing.clone().text());
+    const briefingProjection = (await briefing.json()).projection;
+    assert.equal(
+      briefingProjection.presentation.currentNode.nodeType,
+      "BRIEFING",
+    );
+    assert.equal(
+      briefingProjection.presentation.currentNode.body.valuesByLocale.vi,
+      "Hồ sơ chuyển giao đã ký còn nguyên vẹn, nhưng bản tóm tắt cảm biến ngoài chuỗi ghi nhận sai lệch nhiệt độ. Hãy quyết định có thể xuất lô hàng hay không.",
+    );
+    assert.equal(
+      Object.hasOwn(briefingProjection, "actualState"),
+      false,
+    );
+
+    const advanced = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "ADVANCE_WORKFLOW",
+          commandId: "CMD_ADVANCE_PHARMA_001",
+          runId,
+          expectedRunVersion: 1,
+        },
+      }),
+      env,
+    );
+    assert.equal(advanced.status, 200, await advanced.clone().text());
+    const decisionProjection = (await advanced.json()).projection;
+    assert.equal(decisionProjection.version, 4);
+    assert.equal(
+      decisionProjection.presentation.currentNode.nodeType,
+      "DECISION",
+    );
+    assert.deepEqual(
+      decisionProjection.informationState.map(
+        (evidence) => evidence.recordId,
+      ),
+      ["EVID_PHARMA_SENSOR_SUMMARY"],
+    );
+
+    const inspected = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "INSPECT_EVIDENCE",
+          commandId: "CMD_INSPECT_PHARMA_001",
+          runId,
+          expectedRunVersion: 4,
+          evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+        },
+      }),
+      env,
+    );
+    assert.equal(inspected.status, 200, await inspected.clone().text());
+    assert.equal((await inspected.json()).projection.version, 5);
+
+    const decided = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "SUBMIT_STRUCTURED_DECISION",
+          commandId: "CMD_DECIDE_PHARMA_001",
+          runId,
+          expectedRunVersion: 5,
+          decisionId: "DECISION_PHARMA_RELEASE",
+          responses: {
+            shipmentAction: ["HOLD_AND_INVESTIGATE"],
+          },
+          justification:
+            "Hold the shipment while the temperature excursion is investigated.",
+        },
+      }),
+      env,
+    );
+    assert.equal(decided.status, 200, await decided.clone().text());
+    const consequenceProjection = (await decided.json()).projection;
+    assert.equal(consequenceProjection.version, 8);
+    assert.equal(
+      consequenceProjection.presentation.currentNode.nodeType,
+      "CONSEQUENCE",
+    );
+    assert.equal(
+      consequenceProjection.presentation.currentNode.message
+        .valuesByLocale.vi,
+      "Việc xuất hàng được tạm dừng trong khi điều tra sai lệch nhiệt độ. Quyết định này bảo vệ người bệnh và củng cố bằng chứng tuân thủ, nhưng gây chậm trễ vận hành.",
+    );
+    assert.deepEqual(
+      consequenceProjection.workflowState.permittedActionIds,
+      ["ADVANCE_WORKFLOW"],
+    );
+
+    const continued = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "ADVANCE_WORKFLOW",
+          commandId: "CMD_CONTINUE_PHARMA_001",
+          runId,
+          expectedRunVersion: 8,
+        },
+      }),
+      env,
+    );
+    assert.equal(continued.status, 200, await continued.clone().text());
+    const completionProjection = (await continued.json()).projection;
+    assert.equal(completionProjection.version, 11);
+    assert.equal(
+      completionProjection.presentation.currentNode.nodeType,
+      "COMPLETION",
+    );
+
+    const replay = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=11`, {
+        email: "pharma-author@example.edu",
+      }),
+      env,
+    );
+    assert.equal(replay.status, 200, await replay.clone().text());
+    assert.equal((await replay.json()).replay.totalEventCount, 11);
+
+    const competency = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/competencies`, {
+        email: "pharma-author@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      competency.status,
+      200,
+      await competency.clone().text(),
+    );
+    assert.deepEqual(
+      (await competency.json()).competencies.map(
+        (indicator) => indicator.indicatorId,
+      ),
+      ["PHARMA.COLD_CHAIN.PI1"],
+    );
+
+    const withheldFeedback = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/feedback`, {
+        email: "pharma-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(withheldFeedback.status, 409);
+    assert.equal(
+      (await withheldFeedback.json()).error.code,
+      "FEEDBACK_NOT_RELEASED",
+    );
+
+    const release = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/feedback-release",
+        {
+          method: "POST",
+          email: "pharma-author@example.edu",
+          body: {
+            commandId: "CMD_RELEASE_PHARMA_FEEDBACK_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(release.status, 200, await release.clone().text());
+
+    const feedback = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/feedback`, {
+        email: "pharma-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(feedback.status, 200, await feedback.clone().text());
+    const authoredFeedback = (await feedback.json()).authoredFeedback;
+    assert.equal(authoredFeedback.length, 1);
+    assert.equal(
+      authoredFeedback[0].feedbackCode,
+      "INTEGRITY_DOES_NOT_PROVE_STORAGE_CONDITIONS",
+    );
+    assert.match(
+      authoredFeedback[0].message.valuesByLocale.en,
+      /does not prove that storage conditions were acceptable/,
+    );
+
+    const outcomes = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/decision-outcomes",
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outcomes.status, 200, await outcomes.clone().text());
+    assert.deepEqual(
+      (await outcomes.json()).decisionOutcomes.runs,
+      [
+        {
+          runId,
+          learnerUserId: "USER_LEARNER_PHARMA",
+          status: "completed",
+          decisionItems: [],
+          realizedOutcome: null,
+        },
+      ],
+    );
   } finally {
     database.close();
   }

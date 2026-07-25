@@ -1,0 +1,254 @@
+import type {
+  Clock,
+  IdGenerator,
+} from "../../domain/simulation/environment";
+import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
+import type {
+  HostedRunDecisionOutcomeEvidenceV1,
+} from "../contracts/decision-outcome-report";
+import type {
+  LearnerRunAuthoredFeedbackV1,
+  LearnerRunProjectionV1,
+} from "../contracts/run-events";
+import type { InstructorRunReplayV1 } from "../contracts/run-replay";
+import type {
+  HostedRunMode,
+  HostedRunModeConfigurationV1,
+  ScenarioPackV1,
+} from "../contracts/scenario-pack";
+import type { RunEventStore } from "../runs/event-store";
+import type { ApplicationPrincipal } from "./access";
+import { GenericHostedRunService } from "./generic-run-service";
+import type {
+  CreateGenericHostedRunRequest,
+  GenericHostedCommand,
+} from "./generic-run-types";
+import {
+  hostedRuntimeKindFor,
+  type HostedRuntimeKind,
+} from "./runtime-registry";
+import {
+  HostedRunCommandError,
+  HostedStage3RunService,
+} from "./stage3-run-service";
+import type {
+  CompetencyEvidenceProjection,
+  HostedStage3Command,
+  InstructorTimelineItem,
+  RubricEvidenceProjection,
+  Stage3CaseVariant,
+} from "./stage3-types";
+
+export interface CreateHostedRuntimeRunRequest {
+  readonly commandId: string;
+  readonly runId: string;
+  readonly assignmentId: string;
+  readonly learnerUserId: string;
+  readonly mode: HostedRunMode;
+  readonly modeConfiguration?: HostedRunModeConfigurationV1;
+  readonly scenarioSeed?: string;
+  readonly caseVariant?: string;
+}
+
+export type HostedRuntimeCommand =
+  | GenericHostedCommand
+  | HostedStage3Command;
+
+export interface HostedRuntimeStateSummary {
+  readonly runId: string;
+  readonly assignmentId: string;
+  readonly learnerUserId: string;
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly version: number;
+  readonly status: "active" | "completed";
+}
+
+export interface HostedRuntimeRunResult {
+  readonly state: HostedRuntimeStateSummary;
+  readonly appendedEventIds: readonly string[];
+  readonly wasIdempotentReplay: boolean;
+}
+
+export interface HostedRuntimeService {
+  readonly runtimeKind: HostedRuntimeKind;
+  createRun(
+    principal: ApplicationPrincipal | null,
+    request: CreateHostedRuntimeRunRequest,
+  ): Promise<HostedRuntimeRunResult>;
+  submit(
+    principal: ApplicationPrincipal | null,
+    command: HostedRuntimeCommand,
+  ): Promise<HostedRuntimeRunResult>;
+  learnerProjection(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<LearnerRunProjectionV1>;
+  instructorTimeline(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly InstructorTimelineItem[]>;
+  instructorMonitor(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+    observedAt?: string,
+  ): Promise<HostedRunMonitorStatusV1>;
+  instructorReplay(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+    throughSequenceNumber?: number,
+  ): Promise<InstructorRunReplayV1>;
+  instructorDecisionOutcomeEvidence(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<HostedRunDecisionOutcomeEvidenceV1>;
+  competencyReport(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly CompetencyEvidenceProjection[]>;
+  learnerCompetencyEvidence(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly CompetencyEvidenceProjection[]>;
+  learnerAuthoredFeedback(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly LearnerRunAuthoredFeedbackV1[]>;
+  rubricEvidence(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly RubricEvidenceProjection[]>;
+  loadState(runId: string): Promise<HostedRuntimeStateSummary>;
+}
+
+function isStage3CaseVariant(value: string): value is Stage3CaseVariant {
+  return (
+    value === "authorized-certifier" ||
+    value === "unauthorized-transporter"
+  );
+}
+
+export function createHostedRuntimeService(options: {
+  readonly pack: ScenarioPackV1;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly eventStore: RunEventStore;
+  readonly clock: Clock;
+  readonly ids: IdGenerator;
+}): HostedRuntimeService {
+  const scenario = options.pack.scenarios.find(
+    (candidate) =>
+      candidate.scenarioId === options.scenarioId &&
+      candidate.version === options.scenarioVersion,
+  );
+  if (scenario === undefined) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "The hosted runtime requires one exact scenario version.",
+    );
+  }
+  const runtimeKind = hostedRuntimeKindFor(scenario);
+  if (runtimeKind === null) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "The selected scenario has no registered hosted runtime.",
+    );
+  }
+  if (runtimeKind === "generic-v1") {
+    const service = new GenericHostedRunService(
+      options.pack,
+      options.scenarioId,
+      options.scenarioVersion,
+      options.eventStore,
+      options.clock,
+      options.ids,
+    );
+    return {
+      runtimeKind,
+      createRun: (principal, request) =>
+        service.createRun(
+          principal,
+          request as CreateGenericHostedRunRequest,
+        ),
+      submit: (principal, command) =>
+        service.submit(principal, command as GenericHostedCommand),
+      learnerProjection: (principal, runId) =>
+        service.learnerProjection(principal, runId),
+      instructorTimeline: (principal, runId) =>
+        service.instructorTimeline(principal, runId),
+      instructorMonitor: (principal, runId, observedAt) =>
+        service.instructorMonitor(principal, runId, observedAt),
+      instructorReplay: (principal, runId, sequence) =>
+        service.instructorReplay(principal, runId, sequence),
+      instructorDecisionOutcomeEvidence: (principal, runId) =>
+        service.instructorDecisionOutcomeEvidence(principal, runId),
+      competencyReport: (principal, runId) =>
+        service.competencyReport(principal, runId),
+      learnerCompetencyEvidence: (principal, runId) =>
+        service.learnerCompetencyEvidence(principal, runId),
+      learnerAuthoredFeedback: (principal, runId) =>
+        service.learnerAuthoredFeedback(principal, runId),
+      rubricEvidence: (principal, runId) =>
+        service.rubricEvidence(principal, runId),
+      loadState: (runId) => service.loadState(runId),
+    };
+  }
+
+  const service = new HostedStage3RunService(
+    options.pack,
+    options.eventStore,
+    options.clock,
+    options.ids,
+  );
+  return {
+    runtimeKind,
+    createRun: (principal, request) => {
+      const caseVariant = request.caseVariant;
+      if (
+        caseVariant === undefined ||
+        !isStage3CaseVariant(caseVariant)
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "The coffee runtime requires a scenario-controlled case variant.",
+        );
+      }
+      return service.createRun(principal, {
+        commandId: request.commandId,
+        runId: request.runId,
+        assignmentId: request.assignmentId,
+        learnerUserId: request.learnerUserId,
+        mode: request.mode,
+        ...(request.modeConfiguration === undefined
+          ? {}
+          : { modeConfiguration: request.modeConfiguration }),
+        ...(request.scenarioSeed === undefined
+          ? {}
+          : { scenarioSeed: request.scenarioSeed }),
+        caseVariant,
+      });
+    },
+    submit: (principal, command) =>
+      service.submit(principal, command as HostedStage3Command),
+    learnerProjection: (principal, runId) =>
+      service.learnerProjection(principal, runId),
+    instructorTimeline: (principal, runId) =>
+      service.instructorTimeline(principal, runId),
+    instructorMonitor: (principal, runId, observedAt) =>
+      service.instructorMonitor(principal, runId, observedAt),
+    instructorReplay: (principal, runId, sequence) =>
+      service.instructorReplay(principal, runId, sequence),
+    instructorDecisionOutcomeEvidence: (principal, runId) =>
+      service.instructorDecisionOutcomeEvidence(principal, runId),
+    competencyReport: (principal, runId) =>
+      service.competencyReport(principal, runId),
+    learnerCompetencyEvidence: (principal, runId) =>
+      service.learnerCompetencyEvidence(principal, runId),
+    learnerAuthoredFeedback: async () => [],
+    rubricEvidence: (principal, runId) =>
+      service.rubricEvidence(principal, runId),
+    loadState: (runId) => service.loadState(runId),
+  };
+}

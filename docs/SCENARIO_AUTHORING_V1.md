@@ -61,10 +61,24 @@ fully validated authoring starter. It proves:
 - one structured decision, rubric, and evidence rule; and
 - a complete, reachable workflow.
 
-The starter is intentionally not advertised as a production hosted run. The
-current authoritative hosted command adapter implements the complete coffee
-journey. Publishing another pack is supported; assigning it requires a
-compatible hosted runtime adapter.
+The starter is also the first scenario exercised by the generic hosted
+runtime. Once published, it can be assigned and completed through its authored
+`BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`, `CONSEQUENCE`, `FEEDBACK`, and
+`COMPLETION` nodes. The runtime uses the pack's embedded localization,
+role-visible evidence, mode configuration, deterministic outcome model,
+decision schema, evidence rule, and rubric references. Consequences are shown
+as part of the run; authored feedback follows the assignment's existing
+instructor-release boundary. The complete coffee journey continues to use its
+compatibility runtime.
+
+This is a deliberately bounded runtime contract, not a claim that every V1
+node type is executable. A scenario is assignable through the generic runtime
+only when it has no legacy compatibility adapter and every node belongs to the
+six-node subset above. Its transitions must use `ALWAYS` or
+`DECISION_OPTION_SELECTED`; policy-result and event-history transitions are not
+yet part of this runtime. Unsupported nodes or transitions remain valid
+authoring content but are excluded from assignment options until their runtime
+behavior exists.
 
 ## Import safety
 

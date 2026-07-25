@@ -38,6 +38,12 @@
       "platformPack.pharmaColdChain.field.action.prompt": "Shipment action",
       "platformPack.pharmaColdChain.option.hold": "Hold and investigate",
       "platformPack.pharmaColdChain.option.release": "Release without review",
+      "platformPack.pharmaColdChain.node.consequence.hold.title": "Shipment held for investigation",
+      "platformPack.pharmaColdChain.node.consequence.hold.message": "Release is paused while the temperature excursion is investigated. This protects patients and strengthens compliance evidence, but it creates an operational delay.",
+      "platformPack.pharmaColdChain.node.consequence.release.title": "Shipment released without review",
+      "platformPack.pharmaColdChain.node.consequence.release.message": "The shipment proceeds while the temperature excursion remains unresolved. This avoids an immediate delay but creates patient-safety and compliance exposure.",
+      "platformPack.pharmaColdChain.node.feedback.title": "Evidence interpretation",
+      "platformPack.pharmaColdChain.node.feedback.message": "An intact signed custody record supports integrity and attribution. It does not prove that storage conditions were acceptable, so the off-chain sensor evidence still required evaluation.",
       "platformPack.pharmaColdChain.node.complete.title": "Decision recorded"
     },
     "vi": {
@@ -69,6 +75,12 @@
       "platformPack.pharmaColdChain.field.action.prompt": "Cách xử lý lô hàng",
       "platformPack.pharmaColdChain.option.hold": "Giữ lại và điều tra",
       "platformPack.pharmaColdChain.option.release": "Xuất hàng mà không xem xét",
+      "platformPack.pharmaColdChain.node.consequence.hold.title": "Giữ lô hàng để điều tra",
+      "platformPack.pharmaColdChain.node.consequence.hold.message": "Việc xuất hàng được tạm dừng trong khi điều tra sai lệch nhiệt độ. Quyết định này bảo vệ người bệnh và củng cố bằng chứng tuân thủ, nhưng gây chậm trễ vận hành.",
+      "platformPack.pharmaColdChain.node.consequence.release.title": "Xuất hàng mà không xem xét",
+      "platformPack.pharmaColdChain.node.consequence.release.message": "Lô hàng tiếp tục được xuất khi sai lệch nhiệt độ chưa được giải quyết. Quyết định này tránh chậm trễ trước mắt nhưng tạo ra rủi ro cho an toàn người bệnh và tuân thủ.",
+      "platformPack.pharmaColdChain.node.feedback.title": "Diễn giải bằng chứng",
+      "platformPack.pharmaColdChain.node.feedback.message": "Hồ sơ chuyển giao đã ký còn nguyên vẹn hỗ trợ việc xác minh tính toàn vẹn và nguồn phê duyệt. Hồ sơ này không chứng minh điều kiện bảo quản là phù hợp, vì vậy bằng chứng cảm biến ngoài chuỗi vẫn cần được đánh giá.",
       "platformPack.pharmaColdChain.node.complete.title": "Đã ghi nhận quyết định"
     }
   },
@@ -432,7 +444,78 @@
           },
           "transitions": [
             {
-              "transitionId": "TRANSITION_PHARMA_DECISION_COMPLETE",
+              "transitionId": "TRANSITION_PHARMA_DECISION_HOLD",
+              "toNodeId": "NODE_PHARMA_CONSEQUENCE_HOLD",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_RELEASE",
+                "optionId": "HOLD_AND_INVESTIGATE"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_PHARMA_DECISION_RELEASE",
+              "toNodeId": "NODE_PHARMA_CONSEQUENCE_RELEASE",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_RELEASE",
+                "optionId": "RELEASE_WITHOUT_REVIEW"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_CONSEQUENCE_HOLD",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.consequence.hold.title"
+          },
+          "consequenceCode": "SHIPMENT_HELD_FOR_INVESTIGATION",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.node.consequence.hold.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_HOLD_FEEDBACK",
+              "toNodeId": "NODE_PHARMA_FEEDBACK",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_CONSEQUENCE_RELEASE",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.consequence.release.title"
+          },
+          "consequenceCode": "SHIPMENT_RELEASED_WITH_UNRESOLVED_EXCURSION",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.node.consequence.release.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_RELEASE_FEEDBACK",
+              "toNodeId": "NODE_PHARMA_FEEDBACK",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_FEEDBACK",
+          "nodeType": "FEEDBACK",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.node.feedback.title"
+          },
+          "feedbackCode": "INTEGRITY_DOES_NOT_PROVE_STORAGE_CONDITIONS",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.node.feedback.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_FEEDBACK_COMPLETE",
               "toNodeId": "NODE_PHARMA_COMPLETE",
               "when": {
                 "kind": "ALWAYS"

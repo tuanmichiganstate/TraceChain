@@ -465,6 +465,8 @@
   "hostedLearner.optionUnknown": "Scenario option {option}",
   "hostedLearner.error": "The hosted action could not be completed. Reload the assignment and try again.",
   "hostedLearner.action.INSPECT_EVIDENCE": "Inspect evidence",
+  "hostedLearner.action.ADVANCE_WORKFLOW": "Continue",
+  "hostedLearner.action.SUBMIT_STRUCTURED_DECISION": "Submit decision",
   "hostedLearner.action.SUBMIT_CERTIFICATE_DECISION": "Submit certificate decision",
   "hostedLearner.action.SUBMIT_CERTIFICATE_TRANSACTION": "Submit certificate transaction",
   "hostedLearner.action.CREATE_CUSTODY_TRANSFER_PROPOSAL": "Create custody-transfer proposal",

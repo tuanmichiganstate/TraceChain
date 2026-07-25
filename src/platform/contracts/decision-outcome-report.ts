@@ -22,7 +22,7 @@ export interface HostedCompletedRunDecisionOutcomeEvidenceV1 {
   readonly learnerUserId: string;
   readonly status: "completed";
   readonly decisionItems: readonly HostedDecisionItemEvidenceV1[];
-  readonly realizedOutcome: HostedRealizedOutcomeEvidenceV1;
+  readonly realizedOutcome: HostedRealizedOutcomeEvidenceV1 | null;
 }
 
 export type HostedRunDecisionOutcomeEvidenceV1 =

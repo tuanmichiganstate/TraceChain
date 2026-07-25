@@ -349,9 +349,10 @@ competency result, and optional overall score are distinct records.
 15. Add pack import, immutable publication, preview, comparison, retirement,
     self-contained localization workflow, a compact visual draft editor, and
     an additional pharmaceutical cold-chain starter. (Complete for the
-    Phase 6 authoring boundary; the starter is validation/preview content,
-    while the hosted authoritative runtime remains the complete coffee
-    journey.)
+    Phase 6 authoring boundary. The starter is also executable through the
+    bounded generic hosted runtime for briefing, evidence release, structured
+    decision, consequence, feedback, and completion nodes; the complete coffee
+    journey retains its compatibility runtime.)
 
 Collaborative multi-learner orchestration remains deferred.
 

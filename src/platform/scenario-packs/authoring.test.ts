@@ -104,6 +104,9 @@ describe("scenario authoring services", () => {
       "NODE_PHARMA_BRIEFING",
       "NODE_PHARMA_EVIDENCE",
       "NODE_PHARMA_DECISION",
+      "NODE_PHARMA_CONSEQUENCE_HOLD",
+      "NODE_PHARMA_CONSEQUENCE_RELEASE",
+      "NODE_PHARMA_FEEDBACK",
       "NODE_PHARMA_COMPLETE",
     ]);
     expect(preview.nodes[1]?.visibleEvidenceIds).toEqual([

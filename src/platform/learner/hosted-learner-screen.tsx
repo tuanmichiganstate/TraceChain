@@ -14,6 +14,8 @@ import type {
 } from "../contracts/competency-report";
 import type {
   ApplicationRole,
+  LearnerRunAuthoredFeedbackV1,
+  LearnerRunLocalizedTextV1,
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
 import type {
@@ -32,6 +34,8 @@ interface LearnerSession {
 interface HostedLearnerFeedback {
   readonly assignmentId: string;
   readonly releasedAt?: string;
+  readonly authoredFeedback?:
+    readonly LearnerRunAuthoredFeedbackV1[];
   readonly ratings: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
@@ -237,6 +241,18 @@ const evidenceLocalizationKeys: Readonly<Record<string, string>> = {
   EVID_CERTIFICATE_RECORD:
     "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.evidenceItems.EVID_CERTIFICATE_RECORD.title",
 };
+
+function runText(
+  value: LearnerRunLocalizedTextV1,
+  t: ReturnType<typeof useTranslator>,
+): string {
+  return (
+    value.valuesByLocale[t.locale] ??
+    value.valuesByLocale.en ??
+    Object.values(value.valuesByLocale)[0] ??
+    t(value.localizationKey)
+  );
+}
 
 export function HostedLearnerScreen({
   api = browserApi,
@@ -500,6 +516,12 @@ function LearnerFeedback({
         <p>{t("hostedLearner.feedbackWithheld")}</p>
       ) : (
         <>
+          {feedback.authoredFeedback?.map((item) => (
+            <article key={item.feedbackCode}>
+              <h3>{runText(item.title, t)}</h3>
+              <p>{runText(item.message, t)}</p>
+            </article>
+          ))}
           {feedback.moderationResolutions.length > 0 ? (
             <ul>
               {feedback.moderationResolutions.map((resolution) => (
@@ -526,9 +548,9 @@ function LearnerFeedback({
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : (feedback.authoredFeedback?.length ?? 0) === 0 ? (
             <p>{t("hostedLearner.feedbackEmpty")}</p>
-          )}
+          ) : null}
           <LearnerCompetencyProfile
             profile={feedback.competencyProfile}
           />
@@ -640,6 +662,8 @@ function RunWorkspace({
   const t = useTranslator();
   const actions = projection.workflowState.permittedActionIds;
   const isExpired = projection.timing?.status === "expired";
+  const presentation = projection.presentation;
+  const currentNode = presentation?.currentNode;
   return (
     <>
       <section className="card card--brief">
@@ -652,24 +676,40 @@ function RunWorkspace({
           <div>
             <dt>{t("hostedLearner.role")}</dt>
             <dd>
-              {t(
-                roleLocalizationKeys[projection.roleId] ??
-                  "hostedLearner.roleUnknown",
-                { roleId: projection.roleId },
-              )}
+              {presentation === undefined
+                ? t(
+                    roleLocalizationKeys[projection.roleId] ??
+                      "hostedLearner.roleUnknown",
+                    { roleId: projection.roleId },
+                  )
+                : runText(presentation.roleName, t)}
             </dd>
           </div>
           <div>
             <dt>{t("hostedLearner.step")}</dt>
             <dd>
-              {projection.workflowState.permittedActionIds[0] === undefined
-                ? t("hostedLearner.complete")
-                : t(
-                    `hostedLearner.action.${projection.workflowState.permittedActionIds[0]}`,
-                  )}
+              {currentNode === undefined
+                ? projection.workflowState.permittedActionIds[0] ===
+                  undefined
+                  ? t("hostedLearner.complete")
+                  : t(
+                      `hostedLearner.action.${projection.workflowState.permittedActionIds[0]}`,
+                    )
+                : runText(currentNode.title, t)}
             </dd>
           </div>
         </dl>
+        {presentation === undefined ? null : (
+          <>
+            <h3>{runText(presentation.scenarioTitle, t)}</h3>
+            {currentNode?.body === undefined ? null : (
+              <p>{runText(currentNode.body, t)}</p>
+            )}
+            {currentNode?.message === undefined ? null : (
+              <p>{runText(currentNode.message, t)}</p>
+            )}
+          </>
+        )}
       </section>
       {isExpired ? (
         <p className="notice notice--standalone" role="status">
@@ -684,15 +724,32 @@ function RunWorkspace({
           <p>{t("hostedLearner.none")}</p>
         ) : (
           <ul>
-            {projection.informationState.map((record) => (
-              <li key={record.recordId}>
-                {t(
-                  evidenceLocalizationKeys[record.recordId] ??
-                    "hostedLearner.evidenceUnknown",
-                  { evidenceId: record.recordId },
-                )}
-              </li>
-            ))}
+            {projection.informationState.map((record) => {
+              const authoredTitle =
+                presentation?.evidenceTitles[record.recordId];
+              const title =
+                authoredTitle === undefined
+                  ? t(
+                      evidenceLocalizationKeys[record.recordId] ??
+                        "hostedLearner.evidenceUnknown",
+                      { evidenceId: record.recordId },
+                    )
+                  : runText(authoredTitle, t);
+              return (
+                <li key={record.recordId}>
+                  {presentation === undefined ? (
+                    title
+                  ) : (
+                    <details>
+                      <summary>{title}</summary>
+                      <p>
+                        <code>{JSON.stringify(record.value)}</code>
+                      </p>
+                    </details>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -728,8 +785,15 @@ function RunWorkspace({
       </section>
       <section className="card card--work">
         <h2>{t("hostedLearner.currentAction")}</h2>
+        {currentNode?.prompt === undefined ? null : (
+          <p>{runText(currentNode.prompt, t)}</p>
+        )}
         {actions.length === 0 ? (
-          <p>{t("hostedLearner.complete")}</p>
+          <p>
+            {currentNode?.nodeType === "COMPLETION"
+              ? runText(currentNode.title, t)
+              : t("hostedLearner.complete")}
+          </p>
         ) : (
           actions.map((action) => (
             <ActionControl
@@ -952,14 +1016,22 @@ function ActionControl({
     input: Readonly<Record<string, unknown>>,
   ) => Promise<void>;
 }): ReactNode {
+  const t = useTranslator();
   if (action === "INSPECT_EVIDENCE") {
     return (
       <SelectActionForm
         action={action}
-        options={projection.informationState.map((item) => ({
-          value: item.recordId,
-          labelKey: null,
-        }))}
+        options={projection.informationState.map((item) => {
+          const title =
+            projection.presentation?.evidenceTitles[item.recordId];
+          return {
+            value: item.recordId,
+            labelKey: null,
+            ...(title === undefined
+              ? {}
+              : { label: runText(title, t) }),
+          };
+        })}
         busy={busy}
         onSubmit={(evidenceId) =>
           onSubmit({ commandType: action, evidenceId })
@@ -970,6 +1042,15 @@ function ActionControl({
   if (action === "SUBMIT_CERTIFICATE_DECISION") {
     return (
       <CertificateDecisionForm
+        projection={projection}
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+  if (action === "SUBMIT_STRUCTURED_DECISION") {
+    return (
+      <GenericDecisionForm
         projection={projection}
         busy={busy}
         onSubmit={onSubmit}
@@ -1067,6 +1148,7 @@ function SelectActionForm({
   readonly options: readonly {
     readonly value: string;
     readonly labelKey: string | null;
+    readonly label?: string;
   }[];
   readonly busy: boolean;
   readonly onSubmit: (value: string) => Promise<void>;
@@ -1093,8 +1175,10 @@ function SelectActionForm({
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.labelKey === null
-                ? option.value
+              {option.label !== undefined
+                ? option.label
+                : option.labelKey === null
+                  ? option.value
                 : t(option.labelKey)}
             </option>
           ))}
@@ -1103,6 +1187,354 @@ function SelectActionForm({
       <button
         className="button button--primary"
         disabled={busy || value.length === 0}
+      >
+        {t("hostedLearner.submit")}
+      </button>
+    </form>
+  );
+}
+
+function GenericDecisionForm({
+  projection,
+  busy,
+  onSubmit,
+}: ActionFormProps & {
+  readonly projection: LearnerRunProjectionV1;
+}): ReactNode {
+  const t = useTranslator();
+  const node = projection.presentation?.currentNode;
+  const fields = node?.fields ?? [];
+  const responseConfiguration = node?.structuredResponse;
+  const [responses, setResponses] = useState<
+    Readonly<Record<string, readonly string[]>>
+  >({});
+  const [justification, setJustification] = useState("");
+  const [citedEvidenceIds, setCitedEvidenceIds] = useState<
+    readonly string[]
+  >([]);
+  const [citedPolicyIds, setCitedPolicyIds] = useState<
+    readonly string[]
+  >([]);
+  const [confidenceRating, setConfidenceRating] = useState("");
+  const [
+    adverseEventProbabilityPercent,
+    setAdverseEventProbabilityPercent,
+  ] = useState("");
+  if (
+    node === undefined ||
+    node.nodeType !== "DECISION" ||
+    node.decisionId === undefined
+  ) {
+    return null;
+  }
+
+  const evidenceCitations =
+    responseConfiguration?.evidenceCitations;
+  const policyCitations =
+    responseConfiguration?.policyCitations;
+  const confidence = responseConfiguration?.confidenceRating;
+  const adverseProbability =
+    responseConfiguration?.adverseEventProbabilityPercent;
+  const fieldsValid = fields.every((field) => {
+    const selected = responses[field.fieldId] ?? [];
+    return (
+      selected.length > 0 &&
+      (field.selection === "multiple" || selected.length === 1)
+    );
+  });
+  const justificationValid =
+    node.justification === undefined ||
+    ((!node.justification.required ||
+      justification.trim().length > 0) &&
+      justification.length <= node.justification.maximumLength);
+  const citationsValid =
+    evidenceCitations === undefined
+      ? citedEvidenceIds.length === 0
+      : citedEvidenceIds.length >=
+          evidenceCitations.minimumItems &&
+        citedEvidenceIds.length <=
+          evidenceCitations.maximumItems;
+  const policyCitationsValid =
+    policyCitations === undefined
+      ? citedPolicyIds.length === 0
+      : citedPolicyIds.length >= policyCitations.minimumItems &&
+        citedPolicyIds.length <= policyCitations.maximumItems;
+  const confidenceValid =
+    confidence === undefined
+      ? confidenceRating.length === 0
+      : (!confidence.required && confidenceRating.length === 0) ||
+        (confidenceRating.length > 0 &&
+          Number.isFinite(Number(confidenceRating)) &&
+          Number(confidenceRating) >= confidence.minimum &&
+          Number(confidenceRating) <= confidence.maximum);
+  const adverseProbabilityValid =
+    adverseProbability === undefined
+      ? adverseEventProbabilityPercent.length === 0
+      : (!adverseProbability.required &&
+          adverseEventProbabilityPercent.length === 0) ||
+        (adverseEventProbabilityPercent.length > 0 &&
+          Number.isFinite(Number(adverseEventProbabilityPercent)) &&
+          Number(adverseEventProbabilityPercent) >=
+            adverseProbability.minimum &&
+          Number(adverseEventProbabilityPercent) <=
+            adverseProbability.maximum);
+
+  function toggleResponse(
+    fieldId: string,
+    optionId: string,
+    checked: boolean,
+  ) {
+    setResponses((current) => {
+      const selected = current[fieldId] ?? [];
+      return {
+        ...current,
+        [fieldId]: checked
+          ? [...selected, optionId]
+          : selected.filter((candidate) => candidate !== optionId),
+      };
+    });
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit({
+          commandType: "SUBMIT_STRUCTURED_DECISION",
+          decisionId: node.decisionId,
+          responses,
+          ...(node.justification === undefined
+            ? {}
+            : { justification }),
+          ...(evidenceCitations === undefined
+            ? {}
+            : { citedEvidenceIds }),
+          ...(policyCitations === undefined
+            ? {}
+            : { citedPolicyIds }),
+          ...(confidence === undefined ||
+          confidenceRating.length === 0
+            ? {}
+            : {
+                confidenceRating: Number(confidenceRating),
+              }),
+          ...(adverseProbability === undefined ||
+          adverseEventProbabilityPercent.length === 0
+            ? {}
+            : {
+                adverseEventProbabilityPercent: Number(
+                  adverseEventProbabilityPercent,
+                ),
+              }),
+        });
+      }}
+    >
+      {fields.map((field) =>
+        field.selection === "single" ? (
+          <div className="field" key={field.fieldId}>
+            <label
+              className="field__label"
+              htmlFor={`generic-decision-${field.fieldId}`}
+            >
+              {runText(field.prompt, t)}
+            </label>
+            <select
+              className="field__control"
+              id={`generic-decision-${field.fieldId}`}
+              value={responses[field.fieldId]?.[0] ?? ""}
+              required
+              onChange={(event) =>
+                setResponses((current) => ({
+                  ...current,
+                  [field.fieldId]:
+                    event.target.value.length === 0
+                      ? []
+                      : [event.target.value],
+                }))
+              }
+            >
+              <option value="" />
+              {field.options.map((option) => (
+                <option key={option.optionId} value={option.optionId}>
+                  {runText(option.label, t)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <fieldset key={field.fieldId}>
+            <legend>{runText(field.prompt, t)}</legend>
+            {field.options.map((option) => {
+              const checked = (
+                responses[field.fieldId] ?? []
+              ).includes(option.optionId);
+              return (
+                <label key={option.optionId}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) =>
+                      toggleResponse(
+                        field.fieldId,
+                        option.optionId,
+                        event.target.checked,
+                      )
+                    }
+                  />{" "}
+                  {runText(option.label, t)}
+                </label>
+              );
+            })}
+          </fieldset>
+        ),
+      )}
+      {node.justification === undefined ? null : (
+        <div className="field">
+          <label
+            className="field__label"
+            htmlFor={`generic-justification-${node.decisionId}`}
+          >
+            {t("hostedLearner.justification")}
+          </label>
+          <textarea
+            className="field__control"
+            id={`generic-justification-${node.decisionId}`}
+            value={justification}
+            required={node.justification.required}
+            maxLength={node.justification.maximumLength}
+            onChange={(event) =>
+              setJustification(event.target.value)
+            }
+          />
+        </div>
+      )}
+      {evidenceCitations === undefined ? null : (
+        <fieldset className="hosted-decision__citations">
+          <legend>{t("hostedLearner.evidenceCitations")}</legend>
+          <p className="field__hint">
+            {t("hostedLearner.evidenceCitationHelp", {
+              minimum: evidenceCitations.minimumItems,
+              maximum: evidenceCitations.maximumItems,
+            })}
+          </p>
+          {projection.informationState.map((record) => {
+            const checked = citedEvidenceIds.includes(
+              record.recordId,
+            );
+            const authored =
+              projection.presentation?.evidenceTitles[
+                record.recordId
+              ];
+            const label =
+              authored === undefined
+                ? t("hostedLearner.evidenceUnknown", {
+                    evidenceId: record.recordId,
+                  })
+                : runText(authored, t);
+            return (
+              <label key={record.recordId}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={
+                    !checked &&
+                    citedEvidenceIds.length >=
+                      evidenceCitations.maximumItems
+                  }
+                  onChange={(event) =>
+                    setCitedEvidenceIds((current) =>
+                      event.target.checked
+                        ? [...current, record.recordId]
+                        : current.filter(
+                            (candidate) =>
+                              candidate !== record.recordId,
+                          ),
+                    )
+                  }
+                />{" "}
+                {t("hostedLearner.citeEvidence", {
+                  evidence: label,
+                })}
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
+      {policyCitations === undefined ? null : (
+        <fieldset className="hosted-decision__citations">
+          <legend>{t("hostedLearner.policyCitations")}</legend>
+          <p className="field__hint">
+            {t("hostedLearner.policyCitationHelp", {
+              minimum: policyCitations.minimumItems,
+              maximum: policyCitations.maximumItems,
+            })}
+          </p>
+          {projection.policyState.map((record) => {
+            const checked = citedPolicyIds.includes(record.recordId);
+            const authored =
+              projection.presentation?.policyTitles[record.recordId];
+            const label =
+              authored === undefined
+                ? record.recordId
+                : runText(authored, t);
+            return (
+              <label key={record.recordId}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={
+                    !checked &&
+                    citedPolicyIds.length >=
+                      policyCitations.maximumItems
+                  }
+                  onChange={(event) =>
+                    setCitedPolicyIds((current) =>
+                      event.target.checked
+                        ? [...current, record.recordId]
+                        : current.filter(
+                            (candidate) =>
+                              candidate !== record.recordId,
+                          ),
+                    )
+                  }
+                />{" "}
+                {t("hostedLearner.citePolicy", { policy: label })}
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
+      {confidence === undefined ? null : (
+        <NumericDecisionField
+          id={`generic-confidence-${node.decisionId}`}
+          label={t("hostedLearner.confidence")}
+          configuration={confidence}
+          value={confidenceRating}
+          onChange={setConfidenceRating}
+          kind="select"
+        />
+      )}
+      {adverseProbability === undefined ? null : (
+        <NumericDecisionField
+          id={`generic-adverse-probability-${node.decisionId}`}
+          label={t("hostedLearner.adverseEventProbability")}
+          configuration={adverseProbability}
+          value={adverseEventProbabilityPercent}
+          onChange={setAdverseEventProbabilityPercent}
+          kind="number"
+        />
+      )}
+      <button
+        className="button button--primary"
+        disabled={
+          busy ||
+          !fieldsValid ||
+          !justificationValid ||
+          !citationsValid ||
+          !policyCitationsValid ||
+          !confidenceValid ||
+          !adverseProbabilityValid
+        }
       >
         {t("hostedLearner.submit")}
       </button>

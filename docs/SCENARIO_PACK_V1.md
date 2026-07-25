@@ -214,6 +214,12 @@ moderation, deterministic run modes, author lifecycle, and graphical
 Guided/Challenge package jobs are now implemented. Application-user access and
 role provisioning are available in the administrator workspace; course
 management remains deployment administration. The pharmaceutical starter
-validates and previews through the generic authoring layer; a compatible hosted
-runtime adapter is still required before it can be assigned. SCORM continues
-to use the current compact deterministic TC3 journal.
+now validates, previews, and runs through the bounded generic hosted runtime.
+That runtime executes authored `BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`,
+`CONSEQUENCE`, `FEEDBACK`, and `COMPLETION` nodes, preserves deterministic
+outcome and event replay, projects only role-visible evidence, and records
+authored competency evidence. Business consequences appear in the run, while
+authored feedback remains unavailable until the assignment's feedback release.
+Other V1 node types remain unavailable for assignment until their runtime
+behavior is implemented. SCORM continues to use the current compact
+deterministic TC3 journal.

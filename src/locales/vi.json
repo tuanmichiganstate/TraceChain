@@ -465,6 +465,8 @@
   "hostedLearner.optionUnknown": "Phương án kịch bản {option}",
   "hostedLearner.error": "Không thể hoàn thành thao tác trên nền tảng. Hãy tải lại bài tập và thử lại.",
   "hostedLearner.action.INSPECT_EVIDENCE": "Kiểm tra bằng chứng",
+  "hostedLearner.action.ADVANCE_WORKFLOW": "Tiếp tục",
+  "hostedLearner.action.SUBMIT_STRUCTURED_DECISION": "Gửi quyết định",
   "hostedLearner.action.SUBMIT_CERTIFICATE_DECISION": "Gửi quyết định về chứng nhận",
   "hostedLearner.action.SUBMIT_CERTIFICATE_TRANSACTION": "Gửi giao dịch chứng nhận",
   "hostedLearner.action.CREATE_CUSTODY_TRANSFER_PROPOSAL": "Tạo đề xuất chuyển quyền lưu giữ",

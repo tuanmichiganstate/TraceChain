@@ -39,12 +39,14 @@ import {
 } from "../src/platform/hosted/server-environment";
 import {
   HostedRunCommandError,
-  HostedStage3RunService,
 } from "../src/platform/hosted/stage3-run-service";
 import type {
-  CreateHostedStage3RunRequest,
-  HostedStage3Command,
-} from "../src/platform/hosted/stage3-types";
+  HostedRuntimeCommand,
+  HostedRuntimeService,
+} from "../src/platform/hosted/hosted-runtime-service";
+import {
+  createHostedRuntimeService,
+} from "../src/platform/hosted/hosted-runtime-service";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
 import {
   ApplicationAccessRepositoryError,
@@ -521,7 +523,7 @@ async function hostedServiceForRun(
   runId: string,
 ): Promise<{
   readonly pack: ScenarioPackV1;
-  readonly service: HostedStage3RunService;
+  readonly service: HostedRuntimeService;
 }> {
   const store = new D1RunEventStore(environment.DB);
   const events = await store.load(runId);
@@ -546,12 +548,14 @@ async function hostedServiceForRun(
   }
   return {
     pack,
-    service: new HostedStage3RunService(
+    service: createHostedRuntimeService({
       pack,
-      store,
+      scenarioId: first.scenarioId,
+      scenarioVersion: first.scenarioVersion,
+      eventStore: store,
       clock,
-      new WebCryptoIdGenerator(),
-    ),
+      ids: new WebCryptoIdGenerator(),
+    }),
   };
 }
 
@@ -1444,12 +1448,15 @@ async function apiResponse(
         "The assignment's exact published scenario is unavailable.",
       );
     }
-    const result = await new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      new D1RunEventStore(environment.DB),
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.version,
+      eventStore: new D1RunEventStore(environment.DB),
       clock,
-      new WebCryptoIdGenerator(),
-    ).createRun(principal, {
+      ids: new WebCryptoIdGenerator(),
+    });
+    const result = await service.createRun(principal, {
       commandId: requiredText(body.commandId, "commandId"),
       runId: requiredText(body.runId, "runId"),
       assignmentId: assignment.assignmentId,
@@ -1463,15 +1470,14 @@ async function apiResponse(
               ? `assignment:${assignment.assignmentId}:${learnerUserId}`
               : requiredText(body.scenarioSeed, "scenarioSeed"),
           }),
-      caseVariant: runCreator.roles.includes("learner")
-        ? (
-            assignment.runConfiguration.forcedOutcomeCode ??
-            "authorized-certifier"
-          ) as CreateHostedStage3RunRequest["caseVariant"]
-        : requiredText(
-            body.caseVariant,
-            "caseVariant",
-          ) as CreateHostedStage3RunRequest["caseVariant"],
+      ...(service.runtimeKind === "coffee-v2"
+        ? {
+            caseVariant: runCreator.roles.includes("learner")
+              ? assignment.runConfiguration.forcedOutcomeCode ??
+                "authorized-certifier"
+              : requiredText(body.caseVariant, "caseVariant"),
+          }
+        : {}),
     });
     return jsonResponse(
       result.wasIdempotentReplay ? 200 : 201,
@@ -1538,12 +1544,14 @@ async function apiResponse(
         "Decision reporting requires the assignment's exact published pack.",
       );
     }
-    const service = new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      new D1RunEventStore(environment.DB),
+      scenarioId: report.assignment.scenarioId,
+      scenarioVersion: report.assignment.scenarioVersion,
+      eventStore: new D1RunEventStore(environment.DB),
       clock,
-      new WebCryptoIdGenerator(),
-    );
+      ids: new WebCryptoIdGenerator(),
+    });
     const decisionOutcomes: HostedAssignmentDecisionOutcomeReportV1 = {
       schemaVersion: "1.0.0",
       interpretation:
@@ -1597,12 +1605,14 @@ async function apiResponse(
         "Live monitoring requires the assignment's exact published pack.",
       );
     }
-    const service = new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      new D1RunEventStore(environment.DB),
+      scenarioId: report.assignment.scenarioId,
+      scenarioVersion: report.assignment.scenarioVersion,
+      eventStore: new D1RunEventStore(environment.DB),
       clock,
-      new WebCryptoIdGenerator(),
-    );
+      ids: new WebCryptoIdGenerator(),
+    });
     const generatedAt = clock.now();
     const statuses = await Promise.all(
       report.learners.flatMap((learner) =>
@@ -1678,12 +1688,14 @@ async function apiResponse(
         "Competency reporting requires the assignment's exact published pack.",
       );
     }
-    const service = new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      new D1RunEventStore(environment.DB),
+      scenarioId: report.assignment.scenarioId,
+      scenarioVersion: report.assignment.scenarioVersion,
+      eventStore: new D1RunEventStore(environment.DB),
       clock,
-      new WebCryptoIdGenerator(),
-    );
+      ids: new WebCryptoIdGenerator(),
+    });
     const evidenceByRun = await Promise.all(
       report.learners.flatMap((learner) =>
         learner.runs.map(async (run) => ({
@@ -2089,6 +2101,10 @@ async function apiResponse(
     return jsonResponse(200, {
       assignmentId: assignment.assignmentId,
       releasedAt: assignment.feedbackReleasedAt,
+      authoredFeedback: await service.learnerAuthoredFeedback(
+        principal,
+        feedbackRunId,
+      ),
       ratings: await repository.currentRatings(feedbackRunId),
       moderationResolutions:
         await repository.currentModerationResolutions(feedbackRunId),
@@ -2123,15 +2139,46 @@ async function apiResponse(
         "Run creation requires an exact published scenario pack.",
       );
     }
-    const service = new HostedStage3RunService(
-      pack,
-      new D1RunEventStore(environment.DB),
-      new SystemUtcClock(),
-      new WebCryptoIdGenerator(),
+    const requestedScenarioId =
+      typeof body.command.scenarioId === "string"
+        ? body.command.scenarioId
+        : undefined;
+    const requestedScenarioVersion =
+      typeof body.command.scenarioVersion === "string"
+        ? body.command.scenarioVersion
+        : undefined;
+    const runnableScenarios = pack.scenarios.filter(
+      hasRegisteredHostedRuntime,
     );
+    const scenario =
+      requestedScenarioId === undefined &&
+      requestedScenarioVersion === undefined &&
+      runnableScenarios.length === 1
+        ? runnableScenarios[0]
+        : runnableScenarios.find(
+            (candidate) =>
+              candidate.scenarioId === requestedScenarioId &&
+              candidate.version === requestedScenarioVersion,
+          );
+    if (scenario === undefined) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Run creation must identify one registered scenario version.",
+      );
+    }
+    const service = createHostedRuntimeService({
+      pack,
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.version,
+      eventStore: new D1RunEventStore(environment.DB),
+      clock: new SystemUtcClock(),
+      ids: new WebCryptoIdGenerator(),
+    });
     const result = await service.createRun(
       principal,
-      body.command as unknown as CreateHostedStage3RunRequest,
+      body.command as unknown as Parameters<
+        HostedRuntimeService["createRun"]
+      >[1],
     );
     return jsonResponse(201, {
       runId: result.state.runId,
@@ -2182,15 +2229,17 @@ async function apiResponse(
         "The run's exact published scenario pack is unavailable.",
       );
     }
-    const service = new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      store,
-      new SystemUtcClock(),
-      new WebCryptoIdGenerator(),
-    );
+      scenarioId: first.scenarioId,
+      scenarioVersion: first.scenarioVersion,
+      eventStore: store,
+      clock: new SystemUtcClock(),
+      ids: new WebCryptoIdGenerator(),
+    });
     const result = await service.submit(
       principal,
-      body as unknown as HostedStage3Command,
+      body as unknown as HostedRuntimeCommand,
     );
     return jsonResponse(200, {
       projection: await service.learnerProjection(
@@ -2229,12 +2278,14 @@ async function apiResponse(
         "The run's exact published scenario pack is unavailable.",
       );
     }
-    const service = new HostedStage3RunService(
+    const service = createHostedRuntimeService({
       pack,
-      store,
-      new SystemUtcClock(),
-      new WebCryptoIdGenerator(),
-    );
+      scenarioId: first.scenarioId,
+      scenarioVersion: first.scenarioVersion,
+      eventStore: store,
+      clock: new SystemUtcClock(),
+      ids: new WebCryptoIdGenerator(),
+    });
     if (url.pathname.endsWith("/timeline")) {
       return jsonResponse(200, {
         timeline: await service.instructorTimeline(principal, runId),

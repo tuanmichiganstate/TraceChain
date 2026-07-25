@@ -232,6 +232,321 @@ test("runs an assigned hosted learner action from role-filtered server state", a
   expect(submittedCommand).not.toHaveProperty("roleId");
 });
 
+test("completes an authored pharmaceutical decision through the generic runtime UI", async ({
+  page,
+}) => {
+  const submittedCommands: Record<string, unknown>[] = [];
+  const localized = (en: string, vi: string) => ({
+    localizationKey: `test.${en}`,
+    valuesByLocale: { en, vi },
+  });
+  const modeConfiguration = {
+    mode: "tutorial",
+    allowHints: true,
+    allowRetry: true,
+    allowBacktracking: true,
+    feedbackTiming: "immediate",
+    showScores: true,
+    outcomeStrategy: "forced",
+    seedPolicy: "generated",
+    allowCommunication: false,
+    allowEvidenceRequests: true,
+  };
+  const decisionProjection = {
+    schemaVersion: "1.0.0",
+    runId: "RUN_BROWSER_PHARMA",
+    version: 4,
+    roleId: "QUALITY_MANAGER",
+    businessState: [
+      {
+        recordId: "status",
+        value: "AWAITING_RELEASE",
+      },
+    ],
+    ledgerState: {},
+    informationState: [
+      {
+        recordId: "EVID_PHARMA_SENSOR_SUMMARY",
+        value: {
+          content: { maximumTemperatureC: 12.4 },
+          inspected: false,
+        },
+      },
+    ],
+    policyState: [],
+    workflowState: {
+      currentNodeId: "NODE_PHARMA_DECISION",
+      completedNodeIds: [
+        "NODE_PHARMA_BRIEFING",
+        "NODE_PHARMA_EVIDENCE",
+      ],
+      permittedActionIds: [
+        "INSPECT_EVIDENCE",
+        "SUBMIT_STRUCTURED_DECISION",
+      ],
+    },
+    presentation: {
+      scenarioTitle: localized(
+        "Temperature excursion review",
+        "Xem xét sai lệch nhiệt độ",
+      ),
+      roleName: localized(
+        "Quality manager",
+        "Quản lý chất lượng",
+      ),
+      currentNode: {
+        nodeId: "NODE_PHARMA_DECISION",
+        nodeType: "DECISION",
+        title: localized(
+          "Make a release decision",
+          "Đưa ra quyết định xuất hàng",
+        ),
+        decisionId: "DECISION_PHARMA_RELEASE",
+        prompt: localized(
+          "Choose a proportionate response.",
+          "Chọn cách xử lý tương xứng.",
+        ),
+        fields: [
+          {
+            fieldId: "shipmentAction",
+            prompt: localized(
+              "Shipment action",
+              "Cách xử lý lô hàng",
+            ),
+            selection: "single",
+            options: [
+              {
+                optionId: "HOLD_AND_INVESTIGATE",
+                label: localized(
+                  "Hold and investigate",
+                  "Giữ lại và điều tra",
+                ),
+              },
+              {
+                optionId: "RELEASE_WITHOUT_REVIEW",
+                label: localized(
+                  "Release without review",
+                  "Xuất hàng mà không xem xét",
+                ),
+              },
+            ],
+          },
+        ],
+        justification: { required: true, maximumLength: 600 },
+      },
+      evidenceTitles: {
+        EVID_PHARMA_SENSOR_SUMMARY: localized(
+          "Temperature sensor summary",
+          "Tóm tắt cảm biến nhiệt độ",
+        ),
+      },
+      policyTitles: {},
+      modeConfiguration,
+    },
+  };
+  const consequenceProjection = {
+    ...decisionProjection,
+    version: 8,
+    workflowState: {
+      currentNodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
+      completedNodeIds: [
+        ...decisionProjection.workflowState.completedNodeIds,
+        "NODE_PHARMA_DECISION",
+      ],
+      permittedActionIds: ["ADVANCE_WORKFLOW"],
+    },
+    presentation: {
+      ...decisionProjection.presentation,
+      currentNode: {
+        nodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
+        nodeType: "CONSEQUENCE",
+        title: localized(
+          "Shipment held for investigation",
+          "Giữ lô hàng để điều tra",
+        ),
+        consequenceCode: "SHIPMENT_HELD_FOR_INVESTIGATION",
+        message: localized(
+          "Release is paused while the temperature excursion is investigated.",
+          "Việc xuất hàng được tạm dừng trong khi điều tra sai lệch nhiệt độ.",
+        ),
+      },
+    },
+  };
+  const completedProjection = {
+    ...consequenceProjection,
+    version: 11,
+    workflowState: {
+      currentNodeId: "NODE_PHARMA_COMPLETE",
+      completedNodeIds: [
+        ...consequenceProjection.workflowState.completedNodeIds,
+        "NODE_PHARMA_CONSEQUENCE_HOLD",
+        "NODE_PHARMA_FEEDBACK",
+      ],
+      permittedActionIds: [],
+    },
+    presentation: {
+      ...consequenceProjection.presentation,
+      currentNode: {
+        nodeId: "NODE_PHARMA_COMPLETE",
+        nodeType: "COMPLETION",
+        title: localized(
+          "Decision recorded",
+          "Đã ghi nhận quyết định",
+        ),
+      },
+    },
+  };
+
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/v1/session") {
+      await route.fulfill({
+        json: {
+          userId: "USER_BROWSER_LEARNER",
+          email: "browser-learner@example.edu",
+          roles: ["learner"],
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/learner/assignments") {
+      await route.fulfill({
+        json: {
+          assignments: [
+            {
+              assignment: {
+                schemaVersion: "1.0.0",
+                assignmentId: "ASSIGNMENT_BROWSER_PHARMA",
+                title: "Pharmaceutical cold-chain review",
+                packId: "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
+                packVersion: "1.0.0",
+                scenarioId: "SCN_PHARMA_COLD_CHAIN_STARTER",
+                scenarioVersion: "1.0.0",
+                mode: "tutorial",
+                runConfiguration: modeConfiguration,
+                learnerUserIds: ["USER_BROWSER_LEARNER"],
+                status: "active",
+                feedbackReleaseStatus: "withheld",
+                createdAt: "2026-07-25T08:00:00.000Z",
+                createdByUserId: "USER_BROWSER_INSTRUCTOR",
+              },
+              startAvailability: {
+                status: "available",
+                observedAt: "2026-07-25T08:00:00.000Z",
+              },
+              runs: [],
+            },
+          ],
+        },
+      });
+      return;
+    }
+    if (
+      pathname ===
+        "/api/v1/assignments/ASSIGNMENT_BROWSER_PHARMA/start-run" &&
+      request.method() === "POST"
+    ) {
+      await route.fulfill({
+        status: 201,
+        json: { runId: "RUN_BROWSER_PHARMA" },
+      });
+      return;
+    }
+    if (
+      pathname === "/api/v1/runs/RUN_BROWSER_PHARMA" &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({ json: { projection: decisionProjection } });
+      return;
+    }
+    if (
+      pathname ===
+        "/api/v1/runs/RUN_BROWSER_PHARMA/commands" &&
+      request.method() === "POST"
+    ) {
+      const submittedCommand = request.postDataJSON() as Record<
+        string,
+        unknown
+      >;
+      submittedCommands.push(submittedCommand);
+      await route.fulfill({
+        json: {
+          projection:
+            submittedCommand.commandType === "ADVANCE_WORKFLOW"
+              ? completedProjection
+              : consequenceProjection,
+        },
+      });
+      return;
+    }
+    if (
+      pathname === "/api/v1/runs/RUN_BROWSER_PHARMA/feedback" &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({
+        status: 409,
+        json: { error: { code: "FEEDBACK_NOT_RELEASED" } },
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: "UNEXPECTED_TEST_ROUTE" } },
+    });
+  });
+
+  await page.goto("/learner?locale=en");
+  await page.getByRole("button", { name: "Start" }).click();
+  await expect(
+    page.getByText("Temperature excursion review"),
+  ).toBeVisible();
+  await page
+    .getByLabel("Shipment action")
+    .selectOption("HOLD_AND_INVESTIGATE");
+  await page
+    .getByLabel("Decision justification")
+    .fill("Hold the shipment while the excursion is investigated.");
+  const action = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "Submit the current action",
+    }),
+  });
+  await action.getByRole("button", { name: "Submit" }).last().click();
+
+  expect(submittedCommands[0]).toMatchObject({
+    commandType: "SUBMIT_STRUCTURED_DECISION",
+    runId: "RUN_BROWSER_PHARMA",
+    expectedRunVersion: 4,
+    decisionId: "DECISION_PHARMA_RELEASE",
+    responses: {
+      shipmentAction: ["HOLD_AND_INVESTIGATE"],
+    },
+    justification:
+      "Hold the shipment while the excursion is investigated.",
+  });
+  expect(submittedCommands[0]).not.toHaveProperty("actorId");
+  expect(submittedCommands[0]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[0]).not.toHaveProperty("roleId");
+  await expect(
+    page.getByText(
+      "Release is paused while the temperature excursion is investigated.",
+    ),
+  ).toBeVisible();
+  await action.getByRole("button", { name: "Continue" }).click();
+  expect(submittedCommands[1]).toMatchObject({
+    commandType: "ADVANCE_WORKFLOW",
+    runId: "RUN_BROWSER_PHARMA",
+    expectedRunVersion: 8,
+  });
+  await expect(
+    page.locator("p").filter({ hasText: /^Decision recorded$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Instructor feedback has not been released yet."),
+  ).toBeVisible();
+});
+
 test("keeps a time-limited hosted run reviewable after its deadline", async ({
   page,
 }) => {
