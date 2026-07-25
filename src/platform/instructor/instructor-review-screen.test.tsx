@@ -2,11 +2,38 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../app/providers/locale-provider";
+import type {
+  HostedAssignmentScenarioOptionV1,
+} from "../contracts/assessment";
 import {
   createInstructorReviewApi,
   InstructorReviewScreen,
   type InstructorReviewApi,
 } from "./instructor-review-screen";
+
+const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
+  schemaVersion: "1.0.0",
+  packId: "PACK_STANDARD_COFFEE_STAGE3",
+  packVersion: "1.6.0",
+  scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+  scenarioVersion: "1.6.0",
+  packTitleKey:
+    "platformPack.standardCoffeeStage3.manifest.title",
+  scenarioTitleKey:
+    "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title",
+  labelsByLocale: {
+    en: {
+      packTitle: "TraceChain coffee evidence and custody",
+      scenarioTitle: "Conflicting certificate evidence",
+    },
+  },
+  supportedModes: [
+    "tutorial",
+    "standard",
+    "sandbox",
+    "configured",
+  ],
+};
 
 function renderScreen(api: InstructorReviewApi) {
   return render(
@@ -41,6 +68,7 @@ describe("instructor review screen", () => {
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -90,10 +118,10 @@ describe("instructor review screen", () => {
       schemaVersion: "1.0.0" as const,
       assignmentId: "ASSIGNMENT_001",
       title: "Coffee cohort",
-      packId: "PACK_STANDARD_COFFEE_STAGE3",
-      packVersion: "1.4.0",
-      scenarioId: "SCN_COFFEE_001",
-      scenarioVersion: "2.2.0",
+      packId: publishedCoffeeOption.packId,
+      packVersion: publishedCoffeeOption.packVersion,
+      scenarioId: publishedCoffeeOption.scenarioId,
+      scenarioVersion: publishedCoffeeOption.scenarioVersion,
       mode: "standard" as const,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
@@ -104,6 +132,9 @@ describe("instructor review screen", () => {
     const createAssignment = vi.fn().mockResolvedValue(assignment);
     const api: InstructorReviewApi = {
       createAssignment,
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([
+        publishedCoffeeOption,
+      ]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -136,19 +167,22 @@ describe("instructor review screen", () => {
       form.getByLabelText("Assignment title"),
       assignment.title,
     );
-    await user.type(form.getByLabelText("Pack ID"), assignment.packId);
-    await user.type(
-      form.getByLabelText("Pack version"),
-      assignment.packVersion,
+    const scenarioSelect = await form.findByLabelText(
+      "Published scenario",
     );
-    await user.type(
-      form.getByLabelText("Scenario ID"),
-      assignment.scenarioId,
+    expect(scenarioSelect).toHaveValue(
+      [
+        assignment.packId,
+        assignment.packVersion,
+        assignment.scenarioId,
+        assignment.scenarioVersion,
+      ].join("::"),
     );
-    await user.type(
-      form.getByLabelText("Scenario version"),
-      assignment.scenarioVersion,
-    );
+    expect(
+      within(scenarioSelect).getAllByRole("option"),
+    ).toHaveLength(1);
+    expect(form.queryByLabelText("Pack ID")).not.toBeInTheDocument();
+    expect(form.queryByLabelText("Scenario ID")).not.toBeInTheDocument();
     await user.type(
       form.getByLabelText("Learner user IDs"),
       assignment.learnerUserIds.join(","),
@@ -211,6 +245,7 @@ describe("instructor review screen", () => {
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
         interpretation: "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
@@ -593,6 +628,7 @@ describe("instructor review screen", () => {
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -821,6 +857,7 @@ describe("instructor review screen", () => {
     const saveModeration = vi.fn().mockResolvedValue(undefined);
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -917,6 +954,7 @@ describe("instructor review screen", () => {
   it("does not expose run review controls to a learner-only session", async () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -955,6 +993,10 @@ describe("instructor review screen", () => {
               email: "instructor@example.edu",
               roles: ["instructor"],
             }
+          : path === "/api/v1/assignment-options"
+            ? {
+                options: [publishedCoffeeOption],
+              }
           : path.endsWith("/timeline")
             ? { timeline: [] }
             : path.endsWith("/monitor")
@@ -992,12 +1034,16 @@ describe("instructor review screen", () => {
     const api = createInstructorReviewApi(fetcher);
 
     await api.loadSession();
+    expect(await api.loadAssignmentScenarioOptions()).toEqual([
+      publishedCoffeeOption,
+    ]);
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
     await api.loadAssignmentMonitor("ASSIGNMENT / 001");
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
+      "/api/v1/assignment-options",
       "/api/v1/runs/RUN%20%2F%20001/timeline",
       "/api/v1/runs/RUN%20%2F%20001/competencies",
       "/api/v1/runs/RUN%20%2F%20001/rubric-evidence",

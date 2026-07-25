@@ -36,6 +36,26 @@ export interface CreateHostedAssignmentRequest {
   readonly learnerUserIds: readonly string[];
 }
 
+export interface HostedAssignmentScenarioOptionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly packTitleKey: string;
+  readonly scenarioTitleKey: string;
+  readonly labelsByLocale: Readonly<
+    Record<
+      string,
+      {
+        readonly packTitle: string;
+        readonly scenarioTitle: string;
+      }
+    >
+  >;
+  readonly supportedModes: readonly AssignmentRunMode[];
+}
+
 export interface HostedAssignmentCreationResult {
   readonly assignment: HostedAssignmentV1;
   readonly wasIdempotentReplay: boolean;

@@ -117,6 +117,7 @@ All endpoints use `/api/v1`.
 | `POST /scenario-packs/:packId/versions/:version/publish` | scenario author or administrator | Immutable publication |
 | `POST /scenario-packs/:packId/versions/:version/retire` | scenario author or administrator | Idempotent retirement metadata |
 | `POST /scenario-packs/publish` | scenario author or administrator | Immutable pack identity |
+| `GET /assignment-options` | instructor or administrator | Published scenarios with a registered hosted runtime, exact versions, localized labels, and authored modes only |
 | `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario and provisioned learner roster |
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
 | `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
@@ -296,7 +297,8 @@ score and does not expose the scenario seed or random draw. See
 
 - The complete current nine-stage coffee journey is hosted for one assigned
   learner run.
-- Exact-version assignment creation, a provisioned learner roster,
+- Exact-version assignment creation from the published runnable scenario
+  library, a provisioned learner roster,
   assignment-bound run start, manual rating, feedback release, and a focused
   assignment report are implemented. Stable JSON and CSV assignment evidence
   exports include exact content versions, complete event streams, append-only

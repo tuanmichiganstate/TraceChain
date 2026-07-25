@@ -30,7 +30,7 @@
 <li><a href="#group-history"><span>history</span><b>8</b></a></li>
 <li><a href="#group-hostedLearner"><span>hostedLearner</span><b>99</b></a></li>
 <li><a href="#group-hostedPortal"><span>hostedPortal</span><b>18</b></a></li>
-<li><a href="#group-instructorReview"><span>instructorReview</span><b>201</b></a></li>
+<li><a href="#group-instructorReview"><span>instructorReview</span><b>207</b></a></li>
 <li><a href="#group-ledger"><span>ledger</span><b>14</b></a></li>
 <li><a href="#group-lifecycle"><span>lifecycle</span><b>12</b></a></li>
 <li><a href="#group-lineage"><span>lineage</span><b>10</b></a></li>
@@ -74,7 +74,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>1421/1421</b>chuỗi song ngữ</li>
+    <li><b>1427/1427</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -1970,7 +1970,7 @@
 </article>
 </section>
 <section id="group-instructorReview">
-  <h2>instructorReview <span>201 chuỗi</span></h2>
+  <h2>instructorReview <span>207 chuỗi</span></h2>
   <article class="entry" data-locale-key="instructorReview.activityDecisionAttempts">
   <header><code>instructorReview.activityDecisionAttempts</code></header>
   <p class="vi" lang="vi">Lần thử ra quyết định</p>
@@ -2040,6 +2040,31 @@
   <header><code>instructorReview.assignmentId</code></header>
   <p class="vi" lang="vi">Mã bài tập</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assignment ID</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.assignmentScenario">
+  <header><code>instructorReview.assignmentScenario</code></header>
+  <p class="vi" lang="vi">Kịch bản đã công bố</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Published scenario</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.assignmentScenarioEmpty">
+  <header><code>instructorReview.assignmentScenarioEmpty</code></header>
+  <p class="vi" lang="vi">Không có kịch bản đã công bố nào chạy được trên nền tảng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No published hosted scenario is available</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.assignmentScenarioHelp">
+  <header><code>instructorReview.assignmentScenarioHelp</code></header>
+  <p class="vi" lang="vi">Chỉ hiển thị các kịch bản đã công bố có bộ máy chạy trên nền tảng. Bài tập lưu đúng phiên bản gói nội dung và kịch bản.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Only published scenarios with a registered hosted runtime are listed. The assignment stores the exact pack and scenario versions.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.assignmentScenarioLoading">
+  <header><code>instructorReview.assignmentScenarioLoading</code></header>
+  <p class="vi" lang="vi">Đang tải các kịch bản đã công bố...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading published scenarios...</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.assignmentScenarioOption">
+  <header><code>instructorReview.assignmentScenarioOption</code></header>
+  <p class="vi" lang="vi">{pack} — {scenario} (gói {packVersion}; kịch bản {scenarioVersion})</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{pack} — {scenario} (pack {packVersion}; scenario {scenarioVersion})</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.assignmentTitle">
   <header><code>instructorReview.assignmentTitle</code></header>
@@ -2215,6 +2240,11 @@
   <header><code>instructorReview.error.runNotFound</code></header>
   <p class="vi" lang="vi">Không tìm thấy lượt chạy trên nền tảng với mã này.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No hosted run was found with that identifier.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.error.scenarioLibrary">
+  <header><code>instructorReview.error.scenarioLibrary</code></header>
+  <p class="vi" lang="vi">Không thể tải thư viện kịch bản đã công bố có thể chạy trên nền tảng. Hãy thử lại hoặc liên hệ quản trị viên.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The published hosted scenario library could not be loaded. Try again or contact the administrator.</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.event">
   <header><code>instructorReview.event</code></header>
@@ -7349,7 +7379,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>e1913926e5a70fd6ed741d3bfd4535cdccc7e4e2</code> · SHA-256 nguồn: <code>a5e13b75ebc0a23c38e4a14ce953157cce52606413755ed76d841eaff5bfcc46</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>d136dee37271b23750612ed718cb6f1555d21346</code> · SHA-256 nguồn: <code>08f669d3578cc585c1d3e94948b0c0a813b0b1ff4820253b68a05490e91126b2</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

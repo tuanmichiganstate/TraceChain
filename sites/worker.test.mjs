@@ -839,6 +839,19 @@ test("imports and previews a self-localized disciplinary pack", async () => {
     );
     assert.equal(publish.status, 201, await publish.clone().text());
 
+    const assignmentOptions = await worker.fetch(
+      apiRequest("/api/v1/assignment-options", {
+        email: "pharma-author@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      assignmentOptions.status,
+      200,
+      await assignmentOptions.clone().text(),
+    );
+    assert.deepEqual((await assignmentOptions.json()).options, []);
+
     const unsupportedAssignment = await worker.fetch(
       apiRequest("/api/v1/assignments", {
         method: "POST",
@@ -1032,6 +1045,37 @@ test("creates an exact published assignment for a provisioned learner", async ()
       env,
     );
     assert.equal(publish.status, 201, await publish.clone().text());
+
+    const assignmentOptions = await worker.fetch(
+      apiRequest("/api/v1/assignment-options", {
+        email: "assignment-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      assignmentOptions.status,
+      200,
+      await assignmentOptions.clone().text(),
+    );
+    const available = (await assignmentOptions.json()).options;
+    assert.equal(available.length, 1);
+    assert.deepEqual(
+      {
+        packId: available[0].packId,
+        packVersion: available[0].packVersion,
+        scenarioId: available[0].scenarioId,
+        scenarioVersion: available[0].scenarioVersion,
+        supportedModes: available[0].supportedModes,
+      },
+      {
+        packId: pack.packId,
+        packVersion: pack.version,
+        scenarioId: pack.scenarios[0].scenarioId,
+        scenarioVersion: pack.scenarios[0].version,
+        supportedModes: pack.scenarios[0].supportedModes,
+      },
+    );
+    assert.equal(Object.hasOwn(available[0], "initialState"), false);
 
     const assignmentBody = {
       commandId: "COMMAND_ASSIGNMENT_CREATE_001",

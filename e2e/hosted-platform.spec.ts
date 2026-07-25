@@ -340,6 +340,129 @@ test("provisions server-owned access from the administrator workspace", async ({
   ).toBeVisible();
 });
 
+test("creates an assignment from the published hosted scenario library", async ({
+  page,
+}) => {
+  const option = {
+    schemaVersion: "1.0.0",
+    packId: "PACK_STANDARD_COFFEE_STAGE3",
+    packVersion: "1.6.0",
+    scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+    scenarioVersion: "1.6.0",
+    packTitleKey:
+      "platformPack.standardCoffeeStage3.manifest.title",
+    scenarioTitleKey:
+      "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title",
+    labelsByLocale: {
+      en: {
+        packTitle: "TraceChain coffee evidence and custody",
+        scenarioTitle: "Conflicting certificate evidence",
+      },
+    },
+    supportedModes: ["tutorial", "standard"],
+  };
+  let submitted: Record<string, unknown> | null = null;
+
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/v1/session") {
+      await route.fulfill({
+        json: {
+          userId: "USER_ASSIGNMENT_INSTRUCTOR",
+          email: "assignment-instructor@example.edu",
+          roles: ["instructor"],
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/assignment-options") {
+      await route.fulfill({ json: { options: [option] } });
+      return;
+    }
+    if (
+      pathname === "/api/v1/assignments" &&
+      request.method() === "POST"
+    ) {
+      submitted = request.postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 201,
+        json: {
+          assignment: {
+            schemaVersion: "1.0.0",
+            assignmentId: submitted.assignmentId,
+            title: submitted.title,
+            packId: option.packId,
+            packVersion: option.packVersion,
+            scenarioId: option.scenarioId,
+            scenarioVersion: option.scenarioVersion,
+            mode: submitted.mode,
+            runConfiguration: {
+              mode: submitted.mode,
+              allowHints: false,
+              allowRetry: false,
+              allowBacktracking: false,
+              feedbackTiming: "final",
+              showScores: false,
+              outcomeStrategy: "forced",
+              seedPolicy: "supplied",
+              allowCommunication: false,
+              allowEvidenceRequests: true,
+            },
+            learnerUserIds: submitted.learnerUserIds,
+            status: "active",
+            feedbackReleaseStatus: "withheld",
+            createdAt: "2026-07-25T05:00:00.000Z",
+            createdByUserId: "USER_ASSIGNMENT_INSTRUCTOR",
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: "UNEXPECTED_TEST_ROUTE" } },
+    });
+  });
+
+  await page.goto("/instructor?locale=en");
+  const form = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Create an assignment" }),
+  });
+  await expect(form.getByLabel("Published scenario")).toHaveValue(
+    [
+      option.packId,
+      option.packVersion,
+      option.scenarioId,
+      option.scenarioVersion,
+    ].join("::"),
+  );
+  await expect(form.getByLabel("Pack ID")).toHaveCount(0);
+  await expect(form.getByLabel("Scenario ID")).toHaveCount(0);
+  await expect(
+    form.getByLabel("Run mode").locator("option"),
+  ).toHaveCount(2);
+
+  await form.getByLabel("Assignment ID").fill("ASSIGNMENT_BROWSER_001");
+  await form.getByLabel("Assignment title").fill("Browser cohort");
+  await form.getByLabel("Learner user IDs").fill("USER_BROWSER_LEARNER");
+  await form.getByRole("button", { name: "Create assignment" }).click();
+
+  await expect(
+    form.getByText("Assignment ASSIGNMENT_BROWSER_001 was created."),
+  ).toBeVisible();
+  expect(submitted).toMatchObject({
+    assignmentId: "ASSIGNMENT_BROWSER_001",
+    packId: option.packId,
+    packVersion: option.packVersion,
+    scenarioId: option.scenarioId,
+    scenarioVersion: option.scenarioVersion,
+    mode: "standard",
+    learnerUserIds: ["USER_BROWSER_LEARNER"],
+  });
+  expect(submitted).not.toHaveProperty("runConfiguration");
+});
+
 test("refreshes replay-derived instructor status without hidden outcomes", async ({
   page,
 }) => {

@@ -43,7 +43,8 @@ endorsement services, persists ordered events through memory or D1, returns
 role-filtered learner state, and exposes authenticated timeline,
 rubric-evidence, and competency APIs. The hosted `/instructor` route provides a
 deliberately small authenticated workspace for exact-version assignment
-creation, those evidence projections, evidence-linked rubric ratings,
+creation from the published runnable scenario library, those evidence
+projections, evidence-linked rubric ratings,
 one-way feedback release, moderation, assignment reports, replay-derived live
 learner status, and graphical SCORM package jobs. The `/learner` route lists
 only the signed-in learner's

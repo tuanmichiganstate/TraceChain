@@ -7,12 +7,14 @@ import {
 } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { StatusPill } from "../../components/status-pill";
+import type { Translator } from "../../localization/i18n";
 import type { ApplicationRole } from "../contracts/run-events";
 import type {
   AssignmentRunMode,
   CreateHostedAssignmentRequest,
   HostedAssignmentMonitorV1,
   HostedAssignmentReportV1,
+  HostedAssignmentScenarioOptionV1,
   HostedAssignmentV1,
   ManualRubricRatingV1,
   RubricModerationResolutionV1,
@@ -75,6 +77,9 @@ export interface SaveInstructorModerationInput {
 
 export interface InstructorReviewApi {
   loadSession(): Promise<InstructorSession>;
+  loadAssignmentScenarioOptions(): Promise<
+    readonly HostedAssignmentScenarioOptionV1[]
+  >;
   loadRunReview(runId: string): Promise<InstructorRunReview>;
   loadRunReplay(
     runId: string,
@@ -176,6 +181,14 @@ export function createInstructorReviewApi(
   return {
     loadSession: () =>
       responseJson<InstructorSession>(fetcher, "/api/v1/session"),
+    async loadAssignmentScenarioOptions() {
+      return (
+        await responseJson<{
+          readonly options:
+            readonly HostedAssignmentScenarioOptionV1[];
+        }>(fetcher, "/api/v1/assignment-options")
+      ).options;
+    },
     async loadRunReview(runId) {
       const encodedRunId = encodeURIComponent(runId);
       const [timeline, competencies, rubricEvidence, assessment] =
@@ -712,6 +725,92 @@ function ScormPackageBuilder({
   );
 }
 
+interface AssignmentScenarioOption {
+  readonly key: string;
+  readonly label: string;
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly supportedModes: readonly AssignmentRunMode[];
+}
+
+function scenarioOptionKey(
+  packId: string,
+  packVersion: string,
+  scenarioId: string,
+  scenarioVersion: string,
+): string {
+  return [
+    packId,
+    packVersion,
+    scenarioId,
+    scenarioVersion,
+  ].join("::");
+}
+
+function assignmentOptionText(
+  option: HostedAssignmentScenarioOptionV1,
+  kind: "pack" | "scenario",
+  key: string,
+  t: Translator,
+): string {
+  const localized = option.labelsByLocale[t.locale];
+  const value =
+    kind === "pack"
+      ? localized?.packTitle
+      : localized?.scenarioTitle;
+  return value === undefined || value === key ? t(key) : value;
+}
+
+function assignmentScenarioOptions(
+  available: readonly HostedAssignmentScenarioOptionV1[],
+  t: Translator,
+): readonly AssignmentScenarioOption[] {
+  return available
+    .filter((option) => option.supportedModes.length > 0)
+    .map((option) => ({
+      key: scenarioOptionKey(
+        option.packId,
+        option.packVersion,
+        option.scenarioId,
+        option.scenarioVersion,
+      ),
+      label: t("instructorReview.assignmentScenarioOption", {
+        pack: assignmentOptionText(
+          option,
+          "pack",
+          option.packTitleKey,
+          t,
+        ),
+        scenario: assignmentOptionText(
+          option,
+          "scenario",
+          option.scenarioTitleKey,
+          t,
+        ),
+        packVersion: option.packVersion,
+        scenarioVersion: option.scenarioVersion,
+      }),
+      packId: option.packId,
+      packVersion: option.packVersion,
+      scenarioId: option.scenarioId,
+      scenarioVersion: option.scenarioVersion,
+      supportedModes: option.supportedModes,
+    }))
+    .sort((left, right) =>
+      left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
+    );
+}
+
+function preferredAssignmentMode(
+  supportedModes: readonly AssignmentRunMode[],
+): AssignmentRunMode {
+  return supportedModes.includes("standard")
+    ? "standard"
+    : (supportedModes[0] ?? "standard");
+}
+
 function AssignmentCreation({
   api,
 }: {
@@ -720,10 +819,13 @@ function AssignmentCreation({
   const t = useTranslator();
   const [assignmentId, setAssignmentId] = useState("");
   const [title, setTitle] = useState("");
-  const [packId, setPackId] = useState("");
-  const [packVersion, setPackVersion] = useState("");
-  const [scenarioId, setScenarioId] = useState("");
-  const [scenarioVersion, setScenarioVersion] = useState("");
+  const [scenarioOptions, setScenarioOptions] = useState<
+    readonly AssignmentScenarioOption[]
+  >([]);
+  const [selectedScenarioKey, setSelectedScenarioKey] =
+    useState("");
+  const [isLibraryLoading, setLibraryLoading] = useState(true);
+  const [libraryError, setLibraryError] = useState(false);
   const [mode, setMode] = useState<AssignmentRunMode>("standard");
   const [learnerIds, setLearnerIds] = useState("");
   const [created, setCreated] = useState<HostedAssignmentV1 | null>(
@@ -731,9 +833,43 @@ function AssignmentCreation({
   );
   const [isSaving, setSaving] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const selectedScenario = scenarioOptions.find(
+    (option) => option.key === selectedScenarioKey,
+  );
+
+  useEffect(() => {
+    let active = true;
+    void api.loadAssignmentScenarioOptions().then(
+      (available) => {
+        if (!active) return;
+        const options = assignmentScenarioOptions(available, t);
+        const first = options[0];
+        setScenarioOptions(options);
+        setSelectedScenarioKey(first?.key ?? "");
+        if (first !== undefined) {
+          setMode(preferredAssignmentMode(first.supportedModes));
+        }
+        setLibraryLoading(false);
+      },
+      () => {
+        if (!active) return;
+        setScenarioOptions([]);
+        setSelectedScenarioKey("");
+        setLibraryError(true);
+        setLibraryLoading(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, t]);
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (selectedScenario === undefined) {
+      setErrorKey("instructorReview.error.scenarioLibrary");
+      return;
+    }
     setSaving(true);
     setCreated(null);
     setErrorKey(null);
@@ -742,10 +878,10 @@ function AssignmentCreation({
         await api.createAssignment({
           assignmentId: assignmentId.trim(),
           title: title.trim(),
-          packId: packId.trim(),
-          packVersion: packVersion.trim(),
-          scenarioId: scenarioId.trim(),
-          scenarioVersion: scenarioVersion.trim(),
+          packId: selectedScenario.packId,
+          packVersion: selectedScenario.packVersion,
+          scenarioId: selectedScenario.scenarioId,
+          scenarioVersion: selectedScenario.scenarioVersion,
           mode,
           learnerUserIds: learnerIds
             .split(/[\s,]+/u)
@@ -780,30 +916,54 @@ function AssignmentCreation({
           value={title}
           onChange={setTitle}
         />
-        <TextField
-          id="assignment-pack-id"
-          label={t("instructorReview.packId")}
-          value={packId}
-          onChange={setPackId}
-        />
-        <TextField
-          id="assignment-pack-version"
-          label={t("instructorReview.packVersion")}
-          value={packVersion}
-          onChange={setPackVersion}
-        />
-        <TextField
-          id="assignment-scenario-id"
-          label={t("instructorReview.scenarioId")}
-          value={scenarioId}
-          onChange={setScenarioId}
-        />
-        <TextField
-          id="assignment-scenario-version"
-          label={t("instructorReview.scenarioVersion")}
-          value={scenarioVersion}
-          onChange={setScenarioVersion}
-        />
+        <div className="field">
+          <label
+            className="field__label"
+            htmlFor="assignment-scenario"
+          >
+            {t("instructorReview.assignmentScenario")}
+          </label>
+          <select
+            className="field__control"
+            id="assignment-scenario"
+            value={selectedScenarioKey}
+            disabled={isLibraryLoading || scenarioOptions.length === 0}
+            required
+            onChange={(event) => {
+              const nextKey = event.target.value;
+              const nextScenario = scenarioOptions.find(
+                (option) => option.key === nextKey,
+              );
+              setSelectedScenarioKey(nextKey);
+              if (nextScenario !== undefined) {
+                setMode(
+                  preferredAssignmentMode(
+                    nextScenario.supportedModes,
+                  ),
+                );
+              }
+            }}
+          >
+            {isLibraryLoading ? (
+              <option value="">
+                {t("instructorReview.assignmentScenarioLoading")}
+              </option>
+            ) : scenarioOptions.length === 0 ? (
+              <option value="">
+                {t("instructorReview.assignmentScenarioEmpty")}
+              </option>
+            ) : (
+              scenarioOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))
+            )}
+          </select>
+          <span className="field__hint">
+            {t("instructorReview.assignmentScenarioHelp")}
+          </span>
+        </div>
         <div className="field">
           <label className="field__label" htmlFor="assignment-mode">
             {t("instructorReview.mode")}
@@ -816,22 +976,19 @@ function AssignmentCreation({
               setMode(event.target.value as AssignmentRunMode)
             }
           >
-            <option value="tutorial">
-              {t("instructorReview.mode.tutorial")}
-            </option>
-            <option value="standard">
-              {t("instructorReview.mode.standard")}
-            </option>
-            <option value="sandbox">
-              {t("instructorReview.mode.sandbox")}
-            </option>
-            <option value="configured">
-              {t("instructorReview.mode.configured")}
-            </option>
+            {(selectedScenario?.supportedModes ?? []).map(
+              (supportedMode) => (
+                <option key={supportedMode} value={supportedMode}>
+                  {t(`instructorReview.mode.${supportedMode}`)}
+                </option>
+              ),
+            )}
           </select>
-          <span className="field__hint">
-            {t(`instructorReview.modeHelp.${mode}`)}
-          </span>
+          {selectedScenario === undefined ? null : (
+            <span className="field__hint">
+              {t(`instructorReview.modeHelp.${mode}`)}
+            </span>
+          )}
         </div>
         <div className="field">
           <label
@@ -856,7 +1013,7 @@ function AssignmentCreation({
           <button
             className="button button--primary"
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || selectedScenario === undefined}
           >
             {isSaving
               ? t("instructorReview.assignmentCreating")
@@ -864,6 +1021,11 @@ function AssignmentCreation({
           </button>
         </div>
       </form>
+      {libraryError ? (
+        <p className="notice notice--standalone" role="alert">
+          {t("instructorReview.error.scenarioLibrary")}
+        </p>
+      ) : null}
       {created === null ? null : (
         <div className="notice notice--standalone" role="status">
           <p>

@@ -10,7 +10,7 @@ simulation identity.
 |---|---|---|
 | `/platform` | any provisioned role | Show only the workspaces granted by server-owned roles |
 | `/learner` | learner | List own assignments, start or resume own run, inspect role-visible evidence, and submit the bounded command path |
-| `/instructor` | instructor | Create assignments, monitor reports, replay runs, rate evidence, release feedback, export records, and generate SCORM packages |
+| `/instructor` | instructor | Select a published runnable scenario, create assignments, monitor reports, replay runs, rate evidence, release feedback, export records, and generate SCORM packages |
 | `/instructor` | rater | Review evidence and save append-only ratings without assignment, publication, moderation, or package controls |
 | `/author` | scenario-author | Import, edit, validate, preview, compare, publish, and retire scenario packs |
 | `/instructor` and `/author` | administrator | Management, moderation, package, and authoring controls |
@@ -18,6 +18,12 @@ simulation identity.
 
 The UI is a thin client. Every privileged action is authorized again in the
 worker and repository layer.
+
+Assignment creation loads the versioned scenario library and offers only
+published scenarios with a registered hosted runtime. Selecting one binds its
+exact pack and scenario versions and limits the mode control to the modes
+authored in that scenario. Draft, retired, and preview-only packs remain
+available to authors but cannot be assigned accidentally.
 
 The administrator workspace also exposes the latest 100 access-change commands
 as a read-only audit. Performer identity comes from the authenticated principal,

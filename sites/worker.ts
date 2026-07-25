@@ -1,6 +1,7 @@
 import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
 import type {
   CreateHostedAssignmentRequest,
+  HostedAssignmentScenarioOptionV1,
   HostedAssignmentMonitorV1,
   HostedRunMonitorV1,
 } from "../src/platform/contracts/assessment";
@@ -83,6 +84,7 @@ import {
   ScenarioAuthoringError,
   scenarioPackValidationReport,
 } from "../src/platform/scenario-packs/authoring";
+import { hasRegisteredHostedRuntime } from "../src/platform/hosted/runtime-registry";
 
 interface AssetBinding {
   fetch(request: Request): Promise<Response>;
@@ -124,6 +126,29 @@ const MAXIMUM_COMMAND_BYTES = 64 * 1024;
 const MAXIMUM_PACK_BYTES = 2 * 1024 * 1024;
 const MAXIMUM_SCORM_ARTIFACT_BYTES = 25 * 1024 * 1024;
 const scenarioPackCatalogs = { en, vi } as const;
+
+function assignmentOptionLabels(
+  pack: ScenarioPackV1,
+  packTitleKey: string,
+  scenarioTitleKey: string,
+): HostedAssignmentScenarioOptionV1["labelsByLocale"] {
+  return Object.fromEntries(
+    pack.supportedLocales.map((locale) => {
+      const bundledCatalog: Readonly<Record<string, string>> | undefined =
+        locale === "en" ? en : locale === "vi" ? vi : undefined;
+      const catalog =
+        pack.localizationCatalogs?.[locale] ?? bundledCatalog;
+      return [
+        locale,
+        {
+          packTitle: catalog?.[packTitleKey] ?? packTitleKey,
+          scenarioTitle:
+            catalog?.[scenarioTitleKey] ?? scenarioTitleKey,
+        },
+      ];
+    }),
+  );
+}
 
 function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
@@ -1108,6 +1133,68 @@ async function apiResponse(
   }
 
   if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/assignment-options"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const repository = new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    );
+    const publishedItems = (await repository.list()).filter(
+      (pack) => pack.status === "published",
+    );
+    const publishedPacks = await Promise.all(
+      publishedItems.map((pack) =>
+        repository.find(pack.packId, pack.version),
+      ),
+    );
+    const options: HostedAssignmentScenarioOptionV1[] =
+      publishedPacks.flatMap((pack) =>
+        pack === null || pack.status !== "published"
+          ? []
+          : pack.scenarios
+              .filter(hasRegisteredHostedRuntime)
+              .map((scenario) => ({
+                schemaVersion: "1.0.0",
+                packId: pack.packId,
+                packVersion: pack.version,
+                scenarioId: scenario.scenarioId,
+                scenarioVersion: scenario.version,
+                packTitleKey:
+                  pack.manifest.title.localizationKey,
+                scenarioTitleKey:
+                  scenario.title.localizationKey,
+                labelsByLocale: assignmentOptionLabels(
+                  pack,
+                  pack.manifest.title.localizationKey,
+                  scenario.title.localizationKey,
+                ),
+                supportedModes: scenario.supportedModes,
+              })),
+      );
+    return jsonResponse(200, {
+      options: options.sort((left, right) => {
+        const leftKey =
+          `${left.packId}@${left.packVersion}/` +
+          `${left.scenarioId}@${left.scenarioVersion}`;
+        const rightKey =
+          `${right.packId}@${right.packVersion}/` +
+          `${right.scenarioId}@${right.scenarioVersion}`;
+        return leftKey < rightKey
+          ? -1
+          : leftKey > rightKey
+            ? 1
+            : 0;
+      }),
+    });
+  }
+
+  if (
     request.method === "POST" &&
     url.pathname === "/api/v1/assignments"
   ) {
@@ -1150,12 +1237,7 @@ async function apiResponse(
         "Assignment must reference one exact published scenario version.",
       );
     }
-    if (
-      scenario.legacyCompatibility?.adapterId !==
-        "tracechain-coffee-v2" ||
-      scenario.legacyCompatibility.stageId !==
-        "STG_03_ANCHOR_CERTIFICATE"
-    ) {
+    if (!hasRegisteredHostedRuntime(scenario)) {
       throw new AssignmentRepositoryError(
         "INVALID_ASSIGNMENT",
         "The selected scenario has no registered hosted runtime adapter.",
