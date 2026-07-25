@@ -9,7 +9,7 @@ the command-line validator and hosted run APIs.
 The first release supports:
 
 - JSON, YAML, and bounded ZIP import;
-- a built-in pharmaceutical cold-chain starter;
+- a built-in pharmaceutical cold-chain starter and transfer case;
 - editing draft identity, bilingual titles, and workflow destinations;
 - path-specific schema and semantic validation;
 - deterministic role-and-mode preview;
@@ -50,8 +50,8 @@ allowing new disciplinary authoring packs to be self-contained.
 
 ## Starter pack
 
-`scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json` is a small,
-fully validated authoring starter. It proves:
+`scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json` is a
+self-contained, fully validated disciplinary pack. Its starter proves:
 
 - a disciplinary competency namespace (`PHARMA.COLD_CHAIN`);
 - embedded English and Vietnamese catalogues;
@@ -61,7 +61,20 @@ fully validated authoring starter. It proves:
 - one structured decision, rubric, and evidence rule; and
 - a complete, reachable workflow.
 
-The starter is also the first scenario exercised by the generic hosted
+The second scenario, `SCN_PHARMA_COLD_CHAIN_TRANSFER`, adds a two-decision
+transfer case without adding a domain adapter. Learners first decide whether
+an intact signed custody record is enough to release a vaccine shipment with a
+temperature excursion. After calibration and stability evidence is released,
+they choose a proportionate disposition. Both submissions capture bounded
+evidence citations, a policy citation, confidence, and an adverse-event risk
+estimate. The case has its own rubric and declarative evidence rules.
+
+The pack also includes a pilot course-outcome crosswalk. It maps the
+pharmaceutical performance indicators to two localized course outcomes as
+primary or supporting evidence. The crosswalk is validated and versioned with
+the pack; it does not calculate attainment or add another score.
+
+The starter was the first scenario exercised by the generic hosted
 runtime. Once published, it can be assigned and completed through its authored
 `BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`, `CONSEQUENCE`, `FEEDBACK`, and
 `COMPLETION` nodes. The runtime uses the pack's embedded localization,
@@ -71,7 +84,7 @@ as part of the run; authored feedback follows the assignment's existing
 instructor-release boundary. The complete coffee journey uses its registered
 native `tracechain-coffee-v2` runtime profile.
 
-This is a deliberately bounded runtime contract, not a claim that every V1
+These are deliberately bounded runtime contracts, not a claim that every V1
 node type is executable. A scenario is assignable through the generic runtime
 only when it has no native domain runtime profile and every node belongs to the
 six-node subset above. Its transitions must use `ALWAYS` or

@@ -73,7 +73,90 @@ describe("scenario-pack validation", () => {
         result.pack.competencyFrameworks[0]?.competencies[0]
           ?.competencyId,
       ).toBe("PHARMA.COLD_CHAIN");
+      expect(
+        result.pack.scenarios.map((scenario) => scenario.scenarioId),
+      ).toEqual([
+        "SCN_PHARMA_COLD_CHAIN_STARTER",
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+      ]);
+      expect(result.pack.curriculumCrosswalks).toEqual([
+        expect.objectContaining({
+          crosswalkId: "CROSSWALK_PHARMA_PILOT_CLO",
+          externalFramework: expect.objectContaining({
+            frameworkId: "PHARMA_PILOT_COURSE_OUTCOMES",
+          }),
+        }),
+      ]);
       expect(result.pack.localizationCatalogs?.vi).toBeDefined();
+    }
+  });
+
+  it("rejects curriculum mappings to indicators outside the pack", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      curriculumCrosswalks: {
+        mappings: { indicatorId: string }[];
+      }[];
+    };
+    const mapping = invalid.curriculumCrosswalks[0]?.mappings[0];
+    if (mapping === undefined) {
+      throw new Error("Expected a curriculum mapping.");
+    }
+    mapping.indicatorId = "PHARMA.UNKNOWN.PI1";
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNKNOWN_INDICATOR_REFERENCE",
+          path: "$.curriculumCrosswalks[0].mappings[0].indicatorId",
+        }),
+      );
+    }
+  });
+
+  it("rejects external outcomes without an evidence mapping", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      curriculumCrosswalks: {
+        externalFramework: {
+          outcomes: {
+            outcomeId: string;
+            outcomeType: string;
+            title: { localizationKey: string };
+          }[];
+        };
+      }[];
+    };
+    const outcomes =
+      invalid.curriculumCrosswalks[0]?.externalFramework.outcomes;
+    if (outcomes === undefined) {
+      throw new Error("Expected external curriculum outcomes.");
+    }
+    outcomes.push({
+      outcomeId: "CLO_UNMAPPED",
+      outcomeType: "COURSE_LEARNING_OUTCOME",
+      title: {
+        localizationKey:
+          "platformPack.pharmaColdChain.crosswalk.outcome.evidence",
+      },
+    });
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNMAPPED_CURRICULUM_OUTCOME",
+          path:
+            "$.curriculumCrosswalks[0].externalFramework.outcomes",
+        }),
+      );
     }
   });
 
@@ -151,7 +234,7 @@ describe("scenario-pack validation", () => {
     const superseded = structuredClone(packJson) as {
       schemaVersion: string;
     };
-    superseded.schemaVersion = "1.1.0";
+    superseded.schemaVersion = "1.2.0";
 
     const result = validate(superseded);
 

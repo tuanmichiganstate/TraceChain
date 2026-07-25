@@ -740,7 +740,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.match(publication.contentHash, /^[a-f0-9]{64}$/u);
 
     const next = structuredClone(pack);
-    next.version = "1.9.0";
+    next.version = "2.0.0";
     next.manifest.domain = "supply-chain-governance";
     const nextImport = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -755,7 +755,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
       apiRequest(
         `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
           `/compare?fromVersion=${encodeURIComponent(pack.version)}` +
-          "&toVersion=1.9.0",
+          "&toVersion=2.0.0",
         { email: "author@example.edu" },
       ),
       env,
@@ -874,10 +874,12 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       await assignmentOptions.clone().text(),
     );
     const options = (await assignmentOptions.json()).options;
-    assert.equal(options.length, 1);
-    assert.equal(
-      options[0].scenarioId,
-      "SCN_PHARMA_COLD_CHAIN_STARTER",
+    assert.deepEqual(
+      options.map(({ scenarioId }) => scenarioId),
+      [
+        "SCN_PHARMA_COLD_CHAIN_STARTER",
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+      ],
     );
 
     const assignment = await worker.fetch(

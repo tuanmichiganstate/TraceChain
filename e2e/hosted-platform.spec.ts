@@ -824,7 +824,7 @@ test("creates an assignment from the published hosted scenario library", async (
   const availableFrom = "2026-08-01T02:00:00.000Z";
   const availableUntil = "2026-08-02T10:00:00.000Z";
   const option = {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
     packVersion: "1.7.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
@@ -837,6 +837,7 @@ test("creates an assignment from the published hosted scenario library", async (
       en: {
         packTitle: "TraceChain coffee evidence and custody",
         scenarioTitle: "Conflicting certificate evidence",
+        counterfactualDecisionTitles: {},
       },
     },
     supportedModes: ["tutorial", "standard"],
@@ -868,6 +869,7 @@ test("creates an assignment from the published hosted scenario library", async (
         allowEvidenceRequests: true,
       },
     ],
+    counterfactualDecisionPoints: [],
   };
   let submitted: Record<string, unknown> | null = null;
 
@@ -911,7 +913,7 @@ test("creates an assignment from the published hosted scenario library", async (
         status: 201,
         json: {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: submitted.assignmentId,
             title: submitted.title,
             packId: option.packId,
@@ -932,6 +934,7 @@ test("creates an assignment from the published hosted scenario library", async (
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay: submitted.counterfactualReplay,
             learnerUserIds: submitted.learnerUserIds,
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -1017,7 +1020,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   let monitorRequests = 0;
   let closeRequests = 0;
   const assignment = {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     assignmentId,
     title: "Monitor cohort",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -1036,6 +1039,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       seedPolicy: "assignment-learner",
       allowCommunication: false,
       allowEvidenceRequests: true,
+    },
+    counterfactualReplay: {
+      enabled: false,
+      allowedDecisionNodeIds: [],
+      maximumBranchesPerLearner: 1,
+      learnerAvailability: "DISABLED",
+      requireReflection: false,
     },
     learnerUserIds: ["USER_MONITOR_LEARNER"],
     status: "active",

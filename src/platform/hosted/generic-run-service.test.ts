@@ -58,6 +58,22 @@ function createService(store = new MemoryRunEventStore()) {
   };
 }
 
+function createTransferService(store = new MemoryRunEventStore()) {
+  const pack = publishedPack();
+  return {
+    pack,
+    store,
+    service: new GenericHostedRunService(
+      pack,
+      "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+      "1.0.0",
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    ),
+  };
+}
+
 describe("GenericHostedRunService", () => {
   it("runs an alternative decision from a copy-on-write fork through the normal command engine", async () => {
     const store = new MemoryRunEventStore();
@@ -331,6 +347,180 @@ describe("GenericHostedRunService", () => {
       "WORKFLOW_ADVANCED",
       "WORKFLOW_ADVANCED",
       "RUN_COMPLETED",
+    ]);
+  });
+
+  it("runs the richer pharmaceutical transfer case through evidence, two decisions, and proportional disposition", async () => {
+    const { service } = createTransferService();
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_PHARMA_TRANSFER",
+      runId: "RUN_PHARMA_TRANSFER",
+      assignmentId: "ASSIGNMENT_PHARMA_TRANSFER",
+      learnerUserId: learner.userId,
+      mode: "tutorial",
+    });
+    const triage = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_PHARMA_TRANSFER",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+
+    expect(triage.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_TRIAGE",
+    );
+    expect(triage.state.releasedEvidenceIds).toEqual([
+      "EVID_PHARMA_TRANSFER_SENSOR",
+      "EVID_PHARMA_TRANSFER_CUSTODY",
+    ]);
+
+    const sensorInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_TRANSFER_SENSOR",
+      runId: triage.state.runId,
+      expectedRunVersion: triage.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_SENSOR",
+    });
+    const custodyInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_TRANSFER_CUSTODY",
+      runId: sensorInspected.state.runId,
+      expectedRunVersion: sensorInspected.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_CUSTODY",
+    });
+    const held = await service.submit(learner, {
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      commandId: "COMMAND_DECIDE_TRANSFER_TRIAGE",
+      runId: custodyInspected.state.runId,
+      expectedRunVersion: custodyInspected.state.version,
+      decisionId: "DECISION_PHARMA_TRANSFER_TRIAGE",
+      responses: {
+        triageAction: ["HOLD_AND_INVESTIGATE"],
+      },
+      justification:
+        "The signed custody record establishes integrity, but the temperature evidence still requires investigation.",
+      citedEvidenceIds: [
+        "EVID_PHARMA_TRANSFER_SENSOR",
+        "EVID_PHARMA_TRANSFER_CUSTODY",
+      ],
+      citedPolicyIds: [
+        "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+      ],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 35,
+    });
+
+    expect(held.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_HOLD",
+    );
+    expect(held.state.competencyEvidence).toEqual([
+      expect.objectContaining({
+        evidenceRuleId: "EVIDENCE_RULE_PHARMA_TRANSFER_TRIAGE",
+        indicatorIds: [
+          "PHARMA.COLD_CHAIN.PI1",
+          "PHARMA.COLD_CHAIN.PI3",
+        ],
+      }),
+    ]);
+
+    const disposition = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_TRANSFER_INVESTIGATION",
+      runId: held.state.runId,
+      expectedRunVersion: held.state.version,
+    });
+    expect(disposition.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_DISPOSITION",
+    );
+    expect(disposition.state.releasedEvidenceIds).toEqual([
+      "EVID_PHARMA_TRANSFER_SENSOR",
+      "EVID_PHARMA_TRANSFER_CUSTODY",
+      "EVID_PHARMA_TRANSFER_CALIBRATION",
+      "EVID_PHARMA_TRANSFER_STABILITY",
+    ]);
+
+    const calibrationInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_TRANSFER_CALIBRATION",
+      runId: disposition.state.runId,
+      expectedRunVersion: disposition.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_CALIBRATION",
+    });
+    const stabilityInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_TRANSFER_STABILITY",
+      runId: calibrationInspected.state.runId,
+      expectedRunVersion: calibrationInspected.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+    });
+    const quarantined = await service.submit(learner, {
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      commandId: "COMMAND_DECIDE_TRANSFER_DISPOSITION",
+      runId: stabilityInspected.state.runId,
+      expectedRunVersion: stabilityInspected.state.version,
+      decisionId: "DECISION_PHARMA_TRANSFER_DISPOSITION",
+      responses: {
+        dispositionAction: ["QUARANTINE_AFFECTED_SHIPMENT"],
+      },
+      justification:
+        "The stability assessment does not support release, while the evidence limits the known scope to this shipment.",
+      citedEvidenceIds: [
+        "EVID_PHARMA_TRANSFER_CALIBRATION",
+        "EVID_PHARMA_TRANSFER_STABILITY",
+      ],
+      citedPolicyIds: [
+        "POLICY_PHARMA_TRANSFER_DISPOSITION",
+      ],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 20,
+    });
+
+    expect(quarantined.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_QUARANTINE",
+    );
+    expect(quarantined.state.competencyEvidence).toHaveLength(2);
+    expect(quarantined.state.competencyEvidence[1]).toEqual(
+      expect.objectContaining({
+        evidenceRuleId:
+          "EVIDENCE_RULE_PHARMA_TRANSFER_DISPOSITION",
+        indicatorIds: [
+          "PHARMA.COLD_CHAIN.PI2",
+          "PHARMA.COLD_CHAIN.PI3",
+        ],
+      }),
+    );
+
+    const completed = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_COMPLETE_PHARMA_TRANSFER",
+      runId: quarantined.state.runId,
+      expectedRunVersion: quarantined.state.version,
+    });
+    expect(completed.state.status).toBe("completed");
+    expect(completed.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_COMPLETE",
+    );
+    expect(Object.keys(completed.state.decisions).sort()).toEqual([
+      "DECISION_PHARMA_TRANSFER_DISPOSITION",
+      "DECISION_PHARMA_TRANSFER_TRIAGE",
+    ]);
+
+    const projection = await service.learnerProjection(
+      learner,
+      completed.state.runId,
+    );
+    expect(projection.informationState).toHaveLength(4);
+    expect(Object.hasOwn(projection, "actualState")).toBe(false);
+    expect(
+      await service.learnerAuthoredFeedback(
+        learner,
+        completed.state.runId,
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        feedbackCode:
+          "PHARMA_TRANSFER_INTEGRITY_AND_PROPORTIONALITY",
+      }),
     ]);
   });
 

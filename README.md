@@ -57,8 +57,9 @@ scenario-required rationale, cited evidence, cited policy, confidence, and
 adverse-event probability estimate as one atomic submission. The `/author`
 route imports bounded JSON, YAML, or
 ZIP packs, provides a compact visual draft editor and pharmaceutical
-cold-chain starter, validates and previews roles and modes, compares versions,
-and controls publication and retirement. The `/admin` route provisions
+cold-chain starter plus a two-decision transfer case, validates and previews
+roles and modes, compares versions, and controls publication and retirement.
+The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and
 course management remain outside TraceChain. Administrators can review the
@@ -77,6 +78,9 @@ competence from one run. Once feedback is released, the learner workspace
 shows only that learner's evidence profile and never the class aggregate or a
 second score. Versioned declarative evidence rules are evaluated against their
 referenced append-only events before competency evidence is recorded.
+Versioned curriculum crosswalks can project that evidence onto external course
+or program outcomes while explicitly refusing to infer attainment or create a
+second grade.
 Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
 at that point, with the submitted response beside the evidence available at
@@ -258,6 +262,8 @@ schemas/               published versioned JSON Schemas
   evidence, realized outcomes, and active-run concealment
 - `docs/COMPETENCY_REPORT_V1.md` — versioned learner and class competency
   evidence aggregation and its no-inference boundary
+- `docs/CURRICULUM_CROSSWALK_V1.md` — versioned external-outcome mappings,
+  evidence projection, validation, and the no-attainment boundary
 - `docs/RUN_REPLAY_V1.md` — exact sequence-bounded instructor replay and the
   hidden-state boundary
 - `docs/RUBRIC_MODERATION_V1.md` — append-only rubric score resolution and its
@@ -269,6 +275,10 @@ schemas/               published versioned JSON Schemas
   comparison, and ungraded reflection
 - `docs/COUNTERFACTUAL_EXPORT_V1.md` — stable branch JSON/CSV and
   assignment-level counterfactual reporting
+- `docs/POST_PLATFORM_ROADMAP.md` — ranked learning, adoption, collaboration,
+  and ecosystem priorities after the instructor-ready boundary
+- `docs/PILOT_VALIDATION_PROTOCOL_V1.md` — operational pilot measures,
+  accessibility and content review, reliability, calibration, and exit gates
 - `docs/SCENARIO_AUTHORING_V1.md` — self-localized pack import, visual draft
   editing, validation, preview, comparison, publication, and retirement
 - `docs/SCORM_PACKAGE_JOBS_V1.md` — hosted package identity, object storage,

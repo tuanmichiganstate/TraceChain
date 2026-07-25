@@ -23,7 +23,7 @@ describe("published scenario-pack JSON Schema", () => {
       "https://json-schema.org/draft/2020-12/schema",
     );
     expect(schema.$id).toContain("tracechain-scenario-pack-v1");
-    expect(schema.title).toBe("TraceChain Scenario Pack V1.2");
+    expect(schema.title).toBe("TraceChain Scenario Pack V1.3");
     expect(schema.properties).toHaveProperty("schemaVersion");
     expect(schema.properties).toHaveProperty("scenarios");
     expect(schema.$defs.scenario.required).toEqual(
@@ -35,5 +35,6 @@ describe("published scenario-pack JSON Schema", () => {
       ]),
     );
     expect(schema.properties).toHaveProperty("competencyFrameworks");
+    expect(schema.properties).toHaveProperty("curriculumCrosswalks");
   });
 });

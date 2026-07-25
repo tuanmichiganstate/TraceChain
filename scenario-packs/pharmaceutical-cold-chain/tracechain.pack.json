@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.2.0",
+  "schemaVersion": "1.3.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -17,11 +17,26 @@
       "platformPack.pharmaColdChain.competency.title": "Cold-chain evidence judgment",
       "platformPack.pharmaColdChain.competency.description": "Evaluate traceability and temperature evidence before releasing a medicine shipment.",
       "platformPack.pharmaColdChain.indicator.statement": "Uses ledger and sensor evidence to justify a proportionate cold-chain decision.",
+      "platformPack.pharmaColdChain.indicator.proportionality": "Selects a patient-safety response proportionate to the affected shipment and available investigation evidence.",
+      "platformPack.pharmaColdChain.indicator.justification": "Justifies a cold-chain decision with relevant evidence, policy, uncertainty, and operational consequences.",
+      "platformPack.pharmaColdChain.crosswalk.title": "Pharmaceutical cold-chain course-outcome crosswalk",
+      "platformPack.pharmaColdChain.crosswalk.framework.title": "Pilot pharmaceutical course outcomes",
+      "platformPack.pharmaColdChain.crosswalk.outcome.evidence": "Evaluate conflicting ledger, custody, and physical-condition evidence.",
+      "platformPack.pharmaColdChain.crosswalk.outcome.action": "Recommend a proportionate patient-safety and compliance response.",
       "platformPack.pharmaColdChain.rubric.title": "Cold-chain decision rubric",
       "platformPack.pharmaColdChain.rubric.level0": "Not demonstrated",
       "platformPack.pharmaColdChain.rubric.level1": "Demonstrated",
       "platformPack.pharmaColdChain.rubric.criterion.title": "Evidence-based release decision",
       "platformPack.pharmaColdChain.rubric.criterion.description": "The decision responds to the temperature record and explains its operational consequence.",
+      "platformPack.pharmaColdChain.transfer.rubric.title": "Cold-chain transfer-case rubric",
+      "platformPack.pharmaColdChain.transfer.rubric.level0": "No relevant evidence",
+      "platformPack.pharmaColdChain.transfer.rubric.level1": "Partial evidence use",
+      "platformPack.pharmaColdChain.transfer.rubric.level2": "Defensible decision",
+      "platformPack.pharmaColdChain.transfer.rubric.level3": "Integrated professional judgment",
+      "platformPack.pharmaColdChain.transfer.rubric.triage.title": "Initial evidence triage",
+      "platformPack.pharmaColdChain.transfer.rubric.triage.description": "Distinguishes an intact custody record from proof of acceptable storage conditions and chooses a defensible initial response.",
+      "platformPack.pharmaColdChain.transfer.rubric.disposition.title": "Proportionate shipment disposition",
+      "platformPack.pharmaColdChain.transfer.rubric.disposition.description": "Uses the calibration and stability evidence to recommend a proportionate patient-safety response.",
       "platformPack.pharmaColdChain.scenario.title": "Temperature excursion review",
       "platformPack.pharmaColdChain.organization.manufacturer": "Medicine manufacturer",
       "platformPack.pharmaColdChain.organization.distributor": "Healthcare distributor",
@@ -30,6 +45,40 @@
       "platformPack.pharmaColdChain.asset.shipment": "Medicine shipment",
       "platformPack.pharmaColdChain.policy.release": "Cold-chain release rule",
       "platformPack.pharmaColdChain.evidence.sensor": "Temperature sensor summary",
+      "platformPack.pharmaColdChain.transfer.scenario.title": "Cold-chain evidence and disposition transfer case",
+      "platformPack.pharmaColdChain.transfer.evidence.custody": "Signed custody record",
+      "platformPack.pharmaColdChain.transfer.evidence.calibration": "Sensor calibration record",
+      "platformPack.pharmaColdChain.transfer.evidence.stability": "Product stability assessment",
+      "platformPack.pharmaColdChain.transfer.policy.investigation": "Temperature-excursion investigation rule",
+      "platformPack.pharmaColdChain.transfer.policy.disposition": "Affected-shipment disposition rule",
+      "platformPack.pharmaColdChain.transfer.node.briefing.title": "Assess a vaccine shipment",
+      "platformPack.pharmaColdChain.transfer.node.briefing.body": "A vaccine shipment has an intact signed custody history, but its off-chain temperature logger reports an excursion. You are the manufacturer's quality manager and must protect patients while avoiding unsupported action.",
+      "platformPack.pharmaColdChain.transfer.node.initialEvidence.title": "Review the arrival evidence",
+      "platformPack.pharmaColdChain.transfer.node.triage.title": "Choose the initial response",
+      "platformPack.pharmaColdChain.transfer.node.triage.prompt": "What should happen before this shipment is released?",
+      "platformPack.pharmaColdChain.transfer.field.triage.prompt": "Initial shipment action",
+      "platformPack.pharmaColdChain.transfer.option.hold": "Hold the shipment and open an investigation",
+      "platformPack.pharmaColdChain.transfer.option.release": "Release it because the signed custody record is intact",
+      "platformPack.pharmaColdChain.transfer.node.hold.title": "Shipment held",
+      "platformPack.pharmaColdChain.transfer.node.hold.message": "The shipment remains available for investigation. Distribution is delayed, but the unresolved physical-condition evidence is not ignored.",
+      "platformPack.pharmaColdChain.transfer.node.release.title": "Shipment released before investigation",
+      "platformPack.pharmaColdChain.transfer.node.release.message": "The intact custody record was treated as proof of acceptable temperature. A distributor query now forces a delayed investigation after release.",
+      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Investigation evidence arrives",
+      "platformPack.pharmaColdChain.transfer.node.disposition.title": "Decide the final disposition",
+      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "The logger calibration had expired, but the measured excursion also exceeds the product's approved stability evidence. Choose a proportionate response.",
+      "platformPack.pharmaColdChain.transfer.field.disposition.prompt": "Final shipment disposition",
+      "platformPack.pharmaColdChain.transfer.option.quarantine": "Quarantine this affected shipment",
+      "platformPack.pharmaColdChain.transfer.option.recallAll": "Recall every shipment of this product",
+      "platformPack.pharmaColdChain.transfer.option.close": "Close the investigation without action",
+      "platformPack.pharmaColdChain.transfer.node.quarantine.title": "Affected shipment quarantined",
+      "platformPack.pharmaColdChain.transfer.node.quarantine.message": "The affected shipment is isolated while the evidence gap is resolved. Patient safety and compliance are protected without extending action to unrelated shipments.",
+      "platformPack.pharmaColdChain.transfer.node.recallAll.title": "Product-wide recall initiated",
+      "platformPack.pharmaColdChain.transfer.node.recallAll.message": "The response protects patients but extends beyond the evidence available for this one shipment, creating avoidable cost and shortage risk.",
+      "platformPack.pharmaColdChain.transfer.node.close.title": "Investigation closed without action",
+      "platformPack.pharmaColdChain.transfer.node.close.message": "The calibration problem was treated as proof that no excursion occurred. The shipment remains unsupported by approved stability evidence.",
+      "platformPack.pharmaColdChain.transfer.node.feedback.title": "Cold-chain evidence lesson",
+      "platformPack.pharmaColdChain.transfer.node.feedback.message": "An intact ledger record supports integrity and custody attribution. The expired calibration record weakens the sensor evidence, but it does not prove safe storage. A proportionate response addresses the affected shipment while the uncertainty is resolved.",
+      "platformPack.pharmaColdChain.transfer.node.complete.title": "Transfer case complete",
       "platformPack.pharmaColdChain.node.briefing.title": "Review the shipment",
       "platformPack.pharmaColdChain.node.briefing.body": "A signed custody record is intact, but the off-chain sensor summary reports a temperature excursion. Decide whether the shipment may be released.",
       "platformPack.pharmaColdChain.node.evidence.title": "Inspect the available evidence",
@@ -54,11 +103,26 @@
       "platformPack.pharmaColdChain.competency.title": "Nhận định bằng chứng chuỗi lạnh",
       "platformPack.pharmaColdChain.competency.description": "Đánh giá bằng chứng truy xuất và nhiệt độ trước khi xuất một lô thuốc.",
       "platformPack.pharmaColdChain.indicator.statement": "Sử dụng bằng chứng sổ cái và cảm biến để giải thích quyết định chuỗi lạnh tương xứng.",
+      "platformPack.pharmaColdChain.indicator.proportionality": "Lựa chọn biện pháp bảo vệ người bệnh tương xứng với lô hàng bị ảnh hưởng và bằng chứng điều tra hiện có.",
+      "platformPack.pharmaColdChain.indicator.justification": "Giải thích quyết định chuỗi lạnh bằng bằng chứng, chính sách, mức độ không chắc chắn và hệ quả vận hành liên quan.",
+      "platformPack.pharmaColdChain.crosswalk.title": "Đối chiếu chuẩn đầu ra của tình huống chuỗi lạnh dược phẩm",
+      "platformPack.pharmaColdChain.crosswalk.framework.title": "Chuẩn đầu ra học phần dược phẩm thí điểm",
+      "platformPack.pharmaColdChain.crosswalk.outcome.evidence": "Đánh giá bằng chứng có mâu thuẫn từ sổ cái, chuyển giao và điều kiện vật lý.",
+      "platformPack.pharmaColdChain.crosswalk.outcome.action": "Đề xuất biện pháp bảo vệ người bệnh và tuân thủ ở mức tương xứng.",
       "platformPack.pharmaColdChain.rubric.title": "Tiêu chí quyết định chuỗi lạnh",
       "platformPack.pharmaColdChain.rubric.level0": "Chưa thể hiện",
       "platformPack.pharmaColdChain.rubric.level1": "Đã thể hiện",
       "platformPack.pharmaColdChain.rubric.criterion.title": "Quyết định xuất hàng dựa trên bằng chứng",
       "platformPack.pharmaColdChain.rubric.criterion.description": "Quyết định phản hồi hồ sơ nhiệt độ và giải thích hệ quả vận hành.",
+      "platformPack.pharmaColdChain.transfer.rubric.title": "Tiêu chí tình huống vận dụng chuỗi lạnh",
+      "platformPack.pharmaColdChain.transfer.rubric.level0": "Không sử dụng bằng chứng liên quan",
+      "platformPack.pharmaColdChain.transfer.rubric.level1": "Sử dụng một phần bằng chứng",
+      "platformPack.pharmaColdChain.transfer.rubric.level2": "Quyết định có thể bảo vệ được",
+      "platformPack.pharmaColdChain.transfer.rubric.level3": "Tích hợp nhận định nghề nghiệp",
+      "platformPack.pharmaColdChain.transfer.rubric.triage.title": "Phân loại bằng chứng ban đầu",
+      "platformPack.pharmaColdChain.transfer.rubric.triage.description": "Phân biệt hồ sơ chuyển giao còn nguyên vẹn với bằng chứng về điều kiện bảo quản phù hợp và chọn phản ứng ban đầu có thể bảo vệ được.",
+      "platformPack.pharmaColdChain.transfer.rubric.disposition.title": "Xử lý lô hàng ở mức tương xứng",
+      "platformPack.pharmaColdChain.transfer.rubric.disposition.description": "Sử dụng bằng chứng hiệu chuẩn và độ ổn định để đề xuất biện pháp bảo vệ người bệnh ở mức tương xứng.",
       "platformPack.pharmaColdChain.scenario.title": "Xem xét sai lệch nhiệt độ",
       "platformPack.pharmaColdChain.organization.manufacturer": "Nhà sản xuất thuốc",
       "platformPack.pharmaColdChain.organization.distributor": "Nhà phân phối y tế",
@@ -67,6 +131,40 @@
       "platformPack.pharmaColdChain.asset.shipment": "Lô thuốc",
       "platformPack.pharmaColdChain.policy.release": "Quy tắc xuất hàng chuỗi lạnh",
       "platformPack.pharmaColdChain.evidence.sensor": "Tóm tắt cảm biến nhiệt độ",
+      "platformPack.pharmaColdChain.transfer.scenario.title": "Tình huống vận dụng về bằng chứng và xử lý chuỗi lạnh",
+      "platformPack.pharmaColdChain.transfer.evidence.custody": "Hồ sơ chuyển giao đã ký",
+      "platformPack.pharmaColdChain.transfer.evidence.calibration": "Hồ sơ hiệu chuẩn cảm biến",
+      "platformPack.pharmaColdChain.transfer.evidence.stability": "Đánh giá độ ổn định của sản phẩm",
+      "platformPack.pharmaColdChain.transfer.policy.investigation": "Quy tắc điều tra sai lệch nhiệt độ",
+      "platformPack.pharmaColdChain.transfer.policy.disposition": "Quy tắc xử lý lô hàng bị ảnh hưởng",
+      "platformPack.pharmaColdChain.transfer.node.briefing.title": "Đánh giá một lô vắc-xin",
+      "platformPack.pharmaColdChain.transfer.node.briefing.body": "Một lô vắc-xin có lịch sử chuyển giao đã ký còn nguyên vẹn, nhưng thiết bị ghi nhiệt độ ngoài chuỗi báo cáo một sai lệch. Bạn là quản lý chất lượng của nhà sản xuất và phải bảo vệ người bệnh mà không thực hiện biện pháp thiếu căn cứ.",
+      "platformPack.pharmaColdChain.transfer.node.initialEvidence.title": "Xem xét bằng chứng khi lô hàng đến",
+      "platformPack.pharmaColdChain.transfer.node.triage.title": "Chọn phản ứng ban đầu",
+      "platformPack.pharmaColdChain.transfer.node.triage.prompt": "Cần làm gì trước khi xuất lô hàng này?",
+      "platformPack.pharmaColdChain.transfer.field.triage.prompt": "Cách xử lý ban đầu",
+      "platformPack.pharmaColdChain.transfer.option.hold": "Giữ lô hàng và mở cuộc điều tra",
+      "platformPack.pharmaColdChain.transfer.option.release": "Xuất hàng vì hồ sơ chuyển giao đã ký còn nguyên vẹn",
+      "platformPack.pharmaColdChain.transfer.node.hold.title": "Đã giữ lô hàng",
+      "platformPack.pharmaColdChain.transfer.node.hold.message": "Lô hàng vẫn sẵn sàng để điều tra. Việc phân phối bị chậm lại, nhưng bằng chứng chưa được giải quyết về điều kiện vật lý không bị bỏ qua.",
+      "platformPack.pharmaColdChain.transfer.node.release.title": "Đã xuất hàng trước khi điều tra",
+      "platformPack.pharmaColdChain.transfer.node.release.message": "Hồ sơ chuyển giao còn nguyên vẹn đã bị xem là bằng chứng về nhiệt độ phù hợp. Một yêu cầu từ nhà phân phối hiện buộc phải điều tra muộn sau khi xuất hàng.",
+      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Đã có bằng chứng điều tra",
+      "platformPack.pharmaColdChain.transfer.node.disposition.title": "Quyết định cách xử lý cuối cùng",
+      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "Hiệu chuẩn của thiết bị ghi đã hết hạn, nhưng sai lệch đo được cũng vượt quá bằng chứng độ ổn định đã phê duyệt của sản phẩm. Hãy chọn biện pháp tương xứng.",
+      "platformPack.pharmaColdChain.transfer.field.disposition.prompt": "Cách xử lý cuối cùng đối với lô hàng",
+      "platformPack.pharmaColdChain.transfer.option.quarantine": "Cách ly lô hàng bị ảnh hưởng này",
+      "platformPack.pharmaColdChain.transfer.option.recallAll": "Thu hồi mọi lô hàng của sản phẩm này",
+      "platformPack.pharmaColdChain.transfer.option.close": "Kết thúc điều tra mà không có biện pháp xử lý",
+      "platformPack.pharmaColdChain.transfer.node.quarantine.title": "Đã cách ly lô hàng bị ảnh hưởng",
+      "platformPack.pharmaColdChain.transfer.node.quarantine.message": "Lô hàng bị ảnh hưởng được cách ly trong khi giải quyết khoảng trống bằng chứng. An toàn người bệnh và tuân thủ được bảo vệ mà không mở rộng biện pháp sang các lô hàng không liên quan.",
+      "platformPack.pharmaColdChain.transfer.node.recallAll.title": "Đã bắt đầu thu hồi toàn bộ sản phẩm",
+      "platformPack.pharmaColdChain.transfer.node.recallAll.message": "Biện pháp này bảo vệ người bệnh nhưng vượt quá bằng chứng hiện có đối với một lô hàng, tạo ra chi phí và nguy cơ thiếu thuốc có thể tránh được.",
+      "platformPack.pharmaColdChain.transfer.node.close.title": "Đã kết thúc điều tra mà không xử lý",
+      "platformPack.pharmaColdChain.transfer.node.close.message": "Vấn đề hiệu chuẩn bị xem là bằng chứng rằng không có sai lệch. Lô hàng vẫn không được hỗ trợ bởi bằng chứng độ ổn định đã phê duyệt.",
+      "platformPack.pharmaColdChain.transfer.node.feedback.title": "Bài học về bằng chứng chuỗi lạnh",
+      "platformPack.pharmaColdChain.transfer.node.feedback.message": "Hồ sơ sổ cái còn nguyên vẹn hỗ trợ việc xác minh tính toàn vẹn và nguồn chuyển giao. Hồ sơ hiệu chuẩn hết hạn làm suy yếu bằng chứng cảm biến, nhưng không chứng minh điều kiện bảo quản an toàn. Biện pháp tương xứng xử lý lô hàng bị ảnh hưởng trong khi giải quyết mức độ không chắc chắn.",
+      "platformPack.pharmaColdChain.transfer.node.complete.title": "Đã hoàn thành tình huống vận dụng",
       "platformPack.pharmaColdChain.node.briefing.title": "Xem xét lô hàng",
       "platformPack.pharmaColdChain.node.briefing.body": "Hồ sơ chuyển giao đã ký còn nguyên vẹn, nhưng bản tóm tắt cảm biến ngoài chuỗi ghi nhận sai lệch nhiệt độ. Hãy quyết định có thể xuất lô hàng hay không.",
       "platformPack.pharmaColdChain.node.evidence.title": "Kiểm tra bằng chứng có sẵn",
@@ -100,7 +198,7 @@
     {
       "schemaVersion": "1.0.0",
       "frameworkId": "PHARMA_COLD_CHAIN",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.framework.title"
@@ -108,7 +206,7 @@
       "competencies": [
         {
           "competencyId": "PHARMA.COLD_CHAIN",
-          "version": "1.1.0",
+          "version": "1.2.0",
           "title": {
             "localizationKey": "platformPack.pharmaColdChain.competency.title"
           },
@@ -122,8 +220,81 @@
               "statement": {
                 "localizationKey": "platformPack.pharmaColdChain.indicator.statement"
               }
+            },
+            {
+              "indicatorId": "PHARMA.COLD_CHAIN.PI2",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.pharmaColdChain.indicator.proportionality"
+              }
+            },
+            {
+              "indicatorId": "PHARMA.COLD_CHAIN.PI3",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.pharmaColdChain.indicator.justification"
+              }
             }
           ]
+        }
+      ]
+    }
+  ],
+  "curriculumCrosswalks": [
+    {
+      "schemaVersion": "1.0.0",
+      "crosswalkId": "CROSSWALK_PHARMA_PILOT_CLO",
+      "version": "1.0.0",
+      "status": "draft",
+      "effectiveFrom": "2026-07-25",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.crosswalk.title"
+      },
+      "externalFramework": {
+        "frameworkId": "PHARMA_PILOT_COURSE_OUTCOMES",
+        "version": "1.0.0",
+        "title": {
+          "localizationKey": "platformPack.pharmaColdChain.crosswalk.framework.title"
+        },
+        "outcomes": [
+          {
+            "outcomeId": "CLO_EVIDENCE_EVALUATION",
+            "outcomeType": "COURSE_LEARNING_OUTCOME",
+            "title": {
+              "localizationKey": "platformPack.pharmaColdChain.crosswalk.outcome.evidence"
+            }
+          },
+          {
+            "outcomeId": "CLO_PROPORTIONATE_ACTION",
+            "outcomeType": "COURSE_LEARNING_OUTCOME",
+            "title": {
+              "localizationKey": "platformPack.pharmaColdChain.crosswalk.outcome.action"
+            }
+          }
+        ]
+      },
+      "mappings": [
+        {
+          "indicatorId": "PHARMA.COLD_CHAIN.PI1",
+          "outcomeIds": [
+            "CLO_EVIDENCE_EVALUATION"
+          ],
+          "alignment": "PRIMARY"
+        },
+        {
+          "indicatorId": "PHARMA.COLD_CHAIN.PI2",
+          "outcomeIds": [
+            "CLO_PROPORTIONATE_ACTION"
+          ],
+          "alignment": "PRIMARY"
+        },
+        {
+          "indicatorId": "PHARMA.COLD_CHAIN.PI3",
+          "outcomeIds": [
+            "CLO_EVIDENCE_EVALUATION",
+            "CLO_PROPORTIONATE_ACTION"
+          ],
+          "alignment": "SUPPORTING"
         }
       ]
     }
@@ -166,6 +337,73 @@
           ]
         }
       ]
+    },
+    {
+      "rubricId": "RUBRIC_PHARMA_TRANSFER",
+      "version": "1.0.0",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.title"
+      },
+      "levels": [
+        {
+          "value": 0,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.level0"
+          }
+        },
+        {
+          "value": 1,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.level1"
+          }
+        },
+        {
+          "value": 2,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.level2"
+          }
+        },
+        {
+          "value": 3,
+          "label": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.level3"
+          }
+        }
+      ],
+      "criteria": [
+        {
+          "criterionId": "CRITERION_PHARMA_TRANSFER_TRIAGE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.triage.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.triage.description"
+          },
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI1",
+            "PHARMA.COLD_CHAIN.PI3"
+          ],
+          "evidenceRuleIds": [
+            "EVIDENCE_RULE_PHARMA_TRANSFER_TRIAGE"
+          ]
+        },
+        {
+          "criterionId": "CRITERION_PHARMA_TRANSFER_DISPOSITION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.disposition.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.rubric.disposition.description"
+          },
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI2",
+            "PHARMA.COLD_CHAIN.PI3"
+          ],
+          "evidenceRuleIds": [
+            "EVIDENCE_RULE_PHARMA_TRANSFER_DISPOSITION"
+          ]
+        }
+      ]
     }
   ],
   "evidenceRules": [
@@ -177,6 +415,30 @@
       ],
       "operator": "EVENT_OCCURRED",
       "eventType": "DECISION_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_PHARMA_TRANSFER_TRIAGE",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "PHARMA.COLD_CHAIN.PI1",
+        "PHARMA.COLD_CHAIN.PI3"
+      ],
+      "operator": "FIELD_EQUALS",
+      "eventType": "DECISION_SUBMITTED",
+      "fieldPath": "decisionId",
+      "expectedValue": "DECISION_PHARMA_TRANSFER_TRIAGE"
+    },
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_PHARMA_TRANSFER_DISPOSITION",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "PHARMA.COLD_CHAIN.PI2",
+        "PHARMA.COLD_CHAIN.PI3"
+      ],
+      "operator": "FIELD_EQUALS",
+      "eventType": "DECISION_SUBMITTED",
+      "fieldPath": "decisionId",
+      "expectedValue": "DECISION_PHARMA_TRANSFER_DISPOSITION"
     }
   ],
   "scenarios": [
@@ -540,6 +802,638 @@
       ],
       "evidenceRuleIds": [
         "EVIDENCE_RULE_PHARMA_DECISION"
+      ]
+    },
+    {
+      "scenarioId": "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+      "version": "1.0.0",
+      "status": "draft",
+      "title": {
+        "localizationKey": "platformPack.pharmaColdChain.transfer.scenario.title"
+      },
+      "supportedModes": [
+        "tutorial",
+        "standard",
+        "sandbox",
+        "configured"
+      ],
+      "modeConfigurations": [
+        {
+          "mode": "tutorial",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "generated",
+          "timeLimitMinutes": 35,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "standard",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "final",
+          "showScores": false,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "supplied",
+          "timeLimitMinutes": 25,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "sandbox",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "generated",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        },
+        {
+          "mode": "configured",
+          "allowHints": false,
+          "allowRetry": false,
+          "allowBacktracking": false,
+          "feedbackTiming": "stage-end",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "supplied",
+          "timeLimitMinutes": 30,
+          "allowCommunication": false,
+          "allowEvidenceRequests": true
+        }
+      ],
+      "outcomeModels": [],
+      "competencyTargets": [
+        {
+          "competencyId": "PHARMA.COLD_CHAIN",
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI1"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "PHARMA.COLD_CHAIN",
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI2"
+          ],
+          "targetType": "primary"
+        },
+        {
+          "competencyId": "PHARMA.COLD_CHAIN",
+          "indicatorIds": [
+            "PHARMA.COLD_CHAIN.PI3"
+          ],
+          "targetType": "supporting"
+        }
+      ],
+      "organizations": [
+        {
+          "organizationId": "ORG_MEDICINE_MANUFACTURER",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.organization.manufacturer"
+          }
+        },
+        {
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.organization.distributor"
+          }
+        }
+      ],
+      "roles": [
+        {
+          "roleId": "QUALITY_MANAGER",
+          "organizationId": "ORG_MEDICINE_MANUFACTURER",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.role.quality"
+          }
+        },
+        {
+          "roleId": "DISTRIBUTION_PHARMACIST",
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.role.distribution"
+          }
+        }
+      ],
+      "assetTypes": [
+        {
+          "assetTypeId": "VACCINE_SHIPMENT",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.asset.shipment"
+          },
+          "schema": {
+            "requiredFields": [
+              "shipmentId",
+              "productCode",
+              "lotNumber",
+              "temperatureRangeC"
+            ]
+          }
+        }
+      ],
+      "initialState": {
+        "actualState": {
+          "temperatureExcursionConfirmed": true,
+          "otherShipmentsAffected": false
+        },
+        "businessState": {
+          "shipmentId": "SHIPMENT_VACCINE_017",
+          "lotNumber": "LOT_VX_2407",
+          "status": "AWAITING_QUALITY_RELEASE"
+        },
+        "ledgerState": {
+          "custodyRecordStatus": "SIGNED_AND_INTACT",
+          "currentCustodianOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR"
+        },
+        "informationState": {
+          "releasedEvidenceIds": []
+        }
+      },
+      "policies": [
+        {
+          "policyId": "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.policy.investigation"
+          },
+          "configuration": {
+            "holdWhenPhysicalConditionEvidenceIsUnresolved": true,
+            "custodyIntegrityDoesNotEstablishProductCondition": true
+          }
+        },
+        {
+          "policyId": "POLICY_PHARMA_TRANSFER_DISPOSITION",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.policy.disposition"
+          },
+          "configuration": {
+            "actionMustMatchAffectedScope": true,
+            "releaseRequiresApprovedStabilityEvidence": true
+          }
+        }
+      ],
+      "evidenceItems": [
+        {
+          "evidenceId": "EVID_PHARMA_TRANSFER_SENSOR",
+          "evidenceType": "SENSOR_SUMMARY",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.evidence.sensor"
+          },
+          "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER",
+            "DISTRIBUTION_PHARMACIST"
+          ],
+          "content": {
+            "minimumTemperatureC": 2,
+            "maximumTemperatureC": 12.4,
+            "permittedMaximumTemperatureC": 8,
+            "excursionMinutes": 47
+          }
+        },
+        {
+          "evidenceId": "EVID_PHARMA_TRANSFER_CUSTODY",
+          "evidenceType": "SIGNED_CUSTODY_RECORD",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.custody"
+          },
+          "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER",
+            "DISTRIBUTION_PHARMACIST"
+          ],
+          "content": {
+            "signatureValid": true,
+            "signerRecognized": true,
+            "custodyHistoryIntact": true,
+            "productConditionAttested": false
+          }
+        },
+        {
+          "evidenceId": "EVID_PHARMA_TRANSFER_CALIBRATION",
+          "evidenceType": "CALIBRATION_RECORD",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.calibration"
+          },
+          "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER",
+            "DISTRIBUTION_PHARMACIST"
+          ],
+          "content": {
+            "calibrationStatus": "EXPIRED",
+            "expiredDaysBeforeShipment": 11,
+            "deviceFailureConfirmed": false
+          }
+        },
+        {
+          "evidenceId": "EVID_PHARMA_TRANSFER_STABILITY",
+          "evidenceType": "STABILITY_ASSESSMENT",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.stability"
+          },
+          "sourceOrganizationId": "ORG_MEDICINE_MANUFACTURER",
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER",
+            "DISTRIBUTION_PHARMACIST"
+          ],
+          "content": {
+            "approvedMaximumTemperatureC": 10,
+            "approvedMaximumExcursionMinutes": 60,
+            "observedMaximumTemperatureC": 12.4,
+            "supportsRelease": false
+          }
+        }
+      ],
+      "counterfactualComparisonDimensions": [],
+      "counterfactualConditions": [],
+      "entryNodeId": "NODE_PHARMA_TRANSFER_BRIEFING",
+      "nodes": [
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.briefing.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.briefing.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_BRIEFING_EVIDENCE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_INITIAL_EVIDENCE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_INITIAL_EVIDENCE",
+          "nodeType": "EVIDENCE_RELEASE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.initialEvidence.title"
+          },
+          "evidenceIds": [
+            "EVID_PHARMA_TRANSFER_SENSOR",
+            "EVID_PHARMA_TRANSFER_CUSTODY"
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_EVIDENCE_TRIAGE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_TRIAGE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_TRIAGE",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.triage.title"
+          },
+          "decisionId": "DECISION_PHARMA_TRANSFER_TRIAGE",
+          "prompt": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.triage.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "triageAction",
+              "prompt": {
+                "localizationKey": "platformPack.pharmaColdChain.transfer.field.triage.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "HOLD_AND_INVESTIGATE",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.transfer.option.hold"
+                  },
+                  "authoredValue": "HOLD_AND_INVESTIGATE"
+                },
+                {
+                  "optionId": "RELEASE_ON_CUSTODY_INTEGRITY",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.transfer.option.release"
+                  },
+                  "authoredValue": "RELEASE_ON_CUSTODY_INTEGRITY"
+                }
+              ]
+            }
+          ],
+          "justification": {
+            "required": true,
+            "maximumLength": 800
+          },
+          "structuredResponse": {
+            "evidenceCitations": {
+              "required": true,
+              "minimumItems": 2,
+              "maximumItems": 2
+            },
+            "policyCitations": {
+              "required": true,
+              "minimumItems": 1,
+              "maximumItems": 1
+            },
+            "confidenceRating": {
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            "adverseEventProbabilityPercent": {
+              "required": true,
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_TRIAGE_HOLD",
+              "toNodeId": "NODE_PHARMA_TRANSFER_HOLD",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_TRANSFER_TRIAGE",
+                "optionId": "HOLD_AND_INVESTIGATE"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_TRIAGE_RELEASE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_RELEASE",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_TRANSFER_TRIAGE",
+                "optionId": "RELEASE_ON_CUSTODY_INTEGRITY"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_HOLD",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.hold.title"
+          },
+          "consequenceCode": "PHARMA_TRANSFER_HELD_FOR_INVESTIGATION",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.hold.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_HOLD_INVESTIGATION",
+              "toNodeId": "NODE_PHARMA_TRANSFER_INVESTIGATION_EVIDENCE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_RELEASE",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.release.title"
+          },
+          "consequenceCode": "PHARMA_TRANSFER_RELEASED_BEFORE_INVESTIGATION",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.release.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_RELEASE_INVESTIGATION",
+              "toNodeId": "NODE_PHARMA_TRANSFER_INVESTIGATION_EVIDENCE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_INVESTIGATION_EVIDENCE",
+          "nodeType": "EVIDENCE_RELEASE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title"
+          },
+          "evidenceIds": [
+            "EVID_PHARMA_TRANSFER_CALIBRATION",
+            "EVID_PHARMA_TRANSFER_STABILITY"
+          ],
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_INVESTIGATION_DISPOSITION",
+              "toNodeId": "NODE_PHARMA_TRANSFER_DISPOSITION",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_DISPOSITION",
+          "nodeType": "DECISION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.disposition.title"
+          },
+          "decisionId": "DECISION_PHARMA_TRANSFER_DISPOSITION",
+          "prompt": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.disposition.prompt"
+          },
+          "fields": [
+            {
+              "fieldId": "dispositionAction",
+              "prompt": {
+                "localizationKey": "platformPack.pharmaColdChain.transfer.field.disposition.prompt"
+              },
+              "selection": "single",
+              "options": [
+                {
+                  "optionId": "QUARANTINE_AFFECTED_SHIPMENT",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.transfer.option.quarantine"
+                  },
+                  "authoredValue": "QUARANTINE_AFFECTED_SHIPMENT"
+                },
+                {
+                  "optionId": "RECALL_ALL_PRODUCT",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.transfer.option.recallAll"
+                  },
+                  "authoredValue": "RECALL_ALL_PRODUCT"
+                },
+                {
+                  "optionId": "CLOSE_WITHOUT_ACTION",
+                  "label": {
+                    "localizationKey": "platformPack.pharmaColdChain.transfer.option.close"
+                  },
+                  "authoredValue": "CLOSE_WITHOUT_ACTION"
+                }
+              ]
+            }
+          ],
+          "justification": {
+            "required": true,
+            "maximumLength": 800
+          },
+          "structuredResponse": {
+            "evidenceCitations": {
+              "required": true,
+              "minimumItems": 2,
+              "maximumItems": 3
+            },
+            "policyCitations": {
+              "required": true,
+              "minimumItems": 1,
+              "maximumItems": 1
+            },
+            "confidenceRating": {
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            "adverseEventProbabilityPercent": {
+              "required": true,
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_DISPOSITION_QUARANTINE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_QUARANTINE",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_TRANSFER_DISPOSITION",
+                "optionId": "QUARANTINE_AFFECTED_SHIPMENT"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_DISPOSITION_RECALL",
+              "toNodeId": "NODE_PHARMA_TRANSFER_RECALL_ALL",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_TRANSFER_DISPOSITION",
+                "optionId": "RECALL_ALL_PRODUCT"
+              }
+            },
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_DISPOSITION_CLOSE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_CLOSE",
+              "when": {
+                "kind": "DECISION_OPTION_SELECTED",
+                "decisionId": "DECISION_PHARMA_TRANSFER_DISPOSITION",
+                "optionId": "CLOSE_WITHOUT_ACTION"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_QUARANTINE",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.quarantine.title"
+          },
+          "consequenceCode": "PHARMA_TRANSFER_AFFECTED_SHIPMENT_QUARANTINED",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.quarantine.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_QUARANTINE_FEEDBACK",
+              "toNodeId": "NODE_PHARMA_TRANSFER_FEEDBACK",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_RECALL_ALL",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.recallAll.title"
+          },
+          "consequenceCode": "PHARMA_TRANSFER_PRODUCT_WIDE_RECALL",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.recallAll.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_RECALL_FEEDBACK",
+              "toNodeId": "NODE_PHARMA_TRANSFER_FEEDBACK",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_CLOSE",
+          "nodeType": "CONSEQUENCE",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.close.title"
+          },
+          "consequenceCode": "PHARMA_TRANSFER_CLOSED_WITHOUT_ACTION",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.close.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_CLOSE_FEEDBACK",
+              "toNodeId": "NODE_PHARMA_TRANSFER_FEEDBACK",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_FEEDBACK",
+          "nodeType": "FEEDBACK",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.feedback.title"
+          },
+          "feedbackCode": "PHARMA_TRANSFER_INTEGRITY_AND_PROPORTIONALITY",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.feedback.message"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_PHARMA_TRANSFER_FEEDBACK_COMPLETE",
+              "toNodeId": "NODE_PHARMA_TRANSFER_COMPLETE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_PHARMA_TRANSFER_COMPLETE",
+          "nodeType": "COMPLETION",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.complete.title"
+          },
+          "outcomeCode": "PHARMA_TRANSFER_CASE_COMPLETED",
+          "transitions": []
+        }
+      ],
+      "rubricIds": [
+        "RUBRIC_PHARMA_TRANSFER"
+      ],
+      "evidenceRuleIds": [
+        "EVIDENCE_RULE_PHARMA_TRANSFER_TRIAGE",
+        "EVIDENCE_RULE_PHARMA_TRANSFER_DISPOSITION"
       ]
     }
   ],

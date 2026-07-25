@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.2
+# TraceChain scenario-pack V1.3
 
-The V1.2 scenario-pack format is the active contract for the hosted
+The V1.3 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -46,6 +46,7 @@ A pack contains:
 - lifecycle status;
 - supported locales and localization references for the manifest and content;
 - versioned competency frameworks and performance indicators;
+- versioned external-curriculum crosswalks;
 - analytic rubrics and declarative evidence rules;
 - one or more scenario versions;
 - referenced asset hashes; and
@@ -149,6 +150,31 @@ This hosted competency layer is separate from the current 100-point SCORM score.
 The foundation does not change existing items, hints, mitigation ceilings, or
 the 39/61 operational/knowledge split.
 
+## Curriculum crosswalks
+
+V1.3 adds a required `curriculumCrosswalks` collection at pack level. An empty
+collection is valid. A crosswalk maps stable TraceChain indicator IDs to
+versioned external course, program, performance-indicator, graduate-attribute,
+qualification-framework, DACUM, accreditation, or other authored outcomes.
+
+Each crosswalk declares:
+
+- its own stable ID, semantic version, lifecycle status, and effective date;
+- one versioned external framework;
+- localized external-outcome titles and explicit outcome types; and
+- one primary or supporting mapping per TraceChain indicator.
+
+Validation rejects unknown indicators, unknown or unmapped outcomes, duplicate
+indicator mappings, invalid dates, localization gaps, and unsupported
+alignment values. Crosswalks are immutable published pack content and therefore
+remain tied to the exact evidence definitions used by a run.
+
+The report projection counts linked observations and current ratings by
+external outcome. It deliberately reports
+`EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE`: a mapping is not an attainment
+rule, and one simulation must not be presented as proof of program-level
+mastery. See `CURRICULUM_CROSSWALK_V1.md`.
+
 ## Publication
 
 Draft and validated definitions may be replaced. `publishScenarioPack`
@@ -245,8 +271,9 @@ The hosted role workspaces, identified or pseudonymous JSON/CSV exports,
 moderation, deterministic run modes, author lifecycle, and graphical
 Guided/Challenge package jobs are now implemented. Application-user access and
 role provisioning are available in the administrator workspace; course
-management remains deployment administration. The pharmaceutical starter
-now validates, previews, and runs through the bounded generic hosted runtime.
+management remains deployment administration. The pharmaceutical pack now
+contains both the starter and a richer two-decision transfer case. Both
+validate, preview, and run through the bounded generic hosted runtime.
 That runtime executes authored `BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`,
 `CONSEQUENCE`, `FEEDBACK`, and `COMPLETION` nodes, preserves deterministic
 outcome and event replay, projects only role-visible evidence, and records
