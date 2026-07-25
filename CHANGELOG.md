@@ -62,6 +62,13 @@
 - External, hashed identity, educational-key and authorization-policy runtime
   files so Guided and Challenge continue sharing one static application build.
 
+### Changed
+
+- Routine CI now runs the quality gate, Chromium, and Firefox. The slower
+  WebKit shards and Mobile Safari run nightly and on manually requested
+  pre-release workflows, retaining the full browser gate without delaying
+  every small commit.
+
 ### Fixed
 
 - Asset-card and provenance quantities now use the active reading locale

@@ -103,9 +103,11 @@ are green.
 
 ## Controls and remaining human decisions
 
-GitHub Actions reports `quality` and `e2e` on pushes and pull requests. Required
-check enforcement remains unavailable for this private repository on the
-current plan. Repository visibility and billing were not changed.
+GitHub Actions reports `quality` plus Chromium/Firefox `e2e` on pushes and pull
+requests. A nightly or manually requested run adds both WebKit shards and Mobile
+Safari and reports the complete verdict as `full-e2e`. Required check
+enforcement remains unavailable for this private repository on the current
+plan. Repository visibility and billing were not changed.
 
 Vietnamese subject-expert adjudication is a separate open human-review item;
 this release does not claim it. The terminology question around “quyền lưu giữ”

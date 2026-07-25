@@ -310,8 +310,8 @@ for it.
 ## End-to-end testing
 
 `npm run test:e2e` runs the Playwright suite in **Chromium, Firefox, WebKit and
-an iPhone SE profile** — 18 scenarios each, 72 in all. They run against
-`dist/`, the artefact that actually ships, not the dev server.
+an iPhone SE profile**. They run against `dist/`, the artefact that actually
+ships, not the dev server.
 
 The unit and component suites already drive all nine stages in jsdom, so these
 deliberately do not re-assert domain behaviour. They cover what only a real
@@ -354,11 +354,17 @@ timeouts, two browsers starving each other on two cores. Retries then pay for
 the contention a second time. Parallelism has to come from more runners, not
 more workers per runner.
 
-**One runner per browser project.** Each matrix job installs only the engine it
-launches and runs one project, so the four run side by side instead of end to
-end. `mobile-safari` is an iPhone SE profile that Playwright drives with WebKit,
-which is why the matrix carries a separate browser column: the project and the
-engine are not the same thing.
+**Routine pushes run Chromium and Firefox.** Those two projects catch ordinary
+integration regressions without putting the slower Safari-family jobs on every
+small single-developer commit. Their aggregate `e2e` job is the stable routine
+browser verdict.
+
+**Nightly and manual runs add WebKit and Mobile Safari.** The workflow runs the
+complete matrix at 01:00 Vietnam time and on `workflow_dispatch`, which is also
+the pre-release path. `mobile-safari` is an iPhone SE profile that Playwright
+drives with WebKit, which is why the matrix carries a separate browser column:
+the project and the engine are not the same thing. The complete aggregate is
+reported separately as `full-e2e`.
 
 **WebKit is split across two shards, because it alone sets the duration.** On
 this runner WebKit costs roughly five times what the same tests cost on Chromium
@@ -373,43 +379,23 @@ is engine-specific, and stopping the other browsers on the first failure hides
 exactly that. Each job uploads its report under its own name, since several jobs
 writing one artifact name would collide.
 
-A separate `e2e` job runs no tests and only reports whether every browser job
-passed. It exists so that one stable name can be depended on — by a required
-check, or by a reviewer skimming the list — rather than four that change
-whenever a project is added or sharded. It is verified to go red when any single
-browser job does.
+The `e2e` and `full-e2e` aggregate jobs run no tests. They provide stable names
+for the routine and complete browser verdicts rather than requiring a reviewer
+to track matrix children that change whenever a project is added or sharded.
 
 `scripts/verify-e2e-shards.mjs` runs inside `npm run quality` and holds the
-matrix to the Playwright configuration: every configured project has a job, and
-every sharded project's shards form an exact partition of it. Both mistakes it
-guards against leave a green tick behind — a project added to the config but not
-the matrix never runs in CI, and a shard edited without its siblings drops a
-slice of a project — so neither would be noticed by watching for failures. It
-compares identities rather than counts, because a count written into a workflow
-goes stale the first time somebody adds a test.
+two matrices to the Playwright configuration: Chromium and Firefox must remain
+in the routine tier; WebKit and Mobile Safari must remain in the complete tier;
+every configured project must have a job; and every sharded project's shards
+must form an exact partition of it. Both coverage mistakes it guards against
+leave a green tick behind — a project added to the config but not a matrix never
+runs in CI, and a shard edited without its siblings drops a slice of a project.
+It compares identities rather than counts because a count written into a
+workflow goes stale the first time somebody adds a test.
 
-**When to reconsider a third WebKit shard.** Two shards were enough, and the
-imbalance between them — the slower carries the long walkthroughs — is tolerated
-rather than fixed, because Playwright shards by test count and not by duration.
-
-The trigger is the complete workflow, not the shard: **revisit only if the median
-complete workflow exceeds eight minutes across five comparable successful runs,
-or the slower WebKit shard exceeds eight minutes in at least three of five.**
-"Consistently" is spelled out because one slow sample is weather, not climate.
-
-Both thresholds are deliberately set above the measured steady state rather than
-inside it. Across the four comparable runs available when the matrix landed, the
-workflow ran 6.42–8.13 minutes (median 6.89) and the slow shard 6.27–7.95
-(median 6.72). An earlier draft of this note put the shard threshold at six
-minutes, which every one of those runs already exceeded — a trigger that fires
-on the day it is written measures nothing. The slow shard is also the workflow's
-critical path by construction, finishing within seconds of it, so a shard
-threshold below the workflow threshold could never mean anything separate.
-
-Neither criterion is met: the workflow median is 6.89 minutes against a budget
-of eight. **No third shard is justified today.** One would cost another runner
-and another full setup, and shard imbalance on its own has never been the
-question — total elapsed time is.
+Two WebKit shards remain enough. Playwright partitions by test count rather than
+duration, so some imbalance is expected; add complexity only if the nightly
+complete run repeatedly exceeds its existing 30-minute job allowance.
 
 ## Dependencies
 

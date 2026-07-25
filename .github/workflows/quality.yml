@@ -22,12 +22,14 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-  # Re-running master's gate without pushing an empty commit.
+  # Full Safari-family acceptance at 01:00 Vietnam time.
+  schedule:
+    - cron: '0 18 * * *'
+  # Manual runs also execute the full browser matrix before a release.
   workflow_dispatch:
 
 # One run per pull request, or per ref outside one. Superseded runs are
-# cancelled, which matters most for `e2e`: it takes about ten minutes, so three
-# pushes in quick succession otherwise hold three of them open at once.
+# cancelled, which matters most for the slow full browser matrix.
 #
 # Master is deliberately excluded from cancellation. A cancelled run there would
 # leave the branch with no verdict, and on master a missing answer is too easily
@@ -56,25 +58,15 @@ jobs:
       - name: Quality gate
         run: npm run quality
 
-  # One runner per browser project, one Playwright worker on each.
+  # Fast browser coverage on every push, pull request, schedule and manual run.
   #
   # The runner is 2-core/7GB, so Playwright's ceil(cores/2) default gives a
   # single worker and the whole suite runs serially. Two workers on one runner
   # was measured and was worse on both counts -- slower and flaky, browsers
   # starving each other. Parallelism therefore has to come from more runners
-  # rather than more workers per runner, which is what this matrix does: each
-  # job keeps the one-worker behaviour that is stable, and the four projects run
-  # side by side instead of end to end.
-  #
-  # `mobile-safari` is an iPhone SE profile, which Playwright drives with
-  # WebKit -- hence the separate `browser` column. Only the engine a job needs
-  # is installed, so no runner downloads browsers it will not launch.
-  #
-  # WebKit is split across two shards because it, alone, decides how long this
-  # workflow takes: on this runner it costs roughly five times Chromium or
-  # Firefox for the same tests. Every entry carries a `shard` so the command
-  # needs no conditional; `1/1` is the whole project. Sharding partitions tests,
-  # it does not drop them.
+  # rather than more workers per runner. Chromium and Firefox catch ordinary
+  # integration regressions in roughly two minutes. The slower Safari-family
+  # acceptance jobs run nightly or manually below.
   browser:
     strategy:
       # Every browser reports its own verdict. Stopping the others on the first
@@ -84,31 +76,18 @@ jobs:
       matrix:
         include:
           - name: chromium
+            tier: fast
             project: chromium
             browser: chromium
             shard: 1/1
           - name: firefox
+            tier: fast
             project: firefox
             browser: firefox
             shard: 1/1
-          - name: webkit-1-of-2
-            project: webkit
-            browser: webkit
-            shard: 1/2
-          - name: webkit-2-of-2
-            project: webkit
-            browser: webkit
-            shard: 2/2
-          - name: mobile-safari
-            project: mobile-safari
-            browser: webkit
-            shard: 1/1
     name: browser (${{ matrix.name }})
     runs-on: ubuntu-latest
-    # The slowest browser job measures about eight minutes, so this is roughly
-    # four times headroom. Without it a deadlocked browser holds a runner for
-    # the 6-hour default, which is the one failure mode that costs real money.
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -141,7 +120,7 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          # Unique per project: four jobs uploading one name would collide.
+          # Unique per project so parallel failures cannot collide.
           name: playwright-report-${{ matrix.name }}
           path: |
             playwright-report/
@@ -153,13 +132,69 @@ jobs:
           # uploads nothing. Observed exactly that during a deliberate failure.
           if-no-files-found: warn
 
-  # A single stable verdict for the whole browser matrix.
+  # Safari-family acceptance runs nightly and whenever this workflow is started
+  # manually. A commit-count cadence would need external state and leave unclear
+  # which commit has the complete browser verdict.
+  safari:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: webkit-1-of-2
+            tier: full
+            project: webkit
+            browser: webkit
+            shard: 1/2
+          - name: webkit-2-of-2
+            tier: full
+            project: webkit
+            browser: webkit
+            shard: 2/2
+          - name: mobile-safari
+            tier: full
+            project: mobile-safari
+            browser: webkit
+            shard: 1/1
+    name: safari (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Runner size
+        run: echo "cores=$(nproc) memory=$(free -g | awk '/^Mem:/{print $2}')GB"
+
+      - run: npm run build
+
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: End-to-end
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.name }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # A single stable verdict for the fast browser matrix.
   #
   # Matrix jobs are named per project, so anything that wants one name to depend
   # on -- a required check, a reviewer skimming the list -- would otherwise have
-  # to track four that change whenever a project is added. This runs no tests;
-  # it only reports whether every browser job passed. `needs.browser.result` is
-  # the aggregate across the matrix, so it is success only when all four are.
+  # to track jobs that change whenever a project is added. This runs no tests;
+  # it reports whether Chromium and Firefox both passed.
   e2e:
     needs: browser
     timeout-minutes: 5
@@ -177,3 +212,17 @@ jobs:
         run: |
           echo "browser matrix result: ${{ needs.browser.result }}"
           test "${{ needs.browser.result }}" = "success"
+
+  # A stable complete-browser verdict for nightly and pre-release manual runs.
+  full-e2e:
+    needs: [browser, safari]
+    timeout-minutes: 5
+    if: ${{ !cancelled() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every browser project to have passed
+        run: |
+          echo "fast browser matrix result: ${{ needs.browser.result }}"
+          echo "Safari-family matrix result: ${{ needs.safari.result }}"
+          test "${{ needs.browser.result }}" = "success"
+          test "${{ needs.safari.result }}" = "success"

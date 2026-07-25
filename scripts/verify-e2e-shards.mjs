@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The CI browser matrix really does run the whole Playwright suite.
+ * The CI browser matrices really do run the whole Playwright suite.
  *
  * Two mistakes in the workflow would otherwise be silent, because both leave a
  * green tick behind:
@@ -11,9 +11,11 @@
  *     so a third of a project's tests are simply never executed.
  *
  * Neither shows up as a failure. The suite passes; it just covers less. So this
- * reads the matrix out of the workflow and holds it against what Playwright
+ * reads both matrices out of the workflow and holds them against what Playwright
  * itself reports, rather than against a count written down by hand: counts in a
- * workflow go stale the first time somebody adds a test.
+ * workflow go stale the first time somebody adds a test. It also preserves the
+ * intended cadence: Chromium and Firefox on routine runs, WebKit and Mobile
+ * Safari on nightly and manually requested full runs.
  */
 
 import { execFileSync } from "node:child_process";
@@ -22,36 +24,52 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const workflowPath = fileURLToPath(new URL("../.github/workflows/quality.yml", import.meta.url));
+const workflowSource = readFileSync(workflowPath, "utf8");
 
 const errors = [];
 
-/** Matrix entries, read from the `include:` block without a YAML dependency. */
+/** Matrix entries, read from every matrix `include:` block without a YAML dependency. */
 function readMatrixEntries() {
-  const lines = readFileSync(workflowPath, "utf8").split("\n");
+  const lines = workflowSource.split("\n");
   const entries = [];
   let current = null;
   let inInclude = false;
+  let includeIndent = 0;
+
+  const finishEntry = () => {
+    if (current !== null) entries.push(current);
+    current = null;
+  };
 
   for (const line of lines) {
-    if (/^\s*include:\s*$/.test(line)) {
+    const include = line.match(/^(\s{8,})include:\s*$/);
+    if (include !== null) {
+      finishEntry();
       inInclude = true;
+      includeIndent = include[1].length;
       continue;
     }
     if (!inInclude) continue;
 
-    // The include block ends at the first line indented no further than it.
-    if (line.trim() !== "" && !/^\s{8,}/.test(line)) break;
+    if (line.trim() === "") continue;
+
+    const indentation = line.match(/^\s*/)?.[0].length ?? 0;
+    if (indentation <= includeIndent) {
+      finishEntry();
+      inInclude = false;
+      continue;
+    }
 
     const started = line.match(/^\s*-\s+(\w+):\s*(\S.*?)\s*$/);
     if (started !== null) {
-      if (current !== null) entries.push(current);
+      finishEntry();
       current = { [started[1]]: started[2] };
       continue;
     }
     const field = line.match(/^\s+(\w+):\s*(\S.*?)\s*$/);
     if (field !== null && current !== null) current[field[1]] = field[2];
   }
-  if (current !== null) entries.push(current);
+  finishEntry();
   return entries;
 }
 
@@ -80,6 +98,44 @@ function listTests(args) {
 const entries = readMatrixEntries();
 if (entries.length === 0) {
   errors.push("No matrix entries found in the workflow; the parser or the workflow shape changed");
+}
+
+// ---- Routine and full-run cadence is explicit --------------------------
+
+const expectedFastProjects = ["chromium", "firefox"];
+const expectedFullProjects = ["mobile-safari", "webkit"];
+const fastProjects = [
+  ...new Set(entries.filter((entry) => entry.tier === "fast").map((entry) => entry.project)),
+].sort();
+const fullProjects = [
+  ...new Set(entries.filter((entry) => entry.tier === "full").map((entry) => entry.project)),
+].sort();
+const unknownTiers = entries
+  .filter((entry) => entry.tier !== "fast" && entry.tier !== "full")
+  .map((entry) => `${entry.name ?? entry.project ?? "unnamed"}:${entry.tier ?? "missing"}`);
+
+if (JSON.stringify(fastProjects) !== JSON.stringify(expectedFastProjects)) {
+  errors.push(
+    `Routine CI must run ${expectedFastProjects.join(", ")}; found ${fastProjects.join(", ") || "none"}`,
+  );
+}
+if (JSON.stringify(fullProjects) !== JSON.stringify(expectedFullProjects)) {
+  errors.push(
+    `Full CI must run ${expectedFullProjects.join(", ")}; found ${fullProjects.join(", ") || "none"}`,
+  );
+}
+if (unknownTiers.length > 0) {
+  errors.push(`Matrix entries have an unknown or missing tier: ${unknownTiers.join(", ")}`);
+}
+if (!workflowSource.includes("cron: '0 18 * * *'")) {
+  errors.push("The workflow must schedule the full browser matrix nightly");
+}
+if (
+  !workflowSource.includes(
+    "if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}",
+  )
+) {
+  errors.push("The Safari-family job must be limited to scheduled and manually requested runs");
 }
 
 // ---- Every configured project is in the matrix -------------------------
@@ -152,6 +208,7 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `CI browser matrix verified: ${entries.length} jobs cover all ${everyTest.length} tests ` +
-    `across ${configuredProjects.length} projects.`,
+  `CI browser matrices verified: ${entries.length} jobs cover all ${everyTest.length} tests ` +
+    `across ${configuredProjects.length} projects; ${fastProjects.join(", ")} run routinely, ` +
+    `${fullProjects.join(", ")} run nightly or manually.`,
 );
