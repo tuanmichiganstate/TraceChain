@@ -31,7 +31,11 @@ event, unlike the live monitor's wall-clock value. It also derives bounded
 counts for evidence inspections, policy consultations, cited evidence,
 decision attempts, rejected attempts, and mitigation directly from that same
 immutable event log. These counts describe observable activity; they are not a
-second score. The report also includes expandable learner competency profiles.
+second score. It also aggregates deterministic validation-rule findings from
+rejected submitted actions. One rejected attempt can expose multiple findings;
+the class summary therefore reports occurrences independently from attempt
+counts and does not classify learner decisions as technical failures. The
+report also includes expandable learner competency profiles.
 Each profile presents the exact
 scenario version's targeted indicators, observation counts and recency,
 current rubric comments, and source-event references. It can load and focus a

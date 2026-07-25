@@ -11,7 +11,7 @@ the evidence and contains:
 - assignment and feedback-release metadata;
 - the provisioned learner roster;
 - hosted run status, event counts, authoritative event-span timing, and
-  event-derived activity counts;
+  event-derived activity counts and rejection findings;
 - complete append-only run events;
 - complete append-only manual rubric rating revisions; and
 - complete append-only rubric moderation resolutions.
@@ -44,7 +44,7 @@ Learners cannot call these routes.
 The JSON document has:
 
 ```text
-schemaVersion       1.2.0
+schemaVersion       1.3.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
 generatedAt         UTC export timestamp
 assignment          exact HostedAssignmentV1
@@ -67,7 +67,13 @@ whole-second difference from the first authoritative event to `RUN_COMPLETED`,
 or to the latest recorded event while the run is active. It is therefore
 stable evidence, not a live wall-clock timer. `activity` derives evidence
 inspection, policy consultation, cited-evidence, decision-attempt,
-rejected-attempt, and mitigation counts from the immutable event stream.
+rejected-attempt, and mitigation counts from the immutable event stream. Its
+`rejectionFindings` array counts the stable validation-rule IDs recorded by
+rejected submitted actions. A rejected action can contribute more than one
+finding, so the finding total need not equal `rejectedAttemptCount`. When a
+rejected decision has no validation-rule IDs, the deterministic fallback is
+`DECISION_REJECTED:{commandType}`. These findings are diagnostic evidence,
+not a second grade or a technical-error classification.
 
 Generation fails as an invariant error if:
 

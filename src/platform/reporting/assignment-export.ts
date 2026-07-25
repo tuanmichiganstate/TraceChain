@@ -22,7 +22,7 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.2.0",
+  schemaVersion: "1.3.0",
   csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
   datasets: [
     {
@@ -140,7 +140,7 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           type: "object",
           required: true,
           description:
-            "Event-derived counts of evidence inspection, policy consultation, evidence citation, decision attempts, rejected attempts, and mitigation.",
+            "Event-derived counts of evidence inspection, policy consultation, evidence citation, decision attempts, rejected attempts, mitigation, and deterministic rejection findings.",
         },
       ],
     },
@@ -361,7 +361,7 @@ export function createAssignmentEvidenceExport(
   }
 
   return {
-    schemaVersion: "1.2.0",
+    schemaVersion: "1.3.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     generatedAt: input.generatedAt,
     assignment,

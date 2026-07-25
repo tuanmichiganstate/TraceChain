@@ -120,6 +120,10 @@ export interface HostedRunActivitySummaryV1 {
   readonly decisionAttemptCount: number;
   readonly rejectedAttemptCount: number;
   readonly mitigationCount: number;
+  readonly rejectionFindings: readonly {
+    readonly findingCode: string;
+    readonly count: number;
+  }[];
 }
 
 export interface HostedAssignmentRunSummary {
@@ -143,7 +147,7 @@ export interface HostedAssignmentLearnerReport {
 }
 
 export interface HostedAssignmentReportV1 {
-  readonly schemaVersion: "1.2.0";
+  readonly schemaVersion: "1.3.0";
   readonly assignment: HostedAssignmentV1;
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }

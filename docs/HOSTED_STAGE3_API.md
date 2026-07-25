@@ -268,8 +268,12 @@ completion, authoritative first/latest/completion timestamps, event-span
 duration, event-derived activity counts, and manual ratings separate; it does
 not invent a second overall grade. Activity covers evidence inspections, policy
 consultations, cited evidence, decision attempts, rejected attempts, and
-mitigation. Active-run report duration stops at the latest recorded event and
-is stable across reads. The report response schema is `1.2.0`. Its live-status
+mitigation. It also returns deterministic rejection findings from recorded
+validation-rule IDs, with a command-type fallback for rejected decisions that
+have no rule ID. A single rejected attempt may contribute multiple findings.
+They remain diagnostic evidence rather than another grade or a technical
+failure. Active-run report duration stops at the latest recorded event and
+is stable across reads. The report response schema is `1.3.0`. Its live-status
 panel is a refreshable projection of the same authoritative replay used by run
 review. Current stage and pending actions are limited to the active trusted
 role. A replay failure is reported as a technical status requiring attention;

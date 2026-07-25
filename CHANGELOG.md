@@ -7,8 +7,11 @@
 - Event-derived activity summaries in hosted assignment reports and evidence
   exports. Each run now reports evidence inspections, policy consultations,
   cited evidence, decision attempts, rejected attempts, and mitigation from
-  its immutable event log; the additive report and export schemas advance to
-  `1.2.0`.
+  its immutable event log. Instructor reports now also aggregate deterministic
+  validation-rule findings from rejected submissions; one attempt may expose
+  more than one finding, and the findings remain separate from grades and
+  technical failures. The additive report and export schemas advance to
+  `1.3.0`.
 - Authoritative hosted-run timing in instructor assignment reports and evidence
   exports. Each run now records its first event, latest recorded activity,
   completion event when present, and whole-second event span without treating

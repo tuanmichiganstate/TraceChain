@@ -11,7 +11,7 @@ import {
 } from "./assignment-export";
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.2.0",
+  schemaVersion: "1.3.0",
   assignment: {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
@@ -63,6 +63,12 @@ const assignmentReport: HostedAssignmentReportV1 = {
             decisionAttemptCount: 3,
             rejectedAttemptCount: 1,
             mitigationCount: 1,
+            rejectionFindings: [
+              {
+                findingCode: "RULE_ORGANIZATION_NOT_AUTHORIZED",
+                count: 1,
+              },
+            ],
           },
           moderationResolutions: [],
           ratings: [],
@@ -127,7 +133,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.2.0",
+      schemaVersion: "1.3.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       generatedAt: "2026-07-24T09:00:00.000Z",
       assignment: {
@@ -182,7 +188,7 @@ describe("assignment evidence export", () => {
         "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("1.2.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("1.3.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -209,6 +215,9 @@ describe("assignment evidence export", () => {
     );
     expect(csv).toContain('"elapsedSeconds"":0');
     expect(csv).toContain('"rejectedAttemptCount"":1');
+    expect(csv).toContain(
+      '"findingCode"":""RULE_ORGANIZATION_NOT_AUTHORIZED""',
+    );
     expect(csv).toContain("rating_revision,ASSIGNMENT_EXPORT_001");
     expect(csv).toContain(
       "\"'=HYPERLINK(\"\"https://invalid.example\"\",\"\"quoted,\ntext\"\")\"",

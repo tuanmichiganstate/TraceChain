@@ -906,6 +906,36 @@ function TextField({
   );
 }
 
+function assignmentRejectionFindings(
+  report: HostedAssignmentReportV1,
+): readonly {
+  readonly findingCode: string;
+  readonly count: number;
+}[] {
+  const counts = new Map<string, number>();
+  for (const learner of report.learners) {
+    for (const run of learner.runs) {
+      for (const finding of run.activity.rejectionFindings) {
+        counts.set(
+          finding.findingCode,
+          (counts.get(finding.findingCode) ?? 0) + finding.count,
+        );
+      }
+    }
+  }
+  return [...counts]
+    .map(([findingCode, count]) => ({ findingCode, count }))
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        (left.findingCode < right.findingCode
+          ? -1
+          : left.findingCode > right.findingCode
+            ? 1
+            : 0),
+    );
+}
+
 function AssignmentReport({
   api,
   onReviewEvent,
@@ -969,6 +999,9 @@ function AssignmentReport({
       setMonitorLoading(false);
     }
   }
+
+  const rejectionFindings =
+    report === null ? [] : assignmentRejectionFindings(report);
 
   return (
     <section className="card card--reference">
@@ -1162,6 +1195,38 @@ function AssignmentReport({
               </tbody>
             </table>
           </div>
+          <section>
+            <h3>{t("instructorReview.commonRejectionsHeading")}</h3>
+            <p>{t("instructorReview.commonRejectionsHelp")}</p>
+            {rejectionFindings.length === 0 ? (
+              <p>{t("instructorReview.noRejectionFindings")}</p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        {t("instructorReview.rejectionFinding")}
+                      </th>
+                      <th scope="col">
+                        {t("instructorReview.rejectionOccurrences")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rejectionFindings.map((finding) => (
+                      <tr key={finding.findingCode}>
+                        <td>
+                          <code>{finding.findingCode}</code>
+                        </td>
+                        <td>{finding.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
           {competencies === null ? null : (
             <ClassCompetencyReport
               report={competencies}

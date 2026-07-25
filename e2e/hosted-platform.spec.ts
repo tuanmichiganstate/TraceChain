@@ -296,7 +296,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       await route.fulfill({
         json: {
           report: {
-            schemaVersion: "1.2.0",
+            schemaVersion: "1.3.0",
             assignment,
             learners: [
               {
@@ -318,6 +318,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                       decisionAttemptCount: 3,
                       rejectedAttemptCount: 1,
                       mitigationCount: 1,
+                      rejectionFindings: [
+                        {
+                          findingCode:
+                            "RULE_ORGANIZATION_NOT_AUTHORIZED",
+                          count: 1,
+                        },
+                      ],
                     },
                     ratings: [],
                     moderationResolutions: [],
@@ -599,6 +606,14 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await page.getByText("View activity", { exact: true }).click();
   await expect(page.getByText("Evidence inspections")).toBeVisible();
   await expect(page.getByText("Rejected attempts")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Common rejection findings",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("RULE_ORGANIZATION_NOT_AUTHORIZED"),
+  ).toBeVisible();
   await expect(page.getByText("certificate-decision")).toBeVisible();
   await expect(
     page.getByText("SUBMIT_CERTIFICATE_DECISION"),

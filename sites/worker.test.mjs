@@ -1145,6 +1145,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       decisionAttemptCount: 0,
       rejectedAttemptCount: 0,
       mitigationCount: 0,
+      rejectionFindings: [],
     });
 
     const decision = await worker.fetch(
@@ -1929,6 +1930,26 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "ENDORSED_TRANSACTION_REJECTED",
       "TRANSACTION_REJECTED",
     ]);
+    const rejectionFindingCounts = new Map();
+    for (const event of activityTimeline) {
+      if (!rejectionEventTypes.has(event.eventType)) continue;
+      const summaryRules = event.payload.summary?.validationRuleIds;
+      const findingCodes =
+        Array.isArray(summaryRules) && summaryRules.length > 0
+          ? summaryRules
+          : event.eventType === "DECISION_REJECTED" &&
+              typeof event.payload.decision?.commandType === "string"
+            ? [
+                `DECISION_REJECTED:${event.payload.decision.commandType}`,
+              ]
+            : [event.eventType];
+      for (const findingCode of new Set(findingCodes)) {
+        rejectionFindingCounts.set(
+          findingCode,
+          (rejectionFindingCounts.get(findingCode) ?? 0) + 1,
+        );
+      }
+    }
     const expectedActivity = {
       evidenceInspectionCount: activityTimeline.filter(
         (event) => event.eventType === "EVIDENCE_INSPECTED",
@@ -1955,6 +1976,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       mitigationCount: activityTimeline.filter(
         (event) => event.eventType === "MITIGATION_RECORDED",
       ).length,
+      rejectionFindings: [...rejectionFindingCounts.entries()]
+        .map(([findingCode, count]) => ({ findingCode, count }))
+        .sort(
+          (left, right) =>
+            right.count - left.count ||
+            left.findingCode.localeCompare(right.findingCode),
+        ),
     };
 
     const report = await worker.fetch(
@@ -1966,7 +1994,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(report.status, 200, await report.clone().text());
     const classReport = (await report.json()).report;
-    assert.equal(classReport.schemaVersion, "1.2.0");
+    assert.equal(classReport.schemaVersion, "1.3.0");
     assert.equal(classReport.learners.length, 1);
     const reportedRun = classReport.learners[0].runs[0];
     assert.deepEqual(
@@ -2124,8 +2152,8 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.2.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.2.0");
+    assert.equal(exportedEvidence.schemaVersion, "1.3.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.3.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",

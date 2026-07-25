@@ -15,7 +15,7 @@ if (scenario === undefined) {
 }
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.2.0",
+  schemaVersion: "1.3.0",
   assignment: {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_COMPETENCY_001",
@@ -58,6 +58,7 @@ const assignmentReport: HostedAssignmentReportV1 = {
             decisionAttemptCount: 2,
             rejectedAttemptCount: 0,
             mitigationCount: 0,
+            rejectionFindings: [],
           },
           moderationResolutions: [],
           ratings: [

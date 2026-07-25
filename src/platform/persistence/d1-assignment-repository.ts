@@ -14,6 +14,7 @@ import type {
   SaveManualRubricRatingRequest,
   SaveRubricModerationRequest,
 } from "../contracts/assessment";
+import { isJsonObject } from "../contracts/json";
 import type { ApplicationPrincipal } from "../hosted/access";
 import {
   HostedModeConfigurationError,
@@ -73,6 +74,11 @@ interface RunSummaryRow {
   readonly started_at_utc: string;
   readonly last_activity_at_utc: string;
   readonly completed_at_utc: string | null;
+}
+
+interface RejectionEventRow {
+  readonly run_id: string;
+  readonly event_json: string;
 }
 
 interface ModerationRow {
@@ -410,6 +416,26 @@ WHERE created.sequence_number = 1
 GROUP BY created.run_id, learner_user_id
 ORDER BY learner_user_id, created.run_id`;
 
+const FIND_ASSIGNMENT_REJECTION_EVENTS = `SELECT
+  events.run_id AS run_id,
+  events.event_json AS event_json
+FROM hosted_run_events AS created
+JOIN hosted_run_events AS events
+  ON events.run_id = created.run_id
+WHERE created.sequence_number = 1
+  AND json_extract(
+    created.event_json,
+    '$.payload.assignmentId'
+  ) = ?
+  AND json_extract(events.event_json, '$.eventType') IN (
+    'DECISION_REJECTED',
+    'ENDORSEMENT_PROPOSAL_REJECTED',
+    'ENDORSEMENT_REJECTED',
+    'ENDORSED_TRANSACTION_REJECTED',
+    'TRANSACTION_REJECTED'
+  )
+ORDER BY events.run_id, events.sequence_number`;
+
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
 const ASSIGNMENT_MODES: readonly AssignmentRunMode[] = [
   "tutorial",
@@ -487,6 +513,84 @@ function activityCount(
     );
   }
   return value;
+}
+
+function rejectionFindingCodes(
+  row: RejectionEventRow,
+): readonly string[] {
+  let event: unknown;
+  try {
+    event = JSON.parse(row.event_json);
+  } catch {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      `Run ${row.run_id} contains invalid rejection evidence.`,
+    );
+  }
+  if (!isJsonObject(event) || !isJsonObject(event.payload)) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      `Run ${row.run_id} contains invalid rejection evidence.`,
+    );
+  }
+  const eventType = event.eventType;
+  if (typeof eventType !== "string") {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      `Run ${row.run_id} contains an invalid rejection event type.`,
+    );
+  }
+  const summary = event.payload.summary;
+  if (isJsonObject(summary)) {
+    const validationRuleIds = summary.validationRuleIds;
+    if (
+      Array.isArray(validationRuleIds) &&
+      validationRuleIds.length > 0
+    ) {
+      if (
+        !validationRuleIds.every(
+          (ruleId) =>
+            typeof ruleId === "string" &&
+            IDENTIFIER_PATTERN.test(ruleId),
+        )
+      ) {
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_STORAGE_FAILED",
+          `Run ${row.run_id} contains invalid rejection rule IDs.`,
+        );
+      }
+      return [...new Set(validationRuleIds as string[])];
+    }
+  }
+  if (
+    eventType === "DECISION_REJECTED" &&
+    isJsonObject(event.payload.decision) &&
+    typeof event.payload.decision.commandType === "string"
+  ) {
+    const findingCode =
+      `DECISION_REJECTED:${event.payload.decision.commandType}`;
+    if (!IDENTIFIER_PATTERN.test(findingCode)) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        `Run ${row.run_id} contains an invalid rejected decision type.`,
+      );
+    }
+    return [findingCode];
+  }
+  if (!IDENTIFIER_PATTERN.test(eventType)) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      `Run ${row.run_id} contains an invalid rejection fallback.`,
+    );
+  }
+  return [eventType];
+}
+
+function compareFindingCode(
+  left: string,
+  right: string,
+): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function assignmentMode(value: unknown): AssignmentRunMode {
@@ -1431,6 +1535,32 @@ export class D1AssignmentRepository {
         "Assignment runs could not be loaded.",
       );
     }
+    const rejectionResult = await this.database
+      .prepare(FIND_ASSIGNMENT_REJECTION_EVENTS)
+      .bind(assignment.assignmentId)
+      .all<RejectionEventRow>();
+    if (!rejectionResult.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment rejection evidence could not be loaded.",
+      );
+    }
+    const rejectionFindingsByRun = new Map<
+      string,
+      Map<string, number>
+    >();
+    for (const row of rejectionResult.results) {
+      const findings =
+        rejectionFindingsByRun.get(row.run_id) ??
+        new Map<string, number>();
+      for (const findingCode of rejectionFindingCodes(row)) {
+        findings.set(
+          findingCode,
+          (findings.get(findingCode) ?? 0) + 1,
+        );
+      }
+      rejectionFindingsByRun.set(row.run_id, findings);
+    }
     const runs: HostedAssignmentRunSummary[] = [];
     for (const row of result.results) {
       const startedAtMs = Date.parse(row.started_at_utc);
@@ -1496,6 +1626,22 @@ export class D1AssignmentRepository {
             "mitigation count",
             row.run_id,
           ),
+          rejectionFindings: [
+            ...(rejectionFindingsByRun.get(row.run_id) ??
+              new Map<string, number>()),
+          ]
+            .map(([findingCode, count]) => ({
+              findingCode,
+              count,
+            }))
+            .sort(
+              (left, right) =>
+                right.count - left.count ||
+                compareFindingCode(
+                  left.findingCode,
+                  right.findingCode,
+                ),
+            ),
         },
         ratings: await this.currentRatings(row.run_id),
         moderationResolutions:
@@ -1503,7 +1649,7 @@ export class D1AssignmentRepository {
       });
     }
     return {
-      schemaVersion: "1.2.0",
+      schemaVersion: "1.3.0",
       assignment,
       learners: assignment.learnerUserIds.map((learnerUserId) => ({
         learnerUserId,

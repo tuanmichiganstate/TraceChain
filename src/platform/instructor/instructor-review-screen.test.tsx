@@ -287,7 +287,7 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
-        schemaVersion: "1.2.0",
+        schemaVersion: "1.3.0",
         assignment,
         learners: [
           {
@@ -309,6 +309,13 @@ describe("instructor review screen", () => {
                   decisionAttemptCount: 3,
                   rejectedAttemptCount: 1,
                   mitigationCount: 1,
+                  rejectionFindings: [
+                    {
+                      findingCode:
+                        "RULE_ORGANIZATION_NOT_AUTHORIZED",
+                      count: 1,
+                    },
+                  ],
                 },
                 ratings: [],
                 moderationResolutions: [],
@@ -390,6 +397,14 @@ describe("instructor review screen", () => {
     );
     expect(report.getByText("Evidence inspections")).toBeVisible();
     expect(report.getByText("Rejected attempts")).toBeVisible();
+    expect(
+      report.getByRole("heading", {
+        name: "Common rejection findings",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText("RULE_ORGANIZATION_NOT_AUTHORIZED"),
+    ).toBeInTheDocument();
     await user.click(
       report.getByRole("button", { name: "Refresh status" }),
     );

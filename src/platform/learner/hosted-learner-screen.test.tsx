@@ -269,6 +269,12 @@ describe("hosted learner workspace", () => {
                 decisionAttemptCount: 1,
                 rejectedAttemptCount: 1,
                 mitigationCount: 0,
+                rejectionFindings: [
+                  {
+                    findingCode: "DECISION_REJECTED:TEST",
+                    count: 1,
+                  },
+                ],
               },
               ratings: [],
               moderationResolutions: [],
@@ -370,6 +376,12 @@ describe("hosted learner workspace", () => {
                 decisionAttemptCount: 8,
                 rejectedAttemptCount: 2,
                 mitigationCount: 1,
+                rejectionFindings: [
+                  {
+                    findingCode: "DECISION_REJECTED:TEST",
+                    count: 2,
+                  },
+                ],
               },
               ratings: [],
               moderationResolutions: [],
