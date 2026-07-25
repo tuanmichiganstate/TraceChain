@@ -20,6 +20,10 @@ import {
   HostedModeConfigurationError,
   validateHostedModeConfiguration,
 } from "../runs/mode-configuration";
+import {
+  AssignmentCounterfactualConfigurationError,
+  validateAssignmentCounterfactualConfiguration,
+} from "../runs/counterfactual-assignment";
 import { assignmentStartAvailability } from "../runs/assignment-availability";
 import type { D1DatabaseLike } from "./d1-types";
 
@@ -33,6 +37,7 @@ interface AssignmentRow {
   readonly scenario_version: string;
   readonly run_mode: string;
   readonly mode_configuration_json: string;
+  readonly counterfactual_configuration_json: string;
   readonly lifecycle_status: string;
   readonly available_from_utc: string | null;
   readonly available_until_utc: string | null;
@@ -112,6 +117,7 @@ const FIND_ASSIGNMENT = `SELECT
   scenario_version,
   run_mode,
   mode_configuration_json,
+  counterfactual_configuration_json,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
@@ -145,6 +151,7 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.scenario_version,
   assignments.run_mode,
   assignments.mode_configuration_json,
+  assignments.counterfactual_configuration_json,
   assignments.lifecycle_status,
   assignments.available_from_utc,
   assignments.available_until_utc,
@@ -186,13 +193,14 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   scenario_version,
   run_mode,
   mode_configuration_json,
+  counterfactual_configuration_json,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -693,13 +701,22 @@ function normalizeRequest(
     );
   }
   let runConfiguration;
+  let counterfactualReplay;
   try {
     runConfiguration = validateHostedModeConfiguration(
       request.runConfiguration,
       assignmentMode(request.mode),
     );
+    counterfactualReplay =
+      validateAssignmentCounterfactualConfiguration(
+        request.counterfactualReplay,
+        runConfiguration.mode,
+      );
   } catch (error) {
-    if (error instanceof HostedModeConfigurationError) {
+    if (
+      error instanceof HostedModeConfigurationError ||
+      error instanceof AssignmentCounterfactualConfigurationError
+    ) {
       throw new AssignmentRepositoryError(
         "INVALID_ASSIGNMENT",
         error.message,
@@ -739,6 +756,7 @@ function normalizeRequest(
     ),
     mode: runConfiguration.mode,
     runConfiguration,
+    counterfactualReplay,
     learnerUserIds,
     ...(availableFrom === undefined ? {} : { availableFrom }),
     ...(availableUntil === undefined ? {} : { availableUntil }),
@@ -1010,6 +1028,8 @@ function isSameAssignment(
     existing.mode === request.mode &&
     JSON.stringify(existing.runConfiguration) ===
       JSON.stringify(request.runConfiguration) &&
+    JSON.stringify(existing.counterfactualReplay) ===
+      JSON.stringify(request.counterfactualReplay) &&
     existing.availableFrom === request.availableFrom &&
     existing.availableUntil === request.availableUntil &&
     existing.createdByUserId === principal.userId &&
@@ -1076,11 +1096,19 @@ function assignmentFrom(
     );
   }
   let runConfiguration;
+  let counterfactualReplay;
   try {
     runConfiguration = validateHostedModeConfiguration(
       JSON.parse(row.mode_configuration_json) as unknown,
       row.run_mode as AssignmentRunMode,
     );
+    counterfactualReplay =
+      validateAssignmentCounterfactualConfiguration(
+        JSON.parse(
+          row.counterfactual_configuration_json,
+        ) as unknown,
+        row.run_mode as AssignmentRunMode,
+      );
   } catch (error) {
     throw new AssignmentRepositoryError(
       "ASSIGNMENT_STORAGE_FAILED",
@@ -1090,7 +1118,7 @@ function assignmentFrom(
     );
   }
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     assignmentId: row.assignment_id,
     title: row.title,
     packId: row.pack_id,
@@ -1099,6 +1127,7 @@ function assignmentFrom(
     scenarioVersion: row.scenario_version,
     mode: row.run_mode as AssignmentRunMode,
     runConfiguration,
+    counterfactualReplay,
     learnerUserIds,
     status: row.lifecycle_status,
     ...(availableFrom === undefined ? {} : { availableFrom }),
@@ -1188,6 +1217,7 @@ export class D1AssignmentRepository {
           normalized.scenarioVersion,
           normalized.mode,
           JSON.stringify(normalized.runConfiguration),
+          JSON.stringify(normalized.counterfactualReplay),
           normalized.availableFrom ?? null,
           normalized.availableUntil ?? null,
           now,

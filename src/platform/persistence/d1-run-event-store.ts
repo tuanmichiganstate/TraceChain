@@ -15,6 +15,10 @@ const SELECT_STREAM = `SELECT event_json
   FROM hosted_run_events
   WHERE run_id = ?
   ORDER BY sequence_number ASC`;
+const SELECT_STREAM_THROUGH = `SELECT event_json
+  FROM hosted_run_events
+  WHERE run_id = ? AND sequence_number <= ?
+  ORDER BY sequence_number ASC`;
 const SELECT_IDEMPOTENT_EVENT = `SELECT event_json
   FROM hosted_run_events
   WHERE run_id = ? AND idempotency_key = ?`;
@@ -149,6 +153,43 @@ export class D1RunEventStore implements RunEventStore {
     const result = await this.database
       .prepare(SELECT_STREAM)
       .bind(runId)
+      .all<StoredEventRow>();
+    if (!result.success) {
+      throw new D1RunEventStoreError(
+        "D1_QUERY_FAILED",
+        result.error ?? `Could not load run ${runId}.`,
+      );
+    }
+    const events = result.results.map((row) =>
+      parseStoredEvent(row.event_json, runId),
+    );
+    for (const [index, event] of events.entries()) {
+      if (event.sequenceNumber !== index + 1) {
+        throw new D1RunEventStoreError(
+          "CORRUPT_EVENT_STREAM",
+          `Run ${runId} has a gap in its stored event sequence.`,
+        );
+      }
+    }
+    return events;
+  }
+
+  async loadThrough(
+    runId: string,
+    throughSequenceNumber: number,
+  ): Promise<readonly RunEventV1[]> {
+    if (
+      !Number.isInteger(throughSequenceNumber) ||
+      throughSequenceNumber < 0
+    ) {
+      throw new RunEventStoreConflictError(
+        "INVALID_EVENT_BATCH",
+        "A replay boundary must be a non-negative integer.",
+      );
+    }
+    const result = await this.database
+      .prepare(SELECT_STREAM_THROUGH)
+      .bind(runId, throughSequenceNumber)
       .all<StoredEventRow>();
     if (!result.success) {
       throw new D1RunEventStoreError(

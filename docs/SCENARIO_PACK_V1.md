@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1
+# TraceChain scenario-pack V1.2
 
-The V1 scenario-pack format is the first additive contract for the hosted
+The V1.2 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -60,8 +60,10 @@ application values only inside that pack. Competency, indicator, rubric, evidenc
 organization, role, policy, evidence, decision, node, transition, and native
 runtime references are validated.
 
-Every scenario must provide `modeConfigurations` and `outcomeModels`; no
-application default or older pack shape is accepted.
+Every scenario must provide `modeConfigurations`, `outcomeModels`, and
+`counterfactualComparisonDimensions`; no application default or older pack
+shape is accepted. An empty comparison-dimension array is valid for scenarios
+that do not yet support counterfactual exploration.
 
 ## Workflow nodes
 
@@ -100,6 +102,20 @@ minimum. Hosted command validation then confirms that cited evidence was
 actually inspected and that cited policies are bound to that decision's
 transaction proposal. These fields remain part of the atomic decision event;
 they do not create a second score.
+
+An eligible decision may also declare a bounded `counterfactual` contract. It
+defines the release boundary, permitted creator roles, authored alternative
+option IDs, comparison-dimension references, downstream replay policy, branch
+limit, reflection requirement, and localized entry label. Alternatives must
+belong to that exact decision, and dimensions must belong to that exact
+scenario. The validator rejects unknown references and unrestricted
+expressions.
+
+The coffee scenario currently enables this contract for the certificate,
+quantity-discrepancy, and recall-scope decisions. The comparison dimensions are
+academic score, non-grade process quality, consumer safety, business cost,
+compliance, and evidence quality. This schema addition does not itself expose
+a learner workflow or change any official grade.
 
 ## Competencies and rubrics
 
@@ -173,7 +189,8 @@ workflow is fully expressed by its supported declarative node set.
 The hosted event contract assigns one sequence number per run and includes
 authenticated user attribution separately from simulation actor, organization,
 and role. `MemoryRunEventStore` and `D1RunEventStore` implement the same append
-and idempotency port.
+and idempotency port. Both can load an exact sequence-bounded prefix without
+materializing later events.
 
 The learner projection contains only role-visible business, evidence, policy,
 workflow, and shared-ledger state. It never contains `actualState`, `rngState`,
@@ -185,6 +202,16 @@ sequence, event, and idempotency constraints. A batch append is atomic.
 memory repository, and verifies content identity when definitions are loaded.
 A future PostgreSQL adapter can implement these ports without changing the core
 contracts.
+
+Counterfactual branches use copy-on-write history. Immutable
+`counterfactual_runs` metadata records the source run, exact fork sequence,
+pack and scenario versions, source configuration and seed, trusted fork
+context, and source state and role-visible information hashes. Source events
+remain in the source stream; only branch-local suffix events use the branch
+run ID. Reconstruction composes the referenced source prefix with that suffix
+through a runtime adapter and fails closed if any version, configuration,
+state, or information hash no longer agrees. No source event or source score
+is rewritten.
 
 ## Current boundary
 
@@ -219,3 +246,17 @@ authored feedback remains unavailable until the assignment's feedback release.
 Other V1 node types remain unavailable for assignment until their runtime
 behavior is implemented. SCORM continues to use the current compact
 deterministic TC3 journal.
+
+The hosted decision-counterfactual workflow is available for completed source
+runs at authored decision points. It reconstructs the exact role-visible fork
+projection, submits a real alternative command, reuses compatible downstream
+commands, pauses instead of inventing a choice when the path diverges, and
+compares the assessed source with the ungraded branch. Learners may create
+branches only for their own Sandbox runs after the authored release boundary;
+managing instructors and administrators remain assignment-scoped. Reflections
+are stored as practice evidence and never modify the source run or official
+grade. Assignment configuration selects a subset of the authored points,
+applies a stricter bounded branch maximum where requested, and controls
+instructor-only or Sandbox learner availability. Branch comparison JSON/CSV
+and the managing instructor's assignment counterfactual report retain exact
+source-version identity without exporting hidden actual state to learners.

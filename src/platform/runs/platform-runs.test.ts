@@ -91,6 +91,10 @@ describe("hosted run foundations", () => {
     expect(retried.wasIdempotentReplay).toBe(true);
     expect(retried.events).toEqual(appended.events);
     expect(await store.load("RUN_001")).toHaveLength(1);
+    expect(await store.loadThrough("RUN_001", 0)).toEqual([]);
+    expect(await store.loadThrough("RUN_001", 1)).toEqual(
+      appended.events,
+    );
     const storedPayload = appended.events[0]?.payload;
     expect(storedPayload).toBeDefined();
     if (storedPayload !== undefined) {

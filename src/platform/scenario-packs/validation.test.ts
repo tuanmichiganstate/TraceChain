@@ -28,7 +28,10 @@ describe("scenario-pack validation", () => {
   it("validates the bilingual native coffee pack", () => {
     const result = validate(structuredClone(packJson));
 
-    expect(result.isValid).toBe(true);
+    expect(
+      result.isValid,
+      result.isValid ? "" : JSON.stringify(result.issues, null, 2),
+    ).toBe(true);
     expect(result.checkedCount).toBeGreaterThan(2_000);
     if (result.isValid) {
       const competencies =
@@ -144,6 +147,25 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("rejects the superseded pack schema instead of migrating it", () => {
+    const superseded = structuredClone(packJson) as {
+      schemaVersion: string;
+    };
+    superseded.schemaVersion = "1.1.0";
+
+    const result = validate(superseded);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNSUPPORTED_SCHEMA_VERSION",
+          path: "$.schemaVersion",
+        }),
+      );
+    }
+  });
+
   it("rejects non-positive weighted outcome probabilities", () => {
     const invalid = structuredClone(packJson);
     const scenario = invalid.scenarios[0];
@@ -230,6 +252,84 @@ describe("scenario-pack validation", () => {
           path:
             "$.scenarios[0].nodes[2].structuredResponse.policyCitations",
         }),
+      );
+    }
+  });
+
+  it("accepts authored counterfactual eligibility and comparison dimensions", () => {
+    const eligible = structuredClone(packJson);
+    const scenario = eligible.scenarios[0];
+    const decision = scenario?.nodes.find(
+      (node) =>
+        node.nodeType === "DECISION" &&
+        node.decisionId === "INT_CERTIFICATE_INITIAL_SUBMITTED",
+    );
+    if (scenario === undefined || decision === undefined) {
+      throw new Error("Expected certificate decision.");
+    }
+
+    const result = validate(eligible);
+
+    expect(
+      result.isValid,
+      result.isValid ? "" : JSON.stringify(result.issues, null, 2),
+    ).toBe(true);
+    expect(
+      scenario.counterfactualComparisonDimensions.map(
+        (dimension) => dimension.dimensionId,
+      ),
+    ).toContain("DIM_CONSUMER_SAFETY");
+    expect(decision.counterfactual).toMatchObject({
+      enabled: true,
+      availability: "AFTER_FEEDBACK_RELEASE",
+      downstreamPolicy: "REUSE_BASELINE_WHERE_VALID",
+    });
+  });
+
+  it("rejects counterfactual references outside the authored decision contract", () => {
+    const invalid = structuredClone(packJson) as unknown as {
+      scenarios: {
+        counterfactualComparisonDimensions: unknown[];
+        nodes: {
+          nodeType: string;
+          decisionId?: string;
+          counterfactual?: unknown;
+        }[];
+      }[];
+    };
+    const scenario = invalid.scenarios[0];
+    const decision = scenario?.nodes.find(
+      (node) =>
+        node.nodeType === "DECISION" &&
+        node.decisionId === "INT_CERTIFICATE_INITIAL_SUBMITTED",
+    );
+    if (scenario === undefined || decision === undefined) {
+      throw new Error("Expected certificate decision.");
+    }
+    decision.counterfactual = {
+      enabled: true,
+      availability: "AFTER_RUN_COMPLETION",
+      permittedCreators: ["LEARNER"],
+      allowedAlternativeOptionIds: ["NOT_AN_AUTHORED_OPTION"],
+      comparisonDimensionIds: ["DIM_UNKNOWN"],
+      downstreamPolicy: "REUSE_BASELINE_WHERE_VALID",
+      localizationKey:
+        "platformPack.standardCoffeeStage3.counterfactual.certificate",
+    };
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "UNKNOWN_COUNTERFACTUAL_ALTERNATIVE",
+          }),
+          expect.objectContaining({
+            code: "UNKNOWN_COUNTERFACTUAL_COMPARISON_DIMENSION",
+          }),
+        ]),
       );
     }
   });

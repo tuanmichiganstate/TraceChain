@@ -38,6 +38,19 @@ authored time limit, before creation and confirms the stored configuration
 after creation. The display is read-only; it does not create a parallel source
 of mode configuration.
 
+## Assignment counterfactual controls
+
+Assignments also store one resolved `counterfactualReplay` object. It enables
+or disables replay, names the exact authored decision nodes, caps branches per
+creator and decision from 1 through 20, selects learner availability, and
+records whether reflection is required. There is no defaulting reader.
+
+Learner access is valid only in Sandbox mode. Standard, Tutorial, and
+Configured assignments may still allow the managing instructor to create
+branches. The runtime intersects assignment choices with the immutable
+scenario definition, using the lower branch cap and the stricter release
+boundary.
+
 ## Authored run time limits
 
 The run starts at the authoritative `RUN_CREATED` server timestamp. When a mode

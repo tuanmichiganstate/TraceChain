@@ -11,6 +11,7 @@ import type { Translator } from "../../localization/i18n";
 import type { ApplicationRole } from "../contracts/run-events";
 import type {
   AssignmentRunMode,
+  AssignmentCounterfactualConfigurationV1,
   CreateHostedAssignmentRequest,
   HostedAssignmentLearnerOptionV1,
   HostedAssignmentMonitorV1,
@@ -37,6 +38,12 @@ import type {
   InstructorTimelineItem,
   RubricEvidenceProjection,
 } from "../hosted/stage3-types";
+import {
+  createCounterfactualExplorerApi,
+  type CounterfactualExplorerApi,
+} from "../counterfactual/counterfactual-api";
+import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
+import { HostedRunActionControls } from "../learner/hosted-learner-screen";
 
 export interface InstructorSession {
   readonly userId: string;
@@ -121,6 +128,7 @@ export interface InstructorReviewApi {
   createScormPackageJob?(
     presetId: ScormPackagePresetId,
   ): Promise<ScormPackageJobV1 & { readonly downloadUrl: string }>;
+  readonly counterfactuals?: CounterfactualExplorerApi;
 }
 
 type FetchLike = (
@@ -185,6 +193,7 @@ export function createInstructorReviewApi(
   fetcher: FetchLike = globalThis.fetch.bind(globalThis),
 ): InstructorReviewApi {
   return {
+    counterfactuals: createCounterfactualExplorerApi(fetcher),
     loadSession: () =>
       responseJson<InstructorSession>(fetcher, "/api/v1/session"),
     async loadAssignmentScenarioOptions() {
@@ -766,6 +775,13 @@ interface AssignmentScenarioOption {
   readonly supportedModes: readonly AssignmentRunMode[];
   readonly modeConfigurations:
     readonly HostedRunModeConfigurationV1[];
+  readonly counterfactualDecisionPoints: readonly {
+    readonly nodeId: string;
+    readonly decisionId: string;
+    readonly label: string;
+    readonly maximumBranchesPerLearner: number;
+    readonly reflectionRequired: boolean;
+  }[];
 }
 
 function scenarioOptionKey(
@@ -831,6 +847,18 @@ function assignmentScenarioOptions(
       scenarioVersion: option.scenarioVersion,
       supportedModes: option.supportedModes,
       modeConfigurations: option.modeConfigurations,
+      counterfactualDecisionPoints:
+        option.counterfactualDecisionPoints.map((point) => ({
+          nodeId: point.nodeId,
+          decisionId: point.decisionId,
+          label:
+            option.labelsByLocale[t.locale]
+              ?.counterfactualDecisionTitles[point.nodeId] ??
+            t(point.titleKey),
+          maximumBranchesPerLearner:
+            point.maximumBranchesPerLearner,
+          reflectionRequired: point.reflectionRequired,
+        })),
     }))
     .sort((left, right) =>
       left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
@@ -955,6 +983,27 @@ function AssignmentCreation({
   const [isLibraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState(false);
   const [mode, setMode] = useState<AssignmentRunMode>("standard");
+  const [counterfactualEnabled, setCounterfactualEnabled] =
+    useState(false);
+  const [
+    counterfactualDecisionNodeIds,
+    setCounterfactualDecisionNodeIds,
+  ] = useState<readonly string[]>([]);
+  const [
+    maximumCounterfactualBranches,
+    setMaximumCounterfactualBranches,
+  ] = useState(3);
+  const [
+    counterfactualLearnerAvailability,
+    setCounterfactualLearnerAvailability,
+  ] =
+    useState<
+      AssignmentCounterfactualConfigurationV1["learnerAvailability"]
+    >("DISABLED");
+  const [
+    counterfactualReflectionRequired,
+    setCounterfactualReflectionRequired,
+  ] = useState(false);
   const [availableFromLocal, setAvailableFromLocal] =
     useState("");
   const [availableUntilLocal, setAvailableUntilLocal] =
@@ -1067,6 +1116,25 @@ function AssignmentCreation({
           scenarioId: selectedScenario.scenarioId,
           scenarioVersion: selectedScenario.scenarioVersion,
           mode,
+          counterfactualReplay: counterfactualEnabled
+            ? {
+                enabled: true,
+                allowedDecisionNodeIds:
+                  counterfactualDecisionNodeIds,
+                maximumBranchesPerLearner:
+                  maximumCounterfactualBranches,
+                learnerAvailability:
+                  counterfactualLearnerAvailability,
+                requireReflection:
+                  counterfactualReflectionRequired,
+              }
+            : {
+                enabled: false,
+                allowedDecisionNodeIds: [],
+                maximumBranchesPerLearner: 1,
+                learnerAvailability: "DISABLED",
+                requireReflection: false,
+              },
           learnerUserIds: selectedLearnerIds,
           ...(availableFrom === undefined
             ? {}
@@ -1129,6 +1197,10 @@ function AssignmentCreation({
                   ),
                 );
               }
+              setCounterfactualEnabled(false);
+              setCounterfactualDecisionNodeIds([]);
+              setCounterfactualLearnerAvailability("DISABLED");
+              setCounterfactualReflectionRequired(false);
             }}
           >
             {isLibraryLoading ? (
@@ -1160,7 +1232,16 @@ function AssignmentCreation({
             id="assignment-mode"
             value={mode}
             onChange={(event) =>
-              setMode(event.target.value as AssignmentRunMode)
+              {
+                const nextMode =
+                  event.target.value as AssignmentRunMode;
+                setMode(nextMode);
+                if (nextMode !== "sandbox") {
+                  setCounterfactualLearnerAvailability(
+                    "DISABLED",
+                  );
+                }
+              }
             }
           >
             {(selectedScenario?.supportedModes ?? []).map(
@@ -1181,6 +1262,161 @@ function AssignmentCreation({
           <ModeConfigurationSummary
             configuration={selectedModeConfiguration}
           />
+        )}
+        {selectedScenario === undefined ||
+        selectedScenario.counterfactualDecisionPoints.length ===
+          0 ? null : (
+          <fieldset className="instructor-review__mode-settings">
+            <legend>
+              {t("instructorReview.counterfactual.heading")}
+            </legend>
+            <label>
+              <input
+                type="checkbox"
+                checked={counterfactualEnabled}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  setCounterfactualEnabled(enabled);
+                  setCounterfactualDecisionNodeIds(
+                    enabled
+                      ? selectedScenario.counterfactualDecisionPoints.map(
+                          (point) => point.nodeId,
+                        )
+                      : [],
+                  );
+                  setCounterfactualReflectionRequired(
+                    enabled &&
+                      selectedScenario.counterfactualDecisionPoints.some(
+                        (point) => point.reflectionRequired,
+                      ),
+                  );
+                  if (!enabled) {
+                    setCounterfactualLearnerAvailability(
+                      "DISABLED",
+                    );
+                  }
+                }}
+              />{" "}
+              {t("instructorReview.counterfactual.enable")}
+            </label>
+            {counterfactualEnabled ? (
+              <>
+                <fieldset className="instructor-review__learner-picker">
+                  <legend className="field__label">
+                    {t(
+                      "instructorReview.counterfactual.points",
+                    )}
+                  </legend>
+                  <div className="instructor-review__learner-options">
+                    {selectedScenario.counterfactualDecisionPoints.map(
+                      (point) => {
+                        const checked =
+                          counterfactualDecisionNodeIds.includes(
+                            point.nodeId,
+                          );
+                        return (
+                          <label key={point.nodeId}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) =>
+                                setCounterfactualDecisionNodeIds(
+                                  (current) =>
+                                    event.target.checked
+                                      ? [
+                                          ...current,
+                                          point.nodeId,
+                                        ].sort()
+                                      : current.filter(
+                                          (nodeId) =>
+                                            nodeId !== point.nodeId,
+                                        ),
+                                )
+                              }
+                            />
+                            <span>{point.label}</span>
+                          </label>
+                        );
+                      },
+                    )}
+                  </div>
+                </fieldset>
+                <div className="instructor-review__form-grid">
+                  <label className="field">
+                    <span className="field__label">
+                      {t(
+                        "instructorReview.counterfactual.maximumBranches",
+                      )}
+                    </span>
+                    <input
+                      className="field__control"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={maximumCounterfactualBranches}
+                      onChange={(event) =>
+                        setMaximumCounterfactualBranches(
+                          Number(event.target.value),
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field__label">
+                      {t(
+                        "instructorReview.counterfactual.learnerAvailability",
+                      )}
+                    </span>
+                    <select
+                      className="field__control"
+                      value={
+                        counterfactualLearnerAvailability
+                      }
+                      disabled={mode !== "sandbox"}
+                      onChange={(event) =>
+                        setCounterfactualLearnerAvailability(
+                          event.target
+                            .value as AssignmentCounterfactualConfigurationV1["learnerAvailability"],
+                        )
+                      }
+                    >
+                      <option value="DISABLED">
+                        {t(
+                          "instructorReview.counterfactual.learnerAvailability.DISABLED",
+                        )}
+                      </option>
+                      <option value="AFTER_RUN_COMPLETION">
+                        {t(
+                          "instructorReview.counterfactual.learnerAvailability.AFTER_RUN_COMPLETION",
+                        )}
+                      </option>
+                      <option value="AFTER_FEEDBACK_RELEASE">
+                        {t(
+                          "instructorReview.counterfactual.learnerAvailability.AFTER_FEEDBACK_RELEASE",
+                        )}
+                      </option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={
+                      counterfactualReflectionRequired
+                    }
+                    onChange={(event) =>
+                      setCounterfactualReflectionRequired(
+                        event.target.checked,
+                      )
+                    }
+                  />{" "}
+                  {t(
+                    "instructorReview.counterfactual.requireReflection",
+                  )}
+                </label>
+              </>
+            ) : null}
+          </fieldset>
         )}
         <TextField
           id="assignment-available-from"
@@ -1256,7 +1492,11 @@ function AssignmentCreation({
             disabled={
               isSaving ||
               selectedScenario === undefined ||
-              selectedLearnerIds.length === 0
+              selectedLearnerIds.length === 0 ||
+              (counterfactualEnabled &&
+                (counterfactualDecisionNodeIds.length === 0 ||
+                  maximumCounterfactualBranches < 1 ||
+                  maximumCounterfactualBranches > 20))
             }
           >
             {isSaving
@@ -1615,6 +1855,26 @@ function AssignmentReport({
                 {t("instructorReview.exportPseudonymousCsv")}
               </a>
             </div>
+            {report.assignment.counterfactualReplay.enabled ? (
+              <>
+                <p>
+                  {t(
+                    "instructorReview.counterfactual.reportHelp",
+                  )}
+                </p>
+                <div className="instructor-review__export-actions">
+                  <a
+                    className="button button--secondary"
+                    href={`/api/v1/assignments/${encodeURIComponent(report.assignment.assignmentId)}/counterfactual-report`}
+                    download={`TraceChain_${report.assignment.assignmentId}_counterfactual_report_v1.json`}
+                  >
+                    {t(
+                      "instructorReview.counterfactual.reportJson",
+                    )}
+                  </a>
+                </div>
+              </>
+            ) : null}
           </div>
           <div className="table-scroll">
             <table className="data-table">
@@ -2402,6 +2662,20 @@ function RunReview({
           </p>
         )}
       </section>
+
+      {review.timeline.some(
+        (event) => event.eventType === "RUN_COMPLETED",
+      ) &&
+      review.assignment.counterfactualReplay.enabled &&
+      api.counterfactuals !== undefined ? (
+        <CounterfactualExplorer
+          api={api.counterfactuals}
+          sourceRunId={runId}
+          renderContinuation={(options) => (
+            <HostedRunActionControls {...options} />
+          )}
+        />
+      ) : null}
 
       <section className="card card--reference">
         <h2>{t("instructorReview.timelineHeading")}</h2>

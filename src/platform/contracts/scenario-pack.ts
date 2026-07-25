@@ -191,6 +191,51 @@ export interface StructuredDecisionResponseConfigurationV1 {
     DecisionNumericResponseConfigurationV1;
 }
 
+export type CounterfactualAvailabilityV1 =
+  | "AFTER_RUN_COMPLETION"
+  | "AFTER_FEEDBACK_RELEASE"
+  | "INSTRUCTOR_ONLY";
+
+export type CounterfactualCreatorV1 =
+  | "LEARNER"
+  | "INSTRUCTOR"
+  | "RATER";
+
+export type CounterfactualDownstreamPolicyV1 =
+  | "REUSE_BASELINE_WHERE_VALID"
+  | "INTERACTIVE_AFTER_FORK";
+
+export interface CounterfactualDecisionDefinitionV1 {
+  readonly enabled: boolean;
+  readonly availability: CounterfactualAvailabilityV1;
+  readonly permittedCreators: readonly CounterfactualCreatorV1[];
+  readonly allowedAlternativeOptionIds: readonly string[];
+  readonly comparisonDimensionIds: readonly string[];
+  readonly downstreamPolicy: CounterfactualDownstreamPolicyV1;
+  readonly maxBranchesPerLearner?: number;
+  readonly reflectionRequired?: boolean;
+  readonly localizationKey: string;
+}
+
+export type CounterfactualComparisonValueTypeV1 =
+  | "NUMBER"
+  | "ORDINAL"
+  | "CATEGORICAL";
+
+export type CounterfactualComparisonDirectionV1 =
+  | "HIGHER_IS_BETTER"
+  | "LOWER_IS_BETTER"
+  | "CONTEXT_DEPENDENT";
+
+export interface CounterfactualComparisonDimensionV1 {
+  readonly dimensionId: string;
+  readonly title: LocalizedText;
+  readonly description: LocalizedText;
+  readonly valueType: CounterfactualComparisonValueTypeV1;
+  readonly direction: CounterfactualComparisonDirectionV1;
+  readonly unit?: string;
+}
+
 export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
   readonly nodeType: "DECISION";
   readonly decisionId: string;
@@ -202,6 +247,7 @@ export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
   };
   readonly structuredResponse?:
     StructuredDecisionResponseConfigurationV1;
+  readonly counterfactual?: CounterfactualDecisionDefinitionV1;
 }
 
 export interface TransactionProposalNodeV1 extends ScenarioNodeBaseV1 {
@@ -318,6 +364,8 @@ export interface ScenarioDefinitionV1 {
   };
   readonly policies: readonly ScenarioPolicyV1[];
   readonly evidenceItems: readonly ScenarioEvidenceItemV1[];
+  readonly counterfactualComparisonDimensions:
+    readonly CounterfactualComparisonDimensionV1[];
   readonly entryNodeId: string;
   readonly nodes: readonly ScenarioNodeV1[];
   readonly rubricIds: readonly string[];
@@ -327,7 +375,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.1.0";
+  readonly schemaVersion: "1.2.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

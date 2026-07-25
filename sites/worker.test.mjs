@@ -31,6 +31,20 @@ after(async () => {
 });
 
 const appShell = "<!doctype html><title>TraceChain</title>";
+const disabledCounterfactualReplay = {
+  enabled: false,
+  allowedDecisionNodeIds: [],
+  maximumBranchesPerLearner: 1,
+  learnerAvailability: "DISABLED",
+  requireReflection: false,
+};
+const instructorCounterfactualReplay = {
+  enabled: true,
+  allowedDecisionNodeIds: ["NODE_CERTIFICATE_DECISION"],
+  maximumBranchesPerLearner: 1,
+  learnerAvailability: "DISABLED",
+  requireReflection: true,
+};
 
 function createAssetEnvironment(files = {}) {
   const requestedPaths = [];
@@ -726,7 +740,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.match(publication.contentHash, /^[a-f0-9]{64}$/u);
 
     const next = structuredClone(pack);
-    next.version = "1.8.0";
+    next.version = "1.9.0";
     next.manifest.domain = "supply-chain-governance";
     const nextImport = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -741,7 +755,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
       apiRequest(
         `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
           `/compare?fromVersion=${encodeURIComponent(pack.version)}` +
-          "&toVersion=1.8.0",
+          "&toVersion=1.9.0",
         { email: "author@example.edu" },
       ),
       env,
@@ -879,6 +893,8 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           scenarioId: pack.scenarios[0].scenarioId,
           scenarioVersion: pack.scenarios[0].version,
           mode: "tutorial",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_PHARMA"],
         },
       }),
@@ -1329,6 +1345,26 @@ test("creates an exact published assignment for a provisioned learner", async ()
         modeConfigurations: pack.scenarios[0].modeConfigurations,
       },
     );
+    assert.deepEqual(
+      available[0].counterfactualDecisionPoints.map((point) => ({
+        nodeId: point.nodeId,
+        decisionId: point.decisionId,
+      })),
+      [
+        {
+          nodeId: "NODE_CERTIFICATE_DECISION",
+          decisionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        },
+        {
+          nodeId: "NODE_DISCREPANCY_DECISION",
+          decisionId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
+        },
+        {
+          nodeId: "NODE_RECALL_SCOPE_DECISION",
+          decisionId: "INT_RECALL_SCOPE",
+        },
+      ],
+    );
     assert.equal(Object.hasOwn(available[0], "initialState"), false);
 
     const learnerOptions = await worker.fetch(
@@ -1375,6 +1411,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioId: pack.scenarios[0].scenarioId,
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
+      counterfactualReplay: disabledCounterfactualReplay,
       runConfiguration: pack.scenarios[0].modeConfigurations.find(
         (configuration) => configuration.mode === "standard",
       ),
@@ -1382,6 +1419,31 @@ test("creates an exact published assignment for a provisioned learner", async ()
       availableUntil: "2999-01-01T00:00:00.000Z",
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
     };
+    const unknownCounterfactualPoint = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: {
+          ...assignmentBody,
+          commandId: "COMMAND_ASSIGNMENT_INVALID_COUNTERFACTUAL",
+          assignmentId: "ASSIGNMENT_INVALID_COUNTERFACTUAL",
+          mode: "sandbox",
+          counterfactualReplay: {
+            enabled: true,
+            allowedDecisionNodeIds: ["NODE_NOT_IN_SCENARIO"],
+            maximumBranchesPerLearner: 1,
+            learnerAvailability: "AFTER_RUN_COMPLETION",
+            requireReflection: false,
+          },
+        },
+      }),
+      env,
+    );
+    assert.equal(unknownCounterfactualPoint.status, 400);
+    assert.equal(
+      (await unknownCounterfactualPoint.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
     const create = await worker.fetch(
       apiRequest("/api/v1/assignments", {
         method: "POST",
@@ -1393,7 +1455,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
     assert.equal(create.status, 201, await create.clone().text());
     const created = await create.json();
     assert.deepEqual(created.assignment, {
-      schemaVersion: "1.0.0",
+      schemaVersion: "1.1.0",
       assignmentId: "ASSIGNMENT_COFFEE_001",
       title: "Coffee governance cohort",
       packId: pack.packId,
@@ -1402,6 +1464,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
       runConfiguration: assignmentBody.runConfiguration,
+      counterfactualReplay: disabledCounterfactualReplay,
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
       status: "active",
       availableFrom: assignmentBody.availableFrom,
@@ -1761,6 +1824,12 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "learner@example.edu",
       ["learner"],
     );
+    seedUser(
+      database,
+      "USER_INSTRUCTOR_OUTSIDE_ASSIGNMENT",
+      "outside-instructor@example.edu",
+      ["instructor"],
+    );
 
     const pack = await standardCoffeePack();
     const publish = await worker.fetch(
@@ -1789,6 +1858,8 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           scenarioId: pack.scenarios[0].scenarioId,
           scenarioVersion: pack.scenarios[0].version,
           mode: "standard",
+          counterfactualReplay:
+            instructorCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_001"],
         },
       }),
@@ -2686,6 +2757,492 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         "classIndicators",
       ),
       false,
+    );
+
+    const learnerPointsDenied = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${runId}/counterfactual-points`,
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerPointsDenied.status, 403);
+    assert.equal(
+      (await learnerPointsDenied.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
+    const pointsResponse = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${runId}/counterfactual-points`,
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      pointsResponse.status,
+      200,
+      await pointsResponse.clone().text(),
+    );
+    const points = (await pointsResponse.json()).points;
+    assert.deepEqual(
+      points.map((point) => point.decisionId),
+      ["INT_CERTIFICATE_INITIAL_SUBMITTED"],
+    );
+    assert.equal(
+      points[0].configuration.maxBranchesPerLearner,
+      1,
+    );
+    assert.equal(points[0].configuration.reflectionRequired, true);
+    const outsideAssignmentPoints = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${runId}/counterfactual-points`,
+        { email: "outside-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outsideAssignmentPoints.status, 403);
+    assert.equal(
+      (await outsideAssignmentPoints.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+    const certificatePoint = points[0];
+    assert.equal(certificatePoint.forkNodeId, "NODE_CERTIFICATE_DECISION");
+    assert.deepEqual(certificatePoint.originalOptionIds, [
+      "VALID",
+      "RECOGNIZED_AUTHORIZED",
+      "HASH_OFF_CHAIN",
+      "CONTINUE",
+    ]);
+
+    const branchRunId = "RUN_SITE_STAGE3_COUNTERFACTUAL_001";
+    const interventionId =
+      "COMMAND_SITE_STAGE3_COUNTERFACTUAL_001";
+    const branchCreate = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/counterfactuals`, {
+        method: "POST",
+        email: "instructor@example.edu",
+        body: {
+          branchRunId,
+          forkSequenceNumber:
+            certificatePoint.forkSequenceNumber,
+          forkNodeId: certificatePoint.forkNodeId,
+          interventionId,
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      branchCreate.status,
+      201,
+      await branchCreate.clone().text(),
+    );
+    const createdBranch = await branchCreate.json();
+    assert.equal(
+      createdBranch.counterfactual.sourceRunId,
+      runId,
+    );
+    assert.equal(createdBranch.projection.runId, branchRunId);
+    assert.equal(createdBranch.projection.version, 0);
+    assert.equal(
+      createdBranch.projection.workflowState.currentNodeId,
+      "certificate-decision",
+    );
+
+    const unchangedAlternative = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/commands`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: {
+            commandType: "SUBMIT_CERTIFICATE_DECISION",
+            commandId: interventionId,
+            runId: branchRunId,
+            expectedRunVersion: 0,
+            decision: {
+              certificateAssessment: "VALID",
+              issuerAssessment: "RECOGNIZED_AUTHORIZED",
+              storageChoice: "HASH_OFF_CHAIN",
+              lotDisposition: "CONTINUE",
+            },
+            justification:
+              "This intentionally repeats the original and must be rejected.",
+            citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+            citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
+            confidenceRating: 4,
+            adverseEventProbabilityPercent: 20,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(unchangedAlternative.status, 400);
+    assert.equal(
+      (await unchangedAlternative.json()).error.code,
+      "INVALID_COMMAND",
+    );
+
+    const alternativeDecision = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/commands`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: {
+            commandType: "SUBMIT_CERTIFICATE_DECISION",
+            commandId: interventionId,
+            runId: branchRunId,
+            expectedRunVersion: 0,
+            decision: {
+              certificateAssessment: "EXPIRED",
+              issuerAssessment: "UNRECOGNIZED",
+              storageChoice: "FULL_DOCUMENT_ON_CHAIN",
+              lotDisposition: "HOLD",
+            },
+            justification:
+              "Explore the evidence and process effects of holding the lot.",
+            citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+            citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
+            confidenceRating: 3,
+            adverseEventProbabilityPercent: 60,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      alternativeDecision.status,
+      200,
+      await alternativeDecision.clone().text(),
+    );
+    const explored = await alternativeDecision.json();
+    assert.equal(explored.projection.runId, branchRunId);
+    assert.equal(explored.projection.version, 2);
+    assert.equal(
+      explored.projection.workflowState.currentNodeId,
+      "certificate-transaction",
+    );
+    assert.equal(explored.officialGradeChanged, false);
+    assert.equal(
+      database.sqlite
+        .prepare(
+          "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
+        )
+        .get(runId).count,
+      54,
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
+        )
+        .get(branchRunId).count,
+      2,
+    );
+
+    const branchRead = await worker.fetch(
+      apiRequest(`/api/v1/counterfactuals/${branchRunId}`, {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      branchRead.status,
+      200,
+      await branchRead.clone().text(),
+    );
+    assert.equal(
+      (await branchRead.json()).projection.version,
+      2,
+    );
+
+    const completedBranchResponse = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/complete`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: {},
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      completedBranchResponse.status,
+      200,
+      await completedBranchResponse.clone().text(),
+    );
+    const completedBranch =
+      await completedBranchResponse.json();
+    assert.equal(completedBranch.status, "completed");
+    assert.equal(
+      completedBranch.classification,
+      "SINGLE_INTERVENTION",
+    );
+    assert.equal(completedBranch.paused, null);
+    assert.equal(
+      completedBranch.projection.workflowState.currentNodeId,
+      "complete",
+    );
+    assert.equal(
+      completedBranch.originalAssessedResultPreserved,
+      true,
+    );
+    assert.equal(completedBranch.officialGradeChanged, false);
+    assert.equal(
+      completedBranch.replayedCommandIds.length > 0,
+      true,
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
+        )
+        .get(runId).count,
+      54,
+    );
+
+    const comparisonResponse = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/comparison`,
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      comparisonResponse.status,
+      200,
+      await comparisonResponse.clone().text(),
+    );
+    const comparison =
+      (await comparisonResponse.json()).comparison;
+    assert.equal(
+      comparison.interpretation,
+      "ORIGINAL_ASSESSED_ALTERNATIVE_EXPLORATORY",
+    );
+    assert.equal(
+      comparison.classification,
+      "SINGLE_INTERVENTION",
+    );
+    assert.equal(
+      comparison.originalAssessedResult.projection.runId,
+      runId,
+    );
+    assert.equal(
+      comparison.alternativeExploratoryResult.projection.runId,
+      branchRunId,
+    );
+    assert.equal(
+      comparison.originalAssessedResult.officialGradePreserved,
+      true,
+    );
+    assert.equal(
+      comparison.alternativeExploratoryResult
+        .officialGradeChanged,
+      false,
+    );
+    assert.deepEqual(
+      comparison.originalAssessedResult.decision,
+      {
+        commandType: "SUBMIT_CERTIFICATE_DECISION",
+        certificateAssessment: "VALID",
+        issuerAssessment: "RECOGNIZED_AUTHORIZED",
+        storageChoice: "HASH_OFF_CHAIN",
+        lotDisposition: "CONTINUE",
+      },
+    );
+    assert.equal(comparison.dimensions.length, 6);
+    assert.equal(
+      comparison.dimensions.every(
+        (dimension) =>
+          dimension.evaluationStatus ===
+          "AWAITING_AUTHORED_EVALUATION_RULE",
+      ),
+      true,
+    );
+    assert.equal(
+      comparison.informationAvailableWhenDecisionWasMade.some(
+        (record) =>
+          record.recordId === "EVID_CERTIFICATE_RECORD",
+      ),
+      true,
+    );
+
+    const reflectionBody = {
+      reflectionId:
+        "REFLECTION_SITE_STAGE3_COUNTERFACTUAL_001",
+      response: {
+        evidenceThatMattered:
+          "The certificate status and issuer authorization mattered most.",
+        reasonForDifference:
+          "Holding the lot changed the immediate process decision while later actions were replayed.",
+        foreseeableConsequences:
+          "A processing delay was foreseeable at the original decision point.",
+        laterInformation:
+          "The final recall evidence was learned only later in the run.",
+        revisedDecisionRule:
+          "Pause the lot when certificate validity or issuer authority is unresolved.",
+      },
+    };
+    const reflectionResponse = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/reflection`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: reflectionBody,
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      reflectionResponse.status,
+      201,
+      await reflectionResponse.clone().text(),
+    );
+    const reflection = await reflectionResponse.json();
+    assert.equal(
+      reflection.reflection.branchRunId,
+      branchRunId,
+    );
+    assert.equal(reflection.officialGradeChanged, false);
+
+    const repeatedReflection = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/reflection`,
+        {
+          method: "POST",
+          email: "instructor@example.edu",
+          body: reflectionBody,
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      repeatedReflection.status,
+      200,
+      await repeatedReflection.clone().text(),
+    );
+    assert.equal(
+      (await repeatedReflection.json())
+        .wasIdempotentReplay,
+      true,
+    );
+
+    const counterfactualJsonExport = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/export.json`,
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      counterfactualJsonExport.status,
+      200,
+      await counterfactualJsonExport.clone().text(),
+    );
+    assert.equal(
+      counterfactualJsonExport.headers.get("content-disposition"),
+      `attachment; filename="TraceChain_${branchRunId}_counterfactual_v1.json"`,
+    );
+    const counterfactualExport =
+      await counterfactualJsonExport.json();
+    assert.equal(
+      counterfactualExport.exportType,
+      "TRACECHAIN_COUNTERFACTUAL_COMPARISON",
+    );
+    assert.equal(
+      counterfactualExport.metadata.branchRunId,
+      branchRunId,
+    );
+    assert.equal(
+      counterfactualExport.comparison
+        .originalAssessedResult.officialGradePreserved,
+      true,
+    );
+    assert.equal(
+      counterfactualExport.reflection.reflectionId,
+      reflectionBody.reflectionId,
+    );
+
+    const counterfactualCsvExport = await worker.fetch(
+      apiRequest(
+        `/api/v1/counterfactuals/${branchRunId}/export.csv`,
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      counterfactualCsvExport.status,
+      200,
+      await counterfactualCsvExport.clone().text(),
+    );
+    const counterfactualCsv =
+      await counterfactualCsvExport.text();
+    assert.match(
+      counterfactualCsv,
+      /^export_schema_version,record_type,counterfactual_id,/u,
+    );
+    assert.match(counterfactualCsv, /comparison_dimension/u);
+    assert.match(counterfactualCsv, /reflection/u);
+
+    const counterfactualReportResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/counterfactual-report",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      counterfactualReportResponse.status,
+      200,
+      await counterfactualReportResponse.clone().text(),
+    );
+    const counterfactualReport =
+      (await counterfactualReportResponse.json()).report;
+    assert.equal(
+      counterfactualReport.reportType,
+      "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
+    );
+    assert.equal(counterfactualReport.branches.length, 1);
+    assert.equal(
+      counterfactualReport.branches[0].learnerUserId,
+      "USER_LEARNER_001",
+    );
+    assert.equal(
+      counterfactualReport.branches[0].branchStatus,
+      "COMPLETED",
+    );
+    assert.equal(
+      counterfactualReport.branches[0]
+        .originalOfficialGradeChanged,
+      false,
+    );
+    assert.equal(
+      counterfactualReport.branches[0].reflection.reflectionId,
+      reflectionBody.reflectionId,
+    );
+
+    const learnerCounterfactualReport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/counterfactual-report",
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerCounterfactualReport.status, 403);
+    const outsideCounterfactualReport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/counterfactual-report",
+        { email: "outside-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outsideCounterfactualReport.status, 403);
+    assert.equal(
+      (await outsideCounterfactualReport.json()).error.code,
+      "RUN_ACCESS_DENIED",
     );
 
     const activityTimelineResponse = await worker.fetch(

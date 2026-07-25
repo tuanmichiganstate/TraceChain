@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -680,7 +680,7 @@
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",
-      "version": "1.7.0",
+      "version": "1.8.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
@@ -1060,6 +1060,76 @@
           }
         }
       ],
+      "counterfactualComparisonDimensions": [
+        {
+          "dimensionId": "DIM_ACADEMIC_SCORE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.academicScore.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.academicScore.description"
+          },
+          "valueType": "NUMBER",
+          "direction": "HIGHER_IS_BETTER",
+          "unit": "points"
+        },
+        {
+          "dimensionId": "DIM_PROCESS_SCORE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.processScore.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.processScore.description"
+          },
+          "valueType": "NUMBER",
+          "direction": "HIGHER_IS_BETTER",
+          "unit": "points"
+        },
+        {
+          "dimensionId": "DIM_CONSUMER_SAFETY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.consumerSafety.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.consumerSafety.description"
+          },
+          "valueType": "ORDINAL",
+          "direction": "HIGHER_IS_BETTER"
+        },
+        {
+          "dimensionId": "DIM_BUSINESS_COST",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.businessCost.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.businessCost.description"
+          },
+          "valueType": "NUMBER",
+          "direction": "LOWER_IS_BETTER"
+        },
+        {
+          "dimensionId": "DIM_COMPLIANCE",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.compliance.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.compliance.description"
+          },
+          "valueType": "ORDINAL",
+          "direction": "HIGHER_IS_BETTER"
+        },
+        {
+          "dimensionId": "DIM_EVIDENCE_QUALITY",
+          "title": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.evidenceQuality.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.dimensions.evidenceQuality.description"
+          },
+          "valueType": "ORDINAL",
+          "direction": "HIGHER_IS_BETTER"
+        }
+      ],
       "entryNodeId": "NODE_CERTIFICATE_BRIEFING",
       "nodes": [
         {
@@ -1243,6 +1313,38 @@
               "minimum": 0,
               "maximum": 100
             }
+          },
+          "counterfactual": {
+            "enabled": true,
+            "availability": "AFTER_FEEDBACK_RELEASE",
+            "permittedCreators": [
+              "LEARNER",
+              "INSTRUCTOR"
+            ],
+            "allowedAlternativeOptionIds": [
+              "VALID",
+              "EXPIRED",
+              "CONTENT_INVALID",
+              "RECOGNIZED_AUTHORIZED",
+              "RECOGNIZED_UNAUTHORIZED",
+              "UNRECOGNIZED",
+              "HASH_OFF_CHAIN",
+              "FULL_DOCUMENT_ON_CHAIN",
+              "CONTINUE",
+              "HOLD"
+            ],
+            "comparisonDimensionIds": [
+              "DIM_ACADEMIC_SCORE",
+              "DIM_PROCESS_SCORE",
+              "DIM_CONSUMER_SAFETY",
+              "DIM_BUSINESS_COST",
+              "DIM_COMPLIANCE",
+              "DIM_EVIDENCE_QUALITY"
+            ],
+            "downstreamPolicy": "REUSE_BASELINE_WHERE_VALID",
+            "maxBranchesPerLearner": 3,
+            "reflectionRequired": true,
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.certificate"
           },
           "transitions": [
             {
@@ -1748,6 +1850,38 @@
               ]
             }
           ],
+          "counterfactual": {
+            "enabled": true,
+            "availability": "AFTER_FEEDBACK_RELEASE",
+            "permittedCreators": [
+              "LEARNER",
+              "INSTRUCTOR"
+            ],
+            "allowedAlternativeOptionIds": [
+              "IGNORE",
+              "OVERWRITE",
+              "DELETE",
+              "APPEND_CORRECTION",
+              "INVESTIGATE_THEN_CORRECT",
+              "TYPING_ERROR",
+              "UNIT_MISMATCH",
+              "PHYSICAL_LOSS",
+              "FRAUD",
+              "UNKNOWN"
+            ],
+            "comparisonDimensionIds": [
+              "DIM_ACADEMIC_SCORE",
+              "DIM_PROCESS_SCORE",
+              "DIM_CONSUMER_SAFETY",
+              "DIM_BUSINESS_COST",
+              "DIM_COMPLIANCE",
+              "DIM_EVIDENCE_QUALITY"
+            ],
+            "downstreamPolicy": "REUSE_BASELINE_WHERE_VALID",
+            "maxBranchesPerLearner": 3,
+            "reflectionRequired": true,
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.discrepancy"
+          },
           "transitions": [
             {
               "transitionId": "TRANSITION_DISCREPANCY_TO_POLICY",
@@ -2562,6 +2696,32 @@
               ]
             }
           ],
+          "counterfactual": {
+            "enabled": true,
+            "availability": "AFTER_FEEDBACK_RELEASE",
+            "permittedCreators": [
+              "LEARNER",
+              "INSTRUCTOR"
+            ],
+            "allowedAlternativeOptionIds": [
+              "BAT_PACKAGED_COFFEE_001",
+              "BAT_PACKAGED_COFFEE_002",
+              "BAT_PACKAGED_COFFEE_003",
+              "BAT_ROASTED_COFFEE_001"
+            ],
+            "comparisonDimensionIds": [
+              "DIM_ACADEMIC_SCORE",
+              "DIM_PROCESS_SCORE",
+              "DIM_CONSUMER_SAFETY",
+              "DIM_BUSINESS_COST",
+              "DIM_COMPLIANCE",
+              "DIM_EVIDENCE_QUALITY"
+            ],
+            "downstreamPolicy": "REUSE_BASELINE_WHERE_VALID",
+            "maxBranchesPerLearner": 3,
+            "reflectionRequired": true,
+            "localizationKey": "platformPack.standardCoffeeStage3.counterfactual.recall"
+          },
           "transitions": [
             {
               "transitionId": "TRANSITION_RECALL_SCOPE_TO_ROLE",

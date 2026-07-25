@@ -4,6 +4,9 @@ import type {
 } from "../../domain/simulation/environment";
 import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
 import type {
+  CreateCounterfactualBranchRequestV1,
+} from "../contracts/counterfactual";
+import type {
   HostedRunDecisionOutcomeEvidenceV1,
 } from "../contracts/decision-outcome-report";
 import type {
@@ -17,6 +20,8 @@ import type {
   ScenarioPackV1,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
+import type { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
+import type { SaveCounterfactualRunResult } from "../runs/counterfactual-repository";
 import type { ApplicationPrincipal } from "./access";
 import { GenericHostedRunService } from "./generic-run-service";
 import type {
@@ -82,6 +87,28 @@ export interface HostedRuntimeService {
     principal: ApplicationPrincipal | null,
     command: HostedRuntimeCommand,
   ): Promise<HostedRuntimeRunResult>;
+  createCounterfactualBranch(
+    principal: ApplicationPrincipal | null,
+    request: CreateCounterfactualBranchRequestV1,
+  ): Promise<SaveCounterfactualRunResult>;
+  submitCounterfactual(
+    principal: ApplicationPrincipal | null,
+    command: HostedRuntimeCommand,
+  ): Promise<HostedRuntimeRunResult>;
+  counterfactualProjection(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<LearnerRunProjectionV1>;
+  counterfactualSourceProjection(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<LearnerRunProjectionV1>;
+  counterfactualForkProjection(
+    principal: ApplicationPrincipal | null,
+    sourceRunId: string,
+    forkSequenceNumber: number,
+    roleId: string,
+  ): Promise<LearnerRunProjectionV1>;
   learnerProjection(
     principal: ApplicationPrincipal | null,
     runId: string,
@@ -137,6 +164,7 @@ export function createHostedRuntimeService(options: {
   readonly eventStore: RunEventStore;
   readonly clock: Clock;
   readonly ids: IdGenerator;
+  readonly counterfactualBranches?: CounterfactualBranchEngine;
 }): HostedRuntimeService {
   const scenario = options.pack.scenarios.find(
     (candidate) =>
@@ -164,6 +192,7 @@ export function createHostedRuntimeService(options: {
       options.eventStore,
       options.clock,
       options.ids,
+      options.counterfactualBranches,
     );
     return {
       runtimeKind,
@@ -174,6 +203,29 @@ export function createHostedRuntimeService(options: {
         ),
       submit: (principal, command) =>
         service.submit(principal, command as GenericHostedCommand),
+      createCounterfactualBranch: (principal, request) =>
+        service.createCounterfactualBranch(principal, request),
+      submitCounterfactual: (principal, command) =>
+        service.submitCounterfactual(
+          principal,
+          command as GenericHostedCommand,
+        ),
+      counterfactualProjection: (principal, runId) =>
+        service.counterfactualProjection(principal, runId),
+      counterfactualSourceProjection: (principal, runId) =>
+        service.counterfactualSourceProjection(principal, runId),
+      counterfactualForkProjection: (
+        principal,
+        runId,
+        sequence,
+        roleId,
+      ) =>
+        service.counterfactualForkProjection(
+          principal,
+          runId,
+          sequence,
+          roleId,
+        ),
       learnerProjection: (principal, runId) =>
         service.learnerProjection(principal, runId),
       instructorTimeline: (principal, runId) =>
@@ -201,6 +253,7 @@ export function createHostedRuntimeService(options: {
     options.eventStore,
     options.clock,
     options.ids,
+    options.counterfactualBranches,
   );
   return {
     runtimeKind,
@@ -232,6 +285,29 @@ export function createHostedRuntimeService(options: {
     },
     submit: (principal, command) =>
       service.submit(principal, command as HostedStage3Command),
+    createCounterfactualBranch: (principal, request) =>
+      service.createCounterfactualBranch(principal, request),
+    submitCounterfactual: (principal, command) =>
+      service.submitCounterfactual(
+        principal,
+        command as HostedStage3Command,
+      ),
+    counterfactualProjection: (principal, runId) =>
+      service.counterfactualProjection(principal, runId),
+    counterfactualSourceProjection: (principal, runId) =>
+      service.counterfactualSourceProjection(principal, runId),
+    counterfactualForkProjection: (
+      principal,
+      runId,
+      sequence,
+      roleId,
+    ) =>
+      service.counterfactualForkProjection(
+        principal,
+        runId,
+        sequence,
+        roleId,
+      ),
     learnerProjection: (principal, runId) =>
       service.learnerProjection(principal, runId),
     instructorTimeline: (principal, runId) =>

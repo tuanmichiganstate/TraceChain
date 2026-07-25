@@ -3,7 +3,7 @@ import type { HostedAssignmentV1 } from "../contracts/assessment";
 import { assignmentStartAvailability } from "./assignment-availability";
 
 const assignment: HostedAssignmentV1 = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "1.1.0",
   assignmentId: "ASSIGNMENT_AVAILABILITY_001",
   title: "Availability cohort",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -22,6 +22,13 @@ const assignment: HostedAssignmentV1 = {
     seedPolicy: "supplied",
     allowCommunication: false,
     allowEvidenceRequests: true,
+  },
+  counterfactualReplay: {
+    enabled: false,
+    allowedDecisionNodeIds: [],
+    maximumBranchesPerLearner: 1,
+    learnerAvailability: "DISABLED",
+    requireReflection: false,
   },
   learnerUserIds: ["USER_LEARNER_001"],
   status: "active",

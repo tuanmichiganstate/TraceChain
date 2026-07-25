@@ -80,6 +80,8 @@ export const schemaStatements = [
       )),
     mode_configuration_json TEXT NOT NULL
       CHECK (json_valid(mode_configuration_json)),
+    counterfactual_configuration_json TEXT NOT NULL
+      CHECK (json_valid(counterfactual_configuration_json)),
     lifecycle_status TEXT NOT NULL DEFAULT 'active'
       CHECK (lifecycle_status IN ('active', 'closed')),
     available_from_utc TEXT,
@@ -157,6 +159,45 @@ export const schemaStatements = [
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS hosted_run_events_timestamp
     ON hosted_run_events(run_id, server_timestamp_utc)`,
+  `CREATE TABLE IF NOT EXISTS counterfactual_runs (
+    branch_run_id TEXT PRIMARY KEY,
+    source_run_id TEXT NOT NULL,
+    fork_sequence_number INTEGER NOT NULL
+      CHECK (fork_sequence_number >= 1),
+    source_pack_id TEXT NOT NULL,
+    source_pack_version TEXT NOT NULL,
+    source_scenario_id TEXT NOT NULL,
+    source_scenario_version TEXT NOT NULL,
+    intervention_id TEXT NOT NULL,
+    comparison_mode TEXT NOT NULL
+      CHECK (comparison_mode IN (
+        'SINGLE_INTERVENTION',
+        'EXPLORATORY_BRANCH'
+      )),
+    created_by_user_id TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL,
+    metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+    CHECK (branch_run_id != source_run_id),
+    FOREIGN KEY (created_by_user_id)
+      REFERENCES application_users(user_id)
+  ) STRICT`,
+  `CREATE INDEX IF NOT EXISTS counterfactual_runs_source
+    ON counterfactual_runs(
+      source_run_id,
+      created_at_utc,
+      branch_run_id
+    )`,
+  `CREATE TABLE IF NOT EXISTS counterfactual_reflections (
+    reflection_id TEXT PRIMARY KEY,
+    branch_run_id TEXT NOT NULL UNIQUE,
+    submitted_by_user_id TEXT NOT NULL,
+    submitted_at_utc TEXT NOT NULL,
+    reflection_json TEXT NOT NULL CHECK (json_valid(reflection_json)),
+    FOREIGN KEY (branch_run_id)
+      REFERENCES counterfactual_runs(branch_run_id),
+    FOREIGN KEY (submitted_by_user_id)
+      REFERENCES application_users(user_id)
+  ) STRICT`,
   `CREATE TABLE IF NOT EXISTS rubric_rating_revisions (
     rating_id TEXT PRIMARY KEY,
     assignment_id TEXT NOT NULL,

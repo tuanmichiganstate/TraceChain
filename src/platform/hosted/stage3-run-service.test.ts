@@ -4,6 +4,8 @@ import { TransactionType } from "../../domain/types/enums";
 import type { RecordCorrectionCommand } from "../../domain/commands/commands";
 import type { RunEventV1 } from "../contracts/run-events";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
+import { MemoryCounterfactualRunRepository } from "../runs/counterfactual-repository";
 import {
   MemoryRunEventStore,
   type AppendRunEventsRequest,
@@ -313,9 +315,109 @@ class ReadOnlyEventStore implements RunEventStore {
   async load(_runId: string): Promise<readonly RunEventV1[]> {
     return this.events;
   }
+
+  async loadThrough(
+    _runId: string,
+    throughSequenceNumber: number,
+  ): Promise<readonly RunEventV1[]> {
+    return this.events.slice(0, throughSequenceNumber);
+  }
 }
 
 describe("server-authoritative hosted Stage 3 run", () => {
+  it("runs a coffee alternative from the exact pre-decision fork without copying source events", async () => {
+    const store = new MemoryRunEventStore();
+    const pack = publishedPack();
+    const service = new HostedStage3RunService(
+      pack,
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+      new CounterfactualBranchEngine(
+        store,
+        new MemoryCounterfactualRunRepository(),
+      ),
+    );
+    const ready = await progressToDecision(
+      service,
+      "authorized-certifier",
+      "RUN_STAGE3_COUNTERFACTUAL_SOURCE",
+    );
+    await service.submit(learner, {
+      commandType: "SUBMIT_CERTIFICATE_DECISION",
+      commandId: "COMMAND_STAGE3_COUNTERFACTUAL_ORIGINAL",
+      runId: ready.runId,
+      expectedRunVersion: ready.version,
+      decision: {
+        certificateAssessment: "VALID",
+        issuerAssessment: "RECOGNIZED_AUTHORIZED",
+        storageChoice: "HASH_OFF_CHAIN",
+        lotDisposition: "CONTINUE",
+      },
+      justification: "The original path accepts the valid certificate.",
+      citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 20,
+    });
+    const sourceEvents = await store.load(ready.runId);
+    const originalDecision = sourceEvents.find(
+      (event) =>
+        event.causationId ===
+          "COMMAND_STAGE3_COUNTERFACTUAL_ORIGINAL" &&
+        event.eventType === "DECISION_SUBMITTED",
+    );
+    if (originalDecision === undefined) {
+      throw new Error("Expected the original certificate decision.");
+    }
+    await service.createCounterfactualBranch(learner, {
+      branchRunId: "RUN_STAGE3_COUNTERFACTUAL_ALTERNATIVE",
+      sourceRunId: ready.runId,
+      forkSequenceNumber: originalDecision.sequenceNumber - 1,
+      forkNodeId: "NODE_CERTIFICATE_DECISION",
+      interventionId: "COMMAND_STAGE3_COUNTERFACTUAL_ALTERNATIVE",
+      comparisonMode: "SINGLE_INTERVENTION",
+      createdByUserId: learner.userId,
+      createdAt: NOW,
+    });
+
+    const alternative = await service.submitCounterfactual(learner, {
+      commandType: "SUBMIT_CERTIFICATE_DECISION",
+      commandId: "COMMAND_STAGE3_COUNTERFACTUAL_ALTERNATIVE",
+      runId: "RUN_STAGE3_COUNTERFACTUAL_ALTERNATIVE",
+      expectedRunVersion: 0,
+      decision: {
+        certificateAssessment: "EXPIRED",
+        issuerAssessment: "UNRECOGNIZED",
+        storageChoice: "FULL_DOCUMENT_ON_CHAIN",
+        lotDisposition: "HOLD",
+      },
+      justification:
+        "Explore holding the lot after rejecting the certificate.",
+      citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+      citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
+      confidenceRating: 3,
+      adverseEventProbabilityPercent: 60,
+    });
+
+    expect(alternative.state.runId).toBe(
+      "RUN_STAGE3_COUNTERFACTUAL_ALTERNATIVE",
+    );
+    expect(alternative.state.workflowStep).toBe(
+      "certificate-transaction",
+    );
+    expect(alternative.state.decision?.decision).toMatchObject({
+      certificateAssessment: "EXPIRED",
+      lotDisposition: "HOLD",
+    });
+    expect((await store.load(ready.runId)).length).toBe(
+      sourceEvents.length,
+    );
+    expect(
+      await store.load("RUN_STAGE3_COUNTERFACTUAL_ALTERNATIVE"),
+    ).toHaveLength(alternative.state.version);
+  });
+
   it("allows a learner to create only their own run", async () => {
     const ownRun = await serviceFor(
       new MemoryRunEventStore(),

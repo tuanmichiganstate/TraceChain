@@ -15,8 +15,22 @@ export interface AssignmentStartAvailabilityV1 {
   readonly observedAt: string;
 }
 
+export type CounterfactualLearnerAvailabilityV1 =
+  | "DISABLED"
+  | "AFTER_RUN_COMPLETION"
+  | "AFTER_FEEDBACK_RELEASE";
+
+export interface AssignmentCounterfactualConfigurationV1 {
+  readonly enabled: boolean;
+  readonly allowedDecisionNodeIds: readonly string[];
+  readonly maximumBranchesPerLearner: number;
+  readonly learnerAvailability:
+    CounterfactualLearnerAvailabilityV1;
+  readonly requireReflection: boolean;
+}
+
 export interface HostedAssignmentV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly assignmentId: string;
   readonly title: string;
   readonly packId: string;
@@ -25,6 +39,8 @@ export interface HostedAssignmentV1 {
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
+  readonly counterfactualReplay:
+    AssignmentCounterfactualConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly availableFrom?: string;
@@ -48,13 +64,15 @@ export interface CreateHostedAssignmentRequest {
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
+  readonly counterfactualReplay:
+    AssignmentCounterfactualConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly availableFrom?: string;
   readonly availableUntil?: string;
 }
 
 export interface HostedAssignmentScenarioOptionV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly packId: string;
   readonly packVersion: string;
   readonly scenarioId: string;
@@ -67,12 +85,25 @@ export interface HostedAssignmentScenarioOptionV1 {
       {
         readonly packTitle: string;
         readonly scenarioTitle: string;
+        readonly counterfactualDecisionTitles:
+          Readonly<Record<string, string>>;
       }
     >
   >;
   readonly supportedModes: readonly AssignmentRunMode[];
   readonly modeConfigurations:
     readonly HostedRunModeConfigurationV1[];
+  readonly counterfactualDecisionPoints: readonly {
+    readonly nodeId: string;
+    readonly decisionId: string;
+    readonly titleKey: string;
+    readonly availability:
+      | "AFTER_RUN_COMPLETION"
+      | "AFTER_FEEDBACK_RELEASE"
+      | "INSTRUCTOR_ONLY";
+    readonly maximumBranchesPerLearner: number;
+    readonly reflectionRequired: boolean;
+  }[];
 }
 
 export interface HostedAssignmentLearnerOptionV1 {

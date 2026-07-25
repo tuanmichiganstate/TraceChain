@@ -93,6 +93,30 @@ const OUTCOME_STRATEGIES = new Set([
   "probabilistic",
 ]);
 const SEED_POLICIES = new Set(["supplied", "generated"]);
+const COUNTERFACTUAL_AVAILABILITY = new Set([
+  "AFTER_RUN_COMPLETION",
+  "AFTER_FEEDBACK_RELEASE",
+  "INSTRUCTOR_ONLY",
+]);
+const COUNTERFACTUAL_CREATORS = new Set([
+  "LEARNER",
+  "INSTRUCTOR",
+  "RATER",
+]);
+const COUNTERFACTUAL_DOWNSTREAM_POLICIES = new Set([
+  "REUSE_BASELINE_WHERE_VALID",
+  "INTERACTIVE_AFTER_FORK",
+]);
+const COUNTERFACTUAL_VALUE_TYPES = new Set([
+  "NUMBER",
+  "ORDINAL",
+  "CATEGORICAL",
+]);
+const COUNTERFACTUAL_DIRECTIONS = new Set([
+  "HIGHER_IS_BETTER",
+  "LOWER_IS_BETTER",
+  "CONTEXT_DEPENDENT",
+]);
 
 const LIFECYCLE_STATUSES = new Set([
   "draft",
@@ -386,6 +410,34 @@ function validateLocalizedText(
           (catalog[localizationKey] as string).trim().length > 0,
         "MISSING_LOCALIZATION_KEY",
         `${path}.localizationKey`,
+        `must exist in the ${locale} locale catalogue`,
+      );
+    }
+  }
+}
+
+function validateLocalizationKey(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  supportedLocales: readonly string[],
+): void {
+  const localizationKey = context.string(value, path);
+  if (localizationKey === null) return;
+  context.check(
+    /^[A-Za-z][A-Za-z0-9._-]*$/u.test(localizationKey),
+    "INVALID_LOCALIZATION_KEY",
+    path,
+    "must be a stable catalogue key",
+  );
+  for (const locale of supportedLocales) {
+    const catalog = context.localizationCatalogs[locale];
+    if (catalog !== undefined) {
+      context.check(
+        typeof catalog[localizationKey] === "string" &&
+          (catalog[localizationKey] as string).trim().length > 0,
+        "MISSING_LOCALIZATION_KEY",
+        path,
         `must exist in the ${locale} locale catalogue`,
       );
     }
@@ -1026,6 +1078,7 @@ function validateNodeContent(
   roleIds: ReadonlySet<string>,
   decisionIds: ReadonlySet<string>,
   proposalNodeIds: ReadonlySet<string>,
+  counterfactualDimensionIds: ReadonlySet<string>,
 ): void {
   const nodeType = node.nodeType;
   switch (nodeType) {
@@ -1062,7 +1115,7 @@ function validateNodeContent(
         );
       });
       break;
-    case "DECISION":
+    case "DECISION": {
       context.allowedKeys(
         node,
         [
@@ -1075,6 +1128,7 @@ function validateNodeContent(
           "fields",
           "justification",
           "structuredResponse",
+          "counterfactual",
         ],
         path,
       );
@@ -1087,6 +1141,7 @@ function validateNodeContent(
         `${path}.prompt`,
         supportedLocales,
       );
+      const decisionOptionIds = new Set<string>();
       {
         const fields = context.array(node.fields, `${path}.fields`);
         if (fields !== null) {
@@ -1167,6 +1222,7 @@ function validateNodeContent(
                     "must be unique within the field",
                   );
                   optionIds.add(optionId);
+                  decisionOptionIds.add(optionId);
                 }
                 validateLocalizedText(
                   context,
@@ -1324,7 +1380,115 @@ function validateNodeContent(
           }
         }
       }
+      if (node.counterfactual !== undefined) {
+        const counterfactual = context.object(
+          node.counterfactual,
+          `${path}.counterfactual`,
+        );
+        if (counterfactual !== null) {
+          context.allowedKeys(
+            counterfactual,
+            [
+              "enabled",
+              "availability",
+              "permittedCreators",
+              "allowedAlternativeOptionIds",
+              "comparisonDimensionIds",
+              "downstreamPolicy",
+              "maxBranchesPerLearner",
+              "reflectionRequired",
+              "localizationKey",
+            ],
+            `${path}.counterfactual`,
+          );
+          context.check(
+            typeof counterfactual.enabled === "boolean",
+            "EXPECTED_BOOLEAN",
+            `${path}.counterfactual.enabled`,
+            "must be a boolean",
+          );
+          context.check(
+            typeof counterfactual.availability === "string" &&
+              COUNTERFACTUAL_AVAILABILITY.has(
+                counterfactual.availability,
+              ),
+            "INVALID_COUNTERFACTUAL_AVAILABILITY",
+            `${path}.counterfactual.availability`,
+            "must use an authored counterfactual release boundary",
+          );
+          validateUniqueStrings(
+            context,
+            counterfactual.permittedCreators,
+            `${path}.counterfactual.permittedCreators`,
+            { minimumItems: 1 },
+          ).forEach((creator, creatorIndex) => {
+            context.check(
+              COUNTERFACTUAL_CREATORS.has(creator),
+              "INVALID_COUNTERFACTUAL_CREATOR",
+              `${path}.counterfactual.permittedCreators[${String(creatorIndex)}]`,
+              "must be LEARNER, INSTRUCTOR, or RATER",
+            );
+          });
+          validateUniqueStrings(
+            context,
+            counterfactual.allowedAlternativeOptionIds,
+            `${path}.counterfactual.allowedAlternativeOptionIds`,
+            { minimumItems: 1, identifiers: true },
+          ).forEach((optionId, optionIndex) => {
+            context.check(
+              decisionOptionIds.has(optionId),
+              "UNKNOWN_COUNTERFACTUAL_ALTERNATIVE",
+              `${path}.counterfactual.allowedAlternativeOptionIds[${String(optionIndex)}]`,
+              "must reference an option authored by this decision",
+            );
+          });
+          validateUniqueStrings(
+            context,
+            counterfactual.comparisonDimensionIds,
+            `${path}.counterfactual.comparisonDimensionIds`,
+            { minimumItems: 1, identifiers: true },
+          ).forEach((dimensionId, dimensionIndex) => {
+            context.check(
+              counterfactualDimensionIds.has(dimensionId),
+              "UNKNOWN_COUNTERFACTUAL_COMPARISON_DIMENSION",
+              `${path}.counterfactual.comparisonDimensionIds[${String(dimensionIndex)}]`,
+              "must reference a scenario comparison dimension",
+            );
+          });
+          context.check(
+            typeof counterfactual.downstreamPolicy === "string" &&
+              COUNTERFACTUAL_DOWNSTREAM_POLICIES.has(
+                counterfactual.downstreamPolicy,
+              ),
+            "INVALID_COUNTERFACTUAL_DOWNSTREAM_POLICY",
+            `${path}.counterfactual.downstreamPolicy`,
+            "must use a supported deterministic downstream policy",
+          );
+          if (counterfactual.maxBranchesPerLearner !== undefined) {
+            context.number(
+              counterfactual.maxBranchesPerLearner,
+              `${path}.counterfactual.maxBranchesPerLearner`,
+              { integer: true, minimum: 1, maximum: 20 },
+            );
+          }
+          if (counterfactual.reflectionRequired !== undefined) {
+            context.check(
+              typeof counterfactual.reflectionRequired === "boolean",
+              "EXPECTED_BOOLEAN",
+              `${path}.counterfactual.reflectionRequired`,
+              "must be a boolean",
+            );
+          }
+          validateLocalizationKey(
+            context,
+            counterfactual.localizationKey,
+            `${path}.counterfactual.localizationKey`,
+            supportedLocales,
+          );
+        }
+      }
       break;
+    }
     case "TRANSACTION_PROPOSAL":
       context.allowedKeys(
         node,
@@ -1665,6 +1829,80 @@ function validateRoleReferences(
   });
 }
 
+function validateCounterfactualComparisonDimensions(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  supportedLocales: readonly string[],
+): ReadonlySet<string> {
+  const dimensionIds = new Set<string>();
+  const dimensions = context.array(value, path);
+  if (dimensions === null) return dimensionIds;
+  dimensions.forEach((dimensionValue, dimensionIndex) => {
+    const dimensionPath = `${path}[${String(dimensionIndex)}]`;
+    const dimension = context.object(dimensionValue, dimensionPath);
+    if (dimension === null) return;
+    context.allowedKeys(
+      dimension,
+      [
+        "dimensionId",
+        "title",
+        "description",
+        "valueType",
+        "direction",
+        "unit",
+      ],
+      dimensionPath,
+    );
+    const dimensionId = context.string(
+      dimension.dimensionId,
+      `${dimensionPath}.dimensionId`,
+      { identifier: true },
+    );
+    if (dimensionId !== null) {
+      context.check(
+        !dimensionIds.has(dimensionId),
+        "DUPLICATE_COUNTERFACTUAL_COMPARISON_DIMENSION",
+        `${dimensionPath}.dimensionId`,
+        "must be unique within the scenario",
+      );
+      dimensionIds.add(dimensionId);
+    }
+    validateLocalizedText(
+      context,
+      dimension.title,
+      `${dimensionPath}.title`,
+      supportedLocales,
+    );
+    validateLocalizedText(
+      context,
+      dimension.description,
+      `${dimensionPath}.description`,
+      supportedLocales,
+    );
+    context.check(
+      typeof dimension.valueType === "string" &&
+        COUNTERFACTUAL_VALUE_TYPES.has(dimension.valueType),
+      "INVALID_COUNTERFACTUAL_VALUE_TYPE",
+      `${dimensionPath}.valueType`,
+      "must be NUMBER, ORDINAL, or CATEGORICAL",
+    );
+    context.check(
+      typeof dimension.direction === "string" &&
+        COUNTERFACTUAL_DIRECTIONS.has(dimension.direction),
+      "INVALID_COUNTERFACTUAL_DIRECTION",
+      `${dimensionPath}.direction`,
+      "must define how comparison values should be interpreted",
+    );
+    if (dimension.unit !== undefined) {
+      context.string(dimension.unit, `${dimensionPath}.unit`, {
+        identifier: true,
+      });
+    }
+  });
+  return dimensionIds;
+}
+
 function validateScenarioNodes(
   context: ValidationContext,
   scenario: Readonly<Record<string, unknown>>,
@@ -1673,6 +1911,7 @@ function validateScenarioNodes(
   evidenceIds: ReadonlySet<string>,
   policyIds: ReadonlySet<string>,
   roleIds: ReadonlySet<string>,
+  counterfactualDimensionIds: ReadonlySet<string>,
 ): void {
   const nodes = context.array(scenario.nodes, `${path}.nodes`);
   if (nodes === null) return;
@@ -1747,6 +1986,7 @@ function validateScenarioNodes(
       roleIds,
       decisionIds,
       proposalNodeIds,
+      counterfactualDimensionIds,
     );
     const targets = validateTransitions(
       context,
@@ -1831,6 +2071,7 @@ function validateScenario(
       "initialState",
       "policies",
       "evidenceItems",
+      "counterfactualComparisonDimensions",
       "entryNodeId",
       "nodes",
       "rubricIds",
@@ -2547,6 +2788,13 @@ function validateScenario(
     );
   });
 
+  const counterfactualDimensionIds =
+    validateCounterfactualComparisonDimensions(
+      context,
+      scenario.counterfactualComparisonDimensions,
+      `${path}.counterfactualComparisonDimensions`,
+      supportedLocales,
+    );
   validateScenarioNodes(
     context,
     scenario,
@@ -2555,6 +2803,7 @@ function validateScenario(
     evidenceIds,
     policyIds,
     roleIds,
+    counterfactualDimensionIds,
   );
   validateHostedRuntime(context, scenario, path, schemaVersion);
 }
@@ -2567,10 +2816,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.1.0",
-    "HOSTED_RUNTIME_REQUIRES_SCHEMA_1_1",
+    schemaVersion === "1.2.0",
+    "HOSTED_RUNTIME_REQUIRES_SCHEMA_1_2",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.1.0",
+    "requires scenario-pack schema version 1.2.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -2751,10 +3000,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.1.0",
+      pack.schemaVersion === "1.2.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.1.0",
+      "must equal 1.2.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

@@ -73,10 +73,20 @@ class FakeD1Statement implements D1PreparedStatementLike {
       this.query.includes("ORDER BY sequence_number ASC")
     ) {
       const [runId] = this.values;
+      const throughSequenceNumber = this.query.includes(
+        "sequence_number <= ?",
+      )
+        ? this.values[1]
+        : undefined;
       return {
         success: true,
         results: this.database.rows
-          .filter((row) => row.runId === runId)
+          .filter(
+            (row) =>
+              row.runId === runId &&
+              (typeof throughSequenceNumber !== "number" ||
+                row.sequenceNumber <= throughSequenceNumber),
+          )
           .sort(
             (left, right) =>
               left.sequenceNumber - right.sequenceNumber,
@@ -239,6 +249,9 @@ describe("D1 hosted run event store", () => {
     expect(retried.wasIdempotentReplay).toBe(true);
     expect(retried.events).toEqual(appended.events);
     expect(await store.load(request.runId)).toEqual(appended.events);
+    expect(await store.loadThrough(request.runId, 1)).toEqual(
+      appended.events.slice(0, 1),
+    );
     expect(database.rows).toHaveLength(2);
   });
 

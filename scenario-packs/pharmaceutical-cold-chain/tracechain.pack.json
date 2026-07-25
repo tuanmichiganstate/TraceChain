@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -182,7 +182,7 @@
   "scenarios": [
     {
       "scenarioId": "SCN_PHARMA_COLD_CHAIN_STARTER",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.scenario.title"
@@ -363,6 +363,7 @@
           }
         }
       ],
+      "counterfactualComparisonDimensions": [],
       "entryNodeId": "NODE_PHARMA_BRIEFING",
       "nodes": [
         {

@@ -24,6 +24,11 @@ import type {
   DecisionPolicyCitationConfigurationV1,
   StructuredDecisionResponseConfigurationV1,
 } from "../contracts/scenario-pack";
+import {
+  createCounterfactualExplorerApi,
+  type CounterfactualExplorerApi,
+} from "../counterfactual/counterfactual-api";
+import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 
 interface LearnerSession {
   readonly userId: string;
@@ -52,6 +57,7 @@ export interface HostedLearnerApi {
     runId: string,
     command: Readonly<Record<string, unknown>>,
   ): Promise<LearnerRunProjectionV1>;
+  readonly counterfactuals?: CounterfactualExplorerApi;
 }
 
 type FetchLike = (
@@ -100,6 +106,7 @@ export function createHostedLearnerApi(
   fetcher: FetchLike = globalThis.fetch.bind(globalThis),
 ): HostedLearnerApi {
   return {
+    counterfactuals: createCounterfactualExplorerApi(fetcher),
     loadSession: () =>
       apiJson<LearnerSession>(fetcher, "/api/v1/session"),
     async loadAssignments() {
@@ -370,6 +377,22 @@ export function HostedLearnerScreen({
   }
 
   const isLearner = session?.roles.includes("learner") ?? false;
+  const counterfactualAssignment = assignments.find(
+    ({ assignment, runs }) =>
+      assignment.mode === "sandbox" &&
+      assignment.counterfactualReplay.enabled &&
+      runs.some((run) => run.runId === runId),
+  )?.assignment;
+  const counterfactualApi =
+    counterfactualAssignment !== undefined &&
+    (counterfactualAssignment.counterfactualReplay
+      .learnerAvailability === "AFTER_RUN_COMPLETION" ||
+      (counterfactualAssignment.counterfactualReplay
+        .learnerAvailability === "AFTER_FEEDBACK_RELEASE" &&
+        feedback !== null &&
+        feedback !== "withheld"))
+      ? api.counterfactuals
+      : undefined;
   return (
     <main className="start" id="main-content">
       <div className="start__inner">
@@ -486,7 +509,18 @@ export function HostedLearnerScreen({
               onSubmit={submit}
             />
             {projection.workflowState.permittedActionIds.length === 0 ? (
-              <LearnerFeedback feedback={feedback} />
+              <>
+                <LearnerFeedback feedback={feedback} />
+                {counterfactualApi !== undefined ? (
+                  <CounterfactualExplorer
+                    api={counterfactualApi}
+                    sourceRunId={runId}
+                    renderContinuation={(options) => (
+                      <HostedRunActionControls {...options} />
+                    )}
+                  />
+                ) : null}
+              </>
             ) : null}
           </>
         )}
@@ -1111,6 +1145,30 @@ function ActionControl({
         })
       }
     />
+  );
+}
+
+export function HostedRunActionControls({
+  projection,
+  busy,
+  onSubmit,
+}: {
+  readonly projection: LearnerRunProjectionV1;
+  readonly busy: boolean;
+  readonly onSubmit: (
+    input: Readonly<Record<string, unknown>>,
+  ) => Promise<void>;
+}): ReactNode {
+  return projection.workflowState.permittedActionIds.map(
+    (action) => (
+      <ActionControl
+        key={`${projection.version}-${action}`}
+        action={action}
+        projection={projection}
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    ),
   );
 }
 

@@ -15,6 +15,12 @@ import {
 } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import { D1ApplicationPrincipalRepository } from "./d1-principal-repository";
+import { D1CounterfactualRunRepository } from "./d1-counterfactual-run-repository";
+import {
+  CounterfactualReflectionRepositoryError,
+  D1CounterfactualReflectionRepository,
+  normalizeCounterfactualReflectionResponse,
+} from "./d1-counterfactual-reflection-repository";
 import { D1ScenarioPackRepository } from "./d1-scenario-pack-repository";
 import type {
   D1AllResultLike,
@@ -123,6 +129,160 @@ function draftPack() {
 }
 
 describe("D1 instructor-platform foundation", () => {
+  it("stores one bounded, idempotent practice reflection per branch", async () => {
+    const database = new SqliteD1Database();
+    try {
+      database.sqlite
+        .prepare(
+          `INSERT INTO application_users (
+            user_id, email, status, created_at_utc
+          ) VALUES (?, ?, 'active', ?)`,
+        )
+        .run(
+          "USER_LEARNER_001",
+          "learner@example.edu",
+          "2026-07-25T03:00:00.000Z",
+        );
+      await new D1CounterfactualRunRepository(database).create({
+        schemaVersion: "1.0.0",
+        branchRunId: "RUN_COUNTERFACTUAL_REFLECTION",
+        sourceRunId: "RUN_SOURCE_001",
+        forkSequenceNumber: 12,
+        forkNodeId: "NODE_CERTIFICATE_DECISION",
+        forkActorId: "ACTOR_QUALITY_001",
+        forkOrganizationId: "ORG_PROCESSOR",
+        forkRoleId: "ROLE_QUALITY",
+        sourcePackId: "PACK_STANDARD_COFFEE_STAGE3",
+        sourcePackVersion: "1.8.0",
+        sourceScenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+        sourceScenarioVersion: "1.8.0",
+        sourceConfigurationHash: "a".repeat(64),
+        sourceSeed: "COUNTERFACTUAL_SEED",
+        sourceStateHash: "b".repeat(64),
+        sourceInformationStateHash: "c".repeat(64),
+        counterfactualType: "DECISION",
+        interventionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        comparisonMode: "SINGLE_INTERVENTION",
+        createdByUserId: "USER_LEARNER_001",
+        createdAt: "2026-07-25T03:10:00.000Z",
+      });
+      const repository =
+        new D1CounterfactualReflectionRepository(database);
+      const reflection = {
+        schemaVersion: "1.0.0",
+        reflectionId: "REFLECTION_001",
+        branchRunId: "RUN_COUNTERFACTUAL_REFLECTION",
+        response: {
+          evidenceThatMattered: "The certificate status.",
+          reasonForDifference: "The lot was held.",
+          foreseeableConsequences: "Processing would be delayed.",
+          laterInformation: "The replacement arrived later.",
+          revisedDecisionRule: "Verify before continuing.",
+        },
+        submittedByUserId: "USER_LEARNER_001",
+        submittedAt: "2026-07-25T04:00:00.000Z",
+      } as const;
+
+      const created = await repository.create(reflection);
+      const replayed = await repository.create({
+        ...reflection,
+        submittedAt: "2026-07-25T04:01:00.000Z",
+      });
+
+      expect(created.wasIdempotentReplay).toBe(false);
+      expect(replayed).toEqual({
+        reflection,
+        wasIdempotentReplay: true,
+      });
+      expect(await repository.find(reflection.branchRunId)).toEqual(
+        reflection,
+      );
+      await expect(
+        repository.create({
+          ...reflection,
+          response: {
+            ...reflection.response,
+            revisedDecisionRule: "A different response.",
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: "COUNTERFACTUAL_REFLECTION_CONFLICT",
+      });
+      expect(() =>
+        normalizeCounterfactualReflectionResponse({
+          ...reflection.response,
+          laterInformation: "x".repeat(1_001),
+        }),
+      ).toThrow(CounterfactualReflectionRepositoryError);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("stores immutable copy-on-write branch metadata without source events", async () => {
+    const database = new SqliteD1Database();
+    try {
+      database.sqlite
+        .prepare(
+          `INSERT INTO application_users (
+            user_id, email, status, created_at_utc
+          ) VALUES (?, ?, 'active', ?)`,
+        )
+        .run(
+          "USER_LEARNER_001",
+          "learner@example.edu",
+          "2026-07-25T03:00:00.000Z",
+        );
+      const repository = new D1CounterfactualRunRepository(database);
+      const metadata = {
+        schemaVersion: "1.0.0",
+        branchRunId: "RUN_COUNTERFACTUAL_001",
+        sourceRunId: "RUN_SOURCE_001",
+        forkSequenceNumber: 12,
+        forkNodeId: "NODE_CERTIFICATE_DECISION",
+        forkActorId: "ACTOR_QUALITY_001",
+        forkOrganizationId: "ORG_PROCESSOR",
+        forkRoleId: "ROLE_QUALITY",
+        sourcePackId: "PACK_STANDARD_COFFEE_STAGE3",
+        sourcePackVersion: "1.8.0",
+        sourceScenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+        sourceScenarioVersion: "1.8.0",
+        sourceConfigurationHash: "a".repeat(64),
+        sourceSeed: "COUNTERFACTUAL_SEED",
+        sourceStateHash: "b".repeat(64),
+        sourceInformationStateHash: "c".repeat(64),
+        counterfactualType: "DECISION",
+        interventionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        comparisonMode: "SINGLE_INTERVENTION",
+        createdByUserId: "USER_LEARNER_001",
+        createdAt: "2026-07-25T03:10:00.000Z",
+      } as const;
+
+      const created = await repository.create(metadata);
+      const replayed = await repository.create(
+        structuredClone(metadata),
+      );
+
+      expect(created.wasIdempotentReplay).toBe(false);
+      expect(replayed.wasIdempotentReplay).toBe(true);
+      expect(await repository.find(metadata.branchRunId)).toEqual(
+        metadata,
+      );
+      expect(
+        await repository.listBySourceRun(metadata.sourceRunId),
+      ).toEqual([metadata]);
+      expect(
+        database.sqlite
+          .prepare(
+            "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
+          )
+          .get(metadata.sourceRunId),
+      ).toEqual({ count: 0 });
+    } finally {
+      database.close();
+    }
+  });
+
   it("stores drafts and enforces immutable content-addressed publication", async () => {
     const database = new SqliteD1Database();
     try {

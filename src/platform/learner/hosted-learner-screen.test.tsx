@@ -14,6 +14,14 @@ const availableStart = {
   observedAt: "2026-07-25T05:00:00.000Z",
 };
 
+const disabledCounterfactualReplay = {
+  enabled: false,
+  allowedDecisionNodeIds: [],
+  maximumBranchesPerLearner: 1,
+  learnerAvailability: "DISABLED",
+  requireReflection: false,
+} as const;
+
 function projection(
   action = "INSPECT_EVIDENCE",
 ): LearnerRunProjectionV1 {
@@ -45,7 +53,7 @@ describe("hosted learner workspace", () => {
       .mockResolvedValueOnce([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_001",
             title: "Coffee governance",
             packId: "PACK_COFFEE",
@@ -65,6 +73,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -390,7 +400,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_PHARMA_001",
             title: "Cold-chain review",
             packId: "PACK_PHARMA",
@@ -400,6 +410,8 @@ describe("hosted learner workspace", () => {
             mode: "tutorial",
             runConfiguration:
               genericProjection.presentation!.modeConfiguration,
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -506,7 +518,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_001",
             title: "Coffee governance",
             packId: "PACK_COFFEE",
@@ -526,6 +538,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -615,7 +629,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_001",
             title: "Coffee governance",
             packId: "PACK_COFFEE",
@@ -636,6 +650,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -718,7 +734,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_001",
             title: "Coffee governance",
             packId: "PACK_COFFEE",
@@ -738,6 +754,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",
@@ -819,7 +837,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_001",
             title: "Coffee governance",
             packId: "PACK_COFFEE",
@@ -839,6 +857,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "released",
@@ -988,7 +1008,7 @@ describe("hosted learner workspace", () => {
       loadAssignments: vi.fn().mockResolvedValue([
         {
           assignment: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             assignmentId: "ASSIGNMENT_FUTURE_001",
             title: "Future coffee case",
             packId: "PACK_COFFEE",
@@ -1008,6 +1028,8 @@ describe("hosted learner workspace", () => {
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
             learnerUserIds: ["USER_LEARNER_001"],
             status: "active",
             feedbackReleaseStatus: "withheld",

@@ -18,6 +18,10 @@ export interface AppendRunEventsResult {
 export interface RunEventStore {
   append(request: AppendRunEventsRequest): Promise<AppendRunEventsResult>;
   load(runId: string): Promise<readonly RunEventV1[]>;
+  loadThrough(
+    runId: string,
+    throughSequenceNumber: number,
+  ): Promise<readonly RunEventV1[]>;
 }
 
 export class RunEventStoreConflictError extends Error {
@@ -155,6 +159,25 @@ export class MemoryRunEventStore implements RunEventStore {
 
   async load(runId: string): Promise<readonly RunEventV1[]> {
     return this.streams.get(runId) ?? [];
+  }
+
+  async loadThrough(
+    runId: string,
+    throughSequenceNumber: number,
+  ): Promise<readonly RunEventV1[]> {
+    if (
+      !Number.isInteger(throughSequenceNumber) ||
+      throughSequenceNumber < 0
+    ) {
+      throw new RunEventStoreConflictError(
+        "INVALID_EVENT_BATCH",
+        "A replay boundary must be a non-negative integer.",
+      );
+    }
+    return (this.streams.get(runId) ?? []).slice(
+      0,
+      throughSequenceNumber,
+    );
   }
 
   private idempotencyIndexKey(runId: string, idempotencyKey: string): string {

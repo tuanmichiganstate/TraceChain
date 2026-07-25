@@ -26,6 +26,10 @@ import type {
 } from "../../domain/simulation/types";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import type {
+  CounterfactualRunMetadataV1,
+  CreateCounterfactualBranchRequestV1,
+} from "../contracts/counterfactual";
+import type {
   LearnerRunProjectionV1,
   PlatformRunEventType,
   RunEventV1,
@@ -45,6 +49,12 @@ import type {
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
 import { evaluateAutomatedEvidenceRule } from "../runs/automated-evidence-rule";
+import {
+  CounterfactualBranchEngine,
+  CounterfactualBranchError,
+  type CounterfactualBranchRuntimeAdapter,
+} from "../runs/counterfactual-branch";
+import type { SaveCounterfactualRunResult } from "../runs/counterfactual-repository";
 import { projectRunStateForRole } from "../runs/projection";
 import {
   hashReplayState,
@@ -140,8 +150,45 @@ interface BuiltEvent {
   readonly nextState: HostedStage3RunState;
 }
 
+interface LoadedStage3Run {
+  readonly state: HostedStage3RunState;
+  readonly commandEvents: readonly RunEventV1[];
+  readonly startedAt: string;
+  readonly isCounterfactual: boolean;
+}
+
 function requestDigest(request: unknown): string {
   return sha256Hex(canonicalize(request));
+}
+
+function submittedCommandIntent(
+  command: HostedStage3Command,
+): JsonObject {
+  const {
+    commandId: _commandId,
+    runId: _runId,
+    expectedRunVersion: _expectedRunVersion,
+    ...intent
+  } = command;
+  return JSON.parse(canonicalize(intent)) as JsonObject;
+}
+
+function eventsWithSubmittedCommand(
+  events: readonly BuiltEvent[],
+  command: HostedStage3Command,
+): readonly UnsequencedRunEventV1[] {
+  const submittedCommand = submittedCommandIntent(command);
+  return events.map((event, index) =>
+    index === 0
+      ? {
+          ...event.unsequenced,
+          payload: {
+            ...event.unsequenced.payload,
+            submittedCommand,
+          },
+        }
+      : event.unsequenced,
+  );
 }
 
 function rejectSelfAssertedIdentity(
@@ -862,8 +909,40 @@ export class HostedStage3RunService {
     private readonly eventStore: RunEventStore,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
+    private readonly counterfactualBranches?: CounterfactualBranchEngine,
   ) {
     this.domainRuntime = new CoffeeHostedDomainRuntime(pack);
+  }
+
+  async createCounterfactualBranch(
+    principal: ApplicationPrincipal | null,
+    request: CreateCounterfactualBranchRequestV1,
+  ): Promise<SaveCounterfactualRunResult> {
+    if (this.counterfactualBranches === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Counterfactual branch storage is not configured.",
+      );
+    }
+    const creator = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    if (creator.userId !== request.createdByUserId) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The authenticated user must create the branch as themselves.",
+      );
+    }
+    const source = await this.loadState(request.sourceRunId);
+    if (creator.roles.includes("learner")) {
+      requireAssignedLearner(creator, source.learnerUserId);
+    }
+    return this.counterfactualBranches.createBranch(
+      request,
+      this.counterfactualAdapter(),
+    );
   }
 
   async createRun(
@@ -1025,15 +1104,38 @@ export class HostedStage3RunService {
     principal: ApplicationPrincipal | null,
     command: HostedStage3Command,
   ): Promise<HostedStage3RunResult> {
-    const events = await this.eventStore.load(command.runId);
-    if (events.length === 0) {
+    return this.submitCommand(principal, command, false);
+  }
+
+  async submitCounterfactual(
+    principal: ApplicationPrincipal | null,
+    command: HostedStage3Command,
+  ): Promise<HostedStage3RunResult> {
+    return this.submitCommand(principal, command, true);
+  }
+
+  private async submitCommand(
+    principal: ApplicationPrincipal | null,
+    command: HostedStage3Command,
+    requireCounterfactual: boolean,
+  ): Promise<HostedStage3RunResult> {
+    const loaded = await this.loadRun(command.runId);
+    if (requireCounterfactual !== loaded.isCounterfactual) {
       throw new HostedRunCommandError(
-        "RUN_NOT_FOUND",
-        `Run ${command.runId} does not exist.`,
+        "WORKFLOW_PRECONDITION_FAILED",
+        requireCounterfactual
+          ? "The requested run is not a counterfactual branch."
+          : "Counterfactual branches require the exploratory command endpoint.",
       );
     }
-    let state = await this.replay(events);
-    const learner = requireAssignedLearner(principal, state.learnerUserId);
+    const events = loaded.commandEvents;
+    let state = loaded.state;
+    const learner = requireCounterfactual
+      ? this.requireCounterfactualActor(
+          principal,
+          state.learnerUserId,
+        )
+      : requireAssignedLearner(principal, state.learnerUserId);
     rejectSelfAssertedIdentity(command);
     const digest = requestDigest(command);
     const existing = events.filter(
@@ -1065,13 +1167,7 @@ export class HostedStage3RunService {
         "A completed run cannot accept another learner command.",
       );
     }
-    const startedAt = events[0]?.serverTimestampUtc;
-    if (startedAt === undefined) {
-      throw new HostedRunCommandError(
-        "PACK_CONTRACT_MISMATCH",
-        "A hosted run must retain its creation event.",
-      );
-    }
+    const startedAt = loaded.startedAt;
     const timing = this.runTiming(
       state,
       startedAt,
@@ -1118,7 +1214,7 @@ export class HostedStage3RunService {
       const appendResult = await this.eventStore.append({
         runId: command.runId,
         expectedNextSequenceNumber: events.length + 1,
-        events: [expired.unsequenced],
+        events: eventsWithSubmittedCommand([expired], command),
       });
       return {
         state: expired.nextState,
@@ -2405,7 +2501,7 @@ export class HostedStage3RunService {
     const appendResult = await this.eventStore.append({
       runId: command.runId,
       expectedNextSequenceNumber: events.length + 1,
-      events: built.map((event) => event.unsequenced),
+      events: eventsWithSubmittedCommand(built, command),
     });
     return {
       state,
@@ -2418,15 +2514,8 @@ export class HostedStage3RunService {
     principal: ApplicationPrincipal | null,
     runId: string,
   ): Promise<LearnerRunProjectionV1> {
-    const events = await this.eventStore.load(runId);
-    const firstEvent = events[0];
-    if (firstEvent === undefined) {
-      throw new HostedRunCommandError(
-        "RUN_NOT_FOUND",
-        `Run ${runId} does not exist.`,
-      );
-    }
-    const state = await this.replay(events);
+    const loaded = await this.loadRun(runId);
+    const state = loaded.state;
     requireAssignedLearner(principal, state.learnerUserId);
     return {
       ...projectRunStateForRole(
@@ -2435,10 +2524,100 @@ export class HostedStage3RunService {
       ),
       timing: this.runTiming(
         state,
-        firstEvent.serverTimestampUtc,
+        loaded.startedAt,
         this.clock.now(),
       ),
     };
+  }
+
+  async counterfactualProjection(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<LearnerRunProjectionV1> {
+    const loaded = await this.loadRun(runId);
+    if (!loaded.isCounterfactual) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "The requested run is not a counterfactual branch.",
+      );
+    }
+    this.requireCounterfactualActor(
+      principal,
+      loaded.state.learnerUserId,
+    );
+    return {
+      ...projectRunStateForRole(
+        this.toProjectionState(loaded.state),
+        loaded.state.activeTrustedContext.roleId,
+      ),
+      timing: this.runTiming(
+        loaded.state,
+        loaded.startedAt,
+        this.clock.now(),
+      ),
+    };
+  }
+
+  async counterfactualSourceProjection(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<LearnerRunProjectionV1> {
+    const loaded = await this.loadRun(runId);
+    if (loaded.isCounterfactual) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "The requested run is not an original source run.",
+      );
+    }
+    this.requireCounterfactualActor(
+      principal,
+      loaded.state.learnerUserId,
+    );
+    return {
+      ...projectRunStateForRole(
+        this.toProjectionState(loaded.state),
+        loaded.state.activeTrustedContext.roleId,
+      ),
+      timing: this.runTiming(
+        loaded.state,
+        loaded.startedAt,
+        this.clock.now(),
+      ),
+    };
+  }
+
+  async counterfactualForkProjection(
+    principal: ApplicationPrincipal | null,
+    sourceRunId: string,
+    forkSequenceNumber: number,
+    roleId: string,
+  ): Promise<LearnerRunProjectionV1> {
+    const throughDecision = await this.eventStore.loadThrough(
+      sourceRunId,
+      forkSequenceNumber + 1,
+    );
+    const decision = throughDecision[forkSequenceNumber];
+    if (
+      throughDecision.length !== forkSequenceNumber + 1 ||
+      decision === undefined ||
+      decision.roleId !== roleId
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The requested fork no longer matches its original trusted role.",
+      );
+    }
+    const state = await this.replay(
+      throughDecision.slice(0, forkSequenceNumber),
+    );
+    this.requireCounterfactualActor(
+      principal,
+      state.learnerUserId,
+    );
+    return projectRunStateForRole(
+      this.toProjectionState(state),
+      roleId,
+    );
   }
 
   async instructorTimeline(
@@ -2760,14 +2939,124 @@ export class HostedStage3RunService {
   }
 
   async loadState(runId: string): Promise<HostedStage3RunState> {
+    return (await this.loadRun(runId)).state;
+  }
+
+  private async loadRun(runId: string): Promise<LoadedStage3Run> {
+    if (this.counterfactualBranches !== undefined) {
+      try {
+        const replay =
+          await this.counterfactualBranches.reconstructBranch(
+            runId,
+            this.counterfactualAdapter(),
+          );
+        const startedAt =
+          replay.sourcePrefixEvents[0]?.serverTimestampUtc;
+        if (startedAt === undefined) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "A counterfactual source must retain its creation event.",
+          );
+        }
+        return {
+          state: replay.currentState,
+          commandEvents: replay.branchSuffixEvents,
+          startedAt,
+          isCounterfactual: true,
+        };
+      } catch (error) {
+        if (
+          !(error instanceof CounterfactualBranchError) ||
+          error.code !== "COUNTERFACTUAL_BRANCH_NOT_FOUND"
+        ) {
+          throw error;
+        }
+      }
+    }
     const events = await this.eventStore.load(runId);
-    if (events.length === 0) {
+    const startedAt = events[0]?.serverTimestampUtc;
+    if (startedAt === undefined) {
       throw new HostedRunCommandError(
         "RUN_NOT_FOUND",
         `Run ${runId} does not exist.`,
       );
     }
-    return this.replay(events);
+    return {
+      state: await this.replay(events),
+      commandEvents: events,
+      startedAt,
+      isCounterfactual: false,
+    };
+  }
+
+  private counterfactualAdapter(): CounterfactualBranchRuntimeAdapter<HostedStage3RunState> {
+    return {
+      replaySourcePrefix: (events) => this.replay(events),
+      forkState: (sourceState, metadata) =>
+        this.forkCounterfactualState(sourceState, metadata),
+      replayBranchSuffix: (forkState, events) =>
+        this.replayFromCounterfactualFork(forkState, events),
+      stateForHash: (state) => state,
+      informationStateForHash: (state, roleId) =>
+        projectRunStateForRole(this.toProjectionState(state), roleId),
+    };
+  }
+
+  private forkCounterfactualState(
+    sourceState: Readonly<HostedStage3RunState>,
+    metadata: CounterfactualRunMetadataV1,
+  ): HostedStage3RunState {
+    if (
+      sourceState.activeTrustedContext.actorId !==
+        metadata.forkActorId ||
+      sourceState.activeTrustedContext.organizationId !==
+        metadata.forkOrganizationId ||
+      sourceState.activeTrustedContext.roleId !== metadata.forkRoleId
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The source state does not retain the trusted context at the fork.",
+      );
+    }
+    return {
+      ...structuredClone(sourceState),
+      runId: metadata.branchRunId,
+      version: 0,
+    };
+  }
+
+  private async replayFromCounterfactualFork(
+    forkState: Readonly<HostedStage3RunState>,
+    events: readonly RunEventV1[],
+  ): Promise<HostedStage3RunState> {
+    const state = await replayRunEventsAsync<
+      HostedStage3RunState | null
+    >(
+      structuredClone(forkState),
+      events,
+      (current, event) => this.applyEvent(current, event),
+    );
+    if (state === null) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "A counterfactual suffix unexpectedly removed run state.",
+      );
+    }
+    return state;
+  }
+
+  private requireCounterfactualActor(
+    principal: ApplicationPrincipal | null,
+    learnerUserId: string,
+  ): ApplicationPrincipal {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    return actor.roles.includes("learner")
+      ? requireAssignedLearner(actor, learnerUserId)
+      : actor;
   }
 
   private async replay(

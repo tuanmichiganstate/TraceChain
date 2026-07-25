@@ -4,6 +4,8 @@ import {
   SequenceIdGenerator,
 } from "../../domain/simulation/environment";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
+import { MemoryCounterfactualRunRepository } from "../runs/counterfactual-repository";
 import { MemoryRunEventStore } from "../runs/event-store";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
@@ -48,7 +50,7 @@ function createService(store = new MemoryRunEventStore()) {
     service: new GenericHostedRunService(
       pack,
       "SCN_PHARMA_COLD_CHAIN_STARTER",
-      "1.1.0",
+      "1.2.0",
       store,
       new FixedClock(NOW),
       new SequenceIdGenerator(1),
@@ -57,6 +59,112 @@ function createService(store = new MemoryRunEventStore()) {
 }
 
 describe("GenericHostedRunService", () => {
+  it("runs an alternative decision from a copy-on-write fork through the normal command engine", async () => {
+    const store = new MemoryRunEventStore();
+    const branches = new MemoryCounterfactualRunRepository();
+    const pack = publishedPack();
+    const service = new GenericHostedRunService(
+      pack,
+      "SCN_PHARMA_COLD_CHAIN_STARTER",
+      "1.2.0",
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+      new CounterfactualBranchEngine(store, branches),
+    );
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_PHARMA_COUNTERFACTUAL",
+      runId: "RUN_PHARMA_COUNTERFACTUAL_SOURCE",
+      assignmentId: "ASSIGNMENT_PHARMA_001",
+      learnerUserId: learner.userId,
+      mode: "sandbox",
+    });
+    const advanced = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_PHARMA_COUNTERFACTUAL",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_PHARMA_COUNTERFACTUAL",
+      runId: advanced.state.runId,
+      expectedRunVersion: advanced.state.version,
+      evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+    });
+    const original = await service.submit(learner, {
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      commandId: "COMMAND_ORIGINAL_PHARMA_COUNTERFACTUAL",
+      runId: inspected.state.runId,
+      expectedRunVersion: inspected.state.version,
+      decisionId: "DECISION_PHARMA_RELEASE",
+      responses: {
+        shipmentAction: ["HOLD_AND_INVESTIGATE"],
+      },
+      justification: "Hold the shipment while the excursion is reviewed.",
+    });
+    await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_COMPLETE_PHARMA_COUNTERFACTUAL",
+      runId: original.state.runId,
+      expectedRunVersion: original.state.version,
+    });
+    const sourceEvents = await store.load(created.state.runId);
+    const originalDecision = sourceEvents.find(
+      (event) =>
+        event.causationId ===
+          "COMMAND_ORIGINAL_PHARMA_COUNTERFACTUAL" &&
+        event.eventType === "DECISION_SUBMITTED",
+    );
+    if (originalDecision === undefined) {
+      throw new Error("Expected the original decision event.");
+    }
+    expect(originalDecision.payload.submittedCommand).toEqual({
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      decisionId: "DECISION_PHARMA_RELEASE",
+      justification:
+        "Hold the shipment while the excursion is reviewed.",
+      responses: {
+        shipmentAction: ["HOLD_AND_INVESTIGATE"],
+      },
+    });
+
+    await service.createCounterfactualBranch(learner, {
+      branchRunId: "RUN_PHARMA_COUNTERFACTUAL_ALTERNATIVE",
+      sourceRunId: created.state.runId,
+      forkSequenceNumber: originalDecision.sequenceNumber - 1,
+      forkNodeId: "NODE_PHARMA_DECISION",
+      interventionId: "COMMAND_ALTERNATIVE_PHARMA_COUNTERFACTUAL",
+      comparisonMode: "SINGLE_INTERVENTION",
+      createdByUserId: learner.userId,
+      createdAt: NOW,
+    });
+    const alternative = await service.submitCounterfactual(learner, {
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      commandId: "COMMAND_ALTERNATIVE_PHARMA_COUNTERFACTUAL",
+      runId: "RUN_PHARMA_COUNTERFACTUAL_ALTERNATIVE",
+      expectedRunVersion: 0,
+      decisionId: "DECISION_PHARMA_RELEASE",
+      responses: {
+        shipmentAction: ["RELEASE_WITHOUT_REVIEW"],
+      },
+      justification: "Explore the consequence of releasing immediately.",
+    });
+
+    expect(alternative.state.runId).toBe(
+      "RUN_PHARMA_COUNTERFACTUAL_ALTERNATIVE",
+    );
+    expect(alternative.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_CONSEQUENCE_RELEASE",
+    );
+    expect((await store.load(created.state.runId)).length).toBe(
+      sourceEvents.length,
+    );
+    expect(
+      await store.load("RUN_PHARMA_COUNTERFACTUAL_ALTERNATIVE"),
+    ).toHaveLength(alternative.state.version);
+  });
+
   it("registers only the node and transition subset it can execute", () => {
     const scenario = publishedPack().scenarios[0];
     const firstNode = scenario?.nodes[0];

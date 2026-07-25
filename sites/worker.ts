@@ -1,4 +1,7 @@
-import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
+import type {
+  DecisionNodeV1,
+  ScenarioPackV1,
+} from "../src/platform/contracts/scenario-pack";
 import type {
   CreateHostedAssignmentRequest,
   HostedAssignmentLearnerOptionV1,
@@ -9,6 +12,10 @@ import type {
 import type {
   HostedAssignmentDecisionOutcomeReportV1,
 } from "../src/platform/contracts/decision-outcome-report";
+import type {
+  AssignmentCounterfactualReportV1,
+  CounterfactualRunMetadataV1,
+} from "../src/platform/contracts/counterfactual";
 import type {
   AssignmentExportIdentityMode,
 } from "../src/platform/contracts/assignment-export";
@@ -32,6 +39,7 @@ import {
   HostedAuthorizationError,
   requireAssignedLearner,
   requireApplicationRole,
+  type ApplicationPrincipal,
 } from "../src/platform/hosted/access";
 import {
   SystemUtcClock,
@@ -47,6 +55,17 @@ import type {
 import {
   createHostedRuntimeService,
 } from "../src/platform/hosted/hosted-runtime-service";
+import {
+  createCounterfactualComparison,
+} from "../src/platform/hosted/counterfactual-comparison";
+import {
+  counterfactualDecisionPoints,
+  validateCounterfactualIntervention,
+} from "../src/platform/hosted/counterfactual-points";
+import {
+  commandForCounterfactualReplay,
+  sourceCommandBatchesAfterFork,
+} from "../src/platform/hosted/counterfactual-replay";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
 import {
   ApplicationAccessRepositoryError,
@@ -56,6 +75,15 @@ import {
   AssignmentRepositoryError,
   D1AssignmentRepository,
 } from "../src/platform/persistence/d1-assignment-repository";
+import {
+  D1CounterfactualRunRepository,
+  D1CounterfactualRunRepositoryError,
+} from "../src/platform/persistence/d1-counterfactual-run-repository";
+import {
+  CounterfactualReflectionRepositoryError,
+  D1CounterfactualReflectionRepository,
+  normalizeCounterfactualReflectionResponse,
+} from "../src/platform/persistence/d1-counterfactual-reflection-repository";
 import { D1RunEventStore } from "../src/platform/persistence/d1-run-event-store";
 import { ensureD1FoundationSchema } from "../src/platform/persistence/d1-schema";
 import { D1ScenarioPackRepository } from "../src/platform/persistence/d1-scenario-pack-repository";
@@ -64,6 +92,17 @@ import {
   ScormPackageJobRepositoryError,
 } from "../src/platform/persistence/d1-scorm-package-job-repository";
 import type { D1DatabaseLike } from "../src/platform/persistence/d1-types";
+import {
+  CounterfactualBranchEngine,
+  CounterfactualBranchError,
+} from "../src/platform/runs/counterfactual-branch";
+import {
+  CounterfactualRunRepositoryError,
+} from "../src/platform/runs/counterfactual-repository";
+import {
+  AssignmentCounterfactualConfigurationError,
+  validateAssignmentCounterfactualConfiguration,
+} from "../src/platform/runs/counterfactual-assignment";
 import {
   RunEventStoreConflictError,
 } from "../src/platform/runs/event-store";
@@ -74,6 +113,13 @@ import {
   serializeAssignmentEvidenceCsv,
   serializeAssignmentEvidenceJson,
 } from "../src/platform/reporting/assignment-export";
+import {
+  CounterfactualExportError,
+  counterfactualComparisonFilename,
+  createCounterfactualComparisonExport,
+  serializeCounterfactualComparisonCsv,
+  serializeCounterfactualComparisonJson,
+} from "../src/platform/reporting/counterfactual-export";
 import {
   AssignmentCompetencyReportError,
   createAssignmentCompetencyReport,
@@ -135,6 +181,9 @@ function assignmentOptionLabels(
   pack: ScenarioPackV1,
   packTitleKey: string,
   scenarioTitleKey: string,
+  counterfactualDecisionTitles: Readonly<
+    Record<string, string>
+  >,
 ): HostedAssignmentScenarioOptionV1["labelsByLocale"] {
   return Object.fromEntries(
     pack.supportedLocales.map((locale) => {
@@ -148,6 +197,14 @@ function assignmentOptionLabels(
           packTitle: catalog?.[packTitleKey] ?? packTitleKey,
           scenarioTitle:
             catalog?.[scenarioTitleKey] ?? scenarioTitleKey,
+          counterfactualDecisionTitles: Object.fromEntries(
+            Object.entries(counterfactualDecisionTitles).map(
+              ([nodeId, localizationKey]) => [
+                nodeId,
+                catalog?.[localizationKey] ?? localizationKey,
+              ],
+            ),
+          ),
         },
       ];
     }),
@@ -328,6 +385,39 @@ function errorResponse(error: unknown): Response {
       },
     });
   }
+  if (
+    error instanceof CounterfactualBranchError ||
+    error instanceof CounterfactualRunRepositoryError
+  ) {
+    const status =
+      error instanceof CounterfactualBranchError &&
+      (error.code === "SOURCE_RUN_NOT_FOUND" ||
+        error.code === "COUNTERFACTUAL_BRANCH_NOT_FOUND")
+        ? 404
+        : error instanceof CounterfactualBranchError &&
+            error.code === "INVALID_COUNTERFACTUAL_REQUEST"
+          ? 400
+          : 409;
+    return jsonResponse(status, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof D1CounterfactualRunRepositoryError) {
+    return jsonResponse(500, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof CounterfactualReflectionRepositoryError) {
+    const status =
+      error.code === "INVALID_COUNTERFACTUAL_REFLECTION"
+        ? 400
+        : error.code === "COUNTERFACTUAL_REFLECTION_CONFLICT"
+          ? 409
+          : 500;
+    return jsonResponse(status, {
+      error: { code: error.code },
+    });
+  }
   if (error instanceof ScenarioAuthoringError) {
     return jsonResponse(
       error.code === "SCENARIO_NOT_FOUND" ? 404 : 400,
@@ -356,7 +446,10 @@ function errorResponse(error: unknown): Response {
       error: { code: error.code },
     });
   }
-  if (error instanceof AssignmentExportError) {
+  if (
+    error instanceof AssignmentExportError ||
+    error instanceof CounterfactualExportError
+  ) {
     return jsonResponse(500, {
       error: { code: error.code },
     });
@@ -424,6 +517,27 @@ function pathAssignmentId(
         `^/api/v1/assignments/([^/]+)/${suffix.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`,
         "u",
       );
+  const match = pattern.exec(pathname);
+  return match?.[1] === undefined
+    ? null
+    : decodeURIComponent(match[1]);
+}
+
+function pathCounterfactualId(
+  pathname: string,
+  suffix = "",
+): string | null {
+  const escapedSuffix = suffix.replace(
+    /[.*+?^${}()|[\]\\]/gu,
+    "\\$&",
+  );
+  const pattern =
+    suffix.length === 0
+      ? /^\/api\/v1\/counterfactuals\/([^/]+)$/u
+      : new RegExp(
+          `^/api/v1/counterfactuals/([^/]+)/${escapedSuffix}$`,
+          "u",
+        );
   const match = pattern.exec(pathname);
   return match?.[1] === undefined
     ? null
@@ -526,7 +640,13 @@ async function hostedServiceForRun(
   readonly service: HostedRuntimeService;
 }> {
   const store = new D1RunEventStore(environment.DB);
-  const events = await store.load(runId);
+  const counterfactualRepository =
+    new D1CounterfactualRunRepository(environment.DB);
+  const counterfactual =
+    await counterfactualRepository.find(runId);
+  const events = await store.load(
+    counterfactual?.sourceRunId ?? runId,
+  );
   const first = events[0];
   if (first === undefined) {
     throw new HostedRunCommandError(
@@ -555,7 +675,235 @@ async function hostedServiceForRun(
       eventStore: store,
       clock,
       ids: new WebCryptoIdGenerator(),
+      counterfactualBranches: new CounterfactualBranchEngine(
+        store,
+        counterfactualRepository,
+      ),
     }),
+  };
+}
+
+async function counterfactualSourceContext(
+  environment: WorkerEnvironment,
+  principal: ApplicationPrincipal,
+  sourceRunId: string,
+) {
+  const { pack, service } = await hostedServiceForRun(
+    environment,
+    principal.userId,
+    sourceRunId,
+  );
+  const state = await service.loadState(sourceRunId);
+  if (state.status !== "completed") {
+    throw new HostedRunCommandError(
+      "WORKFLOW_PRECONDITION_FAILED",
+      "Counterfactual replay is available only after the source run is completed.",
+    );
+  }
+  const assignmentRepository = new D1AssignmentRepository(
+    environment.DB,
+    new SystemUtcClock(),
+  );
+  const assignment =
+    await assignmentRepository.findForRun(sourceRunId);
+  if (assignment === null) {
+    throw new AssignmentRepositoryError(
+      "RUN_NOT_ASSIGNED",
+      "Counterfactual replay requires an assignment-scoped source run.",
+    );
+  }
+  const isAdministrator =
+    principal.roles.includes("administrator");
+  const isManagingInstructor =
+    principal.roles.includes("instructor") &&
+    assignment.createdByUserId === principal.userId;
+  const isAssignedLearner =
+    principal.roles.includes("learner") &&
+    state.learnerUserId === principal.userId &&
+    assignment.learnerUserIds.includes(principal.userId);
+  if (
+    !isAdministrator &&
+    !isManagingInstructor &&
+    !isAssignedLearner
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The source run is outside the authenticated user's assignment scope.",
+    );
+  }
+  const creatorType =
+    isAdministrator || isManagingInstructor
+      ? ("INSTRUCTOR" as const)
+      : ("LEARNER" as const);
+  if (!assignment.counterfactualReplay.enabled) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "Counterfactual replay is disabled for this assignment.",
+    );
+  }
+  if (
+    creatorType === "LEARNER" &&
+    (assignment.mode !== "sandbox" ||
+      assignment.counterfactualReplay.learnerAvailability ===
+        "DISABLED")
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "Learner-created counterfactual branches require Sandbox mode.",
+    );
+  }
+  return {
+    assignment,
+    creatorType,
+    pack,
+    service,
+    state,
+    store: new D1RunEventStore(environment.DB),
+  };
+}
+
+function counterfactualPointIsAvailable(
+  configuration: {
+    readonly availability:
+      | "AFTER_RUN_COMPLETION"
+      | "AFTER_FEEDBACK_RELEASE"
+      | "INSTRUCTOR_ONLY";
+    readonly permittedCreators:
+      readonly ("LEARNER" | "INSTRUCTOR" | "RATER")[];
+  },
+  creatorType: "LEARNER" | "INSTRUCTOR",
+  feedbackReleased: boolean,
+  assignmentConfiguration: {
+    readonly enabled: boolean;
+    readonly allowedDecisionNodeIds: readonly string[];
+    readonly learnerAvailability:
+      | "DISABLED"
+      | "AFTER_RUN_COMPLETION"
+      | "AFTER_FEEDBACK_RELEASE";
+  },
+  forkNodeId: string,
+): boolean {
+  const assignmentAllowsLearner =
+    creatorType !== "LEARNER" ||
+    (assignmentConfiguration.learnerAvailability ===
+      "AFTER_RUN_COMPLETION" ||
+      (assignmentConfiguration.learnerAvailability ===
+        "AFTER_FEEDBACK_RELEASE" &&
+        feedbackReleased));
+  return (
+    assignmentConfiguration.enabled &&
+    assignmentConfiguration.allowedDecisionNodeIds.includes(
+      forkNodeId,
+    ) &&
+    assignmentAllowsLearner &&
+    configuration.permittedCreators.includes(creatorType) &&
+    (configuration.availability === "AFTER_RUN_COMPLETION" ||
+      (configuration.availability === "AFTER_FEEDBACK_RELEASE" &&
+        feedbackReleased) ||
+      (configuration.availability === "INSTRUCTOR_ONLY" &&
+        creatorType === "INSTRUCTOR"))
+  );
+}
+
+async function loadCounterfactualComparison(options: {
+  readonly environment: WorkerEnvironment;
+  readonly actor: ApplicationPrincipal;
+  readonly metadata: CounterfactualRunMetadataV1;
+}) {
+  const context = await counterfactualSourceContext(
+    options.environment,
+    options.actor,
+    options.metadata.sourceRunId,
+  );
+  const sourceEvents = await context.store.load(
+    options.metadata.sourceRunId,
+  );
+  const branchEvents = await context.store.load(
+    options.metadata.branchRunId,
+  );
+  if (branchEvents.length === 0) {
+    throw new HostedRunCommandError(
+      "WORKFLOW_PRECONDITION_FAILED",
+      "Submit the alternative decision before requesting a comparison.",
+    );
+  }
+  const point = counterfactualDecisionPoints({
+    pack: context.pack,
+    sourceRunId: options.metadata.sourceRunId,
+    events: sourceEvents,
+  }).find(
+    (candidate) =>
+      candidate.forkSequenceNumber ===
+        options.metadata.forkSequenceNumber &&
+      candidate.forkNodeId === options.metadata.forkNodeId,
+  );
+  const scenario = context.pack.scenarios.find(
+    (candidate) =>
+      candidate.scenarioId ===
+        options.metadata.sourceScenarioId &&
+      candidate.version ===
+        options.metadata.sourceScenarioVersion,
+  );
+  if (point === undefined || scenario === undefined) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "The counterfactual point is missing from the exact source scenario.",
+    );
+  }
+  const sourceCommandIds = new Set(
+    sourceCommandBatchesAfterFork(
+      sourceEvents,
+      options.metadata.forkSequenceNumber,
+    ).map((batch) => batch.commandId),
+  );
+  const manuallyChangedLaterDecision = branchEvents.some(
+    (event) =>
+      event.causationId !== options.metadata.interventionId &&
+      !sourceCommandIds.has(event.causationId),
+  );
+  const branchState = await context.service.loadState(
+    options.metadata.branchRunId,
+  );
+  const classification =
+    branchState.status === "completed" &&
+    !manuallyChangedLaterDecision
+      ? ("SINGLE_INTERVENTION" as const)
+      : ("EXPLORATORY_BRANCH" as const);
+  return {
+    comparison: createCounterfactualComparison({
+      metadata: options.metadata,
+      point,
+      dimensions:
+        scenario.counterfactualComparisonDimensions,
+      sourceEvents,
+      branchEvents,
+      forkProjection:
+        await context.service.counterfactualForkProjection(
+          options.actor,
+          options.metadata.sourceRunId,
+          options.metadata.forkSequenceNumber,
+          options.metadata.forkRoleId,
+        ),
+      originalProjection:
+        await context.service.counterfactualSourceProjection(
+          options.actor,
+          options.metadata.sourceRunId,
+        ),
+      alternativeProjection:
+        await context.service.counterfactualProjection(
+          options.actor,
+          options.metadata.branchRunId,
+        ),
+      classification,
+    }),
+    reflection:
+      await new D1CounterfactualReflectionRepository(
+        options.environment.DB,
+      ).find(options.metadata.branchRunId),
+    branchStatus:
+      branchState.status === "completed"
+        ? ("COMPLETED" as const)
+        : ("IN_PROGRESS" as const),
   };
 }
 
@@ -1169,26 +1517,56 @@ async function apiResponse(
           ? []
           : pack.scenarios
               .filter(hasRegisteredHostedRuntime)
-              .map((scenario) => ({
-                schemaVersion: "1.0.0",
-                packId: pack.packId,
-                packVersion: pack.version,
-                scenarioId: scenario.scenarioId,
-                scenarioVersion: scenario.version,
-                packTitleKey:
-                  pack.manifest.title.localizationKey,
-                scenarioTitleKey:
-                  scenario.title.localizationKey,
-                labelsByLocale: assignmentOptionLabels(
-                  pack,
-                  pack.manifest.title.localizationKey,
-                  scenario.title.localizationKey,
-                ),
-                supportedModes: scenario.supportedModes,
-                modeConfigurations: scenario.supportedModes.map(
-                  (mode) => modeConfigurationFor(scenario, mode),
-                ),
-              })),
+              .map((scenario) => {
+                const counterfactualNodes = scenario.nodes.filter(
+                  (node): node is DecisionNodeV1 =>
+                    node.nodeType === "DECISION" &&
+                    node.counterfactual?.enabled === true,
+                );
+                const counterfactualDecisionTitles =
+                  Object.fromEntries(
+                    counterfactualNodes.map((node) => [
+                      node.nodeId,
+                      node.title.localizationKey,
+                    ]),
+                  );
+                return {
+                  schemaVersion: "1.1.0" as const,
+                  packId: pack.packId,
+                  packVersion: pack.version,
+                  scenarioId: scenario.scenarioId,
+                  scenarioVersion: scenario.version,
+                  packTitleKey:
+                    pack.manifest.title.localizationKey,
+                  scenarioTitleKey:
+                    scenario.title.localizationKey,
+                  labelsByLocale: assignmentOptionLabels(
+                    pack,
+                    pack.manifest.title.localizationKey,
+                    scenario.title.localizationKey,
+                    counterfactualDecisionTitles,
+                  ),
+                  supportedModes: scenario.supportedModes,
+                  modeConfigurations:
+                    scenario.supportedModes.map((mode) =>
+                      modeConfigurationFor(scenario, mode),
+                    ),
+                  counterfactualDecisionPoints:
+                    counterfactualNodes.map((node) => ({
+                      nodeId: node.nodeId,
+                      decisionId: node.decisionId,
+                      titleKey: node.title.localizationKey,
+                      availability:
+                        node.counterfactual!.availability,
+                      maximumBranchesPerLearner:
+                        node.counterfactual!
+                          .maxBranchesPerLearner ?? 20,
+                      reflectionRequired:
+                        node.counterfactual!
+                          .reflectionRequired ?? false,
+                    })),
+                };
+              }),
       );
     return jsonResponse(200, {
       options: options.sort((left, right) => {
@@ -1296,6 +1674,45 @@ async function apiResponse(
       body.mode,
       "mode",
     ) as CreateHostedAssignmentRequest["mode"];
+    let counterfactualReplay;
+    try {
+      counterfactualReplay =
+        validateAssignmentCounterfactualConfiguration(
+          body.counterfactualReplay,
+          mode,
+        );
+    } catch (error) {
+      if (
+        error instanceof
+        AssignmentCounterfactualConfigurationError
+      ) {
+        throw new AssignmentRepositoryError(
+          "INVALID_ASSIGNMENT",
+          error.message,
+        );
+      }
+      throw error;
+    }
+    const authoredCounterfactualNodeIds = new Set(
+      scenario.nodes
+        .filter(
+          (node) =>
+            node.nodeType === "DECISION" &&
+            node.counterfactual?.enabled === true,
+        )
+        .map((node) => node.nodeId),
+    );
+    if (
+      counterfactualReplay.allowedDecisionNodeIds.some(
+        (nodeId) =>
+          !authoredCounterfactualNodeIds.has(nodeId),
+      )
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Assignment counterfactual points must belong to the exact scenario version.",
+      );
+    }
     const result = await new D1AssignmentRepository(
       environment.DB,
       clock,
@@ -1304,6 +1721,7 @@ async function apiResponse(
         ...(body as unknown as CreateHostedAssignmentRequest),
         mode,
         runConfiguration: modeConfigurationFor(scenario, mode),
+        counterfactualReplay,
       },
       principal,
     );
@@ -1716,6 +2134,85 @@ async function apiResponse(
     });
   }
 
+  const counterfactualReportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "counterfactual-report",
+  );
+  if (
+    request.method === "GET" &&
+    counterfactualReportAssignmentId !== null
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const assignmentReport =
+      await new D1AssignmentRepository(
+        environment.DB,
+        clock,
+      ).report(counterfactualReportAssignmentId);
+    if (
+      !actor.roles.includes("administrator") &&
+      assignmentReport.assignment.createdByUserId !==
+        actor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The counterfactual report is outside the instructor's assignment scope.",
+      );
+    }
+    const branchRepository =
+      new D1CounterfactualRunRepository(environment.DB);
+    const eventStore = new D1RunEventStore(environment.DB);
+    const branches: AssignmentCounterfactualReportV1["branches"][number][] =
+      [];
+    for (const learner of assignmentReport.learners) {
+      for (const run of learner.runs) {
+        const metadataList =
+          await branchRepository.listBySourceRun(run.runId);
+        for (const metadata of metadataList) {
+          const branchEvents = await eventStore.load(
+            metadata.branchRunId,
+          );
+          if (branchEvents.length === 0) {
+            branches.push({
+              learnerUserId: learner.learnerUserId,
+              metadata,
+              branchStatus: "CREATED",
+              comparison: null,
+              reflection: null,
+              originalOfficialGradeChanged: false,
+            });
+            continue;
+          }
+          const result = await loadCounterfactualComparison({
+            environment,
+            actor,
+            metadata,
+          });
+          branches.push({
+            learnerUserId: learner.learnerUserId,
+            metadata,
+            branchStatus: result.branchStatus,
+            comparison: result.comparison,
+            reflection: result.reflection,
+            originalOfficialGradeChanged: false,
+          });
+        }
+      }
+    }
+    const report: AssignmentCounterfactualReportV1 = {
+      schemaVersion: "1.0.0",
+      reportType:
+        "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
+      assignmentId: counterfactualReportAssignmentId,
+      generatedAt: clock.now(),
+      branches,
+    };
+    return jsonResponse(200, { report });
+  }
+
   const jsonExportAssignmentId = pathAssignmentId(
     url.pathname,
     "export.json",
@@ -2110,6 +2607,630 @@ async function apiResponse(
         await repository.currentModerationResolutions(feedbackRunId),
       competencyProfile,
     });
+  }
+
+  const counterfactualPointsRunId = pathRunId(
+    url.pathname,
+    "counterfactual-points",
+  );
+  if (
+    counterfactualPointsRunId !== null &&
+    request.method === "GET"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      counterfactualPointsRunId,
+    );
+    const points = counterfactualDecisionPoints({
+      pack: context.pack,
+      sourceRunId: counterfactualPointsRunId,
+      events: await context.store.load(counterfactualPointsRunId),
+    }).filter((point) =>
+      counterfactualPointIsAvailable(
+        point.configuration,
+        context.creatorType,
+        context.assignment.feedbackReleaseStatus === "released",
+        context.assignment.counterfactualReplay,
+        point.forkNodeId,
+      ),
+    );
+    return jsonResponse(200, {
+      sourceRunId: counterfactualPointsRunId,
+      points: await Promise.all(
+        points.map(async (point) => ({
+          ...point,
+          configuration: {
+            ...point.configuration,
+            maxBranchesPerLearner: Math.min(
+              point.configuration.maxBranchesPerLearner ?? 20,
+              context.assignment.counterfactualReplay
+                .maximumBranchesPerLearner,
+            ),
+            reflectionRequired:
+              (point.configuration.reflectionRequired ?? false) ||
+              context.assignment.counterfactualReplay
+                .requireReflection,
+          },
+          forkProjection:
+            await context.service.counterfactualForkProjection(
+              actor,
+              point.sourceRunId,
+              point.forkSequenceNumber,
+              point.roleId,
+            ),
+        })),
+      ),
+    });
+  }
+
+  const createCounterfactualRunId = pathRunId(
+    url.pathname,
+    "counterfactuals",
+  );
+  if (
+    createCounterfactualRunId !== null &&
+    request.method === "POST"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Counterfactual creation requires an object.",
+      );
+    }
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      createCounterfactualRunId,
+    );
+    const points = counterfactualDecisionPoints({
+      pack: context.pack,
+      sourceRunId: createCounterfactualRunId,
+      events: await context.store.load(createCounterfactualRunId),
+    });
+    const forkSequenceNumber =
+      typeof body.forkSequenceNumber === "number"
+        ? body.forkSequenceNumber
+        : Number.NaN;
+    const forkNodeId = requiredText(
+      body.forkNodeId,
+      "forkNodeId",
+    );
+    const point = points.find(
+      (candidate) =>
+        candidate.forkSequenceNumber === forkSequenceNumber &&
+        candidate.forkNodeId === forkNodeId,
+    );
+    if (
+      point === undefined ||
+      !counterfactualPointIsAvailable(
+        point.configuration,
+        context.creatorType,
+        context.assignment.feedbackReleaseStatus === "released",
+        context.assignment.counterfactualReplay,
+        point.forkNodeId,
+      )
+    ) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "The selected decision is not available for counterfactual replay.",
+      );
+    }
+    const branchRunId = requiredText(
+      body.branchRunId,
+      "branchRunId",
+    );
+    const repository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const existing = await repository.find(branchRunId);
+    if (existing === null) {
+      const priorBranches = await repository.listBySourceRun(
+        createCounterfactualRunId,
+      );
+      const creatorBranches = priorBranches.filter(
+        (metadata) =>
+          metadata.createdByUserId === actor.userId &&
+          metadata.forkNodeId === point.forkNodeId,
+      );
+      const maximum = Math.min(
+        point.configuration.maxBranchesPerLearner ?? 20,
+        context.assignment.counterfactualReplay
+          .maximumBranchesPerLearner,
+      );
+      if (creatorBranches.length >= maximum) {
+        throw new HostedRunCommandError(
+          "WORKFLOW_PRECONDITION_FAILED",
+          "The authored counterfactual branch limit has been reached.",
+        );
+      }
+    }
+    const result = await context.service.createCounterfactualBranch(
+      actor,
+      {
+        branchRunId,
+        sourceRunId: createCounterfactualRunId,
+        forkSequenceNumber,
+        forkNodeId,
+        interventionId: requiredText(
+          body.interventionId,
+          "interventionId",
+        ),
+        comparisonMode: "SINGLE_INTERVENTION",
+        createdByUserId: actor.userId,
+        createdAt: new SystemUtcClock().now(),
+      },
+    );
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        counterfactual: result.metadata,
+        projection:
+          await context.service.counterfactualProjection(
+            actor,
+            branchRunId,
+          ),
+        wasIdempotentReplay: result.wasIdempotentReplay,
+      },
+    );
+  }
+
+  const counterfactualId = pathCounterfactualId(url.pathname);
+  if (
+    counterfactualId !== null &&
+    request.method === "GET"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const repository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const metadata = await repository.find(counterfactualId);
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${counterfactualId} does not exist.`,
+      );
+    }
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      metadata.sourceRunId,
+    );
+    return jsonResponse(200, {
+      counterfactual: metadata,
+      projection:
+        await context.service.counterfactualProjection(
+          actor,
+          counterfactualId,
+        ),
+      reflection:
+        await new D1CounterfactualReflectionRepository(
+          environment.DB,
+        ).find(counterfactualId),
+    });
+  }
+
+  const counterfactualCommandId = pathCounterfactualId(
+    url.pathname,
+    "commands",
+  );
+  if (
+    counterfactualCommandId !== null &&
+    request.method === "POST"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (
+      !isRecord(body) ||
+      requiredText(body.runId, "runId") !==
+        counterfactualCommandId
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Counterfactual command run ID must match the API route.",
+      );
+    }
+    const repository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const metadata = await repository.find(
+      counterfactualCommandId,
+    );
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${counterfactualCommandId} does not exist.`,
+      );
+    }
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      metadata.sourceRunId,
+    );
+    const branchEvents = await context.store.load(
+      counterfactualCommandId,
+    );
+    if (branchEvents.length === 0) {
+      const point = counterfactualDecisionPoints({
+        pack: context.pack,
+        sourceRunId: metadata.sourceRunId,
+        events: await context.store.load(metadata.sourceRunId),
+      }).find(
+        (candidate) =>
+          candidate.forkSequenceNumber ===
+            metadata.forkSequenceNumber &&
+          candidate.forkNodeId === metadata.forkNodeId,
+      );
+      if (
+        point === undefined ||
+        !counterfactualPointIsAvailable(
+          point.configuration,
+          context.creatorType,
+          context.assignment.feedbackReleaseStatus === "released",
+          context.assignment.counterfactualReplay,
+          point.forkNodeId,
+        )
+      ) {
+        throw new HostedRunCommandError(
+          "WORKFLOW_PRECONDITION_FAILED",
+          "The branch intervention is no longer available.",
+        );
+      }
+      if (
+        requiredText(body.commandId, "commandId") !==
+        metadata.interventionId
+      ) {
+        throw new HostedRunCommandError(
+          "INVALID_COMMAND",
+          "The first branch command must use the recorded intervention ID.",
+        );
+      }
+      validateCounterfactualIntervention(
+        point,
+        body as unknown as HostedRuntimeCommand,
+      );
+    }
+    const result = await context.service.submitCounterfactual(
+      actor,
+      body as unknown as HostedRuntimeCommand,
+    );
+    return jsonResponse(200, {
+      counterfactual: metadata,
+      projection:
+        await context.service.counterfactualProjection(
+          actor,
+          counterfactualCommandId,
+        ),
+      appendedEventIds: result.appendedEventIds,
+      wasIdempotentReplay: result.wasIdempotentReplay,
+      officialGradeChanged: false,
+    });
+  }
+
+  const completeCounterfactualId = pathCounterfactualId(
+    url.pathname,
+    "complete",
+  );
+  if (
+    completeCounterfactualId !== null &&
+    request.method === "POST"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const repository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const metadata = await repository.find(
+      completeCounterfactualId,
+    );
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${completeCounterfactualId} does not exist.`,
+      );
+    }
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      metadata.sourceRunId,
+    );
+    const sourceEvents = await context.store.load(
+      metadata.sourceRunId,
+    );
+    let branchEvents = await context.store.load(
+      completeCounterfactualId,
+    );
+    if (branchEvents.length === 0) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "Submit the alternative decision before replaying the downstream path.",
+      );
+    }
+    const sourceBatches = sourceCommandBatchesAfterFork(
+      sourceEvents,
+      metadata.forkSequenceNumber,
+    );
+    const sourceCommandIds = new Set(
+      sourceBatches.map((batch) => batch.commandId),
+    );
+    const branchCommandIds = new Set(
+      branchEvents.map((event) => event.causationId),
+    );
+    const manuallyChangedLaterDecision = [...branchCommandIds].some(
+      (commandId) =>
+        commandId !== metadata.interventionId &&
+        !sourceCommandIds.has(commandId),
+    );
+    const reusedCommandIds: string[] = [];
+    let paused:
+      | {
+          readonly sourceCommandId: string;
+          readonly commandType: string | null;
+          readonly reasonCode: string;
+        }
+      | null = null;
+    let branchState = await context.service.loadState(
+      completeCounterfactualId,
+    );
+    for (const batch of sourceBatches) {
+      if (branchState.status === "completed") break;
+      if (branchCommandIds.has(batch.commandId)) {
+        reusedCommandIds.push(batch.commandId);
+        continue;
+      }
+      const replayedCommand = commandForCounterfactualReplay(
+        batch,
+        completeCounterfactualId,
+        branchState.version,
+      );
+      if (replayedCommand === null) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "A current hosted source run is missing its normalized replay command.",
+        );
+      }
+      try {
+        const result =
+          await context.service.submitCounterfactual(
+            actor,
+            replayedCommand,
+          );
+        branchState = result.state;
+        reusedCommandIds.push(batch.commandId);
+        branchCommandIds.add(batch.commandId);
+      } catch (error) {
+        if (
+          error instanceof HostedRunCommandError &&
+          error.code === "WORKFLOW_PRECONDITION_FAILED"
+        ) {
+          paused = {
+            sourceCommandId: batch.commandId,
+            commandType: batch.commandType,
+            reasonCode: error.code,
+          };
+          break;
+        }
+        throw error;
+      }
+    }
+    branchEvents = await context.store.load(
+      completeCounterfactualId,
+    );
+    const projection =
+      await context.service.counterfactualProjection(
+        actor,
+        completeCounterfactualId,
+      );
+    const classification =
+      manuallyChangedLaterDecision || paused !== null
+        ? "EXPLORATORY_BRANCH"
+        : "SINGLE_INTERVENTION";
+    return jsonResponse(200, {
+      counterfactual: metadata,
+      status:
+        projection.workflowState.permittedActionIds.length === 0 &&
+        branchState.status === "completed"
+          ? "completed"
+          : "paused",
+      classification,
+      replayedCommandIds: reusedCommandIds,
+      paused,
+      projection,
+      branchEventCount: branchEvents.length,
+      originalAssessedResultPreserved: true,
+      officialGradeChanged: false,
+    });
+  }
+
+  const compareCounterfactualId = pathCounterfactualId(
+    url.pathname,
+    "comparison",
+  );
+  if (
+    compareCounterfactualId !== null &&
+    request.method === "GET"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const repository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const metadata = await repository.find(
+      compareCounterfactualId,
+    );
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${compareCounterfactualId} does not exist.`,
+      );
+    }
+    const result = await loadCounterfactualComparison({
+      environment,
+      actor,
+      metadata,
+    });
+    return jsonResponse(200, {
+      comparison: result.comparison,
+      reflection: result.reflection,
+    });
+  }
+
+  const jsonCounterfactualExportId = pathCounterfactualId(
+    url.pathname,
+    "export.json",
+  );
+  const csvCounterfactualExportId = pathCounterfactualId(
+    url.pathname,
+    "export.csv",
+  );
+  const exportCounterfactualId =
+    jsonCounterfactualExportId ?? csvCounterfactualExportId;
+  if (
+    exportCounterfactualId !== null &&
+    request.method === "GET"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const metadata =
+      await new D1CounterfactualRunRepository(
+        environment.DB,
+      ).find(exportCounterfactualId);
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${exportCounterfactualId} does not exist.`,
+      );
+    }
+    const result = await loadCounterfactualComparison({
+      environment,
+      actor,
+      metadata,
+    });
+    const exported = createCounterfactualComparisonExport({
+      metadata,
+      comparison: result.comparison,
+      reflection: result.reflection,
+      generatedAt: new SystemUtcClock().now(),
+    });
+    if (jsonCounterfactualExportId !== null) {
+      return downloadResponse(
+        serializeCounterfactualComparisonJson(exported),
+        "application/json; charset=utf-8",
+        counterfactualComparisonFilename(
+          exportCounterfactualId,
+          "json",
+        ),
+      );
+    }
+    return downloadResponse(
+      serializeCounterfactualComparisonCsv(exported),
+      "text/csv; charset=utf-8",
+      counterfactualComparisonFilename(
+        exportCounterfactualId,
+        "csv",
+      ),
+    );
+  }
+
+  const reflectCounterfactualId = pathCounterfactualId(
+    url.pathname,
+    "reflection",
+  );
+  if (
+    reflectCounterfactualId !== null &&
+    request.method === "POST"
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "learner",
+      "instructor",
+      "administrator",
+    ]);
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (!isRecord(body)) {
+      throw new CounterfactualReflectionRepositoryError(
+        "INVALID_COUNTERFACTUAL_REFLECTION",
+        "A reflection request object is required.",
+      );
+    }
+    const branchRepository = new D1CounterfactualRunRepository(
+      environment.DB,
+    );
+    const metadata = await branchRepository.find(
+      reflectCounterfactualId,
+    );
+    if (metadata === null) {
+      throw new CounterfactualBranchError(
+        "COUNTERFACTUAL_BRANCH_NOT_FOUND",
+        `Counterfactual branch ${reflectCounterfactualId} does not exist.`,
+      );
+    }
+    const context = await counterfactualSourceContext(
+      environment,
+      actor,
+      metadata.sourceRunId,
+    );
+    const branchState = await context.service.loadState(
+      reflectCounterfactualId,
+    );
+    if (branchState.status !== "completed") {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "Complete the exploratory branch before submitting its reflection.",
+      );
+    }
+    const response = normalizeCounterfactualReflectionResponse(
+      body.response,
+    );
+    const result =
+      await new D1CounterfactualReflectionRepository(
+        environment.DB,
+      ).create({
+        schemaVersion: "1.0.0",
+        reflectionId: requiredText(
+          body.reflectionId,
+          "reflectionId",
+        ),
+        branchRunId: reflectCounterfactualId,
+        response,
+        submittedByUserId: actor.userId,
+        submittedAt: new SystemUtcClock().now(),
+      });
+    return jsonResponse(
+      result.wasIdempotentReplay ? 200 : 201,
+      {
+        reflection: result.reflection,
+        wasIdempotentReplay: result.wasIdempotentReplay,
+        officialGradeChanged: false,
+      },
+    );
   }
 
   const commandRunId = pathRunId(url.pathname, "commands");

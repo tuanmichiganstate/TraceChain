@@ -92,7 +92,7 @@ describe("scenario authoring services", () => {
     const preview = createScenarioRolePreview({
       pack: result.pack,
       scenarioId: "SCN_PHARMA_COLD_CHAIN_STARTER",
-      scenarioVersion: "1.1.0",
+      scenarioVersion: "1.2.0",
       locale: "vi",
       mode: "tutorial",
       roleId: "QUALITY_MANAGER",
@@ -121,15 +121,15 @@ describe("scenario authoring services", () => {
       version: string;
       manifest: { domain: string };
     };
-    mutable.version = "1.8.0";
+    mutable.version = "1.9.0";
     mutable.manifest.domain = "supply-chain-governance";
 
     const comparison = compareScenarioPackVersions(from, to);
 
     expect(comparison).toMatchObject({
       packId: from.packId,
-      fromVersion: "1.7.0",
-      toVersion: "1.8.0",
+      fromVersion: "1.8.0",
+      toVersion: "1.9.0",
     });
     expect(comparison.changedPaths).toEqual(
       expect.arrayContaining(["manifest.domain", "version"]),

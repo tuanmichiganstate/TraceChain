@@ -87,6 +87,10 @@ reports a technical issue when a run cannot be reconstructed. It does not
 expose hidden outcomes. A separate completed-run report compares authored
 decision evidence with the realized scenario outcome without turning either
 into another grade; active-run correctness and outcomes remain hidden. The
+hosted platform also supports assignment-bounded decision counterfactuals from
+completed runs: copy-on-write replay preserves the assessed source, reuses
+valid downstream commands, pauses on divergence, captures reflection, and
+provides role-filtered branch and assignment exports. The
 hosted work does not alter the current SCORM activity.
 
 | | |
@@ -258,6 +262,11 @@ schemas/               published versioned JSON Schemas
   separation from simulation scoring
 - `docs/HOSTED_RUN_MODES_V1.md` — published Tutorial, Standard, Sandbox, and
   Configured behavior plus deterministic outcome replay
+- `docs/COUNTERFACTUAL_BRANCH_FOUNDATION_V1.md` — hosted-only authored
+  eligibility, copy-on-write replay, authenticated decision comparison, and
+  ungraded reflection
+- `docs/COUNTERFACTUAL_EXPORT_V1.md` — stable branch JSON/CSV and
+  assignment-level counterfactual reporting
 - `docs/SCENARIO_AUTHORING_V1.md` — self-localized pack import, visual draft
   editing, validation, preview, comparison, publication, and retirement
 - `docs/SCORM_PACKAGE_JOBS_V1.md` — hosted package identity, object storage,

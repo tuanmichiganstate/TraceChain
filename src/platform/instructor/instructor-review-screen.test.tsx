@@ -11,8 +11,16 @@ import {
   type InstructorReviewApi,
 } from "./instructor-review-screen";
 
+const disabledCounterfactualReplay = {
+  enabled: false,
+  allowedDecisionNodeIds: [],
+  maximumBranchesPerLearner: 1,
+  learnerAvailability: "DISABLED",
+  requireReflection: false,
+} as const;
+
 const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "1.1.0",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
   packVersion: "1.7.0",
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
@@ -25,6 +33,10 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
     en: {
       packTitle: "TraceChain coffee evidence and custody",
       scenarioTitle: "Conflicting certificate evidence",
+      counterfactualDecisionTitles: {
+        NODE_CERTIFICATE_DECISION:
+          "Certificate decision",
+      },
     },
   },
   supportedModes: [
@@ -84,6 +96,17 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
       timeLimitMinutes: 30,
       allowCommunication: false,
       allowEvidenceRequests: true,
+    },
+  ],
+  counterfactualDecisionPoints: [
+    {
+      nodeId: "NODE_CERTIFICATE_DECISION",
+      decisionId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+      titleKey:
+        "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_CERTIFICATE_DECISION.title",
+      availability: "AFTER_FEEDBACK_RELEASE",
+      maximumBranchesPerLearner: 3,
+      reflectionRequired: true,
     },
   ],
 };
@@ -174,16 +197,25 @@ describe("instructor review screen", () => {
     const availableFrom = new Date(availableFromLocal).toISOString();
     const availableUntil = new Date(availableUntilLocal).toISOString();
     const assignment = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "1.1.0" as const,
       assignmentId: "ASSIGNMENT_001",
       title: "Coffee cohort",
       packId: publishedCoffeeOption.packId,
       packVersion: publishedCoffeeOption.packVersion,
       scenarioId: publishedCoffeeOption.scenarioId,
       scenarioVersion: publishedCoffeeOption.scenarioVersion,
-      mode: "standard" as const,
+      mode: "sandbox" as const,
       runConfiguration:
-        publishedCoffeeOption.modeConfigurations[1]!,
+        publishedCoffeeOption.modeConfigurations[2]!,
+      counterfactualReplay: {
+        enabled: true,
+        allowedDecisionNodeIds: [
+          "NODE_CERTIFICATE_DECISION",
+        ],
+        maximumBranchesPerLearner: 3,
+        learnerAvailability: "AFTER_FEEDBACK_RELEASE",
+        requireReflection: true,
+      } as const,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
@@ -281,7 +313,31 @@ describe("instructor review screen", () => {
     expect(
       within(publishedSettings).getAllByText("Enabled"),
     ).toHaveLength(5);
-    await user.selectOptions(form.getByLabelText("Run mode"), "standard");
+    await user.selectOptions(form.getByLabelText("Run mode"), "sandbox");
+    await user.click(
+      form.getByRole("checkbox", {
+        name: "Allow counterfactual decision exploration for this assignment",
+      }),
+    );
+    expect(
+      form.getByRole("checkbox", {
+        name: "Certificate decision",
+      }),
+    ).toBeChecked();
+    await user.selectOptions(
+      form.getByLabelText("Learner access"),
+      "AFTER_FEEDBACK_RELEASE",
+    );
+    const maximumBranches = form.getByLabelText(
+      "Maximum branches per learner and decision",
+    );
+    await user.clear(maximumBranches);
+    await user.type(maximumBranches, "21");
+    expect(
+      form.getByRole("button", { name: "Create assignment" }),
+    ).toBeDisabled();
+    await user.clear(maximumBranches);
+    await user.type(maximumBranches, "3");
     await user.click(
       form.getByRole("checkbox", {
         name: "learner@example.edu (USER_LEARNER_001)",
@@ -298,7 +354,9 @@ describe("instructor review screen", () => {
       packVersion: assignment.packVersion,
       scenarioId: assignment.scenarioId,
       scenarioVersion: assignment.scenarioVersion,
-      mode: "standard",
+      mode: "sandbox",
+      counterfactualReplay:
+        assignment.counterfactualReplay,
       learnerUserIds: assignment.learnerUserIds,
       availableFrom,
       availableUntil,
@@ -313,7 +371,7 @@ describe("instructor review screen", () => {
 
   it("manages access and offers stable downloads after loading an assignment report", async () => {
     const assignment = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "1.1.0" as const,
       assignmentId: "ASSIGNMENT_EXPORT_001",
       title: "Coffee export cohort",
       packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -321,6 +379,15 @@ describe("instructor review screen", () => {
       scenarioId: "SCN_COFFEE_001",
       scenarioVersion: "2.2.0",
       mode: "standard" as const,
+      counterfactualReplay: {
+        enabled: true,
+        allowedDecisionNodeIds: [
+          "NODE_CERTIFICATE_DECISION",
+        ],
+        maximumBranchesPerLearner: 1,
+        learnerAvailability: "DISABLED",
+        requireReflection: true,
+      } as const,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
@@ -635,6 +702,14 @@ describe("instructor review screen", () => {
       "/api/v1/assignments/ASSIGNMENT_EXPORT_001/export.csv?identity=pseudonymous",
     );
     expect(
+      report.getByRole("link", {
+        name: "Download counterfactual report JSON",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/api/v1/assignments/ASSIGNMENT_EXPORT_001/counterfactual-report",
+    );
+    expect(
       report.getByText(
         "Pseudonymous downloads replace learner user IDs with assignment-scoped codes. They are not anonymized records.",
       ),
@@ -774,7 +849,7 @@ describe("instructor review screen", () => {
       }),
       loadRunReview: vi.fn().mockResolvedValue({
         assignment: {
-          schemaVersion: "1.0.0",
+          schemaVersion: "1.1.0",
           assignmentId: "ASSIGNMENT_001",
           title: "Coffee cohort",
           packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -782,6 +857,8 @@ describe("instructor review screen", () => {
           scenarioId: "SCN_COFFEE_001",
           scenarioVersion: "2.2.0",
           mode: "standard",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_001"],
           status: "active",
           feedbackReleaseStatus: "withheld",
@@ -1006,7 +1083,7 @@ describe("instructor review screen", () => {
       loadRunReplay: vi.fn(),
       loadRunReview: vi.fn().mockResolvedValue({
         assignment: {
-          schemaVersion: "1.0.0",
+          schemaVersion: "1.1.0",
           assignmentId: "ASSIGNMENT_001",
           title: "Coffee cohort",
           packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -1014,6 +1091,8 @@ describe("instructor review screen", () => {
           scenarioId: "SCN_COFFEE_001",
           scenarioVersion: "2.2.0",
           mode: "standard",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_001"],
           status: "active",
           feedbackReleaseStatus: "withheld",
@@ -1157,7 +1236,7 @@ describe("instructor review screen", () => {
                 ? { rubricEvidence: [] }
                 : {
                     assignment: {
-                      schemaVersion: "1.0.0",
+                      schemaVersion: "1.1.0",
                       assignmentId: "ASSIGNMENT_001",
                       title: "Coffee cohort",
                       packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -1165,6 +1244,8 @@ describe("instructor review screen", () => {
                       scenarioId: "SCN_COFFEE_001",
                       scenarioVersion: "2.2.0",
                       mode: "standard",
+                      counterfactualReplay:
+                        disabledCounterfactualReplay,
                       learnerUserIds: ["USER_LEARNER_001"],
                       status: "active",
                       feedbackReleaseStatus: "withheld",
