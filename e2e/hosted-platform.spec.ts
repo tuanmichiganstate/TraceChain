@@ -126,7 +126,18 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     }
     if (pathname === "/api/v1/learner/assignments") {
       await route.fulfill({
-        json: { assignments: [{ assignment, runs: [] }] },
+        json: {
+          assignments: [
+            {
+              assignment,
+              startAvailability: {
+                status: "available",
+                observedAt: "2026-07-25T05:00:00.000Z",
+              },
+              runs: [],
+            },
+          ],
+        },
       });
       return;
     }
@@ -343,6 +354,10 @@ test("provisions server-owned access from the administrator workspace", async ({
 test("creates an assignment from the published hosted scenario library", async ({
   page,
 }) => {
+  const availableFromLocal = "2026-08-01T09:00";
+  const availableUntilLocal = "2026-08-02T17:00";
+  const availableFrom = new Date(availableFromLocal).toISOString();
+  const availableUntil = new Date(availableUntilLocal).toISOString();
   const option = {
     schemaVersion: "1.0.0",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -426,6 +441,8 @@ test("creates an assignment from the published hosted scenario library", async (
             learnerUserIds: submitted.learnerUserIds,
             status: "active",
             feedbackReleaseStatus: "withheld",
+            availableFrom: submitted.availableFrom,
+            availableUntil: submitted.availableUntil,
             createdAt: "2026-07-25T05:00:00.000Z",
             createdByUserId: "USER_ASSIGNMENT_INSTRUCTOR",
           },
@@ -460,6 +477,12 @@ test("creates an assignment from the published hosted scenario library", async (
   await form.getByLabel("Assignment ID").fill("ASSIGNMENT_BROWSER_001");
   await form.getByLabel("Assignment title").fill("Browser cohort");
   await form
+    .getByLabel("Available from (optional)")
+    .fill(availableFromLocal);
+  await form
+    .getByLabel("Available until (optional)")
+    .fill(availableUntilLocal);
+  await form
     .getByRole("checkbox", {
       name: "browser-learner@example.edu (USER_BROWSER_LEARNER)",
     })
@@ -477,6 +500,8 @@ test("creates an assignment from the published hosted scenario library", async (
     scenarioVersion: option.scenarioVersion,
     mode: "standard",
     learnerUserIds: ["USER_BROWSER_LEARNER"],
+    availableFrom,
+    availableUntil,
   });
   expect(submitted).not.toHaveProperty("runConfiguration");
 });

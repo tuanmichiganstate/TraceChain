@@ -4,6 +4,10 @@
 
 ### Added
 
+- Optional immutable UTC opening and closing times for hosted assignments.
+  The learner list receives a server-observed availability status, new attempts
+  are enforced again at the worker boundary, and existing runs remain
+  resumable after the start window ends or the assignment is closed.
 - Published hosted scenarios now populate the instructor assignment form
   directly. The selected exact pack and scenario versions, plus only the
   scenario's authored run modes, replace four error-prone identifier fields.

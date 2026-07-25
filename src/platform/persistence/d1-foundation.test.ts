@@ -211,6 +211,7 @@ describe("D1 instructor-platform foundation", () => {
         "0006_scorm_package_jobs.sql",
         "0007_application_access_administration.sql",
         "0008_assignment_lifecycle.sql",
+        "0009_assignment_availability.sql",
       ]) {
         database.exec(
           readFileSync(

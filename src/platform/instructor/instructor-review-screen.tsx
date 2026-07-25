@@ -838,6 +838,16 @@ function preferredAssignmentMode(
     : (supportedModes[0] ?? "standard");
 }
 
+function optionalLocalDateTimeToUtc(
+  value: string,
+): string | undefined {
+  if (value.length === 0) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed)
+    ? new Date(parsed).toISOString()
+    : undefined;
+}
+
 function AssignmentCreation({
   api,
 }: {
@@ -854,6 +864,10 @@ function AssignmentCreation({
   const [isLibraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState(false);
   const [mode, setMode] = useState<AssignmentRunMode>("standard");
+  const [availableFromLocal, setAvailableFromLocal] =
+    useState("");
+  const [availableUntilLocal, setAvailableUntilLocal] =
+    useState("");
   const [learnerOptions, setLearnerOptions] = useState<
     readonly HostedAssignmentLearnerOptionV1[]
   >([]);
@@ -927,6 +941,24 @@ function AssignmentCreation({
       setErrorKey("instructorReview.error.scenarioLibrary");
       return;
     }
+    const availableFrom = optionalLocalDateTimeToUtc(
+      availableFromLocal,
+    );
+    const availableUntil = optionalLocalDateTimeToUtc(
+      availableUntilLocal,
+    );
+    if (
+      (availableFromLocal.length > 0 &&
+        availableFrom === undefined) ||
+      (availableUntilLocal.length > 0 &&
+        availableUntil === undefined) ||
+      (availableFrom !== undefined &&
+        availableUntil !== undefined &&
+        availableFrom >= availableUntil)
+    ) {
+      setErrorKey("instructorReview.error.assignmentAvailability");
+      return;
+    }
     setSaving(true);
     setCreated(null);
     setErrorKey(null);
@@ -941,6 +973,12 @@ function AssignmentCreation({
           scenarioVersion: selectedScenario.scenarioVersion,
           mode,
           learnerUserIds: selectedLearnerIds,
+          ...(availableFrom === undefined
+            ? {}
+            : { availableFrom }),
+          ...(availableUntil === undefined
+            ? {}
+            : { availableUntil }),
         }),
       );
     } catch (error) {
@@ -1044,6 +1082,24 @@ function AssignmentCreation({
             </span>
           )}
         </div>
+        <TextField
+          id="assignment-available-from"
+          label={t("instructorReview.availableFrom")}
+          value={availableFromLocal}
+          onChange={setAvailableFromLocal}
+          type="datetime-local"
+          required={false}
+          hint={t("instructorReview.availabilityTimeHelp")}
+        />
+        <TextField
+          id="assignment-available-until"
+          label={t("instructorReview.availableUntil")}
+          value={availableUntilLocal}
+          onChange={setAvailableUntilLocal}
+          type="datetime-local"
+          required={false}
+          hint={t("instructorReview.availabilityTimeHelp")}
+        />
         <fieldset className="field instructor-review__learner-picker">
           <legend className="field__label">
             {t("instructorReview.learners")}
@@ -1154,11 +1210,17 @@ function TextField({
   label,
   value,
   onChange,
+  type = "text",
+  required = true,
+  hint,
 }: {
   readonly id: string;
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
+  readonly type?: "text" | "datetime-local";
+  readonly required?: boolean;
+  readonly hint?: string;
 }): ReactNode {
   return (
     <div className="field">
@@ -1168,11 +1230,15 @@ function TextField({
       <input
         className="field__control"
         id={id}
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete="off"
-        required
+        required={required}
       />
+      {hint === undefined ? null : (
+        <span className="field__hint">{hint}</span>
+      )}
     </div>
   );
 }
@@ -1343,6 +1409,40 @@ function AssignmentReport({
         <div aria-live="polite">
           <section className="instructor-review__assignment-access">
             <h3>{t("instructorReview.assignmentAccessHeading")}</h3>
+            <dl className="instructor-review__facts">
+              <div>
+                <dt>
+                  {t("instructorReview.assignmentAvailableFrom")}
+                </dt>
+                <dd>
+                  {report.assignment.availableFrom === undefined ? (
+                    t("instructorReview.availabilityNoBoundary")
+                  ) : (
+                    <time
+                      dateTime={report.assignment.availableFrom}
+                    >
+                      {report.assignment.availableFrom}
+                    </time>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>
+                  {t("instructorReview.assignmentAvailableUntil")}
+                </dt>
+                <dd>
+                  {report.assignment.availableUntil === undefined ? (
+                    t("instructorReview.availabilityNoBoundary")
+                  ) : (
+                    <time
+                      dateTime={report.assignment.availableUntil}
+                    >
+                      {report.assignment.availableUntil}
+                    </time>
+                  )}
+                </dd>
+              </div>
+            </dl>
             <p>
               {t(
                 `instructorReview.assignmentStatus.${report.assignment.status}`,

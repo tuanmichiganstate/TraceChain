@@ -79,7 +79,8 @@ and assessment records in `0002_assignments.sql`, rubric moderation in `0003`,
 resolved assignment-mode configuration in `0004`, pack retirement metadata in
 `0005`, content-addressed SCORM package jobs in `0006`, and idempotent
 application-access audit commands in `0007`. One-way assignment closure
-metadata is added in `0008`.
+metadata is added in `0008`; optional immutable UTC assignment availability
+boundaries are added in `0009`.
 
 Tables:
 
@@ -120,11 +121,11 @@ All endpoints use `/api/v1`.
 | `POST /scenario-packs/publish` | scenario author or administrator | Immutable pack identity |
 | `GET /assignment-options` | instructor or administrator | Published scenarios with a registered hosted runtime, exact versions, localized labels, and authored modes only |
 | `GET /assignment-learners` | instructor or administrator | Active provisioned users carrying the learner role, limited to user ID and email for roster selection |
-| `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario and provisioned learner roster |
+| `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario, provisioned learner roster, and optional UTC start window |
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
 | `POST /assignments/:assignmentId/close` | instructor or administrator | One-way idempotent closure that blocks new attempts and preserves existing runs |
-| `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
-| `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration |
+| `GET /learner/assignments` | learner | Only the signed-in learner's assignment, server-observed start availability, and run summaries |
+| `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration and authoritative availability |
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, authoritative event-span timing, event-derived activity, event-count and current-rating report |
 | `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
@@ -261,10 +262,14 @@ rejected attempt and accepted recall from the ordered command evidence.
 
 Assignments reference one immutable published pack and scenario version, one
 hosted mode, and a bounded roster selected from active, already provisioned
-learners. The normal
+learners. They may also carry immutable `availableFrom` and `availableUntil`
+timestamps normalized to UTC. The opening boundary is inclusive; the closing
+boundary is exclusive. The learner-assignment projection includes
+`startAvailability.status` and the server observation time, but the normal
 assignment start route obtains pack, scenario, mode, and assignment identity
-from that server record. The earlier direct run-creation route remains for
-compatibility with the vertical-slice tests and existing integrations.
+from that server record and checks the authoritative clock again. The earlier
+direct run-creation route remains for compatibility with the vertical-slice
+tests and existing integrations.
 
 Manual rubric ratings do not change the simulation event log or the existing
 100-point SCORM score. Each save appends a new criterion revision with the
@@ -303,13 +308,18 @@ status. A closed assignment cannot create a new run. An already-started run
 continues under its immutable assignment configuration, and closure does not
 alter its events, score, ratings, or report evidence.
 
+The same continuation rule applies after `availableUntil`: the boundary blocks
+only new run creation. Invalid or reversed availability windows are rejected at
+assignment creation rather than repaired or silently reordered.
+
 ## Current limits
 
 - The complete current nine-stage coffee journey is hosted for one assigned
   learner run.
 - Exact-version assignment creation from the published runnable scenario
   library, an instructor-selectable active provisioned learner roster,
-  assignment-bound run start, manual rating, feedback release, and a focused
+  optional UTC availability boundaries, assignment-bound run start, manual
+  rating, feedback release, and a focused
   assignment report are implemented. Stable JSON and CSV assignment evidence
   exports include exact content versions, complete event streams, append-only
   rating and moderation revisions, authoritative event-span timing,

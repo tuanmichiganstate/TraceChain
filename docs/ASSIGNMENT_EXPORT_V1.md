@@ -61,8 +61,9 @@ moderationResolutions complete RubricModerationResolutionV1 history
 dataDictionary      versioned dataset and field definitions
 ```
 
-The assignment carries the exact pack and scenario identity, active or closed
-status, and trusted closure time and performer when lifecycle audit metadata is
+The assignment carries the exact pack and scenario identity, optional immutable
+UTC `availableFrom` and `availableUntil` boundaries, active or closed status,
+and trusted closure time and performer when lifecycle audit metadata is
 available. Every event
 retains its pack, scenario, actor, organization, role, causation, sequence,
 state-hash, and payload evidence. Every rating revision retains its rubric

@@ -393,7 +393,7 @@ export function HostedLearnerScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {assignments.map(({ assignment, runs }) => {
+                    {assignments.map(({ assignment, startAvailability, runs }) => {
                       const latest = runs[0];
                       return (
                         <tr key={assignment.assignmentId}>
@@ -405,7 +405,20 @@ export function HostedLearnerScreen({
                           <td>{t(`scenarioAuthor.mode.${assignment.mode}`)}</td>
                           <td>
                             {latest === undefined
-                              ? t("hostedLearner.notStarted")
+                              ? startAvailability.status ===
+                                "available"
+                                ? t("hostedLearner.notStarted")
+                                : t(
+                                    `hostedLearner.assignmentAvailability.${startAvailability.status}`,
+                                    {
+                                      availableFrom:
+                                        assignment.availableFrom ??
+                                        "",
+                                      availableUntil:
+                                        assignment.availableUntil ??
+                                        "",
+                                    },
+                                  )
                               : t(`hostedLearner.run.${latest.status}`)}
                           </td>
                           <td>
@@ -414,7 +427,9 @@ export function HostedLearnerScreen({
                                 className="button button--primary"
                                 type="button"
                                 disabled={
-                                  busy || assignment.status !== "active"
+                                  busy ||
+                                  startAvailability.status !==
+                                    "available"
                                 }
                                 onClick={() =>
                                   void start(assignment.assignmentId)

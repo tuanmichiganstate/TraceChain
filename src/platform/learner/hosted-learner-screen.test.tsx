@@ -9,6 +9,11 @@ import {
   type HostedLearnerApi,
 } from "./hosted-learner-screen";
 
+const availableStart = {
+  status: "available" as const,
+  observedAt: "2026-07-25T05:00:00.000Z",
+};
+
 function projection(
   action = "INSPECT_EVIDENCE",
 ): LearnerRunProjectionV1 {
@@ -66,6 +71,7 @@ describe("hosted learner workspace", () => {
             createdAt: "2026-07-24T08:00:00.000Z",
             createdByUserId: "USER_INSTRUCTOR_001",
           },
+          startAvailability: availableStart,
           runs: [],
         },
       ])
@@ -252,6 +258,7 @@ describe("hosted learner workspace", () => {
             createdAt: "2026-07-24T08:00:00.000Z",
             createdByUserId: "USER_INSTRUCTOR_001",
           },
+          startAvailability: availableStart,
           runs: [
             {
               runId: "RUN_LEARNER_001",
@@ -359,6 +366,7 @@ describe("hosted learner workspace", () => {
             createdAt: "2026-07-24T08:00:00.000Z",
             createdByUserId: "USER_INSTRUCTOR_001",
           },
+          startAvailability: availableStart,
           runs: [
             {
               runId: "RUN_LEARNER_001",
@@ -459,6 +467,7 @@ describe("hosted learner workspace", () => {
             createdAt: "2026-07-24T08:00:00.000Z",
             createdByUserId: "USER_INSTRUCTOR_001",
           },
+          startAvailability: availableStart,
           runs: [
             {
               runId: "RUN_LEARNER_001",
@@ -561,5 +570,72 @@ describe("hosted learner workspace", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("EVENT_INSPECTION_001")).toBeInTheDocument();
+  });
+
+  it("keeps a future assignment read-only until the server opens it", async () => {
+    const startRun = vi.fn();
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments: vi.fn().mockResolvedValue([
+        {
+          assignment: {
+            schemaVersion: "1.0.0",
+            assignmentId: "ASSIGNMENT_FUTURE_001",
+            title: "Future coffee case",
+            packId: "PACK_COFFEE",
+            packVersion: "1.4.0",
+            scenarioId: "SCN_COFFEE",
+            scenarioVersion: "1.4.0",
+            mode: "standard",
+            runConfiguration: {
+              mode: "standard",
+              allowHints: false,
+              allowRetry: false,
+              allowBacktracking: false,
+              feedbackTiming: "final",
+              showScores: false,
+              outcomeStrategy: "forced",
+              seedPolicy: "supplied",
+              allowCommunication: false,
+              allowEvidenceRequests: true,
+            },
+            learnerUserIds: ["USER_LEARNER_001"],
+            status: "active",
+            feedbackReleaseStatus: "withheld",
+            availableFrom: "2026-08-01T02:00:00.000Z",
+            createdAt: "2026-07-24T08:00:00.000Z",
+            createdByUserId: "USER_INSTRUCTOR_001",
+          },
+          startAvailability: {
+            status: "not-yet-open",
+            observedAt: "2026-07-25T05:00:00.000Z",
+          },
+          runs: [],
+        },
+      ]),
+      startRun,
+      loadRun: vi.fn(),
+      loadFeedback: vi.fn(),
+      submit: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Opens at 2026-08-01T02:00:00.000Z",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start" }),
+    ).toBeDisabled();
+    expect(startRun).not.toHaveBeenCalled();
   });
 });

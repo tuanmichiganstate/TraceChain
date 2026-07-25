@@ -81,6 +81,8 @@ export const schemaStatements = [
       CHECK (json_valid(mode_configuration_json)),
     lifecycle_status TEXT NOT NULL DEFAULT 'active'
       CHECK (lifecycle_status IN ('active', 'closed')),
+    available_from_utc TEXT,
+    available_until_utc TEXT,
     close_command_id TEXT UNIQUE,
     closed_at_utc TEXT,
     closed_by_user_id TEXT,
@@ -91,6 +93,11 @@ export const schemaStatements = [
     feedback_released_by_user_id TEXT,
     created_at_utc TEXT NOT NULL,
     created_by_user_id TEXT NOT NULL,
+    CHECK (
+      available_from_utc IS NULL
+      OR available_until_utc IS NULL
+      OR available_from_utc < available_until_utc
+    ),
     CHECK (
       (lifecycle_status = 'active'
         AND close_command_id IS NULL

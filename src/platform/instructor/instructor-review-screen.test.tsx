@@ -116,6 +116,10 @@ describe("instructor review screen", () => {
   });
 
   it("creates one assignment from an exact pack, scenario, and learner roster", async () => {
+    const availableFromLocal = "2026-08-01T09:00";
+    const availableUntilLocal = "2026-08-02T17:00";
+    const availableFrom = new Date(availableFromLocal).toISOString();
+    const availableUntil = new Date(availableUntilLocal).toISOString();
     const assignment = {
       schemaVersion: "1.0.0" as const,
       assignmentId: "ASSIGNMENT_001",
@@ -128,6 +132,8 @@ describe("instructor review screen", () => {
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
+      availableFrom,
+      availableUntil,
       createdAt: "2026-07-24T08:00:00.000Z",
       createdByUserId: "USER_INSTRUCTOR_001",
     };
@@ -177,6 +183,14 @@ describe("instructor review screen", () => {
       form.getByLabelText("Assignment title"),
       assignment.title,
     );
+    await user.type(
+      form.getByLabelText("Available from (optional)"),
+      availableFromLocal,
+    );
+    await user.type(
+      form.getByLabelText("Available until (optional)"),
+      availableUntilLocal,
+    );
     const scenarioSelect = await form.findByLabelText(
       "Published scenario",
     );
@@ -214,6 +228,8 @@ describe("instructor review screen", () => {
       scenarioVersion: assignment.scenarioVersion,
       mode: "standard",
       learnerUserIds: assignment.learnerUserIds,
+      availableFrom,
+      availableUntil,
     });
     expect(
       await form.findByText("Assignment ASSIGNMENT_001 was created."),
@@ -467,7 +483,7 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
     expect(
       report.getByText(
-        "Active — assigned learners may start new attempts.",
+        "Active — new attempts follow the assignment availability window.",
       ),
     ).toBeInTheDocument();
     await user.click(

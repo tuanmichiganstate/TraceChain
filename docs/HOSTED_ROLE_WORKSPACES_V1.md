@@ -28,6 +28,13 @@ only active users with the server-provisioned learner role. The instructor
 selects that bounded roster rather than copying internal user identifiers;
 disabled users and non-learners are not offered.
 
+An instructor may also set optional opening and closing times. The browser
+accepts local date-time input, while the API normalizes and stores immutable UTC
+timestamps. Opening is inclusive and closing is exclusive. The learner list
+shows a server-observed availability status, and the worker checks the
+authoritative clock again before creating a run. Closing the start window does
+not prevent an already-started run from being resumed.
+
 Assignment closure is one-way and idempotent. It records the authenticated
 instructor or administrator and server time, then prevents new run creation.
 Runs that already started and all existing event, rating, and report evidence
@@ -76,9 +83,11 @@ See `docs/DECISION_OUTCOME_REPORT_V1.md`.
 ## Learner authority boundary
 
 `GET /api/v1/learner/assignments` joins the authenticated user ID to the
-server-owned assignment roster. A learner starts a run with only a command ID
-and run ID. Assignment, scenario, mode, seed policy, learner identity, and
-authored outcome come from trusted server records.
+server-owned assignment roster. Each result includes the availability status
+observed by the server. A learner starts a run with only a command ID and run
+ID. Assignment, scenario, mode, seed policy, availability, learner identity,
+and authored outcome come from trusted server records. The start endpoint does
+not trust a possibly stale client status.
 
 Learner command bodies contain the decision payload, command ID, run ID, and
 expected run version. Simulation actor, organization, and role are created by

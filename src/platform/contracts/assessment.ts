@@ -4,6 +4,17 @@ export type AssignmentRunMode =
   | "sandbox"
   | "configured";
 
+export type AssignmentStartAvailabilityStatus =
+  | "available"
+  | "not-yet-open"
+  | "ended"
+  | "closed";
+
+export interface AssignmentStartAvailabilityV1 {
+  readonly status: AssignmentStartAvailabilityStatus;
+  readonly observedAt: string;
+}
+
 export interface HostedAssignmentV1 {
   readonly schemaVersion: "1.0.0";
   readonly assignmentId: string;
@@ -16,6 +27,8 @@ export interface HostedAssignmentV1 {
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
+  readonly availableFrom?: string;
+  readonly availableUntil?: string;
   readonly closedAt?: string;
   readonly closedByUserId?: string;
   readonly feedbackReleaseStatus: "withheld" | "released";
@@ -36,6 +49,8 @@ export interface CreateHostedAssignmentRequest {
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly learnerUserIds: readonly string[];
+  readonly availableFrom?: string;
+  readonly availableUntil?: string;
 }
 
 export interface HostedAssignmentScenarioOptionV1 {
@@ -224,6 +239,7 @@ export interface HostedAssignmentMonitorV1 {
 
 export interface HostedLearnerAssignmentV1 {
   readonly assignment: HostedAssignmentV1;
+  readonly startAvailability: AssignmentStartAvailabilityV1;
   readonly runs: readonly HostedAssignmentRunSummary[];
 }
 import type { HostedRunModeConfigurationV1 } from "./scenario-pack";

@@ -78,6 +78,7 @@ import {
   createLearnerCompetencyProfile,
 } from "../src/platform/reporting/assignment-competency-report";
 import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
+import { assignmentStartAvailability } from "../src/platform/runs/assignment-availability";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
 import {
   compareScenarioPackVersions,
@@ -337,6 +338,9 @@ function errorResponse(error: unknown): Response {
         ? 404
         : error.code === "ASSIGNMENT_CONFLICT" ||
             error.code === "ASSIGNMENT_ALREADY_CLOSED" ||
+            error.code === "ASSIGNMENT_CLOSED" ||
+            error.code === "ASSIGNMENT_NOT_YET_AVAILABLE" ||
+            error.code === "ASSIGNMENT_AVAILABILITY_ENDED" ||
             error.code === "RATING_REVISION_CONFLICT" ||
             error.code === "MODERATION_REVISION_CONFLICT" ||
             error.code === "FEEDBACK_ALREADY_RELEASED" ||
@@ -1395,13 +1399,26 @@ async function apiResponse(
     const learnerUserId = runCreator.roles.includes("learner")
       ? runCreator.userId
       : requiredText(body.learnerUserId, "learnerUserId");
-    if (
-      assignment.status !== "active" ||
-      !assignment.learnerUserIds.includes(learnerUserId)
-    ) {
+    if (!assignment.learnerUserIds.includes(learnerUserId)) {
       throw new AssignmentRepositoryError(
         "INVALID_ASSIGNMENT",
-        "The run requires an active assignment and assigned learner.",
+        "The run requires an assigned learner.",
+      );
+    }
+    const availability = assignmentStartAvailability(
+      assignment,
+      clock.now(),
+    );
+    if (availability.status !== "available") {
+      const code =
+        availability.status === "closed"
+          ? "ASSIGNMENT_CLOSED"
+          : availability.status === "not-yet-open"
+            ? "ASSIGNMENT_NOT_YET_AVAILABLE"
+            : "ASSIGNMENT_AVAILABILITY_ENDED";
+      throw new AssignmentRepositoryError(
+        code,
+        `The assignment start status is ${availability.status}.`,
       );
     }
     const pack = await new D1ScenarioPackRepository(

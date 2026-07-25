@@ -20,6 +20,7 @@ import {
   HostedModeConfigurationError,
   validateHostedModeConfiguration,
 } from "../runs/mode-configuration";
+import { assignmentStartAvailability } from "../runs/assignment-availability";
 import type { D1DatabaseLike } from "./d1-types";
 
 interface AssignmentRow {
@@ -33,6 +34,8 @@ interface AssignmentRow {
   readonly run_mode: string;
   readonly mode_configuration_json: string;
   readonly lifecycle_status: string;
+  readonly available_from_utc: string | null;
+  readonly available_until_utc: string | null;
   readonly close_command_id: string | null;
   readonly closed_at_utc: string | null;
   readonly closed_by_user_id: string | null;
@@ -110,6 +113,8 @@ const FIND_ASSIGNMENT = `SELECT
   run_mode,
   mode_configuration_json,
   lifecycle_status,
+  available_from_utc,
+  available_until_utc,
   close_command_id,
   closed_at_utc,
   closed_by_user_id,
@@ -141,6 +146,8 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.run_mode,
   assignments.mode_configuration_json,
   assignments.lifecycle_status,
+  assignments.available_from_utc,
+  assignments.available_until_utc,
   assignments.close_command_id,
   assignments.closed_at_utc,
   assignments.closed_by_user_id,
@@ -180,10 +187,12 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   run_mode,
   mode_configuration_json,
   lifecycle_status,
+  available_from_utc,
+  available_until_utc,
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'withheld', ?, ?)`;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -474,6 +483,9 @@ export class AssignmentRepositoryError extends Error {
       | "LEARNER_NOT_PROVISIONED"
       | "ASSIGNMENT_STORAGE_FAILED"
       | "ASSIGNMENT_ALREADY_CLOSED"
+      | "ASSIGNMENT_CLOSED"
+      | "ASSIGNMENT_NOT_YET_AVAILABLE"
+      | "ASSIGNMENT_AVAILABILITY_ENDED"
       | "RUN_NOT_ASSIGNED"
       | "INVALID_RATING"
       | "RATING_REVISION_CONFLICT"
@@ -521,6 +533,27 @@ function identifier(value: unknown, path: string): string {
     );
   }
   return normalized;
+}
+
+function optionalUtcTimestamp(
+  value: unknown,
+  path: string,
+): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      `${path} must be an ISO timestamp when present.`,
+    );
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      `${path} must be a valid ISO timestamp.`,
+    );
+  }
+  return new Date(parsed).toISOString();
 }
 
 function activityCount(
@@ -672,6 +705,24 @@ function normalizeRequest(
     }
     throw error;
   }
+  const availableFrom = optionalUtcTimestamp(
+    request.availableFrom,
+    "availableFrom",
+  );
+  const availableUntil = optionalUtcTimestamp(
+    request.availableUntil,
+    "availableUntil",
+  );
+  if (
+    availableFrom !== undefined &&
+    availableUntil !== undefined &&
+    availableFrom >= availableUntil
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      "availableFrom must be earlier than availableUntil.",
+    );
+  }
   return {
     commandId: identifier(request.commandId, "commandId"),
     assignmentId: identifier(request.assignmentId, "assignmentId"),
@@ -687,6 +738,8 @@ function normalizeRequest(
     mode: runConfiguration.mode,
     runConfiguration,
     learnerUserIds,
+    ...(availableFrom === undefined ? {} : { availableFrom }),
+    ...(availableUntil === undefined ? {} : { availableUntil }),
   };
 }
 
@@ -955,6 +1008,8 @@ function isSameAssignment(
     existing.mode === request.mode &&
     JSON.stringify(existing.runConfiguration) ===
       JSON.stringify(request.runConfiguration) &&
+    existing.availableFrom === request.availableFrom &&
+    existing.availableUntil === request.availableUntil &&
     existing.createdByUserId === principal.userId &&
     JSON.stringify(existing.learnerUserIds) ===
       JSON.stringify(request.learnerUserIds)
@@ -976,6 +1031,25 @@ function assignmentFrom(
   const hasCompleteCloseMetadata = closeMetadata.every(
     (value) => value !== null,
   );
+  let availableFrom: string | undefined;
+  let availableUntil: string | undefined;
+  try {
+    availableFrom = optionalUtcTimestamp(
+      row.available_from_utc ?? undefined,
+      "stored availableFrom",
+    );
+    availableUntil = optionalUtcTimestamp(
+      row.available_until_utc ?? undefined,
+      "stored availableUntil",
+    );
+  } catch (error) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      error instanceof Error
+        ? error.message
+        : "Stored assignment availability is invalid.",
+    );
+  }
   if (
     !ASSIGNMENT_MODES.includes(row.run_mode as AssignmentRunMode) ||
     (row.lifecycle_status !== "active" &&
@@ -985,6 +1059,13 @@ function assignmentFrom(
     (row.lifecycle_status === "closed" &&
       hasAnyCloseMetadata &&
       !hasCompleteCloseMetadata) ||
+    (row.available_from_utc !== null &&
+      availableFrom !== row.available_from_utc) ||
+    (row.available_until_utc !== null &&
+      availableUntil !== row.available_until_utc) ||
+    (availableFrom !== undefined &&
+      availableUntil !== undefined &&
+      availableFrom >= availableUntil) ||
     (row.feedback_release_status !== "withheld" &&
       row.feedback_release_status !== "released")
   ) {
@@ -1019,6 +1100,8 @@ function assignmentFrom(
     runConfiguration,
     learnerUserIds,
     status: row.lifecycle_status,
+    ...(availableFrom === undefined ? {} : { availableFrom }),
+    ...(availableUntil === undefined ? {} : { availableUntil }),
     ...(row.closed_at_utc === null
       ? {}
       : { closedAt: row.closed_at_utc }),
@@ -1104,6 +1187,8 @@ export class D1AssignmentRepository {
           normalized.scenarioVersion,
           normalized.mode,
           JSON.stringify(normalized.runConfiguration),
+          normalized.availableFrom ?? null,
+          normalized.availableUntil ?? null,
           now,
           principal.userId,
         ),
@@ -1192,11 +1277,16 @@ export class D1AssignmentRepository {
       );
     }
     const assignments: HostedLearnerAssignmentV1[] = [];
+    const observedAt = this.clock.now();
     for (const row of result.results) {
       const assignment = await this.assignmentFromRow(row);
       const report = await this.report(assignment.assignmentId);
       assignments.push({
         assignment,
+        startAvailability: assignmentStartAvailability(
+          assignment,
+          observedAt,
+        ),
         runs:
           report.learners.find(
             (learner) =>

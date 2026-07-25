@@ -1135,6 +1135,8 @@ test("creates an exact published assignment for a provisioned learner", async ()
       runConfiguration: pack.scenarios[0].modeConfigurations.find(
         (configuration) => configuration.mode === "standard",
       ),
+      availableFrom: "2020-01-01T00:00:00.000Z",
+      availableUntil: "2999-01-01T00:00:00.000Z",
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
     };
     const create = await worker.fetch(
@@ -1159,6 +1161,8 @@ test("creates an exact published assignment for a provisioned learner", async ()
       runConfiguration: assignmentBody.runConfiguration,
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
       status: "active",
+      availableFrom: assignmentBody.availableFrom,
+      availableUntil: assignmentBody.availableUntil,
       feedbackReleaseStatus: "withheld",
       createdAt: created.assignment.createdAt,
       createdByUserId: "USER_INSTRUCTOR_ASSIGNMENT",
@@ -1205,6 +1209,14 @@ test("creates an exact published assignment for a provisioned learner", async ()
     assert.equal(
       learnerAssignmentBody.assignments[0].assignment.assignmentId,
       "ASSIGNMENT_COFFEE_001",
+    );
+    assert.equal(
+      learnerAssignmentBody.assignments[0].startAvailability.status,
+      "available",
+    );
+    assert.match(
+      learnerAssignmentBody.assignments[0].startAvailability.observedAt,
+      /^\d{4}-\d{2}-\d{2}T/u,
     );
     assert.deepEqual(learnerAssignmentBody.assignments[0].runs, []);
 
@@ -1369,10 +1381,10 @@ test("creates an exact published assignment for a provisioned learner", async ()
       ),
       env,
     );
-    assert.equal(closedStart.status, 400);
+    assert.equal(closedStart.status, 409);
     assert.equal(
       (await closedStart.json()).error.code,
-      "INVALID_ASSIGNMENT",
+      "ASSIGNMENT_CLOSED",
     );
 
     const resumedAssignments = await worker.fetch(
@@ -1386,11 +1398,98 @@ test("creates an exact published assignment for a provisioned learner", async ()
       200,
       await resumedAssignments.clone().text(),
     );
+    const resumedAssignmentBody = await resumedAssignments.json();
+    assert.equal(
+      resumedAssignmentBody.assignments[0].startAvailability.status,
+      "closed",
+    );
     assert.deepEqual(
-      (await resumedAssignments.json()).assignments[0].runs.map(
+      resumedAssignmentBody.assignments[0].runs.map(
         (run) => run.runId,
       ),
       ["RUN_ASSIGNMENT_COFFEE_001"],
+    );
+
+    const invalidAvailability = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: {
+          ...assignmentBody,
+          commandId: "COMMAND_ASSIGNMENT_INVALID_WINDOW_001",
+          assignmentId: "ASSIGNMENT_INVALID_WINDOW_001",
+          availableFrom: "2999-01-01T00:00:00.000Z",
+          availableUntil: "2020-01-01T00:00:00.000Z",
+        },
+      }),
+      env,
+    );
+    assert.equal(invalidAvailability.status, 400);
+    assert.equal(
+      (await invalidAvailability.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
+
+    const futureAssignmentBody = {
+      ...assignmentBody,
+      commandId: "COMMAND_ASSIGNMENT_FUTURE_001",
+      assignmentId: "ASSIGNMENT_FUTURE_001",
+      title: "Future coffee cohort",
+      availableFrom: "2999-01-01T00:00:00.000Z",
+      availableUntil: undefined,
+    };
+    const futureAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: futureAssignmentBody,
+      }),
+      env,
+    );
+    assert.equal(
+      futureAssignment.status,
+      201,
+      await futureAssignment.clone().text(),
+    );
+    const assignmentsWithFuture = await worker.fetch(
+      apiRequest("/api/v1/learner/assignments", {
+        email: "assignment-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      assignmentsWithFuture.status,
+      200,
+      await assignmentsWithFuture.clone().text(),
+    );
+    const futureLearnerAssignment = (
+      await assignmentsWithFuture.json()
+    ).assignments.find(
+      ({ assignment }) =>
+        assignment.assignmentId === "ASSIGNMENT_FUTURE_001",
+    );
+    assert.equal(
+      futureLearnerAssignment.startAvailability.status,
+      "not-yet-open",
+    );
+    const futureStart = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_FUTURE_001/start-run",
+        {
+          method: "POST",
+          email: "assignment-learner@example.edu",
+          body: {
+            commandId: "COMMAND_FUTURE_RUN_001",
+            runId: "RUN_FUTURE_COFFEE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(futureStart.status, 409);
+    assert.equal(
+      (await futureStart.json()).error.code,
+      "ASSIGNMENT_NOT_YET_AVAILABLE",
     );
   } finally {
     database.close();
