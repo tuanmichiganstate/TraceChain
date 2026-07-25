@@ -128,11 +128,12 @@ proves the primitive against the FIPS 180-4 vectors.
 **Do not weaken any of that without changing the copy in the same commit.** What
 is real: block, transaction, asset-state and document-content hashes; the chain
 linkage; integrity verification; canonical serialization; Ed25519 signing and
-signature verification over canonical transaction proposals. What is simulated
-and labelled as such: organizational identity, educational key custody,
-certificate issuance, endorsements, the network and ordering service. Absent
-entirely: proof of work, mining, cryptocurrency, and any Merkle tree — a block
-commits to the flat list of its transaction digests.
+signature verification over canonical transaction proposals; and endorsement
+signatures and policy evaluation. What is simulated and labelled as such:
+organizational identity, educational key custody, certificate issuance, the
+network, ordering service, and consensus. Absent entirely: proof of work,
+mining, cryptocurrency, and any Merkle tree — a block commits to the flat list
+of its transaction digests.
 
 One subtlety if you touch hashing: a transaction's digest fixes its timestamp at
 **ordering**, not at sealing. Reconstruct the payload from `orderedAt ??
@@ -144,8 +145,6 @@ createdAt`, as `integrity.ts` does.
   are correct by construction and by axe, which is not the same thing.
 - **No Vietnamese subject-expert review.** All copy to date is unreviewed by a
   domain teacher. `docs/content-review/` regenerates a bilingual pack for this.
-- **Attempts completed under the old stage-wide hint policy** display scores
-  recomputed under the current item-scoped one.
 - Branch protection is unavailable on the current GitHub plan, so `master` is
   protected by the pre-commit hook and CI alone.
 
@@ -153,4 +152,4 @@ createdAt`, as `integrity.ts` does.
 
 `master` is the default and small green changes land on it directly.
 Multi-commit or exploratory work branches. Do not commit or push unless asked.
-Trailer: `Co-Authored-By: <model name> <noreply@anthropic.com>`.
+Do not add AI or model co-author trailers to commit metadata.

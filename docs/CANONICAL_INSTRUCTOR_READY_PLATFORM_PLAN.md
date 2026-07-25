@@ -1209,7 +1209,7 @@ Deliverables:
 
 - current-state architecture document;
 - dependency and database map;
-- migration risks;
+- direct-upgrade risks;
 - automated test baseline;
 - architectural decision records;
 - agreed implementation sequence.
@@ -1223,7 +1223,7 @@ Implement:
 - pack import and validation;
 - versioning and immutable publication;
 - basic user roles and permissions;
-- migration shell for the current coffee scenario.
+- native runtime profile for the current coffee scenario.
 
 Exit criteria:
 
@@ -1403,14 +1403,16 @@ The refactor is successful when all of the following are true:
 - Use the existing application stack unless a change is justified in an architectural decision record.
 - Keep business and scenario logic out of UI components.
 - Use type-safe request, event, and scenario schemas.
-- Apply database migrations through the repository's standard migration mechanism.
+- Maintain one current fresh-install database schema and reset development
+  databases after contract changes.
 - Do not hard-code scenario IDs, organizations, roles, asset types, policies, outcomes, or competency mappings in core services.
 - Do not execute arbitrary code from imported scenario packs.
 - Make command handlers idempotent.
 - Add structured logging and meaningful error codes.
 - Document public APIs and the scenario schema.
 - Include seed data and one complete example scenario pack.
-- Preserve backward compatibility where practical and document unavoidable breaking changes.
+- Upgrade pre-release contracts directly and remove superseded formats in the
+  same delivery.
 - Do not implement collaborative multi-learner sessions, learner-to-learner endorsements, or real-time communication under this plan.
 
 ---

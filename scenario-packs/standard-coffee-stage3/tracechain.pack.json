@@ -2773,7 +2773,7 @@
           "title": {
             "localizationKey": "stage.recallAndDebrief.title"
           },
-          "outcomeCode": "COFFEE_JOURNEY_MIGRATION_COMPLETE",
+          "outcomeCode": "COFFEE_JOURNEY_COMPLETE",
           "transitions": []
         },
         {

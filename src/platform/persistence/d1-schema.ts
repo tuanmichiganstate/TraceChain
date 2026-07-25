@@ -22,8 +22,8 @@ async function initialize(database: D1DatabaseLike): Promise<void> {
 
 /**
  * Idempotent runtime guard for a newly provisioned Sites-owned D1 database.
- * Migration files remain authoritative history; this guard only executes the
- * current CREATE IF NOT EXISTS statements.
+ * TraceChain supports one current pre-release schema, so this guard executes
+ * the fresh-install CREATE IF NOT EXISTS statements directly.
  */
 export function ensureD1FoundationSchema(
   database: D1DatabaseLike,

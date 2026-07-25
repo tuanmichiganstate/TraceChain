@@ -270,7 +270,7 @@ Stage completion is evaluated from three distinct facts:
 A rejected initial command therefore unlocks feedback and mitigation but does
 not satisfy the business-commitment requirement.
 
-## Score migration contract
+## Score replacement contract
 
 The published maximum remains exactly 100: 39 operational points and 61
 knowledge points. No item is duplicated. A second-attempt mitigation is capped
@@ -700,12 +700,13 @@ this implementation boundary.
 - Every string and record count is schema-bounded.
 - Real authored worst cases fit below the 3,800-character internal ceiling.
 - Prospective persistence completes before command state is published.
-- TC2 is preserved and directs the learner to a new LMS attempt.
+- Unsupported pre-TC3 data is never read or rewritten and directs the learner
+  to a new LMS attempt.
 
 ### Scoring and hints
 
 - The score remains exactly 100 with the published 39/61 split.
-- The old-to-new migration table has no duplicate item.
+- The old-to-current score replacement table has no duplicate item.
 - Scope/evidence and authorization score independently at Stage 9.
 - Item-scoped hint ceilings match learner disclosure.
 - Mitigation never restores points removed by a hint.

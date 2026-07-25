@@ -70,10 +70,11 @@ server-side. TraceChain will not implement password storage.
 
 - The first hosted deployment is aligned with the repository's connected
   hosting environment.
-- Storage services remain portable, but SQL migrations will initially target
-  D1.
+- Storage services remain portable, while the current fresh-install SQL schema
+  targets D1.
 - Coffee functionality stays stable while the platform schema evolves.
-- New packs can use generic nodes without forcing a risky all-at-once migration.
+- New packs can use generic nodes while coffee remains a first-class native
+  runtime profile.
 - Hosted and SCORM security claims remain honest.
 - Phase 3 cannot be marked complete until real endorsement policies pass their
   existing acceptance plan.
