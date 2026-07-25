@@ -33,6 +33,59 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
     "sandbox",
     "configured",
   ],
+  modeConfigurations: [
+    {
+      mode: "tutorial",
+      allowHints: true,
+      allowRetry: true,
+      allowBacktracking: true,
+      feedbackTiming: "immediate",
+      showScores: true,
+      outcomeStrategy: "forced",
+      seedPolicy: "generated",
+      timeLimitMinutes: 45,
+      allowCommunication: false,
+      allowEvidenceRequests: true,
+    },
+    {
+      mode: "standard",
+      allowHints: false,
+      allowRetry: false,
+      allowBacktracking: false,
+      feedbackTiming: "final",
+      showScores: false,
+      outcomeStrategy: "forced",
+      seedPolicy: "supplied",
+      timeLimitMinutes: 30,
+      allowCommunication: false,
+      allowEvidenceRequests: true,
+    },
+    {
+      mode: "sandbox",
+      allowHints: true,
+      allowRetry: true,
+      allowBacktracking: true,
+      feedbackTiming: "immediate",
+      showScores: false,
+      outcomeStrategy: "probabilistic",
+      seedPolicy: "supplied",
+      allowCommunication: false,
+      allowEvidenceRequests: true,
+    },
+    {
+      mode: "configured",
+      allowHints: false,
+      allowRetry: false,
+      allowBacktracking: false,
+      feedbackTiming: "stage-end",
+      showScores: false,
+      outcomeStrategy: "probabilistic",
+      seedPolicy: "supplied",
+      timeLimitMinutes: 30,
+      allowCommunication: false,
+      allowEvidenceRequests: true,
+    },
+  ],
 };
 
 function renderScreen(api: InstructorReviewApi) {
@@ -129,6 +182,8 @@ describe("instructor review screen", () => {
       scenarioId: publishedCoffeeOption.scenarioId,
       scenarioVersion: publishedCoffeeOption.scenarioVersion,
       mode: "standard" as const,
+      runConfiguration:
+        publishedCoffeeOption.modeConfigurations[1]!,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
@@ -210,6 +265,23 @@ describe("instructor review screen", () => {
     expect(
       form.queryByLabelText("Learner user IDs"),
     ).not.toBeInTheDocument();
+    const publishedSettings = form.getByLabelText(
+      "Published mode settings",
+    );
+    expect(
+      within(publishedSettings).getByText("30 minutes"),
+    ).toBeInTheDocument();
+    expect(
+      within(publishedSettings).getAllByText("Disabled"),
+    ).toHaveLength(5);
+    await user.selectOptions(form.getByLabelText("Run mode"), "tutorial");
+    expect(
+      within(publishedSettings).getByText("45 minutes"),
+    ).toBeInTheDocument();
+    expect(
+      within(publishedSettings).getAllByText("Enabled"),
+    ).toHaveLength(5);
+    await user.selectOptions(form.getByLabelText("Run mode"), "standard");
     await user.click(
       form.getByRole("checkbox", {
         name: "learner@example.edu (USER_LEARNER_001)",
@@ -234,6 +306,9 @@ describe("instructor review screen", () => {
     expect(
       await form.findByText("Assignment ASSIGNMENT_001 was created."),
     ).toBeInTheDocument();
+    expect(
+      form.getAllByLabelText("Published mode settings"),
+    ).toHaveLength(2);
   });
 
   it("manages access and offers stable downloads after loading an assignment report", async () => {

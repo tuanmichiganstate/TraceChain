@@ -1077,6 +1077,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
         scenarioId: available[0].scenarioId,
         scenarioVersion: available[0].scenarioVersion,
         supportedModes: available[0].supportedModes,
+        modeConfigurations: available[0].modeConfigurations,
       },
       {
         packId: pack.packId,
@@ -1084,6 +1085,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
         scenarioId: pack.scenarios[0].scenarioId,
         scenarioVersion: pack.scenarios[0].version,
         supportedModes: pack.scenarios[0].supportedModes,
+        modeConfigurations: pack.scenarios[0].modeConfigurations,
       },
     );
     assert.equal(Object.hasOwn(available[0], "initialState"), false);

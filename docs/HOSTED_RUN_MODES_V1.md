@@ -37,6 +37,10 @@ no fallback and must declare one configuration for every supported mode.
 The standard coffee pack defines Tutorial, Standard, Sandbox, and Configured
 behavior. Selecting a mode in the instructor interface selects that published
 configuration; it does not activate undocumented application defaults.
+The assignment form displays the resolved behavioral settings, including the
+authored time limit, before creation and confirms the stored configuration
+after creation. The display is read-only; it does not create a parallel source
+of mode configuration.
 
 ## Authored run time limits
 

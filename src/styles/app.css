@@ -268,6 +268,21 @@
   align-items: end;
 }
 
+.instructor-review__mode-settings {
+  grid-column: 1 / -1;
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__mode-settings h3 {
+  margin-block-start: 0;
+}
+
+.instructor-review__mode-settings .instructor-review__facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
 .instructor-review__learner-picker {
   min-width: 0;
   margin: 0;

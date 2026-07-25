@@ -71,6 +71,8 @@ export interface HostedAssignmentScenarioOptionV1 {
     >
   >;
   readonly supportedModes: readonly AssignmentRunMode[];
+  readonly modeConfigurations:
+    readonly HostedRunModeConfigurationV1[];
 }
 
 export interface HostedAssignmentLearnerOptionV1 {

@@ -1181,6 +1181,9 @@ async function apiResponse(
                   scenario.title.localizationKey,
                 ),
                 supportedModes: scenario.supportedModes,
+                modeConfigurations: scenario.supportedModes.map(
+                  (mode) => modeConfigurationFor(scenario, mode),
+                ),
               })),
       );
     return jsonResponse(200, {

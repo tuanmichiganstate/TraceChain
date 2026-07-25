@@ -31,6 +31,7 @@ import type {
   ScormPackageJobV1,
   ScormPackagePresetId,
 } from "../contracts/scorm-package-job";
+import type { HostedRunModeConfigurationV1 } from "../contracts/scenario-pack";
 import type {
   CompetencyEvidenceProjection,
   InstructorTimelineItem,
@@ -760,6 +761,8 @@ interface AssignmentScenarioOption {
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly supportedModes: readonly AssignmentRunMode[];
+  readonly modeConfigurations:
+    readonly HostedRunModeConfigurationV1[];
 }
 
 function scenarioOptionKey(
@@ -824,6 +827,7 @@ function assignmentScenarioOptions(
       scenarioId: option.scenarioId,
       scenarioVersion: option.scenarioVersion,
       supportedModes: option.supportedModes,
+      modeConfigurations: option.modeConfigurations,
     }))
     .sort((left, right) =>
       left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
@@ -846,6 +850,90 @@ function optionalLocalDateTimeToUtc(
   return Number.isFinite(parsed)
     ? new Date(parsed).toISOString()
     : undefined;
+}
+
+function ModeConfigurationSummary({
+  configuration,
+}: {
+  readonly configuration: HostedRunModeConfigurationV1;
+}): ReactNode {
+  const t = useTranslator();
+  const setting = (enabled: boolean) =>
+    t(
+      enabled
+        ? "instructorReview.modeSetting.enabled"
+        : "instructorReview.modeSetting.disabled",
+    );
+  const facts = [
+    {
+      label: t("instructorReview.modeSetting.feedback"),
+      value: t(
+        `instructorReview.feedbackTiming.${configuration.feedbackTiming}`,
+      ),
+    },
+    {
+      label: t("instructorReview.modeSetting.hints"),
+      value: setting(configuration.allowHints),
+    },
+    {
+      label: t("instructorReview.modeSetting.retry"),
+      value: setting(configuration.allowRetry),
+    },
+    {
+      label: t("instructorReview.modeSetting.backtracking"),
+      value: setting(configuration.allowBacktracking),
+    },
+    {
+      label: t("instructorReview.modeSetting.scores"),
+      value: setting(configuration.showScores),
+    },
+    {
+      label: t("instructorReview.modeSetting.outcome"),
+      value: t(
+        `instructorReview.outcomeStrategy.${configuration.outcomeStrategy}`,
+      ),
+    },
+    {
+      label: t("instructorReview.modeSetting.seed"),
+      value: t(
+        `instructorReview.seedPolicy.${configuration.seedPolicy}`,
+      ),
+    },
+    {
+      label: t("instructorReview.modeSetting.timeLimit"),
+      value:
+        configuration.timeLimitMinutes === undefined
+          ? t("instructorReview.timeLimit.unlimited")
+          : t("instructorReview.timeLimit.minutes", {
+              minutes: configuration.timeLimitMinutes,
+            }),
+    },
+    {
+      label: t("instructorReview.modeSetting.communication"),
+      value: setting(configuration.allowCommunication),
+    },
+    {
+      label: t("instructorReview.modeSetting.evidenceRequests"),
+      value: setting(configuration.allowEvidenceRequests),
+    },
+  ] as const;
+
+  return (
+    <section
+      className="instructor-review__mode-settings"
+      aria-label={t("instructorReview.modeSettings")}
+    >
+      <h3>{t("instructorReview.modeSettings")}</h3>
+      <dl className="instructor-review__facts">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
 }
 
 function AssignmentCreation({
@@ -886,6 +974,10 @@ function AssignmentCreation({
   const selectedScenario = scenarioOptions.find(
     (option) => option.key === selectedScenarioKey,
   );
+  const selectedModeConfiguration =
+    selectedScenario?.modeConfigurations.find(
+      (configuration) => configuration.mode === mode,
+    );
 
   useEffect(() => {
     let active = true;
@@ -1082,6 +1174,11 @@ function AssignmentCreation({
             </span>
           )}
         </div>
+        {selectedModeConfiguration === undefined ? null : (
+          <ModeConfigurationSummary
+            configuration={selectedModeConfiguration}
+          />
+        )}
         <TextField
           id="assignment-available-from"
           label={t("instructorReview.availableFrom")}
@@ -1183,16 +1280,9 @@ function AssignmentCreation({
             })}
           </p>
           {created.runConfiguration === undefined ? null : (
-            <p>
-              {t("instructorReview.modeResolved", {
-                feedback: t(
-                  `instructorReview.feedbackTiming.${created.runConfiguration.feedbackTiming}`,
-                ),
-                outcome: t(
-                  `instructorReview.outcomeStrategy.${created.runConfiguration.outcomeStrategy}`,
-                ),
-              })}
-            </p>
+            <ModeConfigurationSummary
+              configuration={created.runConfiguration}
+            />
           )}
         </div>
       )}

@@ -525,6 +525,34 @@ test("creates an assignment from the published hosted scenario library", async (
       },
     },
     supportedModes: ["tutorial", "standard"],
+    modeConfigurations: [
+      {
+        mode: "tutorial",
+        allowHints: true,
+        allowRetry: true,
+        allowBacktracking: true,
+        feedbackTiming: "immediate",
+        showScores: true,
+        outcomeStrategy: "forced",
+        seedPolicy: "generated",
+        timeLimitMinutes: 45,
+        allowCommunication: false,
+        allowEvidenceRequests: true,
+      },
+      {
+        mode: "standard",
+        allowHints: false,
+        allowRetry: false,
+        allowBacktracking: false,
+        feedbackTiming: "final",
+        showScores: false,
+        outcomeStrategy: "forced",
+        seedPolicy: "supplied",
+        timeLimitMinutes: 30,
+        allowCommunication: false,
+        allowEvidenceRequests: true,
+      },
+    ],
   };
   let submitted: Record<string, unknown> | null = null;
 
@@ -585,6 +613,7 @@ test("creates an assignment from the published hosted scenario library", async (
               showScores: false,
               outcomeStrategy: "forced",
               seedPolicy: "supplied",
+              timeLimitMinutes: 30,
               allowCommunication: false,
               allowEvidenceRequests: true,
             },
@@ -623,6 +652,13 @@ test("creates an assignment from the published hosted scenario library", async (
   await expect(
     form.getByLabel("Run mode").locator("option"),
   ).toHaveCount(2);
+  const publishedSettings = form.getByLabel(
+    "Published mode settings",
+  );
+  await expect(publishedSettings.getByText("30 minutes")).toBeVisible();
+  await form.getByLabel("Run mode").selectOption("tutorial");
+  await expect(publishedSettings.getByText("45 minutes")).toBeVisible();
+  await form.getByLabel("Run mode").selectOption("standard");
 
   await form.getByLabel("Assignment ID").fill("ASSIGNMENT_BROWSER_001");
   await form.getByLabel("Assignment title").fill("Browser cohort");
@@ -642,6 +678,9 @@ test("creates an assignment from the published hosted scenario library", async (
   await expect(
     form.getByText("Assignment ASSIGNMENT_BROWSER_001 was created."),
   ).toBeVisible();
+  await expect(
+    form.getByLabel("Published mode settings"),
+  ).toHaveCount(2);
   expect(submitted).toMatchObject({
     assignmentId: "ASSIGNMENT_BROWSER_001",
     packId: option.packId,
