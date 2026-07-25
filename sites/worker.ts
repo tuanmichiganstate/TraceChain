@@ -62,6 +62,7 @@ import {
 import {
   AssignmentCompetencyReportError,
   createAssignmentCompetencyReport,
+  createLearnerCompetencyProfile,
 } from "../src/platform/reporting/assignment-competency-report";
 import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
@@ -1756,7 +1757,7 @@ async function apiResponse(
 
   const feedbackRunId = pathRunId(url.pathname, "feedback");
   if (feedbackRunId !== null && request.method === "GET") {
-    const { service } = await hostedServiceForRun(
+    const { pack, service } = await hostedServiceForRun(
       environment,
       principal.userId,
       feedbackRunId,
@@ -1780,12 +1781,42 @@ async function apiResponse(
         "Instructor feedback has not been released.",
       );
     }
+    const assignmentReport = await repository.report(
+      assignment.assignmentId,
+    );
+    const learnerReport = assignmentReport.learners.find(
+      (learner) => learner.learnerUserId === principal.userId,
+    );
+    if (learnerReport === undefined) {
+      throw new AssignmentCompetencyReportError(
+        "COMPETENCY_REPORT_SOURCE_MISMATCH",
+        "Released competency evidence does not contain the assigned learner.",
+      );
+    }
+    const evidenceByRun = await Promise.all(
+      learnerReport.runs.map(async (run) => ({
+        runId: run.runId,
+        indicators: await service.learnerCompetencyEvidence(
+          principal,
+          run.runId,
+        ),
+      })),
+    );
+    const competencyProfile = createLearnerCompetencyProfile(
+      createAssignmentCompetencyReport({
+        assignmentReport,
+        pack,
+        evidenceByRun,
+      }),
+      principal.userId,
+    );
     return jsonResponse(200, {
       assignmentId: assignment.assignmentId,
       releasedAt: assignment.feedbackReleasedAt,
       ratings: await repository.currentRatings(feedbackRunId),
       moderationResolutions:
         await repository.currentModerationResolutions(feedbackRunId),
+      competencyProfile,
     });
   }
 

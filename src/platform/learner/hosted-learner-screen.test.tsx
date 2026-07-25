@@ -413,4 +413,153 @@ describe("hosted learner workspace", () => {
     ).toBeInTheDocument();
     expect(api.loadFeedback).toHaveBeenCalledWith("RUN_LEARNER_001");
   });
+
+  it("shows released competency evidence without presenting another score", async () => {
+    const completedProjection = {
+      ...projection(),
+      version: 80,
+      workflowState: {
+        currentNodeId: "complete",
+        completedNodeIds: ["blockchain-necessity-decision"],
+        permittedActionIds: [],
+      },
+    };
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments: vi.fn().mockResolvedValue([
+        {
+          assignment: {
+            schemaVersion: "1.0.0",
+            assignmentId: "ASSIGNMENT_001",
+            title: "Coffee governance",
+            packId: "PACK_COFFEE",
+            packVersion: "1.4.0",
+            scenarioId: "SCN_COFFEE",
+            scenarioVersion: "1.4.0",
+            mode: "standard",
+            runConfiguration: {
+              mode: "standard",
+              allowHints: false,
+              allowRetry: false,
+              allowBacktracking: false,
+              feedbackTiming: "final",
+              showScores: false,
+              outcomeStrategy: "forced",
+              seedPolicy: "supplied",
+              allowCommunication: false,
+              allowEvidenceRequests: true,
+            },
+            learnerUserIds: ["USER_LEARNER_001"],
+            status: "active",
+            feedbackReleaseStatus: "released",
+            createdAt: "2026-07-24T08:00:00.000Z",
+            createdByUserId: "USER_INSTRUCTOR_001",
+          },
+          runs: [
+            {
+              runId: "RUN_LEARNER_001",
+              learnerUserId: "USER_LEARNER_001",
+              status: "completed",
+              eventCount: 80,
+              startedAt: "2026-07-24T08:00:00.000Z",
+              lastActivityAt: "2026-07-24T08:20:00.000Z",
+              completedAt: "2026-07-24T08:20:00.000Z",
+              elapsedSeconds: 1_200,
+              activity: {
+                evidenceInspectionCount: 2,
+                policyConsultationCount: 1,
+                citedEvidenceCount: 1,
+                decisionAttemptCount: 8,
+                rejectedAttemptCount: 2,
+                mitigationCount: 1,
+                rejectionFindings: [],
+              },
+              ratings: [],
+              moderationResolutions: [],
+            },
+          ],
+        },
+      ]),
+      startRun: vi.fn(),
+      loadRun: vi.fn().mockResolvedValue(completedProjection),
+      loadFeedback: vi.fn().mockResolvedValue({
+        assignmentId: "ASSIGNMENT_001",
+        releasedAt: "2026-07-24T08:30:00.000Z",
+        ratings: [],
+        moderationResolutions: [],
+        competencyProfile: {
+          schemaVersion: "1.0.0",
+          interpretation: "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
+          assignmentId: "ASSIGNMENT_001",
+          packId: "PACK_STANDARD_COFFEE_STAGE3",
+          packVersion: "1.6.0",
+          scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+          scenarioVersion: "1.6.0",
+          frameworks: [
+            {
+              frameworkId: "TRACECHAIN_CORE",
+              frameworkVersion: "1.0.0",
+            },
+          ],
+          learner: {
+            learnerUserId: "USER_LEARNER_001",
+            indicators: [
+              {
+                frameworkId: "TRACECHAIN_CORE",
+                frameworkVersion: "1.0.0",
+                competencyId: "PC2",
+                competencyVersion: "1.0.0",
+                competencyTitleKey:
+                  "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.title",
+                indicatorId: "PC2.PI1",
+                indicatorVersion: "1.0.0",
+                indicatorStatementKey:
+                  "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.indicators.PC2.PI1.statement",
+                targetType: "supporting",
+                evidenceCount: 1,
+                latestObservedAt: "2026-07-24T08:10:00.000Z",
+                observations: [
+                  {
+                    runId: "RUN_LEARNER_001",
+                    competencyEvidenceId: "CEV_INSPECTION_001",
+                    evidenceRuleId: "RULE_CERTIFICATE_INSPECTED",
+                    sourceEventIds: ["EVENT_INSPECTION_001"],
+                    observedAt: "2026-07-24T08:10:00.000Z",
+                  },
+                ],
+                currentRatings: [],
+              },
+            ],
+          },
+        },
+      }),
+      submit: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", { name: "Review" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Your competency evidence",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Evidence evaluation")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This profile reports observable evidence from this assignment. It does not infer lasting competence or add another score.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("EVENT_INSPECTION_001")).toBeInTheDocument();
+  });
 });

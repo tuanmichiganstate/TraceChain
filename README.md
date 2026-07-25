@@ -63,9 +63,11 @@ findings, and a data dictionary.
 They also summarize class competency evidence and its rating distribution, and
 expose expandable per-learner profiles with evidence recency, current rubric
 comments, and direct supporting-event review, without inferring stable
-competence from one run. Versioned declarative evidence rules are evaluated
-against their referenced append-only events before competency evidence is
-recorded. Instructors can replay any event sequence through the
+competence from one run. Once feedback is released, the learner workspace
+shows only that learner's evidence profile and never the class aggregate or a
+second score. Versioned declarative evidence rules are evaluated against their
+referenced append-only events before competency evidence is recorded.
+Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
 at that point, with the submitted response beside the evidence available at
 that decision time, including explicit cited and available-but-not-cited

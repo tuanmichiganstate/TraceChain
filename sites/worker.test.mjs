@@ -1942,6 +1942,26 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.deepEqual(releasedFeedback.moderationResolutions, [
       moderated.resolution,
     ]);
+    assert.equal(
+      releasedFeedback.competencyProfile.interpretation,
+      "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
+    );
+    assert.equal(
+      releasedFeedback.competencyProfile.learner.learnerUserId,
+      "USER_LEARNER_001",
+    );
+    assert.ok(
+      releasedFeedback.competencyProfile.learner.indicators.some(
+        (indicator) => indicator.evidenceCount > 0,
+      ),
+    );
+    assert.equal(
+      Object.hasOwn(
+        releasedFeedback.competencyProfile,
+        "classIndicators",
+      ),
+      false,
+    );
 
     const activityTimelineResponse = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/timeline`, {

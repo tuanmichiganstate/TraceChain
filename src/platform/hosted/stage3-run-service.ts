@@ -115,6 +115,24 @@ const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "simulationActorId",
 ]);
 
+function competencyEvidenceProjection(
+  state: HostedStage3RunState,
+): readonly CompetencyEvidenceProjection[] {
+  const indicatorIds = [
+    ...new Set(
+      state.competencyEvidence.flatMap(
+        (evidence) => evidence.indicatorIds,
+      ),
+    ),
+  ].sort();
+  return indicatorIds.map((indicatorId) => ({
+    indicatorId,
+    evidence: state.competencyEvidence.filter((evidence) =>
+      evidence.indicatorIds.includes(indicatorId),
+    ),
+  }));
+}
+
 export class HostedRunCommandError extends Error {
   constructor(
     readonly code:
@@ -2632,19 +2650,16 @@ export class HostedStage3RunService {
       "administrator",
     ]);
     const state = await this.loadState(runId);
-    const indicatorIds = [
-      ...new Set(
-        state.competencyEvidence.flatMap(
-          (evidence) => evidence.indicatorIds,
-        ),
-      ),
-    ].sort();
-    return indicatorIds.map((indicatorId) => ({
-      indicatorId,
-      evidence: state.competencyEvidence.filter((evidence) =>
-        evidence.indicatorIds.includes(indicatorId),
-      ),
-    }));
+    return competencyEvidenceProjection(state);
+  }
+
+  async learnerCompetencyEvidence(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly CompetencyEvidenceProjection[]> {
+    const state = await this.loadState(runId);
+    requireAssignedLearner(principal, state.learnerUserId);
+    return competencyEvidenceProjection(state);
   }
 
   async rubricEvidence(

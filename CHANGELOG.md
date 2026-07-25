@@ -4,6 +4,11 @@
 
 ### Added
 
+- A released learner competency-evidence profile derived from the same
+  append-only run events and exact scenario version as the instructor report.
+  It remains withheld with feedback, exposes only the authenticated learner,
+  excludes class aggregates and peer records, and explicitly adds neither a
+  competence inference nor another score.
 - A replay-derived instructor decision/outcome report for completed hosted
   runs. It summarizes authored decision-item correctness separately from the
   realized scenario outcome, adds no grade, and withholds both correctness and

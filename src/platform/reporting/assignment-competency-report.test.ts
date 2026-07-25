@@ -5,6 +5,7 @@ import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import type { CompetencyEvidenceProjection } from "../hosted/stage3-types";
 import {
   createAssignmentCompetencyReport,
+  createLearnerCompetencyProfile,
 } from "./assignment-competency-report";
 
 const pack = packJson as ScenarioPackV1;
@@ -192,5 +193,31 @@ describe("assignment competency report", () => {
       currentRatings: [],
     });
     expect(unobserved).not.toHaveProperty("performanceLevel");
+  });
+
+  it("projects one learner without class or peer evidence", () => {
+    const report = createAssignmentCompetencyReport({
+      assignmentReport,
+      pack,
+      evidenceByRun,
+    });
+    const profile = createLearnerCompetencyProfile(
+      report,
+      "USER_LEARNER_001",
+    );
+
+    expect(profile).toMatchObject({
+      schemaVersion: "1.0.0",
+      interpretation: "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
+      assignmentId: "ASSIGNMENT_COMPETENCY_001",
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.version,
+      learner: {
+        learnerUserId: "USER_LEARNER_001",
+      },
+    });
+    expect(profile.learner.indicators.length).toBeGreaterThan(0);
+    expect(profile).not.toHaveProperty("learners");
+    expect(profile).not.toHaveProperty("classIndicators");
   });
 });

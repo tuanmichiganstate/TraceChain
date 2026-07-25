@@ -1,6 +1,6 @@
 # Assignment competency evidence report V1
 
-Status: implemented for the hosted instructor platform.
+Status: implemented for the hosted instructor and learner platforms.
 
 ## Purpose
 
@@ -17,13 +17,24 @@ EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE
 
 ## Authorization and route
 
-Only an authenticated `instructor`, `rater`, or `administrator` may request:
+Only an authenticated `instructor`, `rater`, or `administrator` may request
+the assignment and class report:
 
 ```text
 GET /api/v1/assignments/{assignmentId}/competencies
 ```
 
 Learners cannot call this class-report route.
+
+An assigned learner receives only their own profile through:
+
+```text
+GET /api/v1/runs/{runId}/feedback
+```
+
+That profile is withheld until the instructor releases feedback. It contains
+neither class aggregates nor another learner's records. The run must belong to
+the authenticated learner.
 
 ## Version boundary
 
@@ -65,6 +76,12 @@ run and source-event references supporting each observation. A supporting
 event action loads its exact run timeline and focuses the referenced
 append-only event; replay remains available from that row. The compact class
 table remains a separate aggregate view.
+
+After feedback release, the learner workspace renders the same exact-version
+indicator references and the authenticated learner's observations. It repeats
+the evidence-only interpretation, exposes source run and event identifiers,
+and does not display a class aggregate, peer record, derived competency level,
+or additional score.
 
 ## Class projection
 

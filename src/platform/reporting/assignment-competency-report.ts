@@ -2,6 +2,7 @@ import type { HostedAssignmentReportV1 } from "../contracts/assessment";
 import type {
   CompetencyIndicatorReferenceV1,
   HostedAssignmentCompetencyReportV1,
+  HostedLearnerCompetencyProfileV1,
   LearnerCompetencyIndicatorV1,
   LearnerCompetencyObservationV1,
   LearnerCompetencyRatingV1,
@@ -353,5 +354,30 @@ export function createAssignmentCompetencyReport(
           .map(([levelValue, count]) => ({ levelValue, count })),
       };
     }),
+  };
+}
+
+export function createLearnerCompetencyProfile(
+  report: HostedAssignmentCompetencyReportV1,
+  learnerUserId: string,
+): HostedLearnerCompetencyProfileV1 {
+  const learner = report.learners.find(
+    (candidate) => candidate.learnerUserId === learnerUserId,
+  );
+  if (learner === undefined) {
+    return mismatch(
+      `Competency report does not contain learner ${learnerUserId}.`,
+    );
+  }
+  return {
+    schemaVersion: report.schemaVersion,
+    interpretation: report.interpretation,
+    assignmentId: report.assignmentId,
+    packId: report.packId,
+    packVersion: report.packVersion,
+    scenarioId: report.scenarioId,
+    scenarioVersion: report.scenarioVersion,
+    frameworks: report.frameworks,
+    learner,
   };
 }

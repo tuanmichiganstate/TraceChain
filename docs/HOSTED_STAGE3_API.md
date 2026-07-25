@@ -133,7 +133,7 @@ All endpoints use `/api/v1`.
 | `GET /runs/:runId/ratings` | instructor, rater or administrator | Current manual rating revision per criterion |
 | `POST /runs/:runId/ratings` | instructor, rater or administrator | Evidence-linked append-only manual rating revision |
 | `POST /runs/:runId/moderation` | instructor or administrator | Evidence-linked append-only rubric score resolution |
-| `GET /runs/:runId/feedback` | assigned learner | Released manual feedback, or an explicit withheld result |
+| `GET /runs/:runId/feedback` | assigned learner | Released manual feedback and that learner's evidence-only competency profile, or an explicit withheld result |
 | `GET /scorm-package-jobs` | instructor or administrator | Authorized package-job history |
 | `POST /scorm-package-jobs` | instructor or administrator | Exact verified Guided or Challenge artifact |
 | `GET /scorm-package-jobs/:jobId` | owner or administrator | Package identity and download URL |

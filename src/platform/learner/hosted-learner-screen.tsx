@@ -10,6 +10,9 @@ import type {
   RubricModerationResolutionV1,
 } from "../contracts/assessment";
 import type {
+  HostedLearnerCompetencyProfileV1,
+} from "../contracts/competency-report";
+import type {
   ApplicationRole,
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
@@ -32,6 +35,7 @@ interface HostedLearnerFeedback {
   readonly ratings: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
+  readonly competencyProfile: HostedLearnerCompetencyProfileV1;
 }
 
 export interface HostedLearnerApi {
@@ -479,35 +483,130 @@ function LearnerFeedback({
         <p role="status">{t("hostedLearner.feedbackLoading")}</p>
       ) : feedback === "withheld" ? (
         <p>{t("hostedLearner.feedbackWithheld")}</p>
-      ) : feedback.moderationResolutions.length > 0 ? (
-        <ul>
-          {feedback.moderationResolutions.map((resolution) => (
-            <li key={resolution.resolutionId}>
-              <strong>{resolution.criterionId}</strong>:{" "}
-              {t("hostedLearner.feedbackLevel", {
-                level: resolution.levelValue,
-              })}
-              <br />
-              {resolution.comment}
-            </li>
-          ))}
-        </ul>
-      ) : feedback.ratings.length > 0 ? (
-        <ul>
-          {feedback.ratings.map((rating) => (
-            <li key={rating.ratingId}>
-              <strong>{rating.criterionId}</strong>:{" "}
-              {t("hostedLearner.feedbackLevel", {
-                level: rating.levelValue,
-              })}
-              <br />
-              {rating.comment}
-            </li>
-          ))}
-        </ul>
       ) : (
-        <p>{t("hostedLearner.feedbackEmpty")}</p>
+        <>
+          {feedback.moderationResolutions.length > 0 ? (
+            <ul>
+              {feedback.moderationResolutions.map((resolution) => (
+                <li key={resolution.resolutionId}>
+                  <strong>{resolution.criterionId}</strong>:{" "}
+                  {t("hostedLearner.feedbackLevel", {
+                    level: resolution.levelValue,
+                  })}
+                  <br />
+                  {resolution.comment}
+                </li>
+              ))}
+            </ul>
+          ) : feedback.ratings.length > 0 ? (
+            <ul>
+              {feedback.ratings.map((rating) => (
+                <li key={rating.ratingId}>
+                  <strong>{rating.criterionId}</strong>:{" "}
+                  {t("hostedLearner.feedbackLevel", {
+                    level: rating.levelValue,
+                  })}
+                  <br />
+                  {rating.comment}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>{t("hostedLearner.feedbackEmpty")}</p>
+          )}
+          <LearnerCompetencyProfile
+            profile={feedback.competencyProfile}
+          />
+        </>
       )}
+    </section>
+  );
+}
+
+function LearnerCompetencyProfile({
+  profile,
+}: {
+  readonly profile: HostedLearnerCompetencyProfileV1;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="hosted-learner__competency-profile">
+      <h3>{t("hostedLearner.competencyHeading")}</h3>
+      <p>{t("hostedLearner.competencyInterpretation")}</p>
+      <p>
+        <strong>{t("hostedLearner.competencyScenario")}</strong>{" "}
+        <code>
+          {profile.scenarioId}@{profile.scenarioVersion}
+        </code>
+      </p>
+      {profile.learner.indicators.map((indicator) => (
+        <details key={indicator.indicatorId}>
+          <summary>
+            <strong>{t(indicator.competencyTitleKey)}</strong>{" "}
+            <code>{indicator.indicatorId}</code>
+          </summary>
+          <p>{t(indicator.indicatorStatementKey)}</p>
+          <dl className="instructor-review__facts">
+            <div>
+              <dt>{t("hostedLearner.competencyTarget")}</dt>
+              <dd>
+                {t(
+                  `hostedLearner.competencyTarget.${indicator.targetType}`,
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("hostedLearner.competencyEvidenceCount")}</dt>
+              <dd>{indicator.evidenceCount}</dd>
+            </div>
+            <div>
+              <dt>{t("hostedLearner.competencyLatest")}</dt>
+              <dd>
+                {indicator.latestObservedAt === undefined ? (
+                  t("hostedLearner.competencyNoLatest")
+                ) : (
+                  <time dateTime={indicator.latestObservedAt}>
+                    {indicator.latestObservedAt}
+                  </time>
+                )}
+              </dd>
+            </div>
+          </dl>
+          <h4>{t("hostedLearner.competencyObservations")}</h4>
+          {indicator.observations.length === 0 ? (
+            <p>{t("hostedLearner.competencyNoEvidence")}</p>
+          ) : (
+            <ul>
+              {indicator.observations.map((observation) => (
+                <li
+                  key={`${observation.runId}:${observation.competencyEvidenceId}`}
+                >
+                  <p>
+                    {t("hostedLearner.competencyObservation", {
+                      runId: observation.runId,
+                      evidenceId:
+                        observation.competencyEvidenceId,
+                    })}
+                  </p>
+                  <p>
+                    <strong>
+                      {t("hostedLearner.competencySourceEvents")}
+                    </strong>{" "}
+                    {observation.sourceEventIds.map(
+                      (eventId, index) => (
+                        <span key={eventId}>
+                          {index === 0 ? null : ", "}
+                          <code>{eventId}</code>
+                        </span>
+                      ),
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      ))}
     </section>
   );
 }

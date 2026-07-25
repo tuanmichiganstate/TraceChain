@@ -78,3 +78,15 @@ export interface HostedAssignmentCompetencyReportV1 {
   readonly learners: readonly AssignmentLearnerCompetencyReportV1[];
   readonly classIndicators: readonly ClassCompetencyIndicatorV1[];
 }
+
+export interface HostedLearnerCompetencyProfileV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly interpretation: "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE";
+  readonly assignmentId: string;
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly frameworks: readonly CompetencyFrameworkReferenceV1[];
+  readonly learner: AssignmentLearnerCompetencyReportV1;
+}

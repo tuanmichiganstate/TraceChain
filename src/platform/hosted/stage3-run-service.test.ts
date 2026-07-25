@@ -1727,6 +1727,18 @@ describe("server-authoritative hosted Stage 3 run", () => {
         .flatMap((evidence) => evidence.sourceEventIds)
         .every((eventId) => timelineIds.has(eventId)),
     ).toBe(true);
+    await expect(
+      service.learnerCompetencyEvidence(learner, final.runId),
+    ).resolves.toEqual(competency);
+    await expect(
+      service.learnerCompetencyEvidence(
+        otherLearner,
+        final.runId,
+      ),
+    ).rejects.toBeInstanceOf(HostedAuthorizationError);
+    await expect(
+      service.learnerCompetencyEvidence(instructor, final.runId),
+    ).rejects.toBeInstanceOf(HostedAuthorizationError);
 
     const rubric = await service.rubricEvidence(rater, final.runId);
     expect(rubric).toEqual(
