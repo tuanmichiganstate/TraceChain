@@ -7,6 +7,9 @@
 - Published hosted scenarios now populate the instructor assignment form
   directly. The selected exact pack and scenario versions, plus only the
   scenario's authored run modes, replace four error-prone identifier fields.
+- Active provisioned learners now populate the instructor assignment form.
+  Instructors select the bounded assignment roster without copying internal
+  user IDs; disabled users and accounts without the learner role are excluded.
 - An administrator-only, read-only access-change audit showing the latest 100
   append-only role and account-status commands with their trusted performer.
 - Optional pseudonymous JSON and CSV assignment evidence exports. Learner user

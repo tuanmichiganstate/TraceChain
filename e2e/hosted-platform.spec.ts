@@ -380,6 +380,20 @@ test("creates an assignment from the published hosted scenario library", async (
       await route.fulfill({ json: { options: [option] } });
       return;
     }
+    if (pathname === "/api/v1/assignment-learners") {
+      await route.fulfill({
+        json: {
+          learners: [
+            {
+              schemaVersion: "1.0.0",
+              userId: "USER_BROWSER_LEARNER",
+              email: "browser-learner@example.edu",
+            },
+          ],
+        },
+      });
+      return;
+    }
     if (
       pathname === "/api/v1/assignments" &&
       request.method() === "POST"
@@ -445,7 +459,11 @@ test("creates an assignment from the published hosted scenario library", async (
 
   await form.getByLabel("Assignment ID").fill("ASSIGNMENT_BROWSER_001");
   await form.getByLabel("Assignment title").fill("Browser cohort");
-  await form.getByLabel("Learner user IDs").fill("USER_BROWSER_LEARNER");
+  await form
+    .getByRole("checkbox", {
+      name: "browser-learner@example.edu (USER_BROWSER_LEARNER)",
+    })
+    .check();
   await form.getByRole("button", { name: "Create assignment" }).click();
 
   await expect(

@@ -56,6 +56,12 @@ export interface HostedAssignmentScenarioOptionV1 {
   readonly supportedModes: readonly AssignmentRunMode[];
 }
 
+export interface HostedAssignmentLearnerOptionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly userId: string;
+  readonly email: string;
+}
+
 export interface HostedAssignmentCreationResult {
   readonly assignment: HostedAssignmentV1;
   readonly wasIdempotentReplay: boolean;

@@ -69,6 +69,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -135,6 +136,13 @@ describe("instructor review screen", () => {
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([
         publishedCoffeeOption,
       ]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: "1.0.0",
+          userId: "USER_LEARNER_001",
+          email: "learner@example.edu",
+        },
+      ]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -183,9 +191,13 @@ describe("instructor review screen", () => {
     ).toHaveLength(1);
     expect(form.queryByLabelText("Pack ID")).not.toBeInTheDocument();
     expect(form.queryByLabelText("Scenario ID")).not.toBeInTheDocument();
-    await user.type(
-      form.getByLabelText("Learner user IDs"),
-      assignment.learnerUserIds.join(","),
+    expect(
+      form.queryByLabelText("Learner user IDs"),
+    ).not.toBeInTheDocument();
+    await user.click(
+      form.getByRole("checkbox", {
+        name: "learner@example.edu (USER_LEARNER_001)",
+      }),
     );
     await user.click(
       form.getByRole("button", { name: "Create assignment" }),
@@ -246,6 +258,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
         interpretation: "EVIDENCE_ONLY_NO_COMPETENCE_INFERENCE",
@@ -629,6 +642,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -858,6 +872,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -955,6 +970,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
@@ -997,6 +1013,16 @@ describe("instructor review screen", () => {
             ? {
                 options: [publishedCoffeeOption],
               }
+          : path === "/api/v1/assignment-learners"
+            ? {
+                learners: [
+                  {
+                    schemaVersion: "1.0.0",
+                    userId: "USER_LEARNER_001",
+                    email: "learner@example.edu",
+                  },
+                ],
+              }
           : path.endsWith("/timeline")
             ? { timeline: [] }
             : path.endsWith("/monitor")
@@ -1037,6 +1063,13 @@ describe("instructor review screen", () => {
     expect(await api.loadAssignmentScenarioOptions()).toEqual([
       publishedCoffeeOption,
     ]);
+    expect(await api.loadAssignmentLearnerOptions()).toEqual([
+      {
+        schemaVersion: "1.0.0",
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+      },
+    ]);
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
     await api.loadAssignmentMonitor("ASSIGNMENT / 001");
@@ -1044,6 +1077,7 @@ describe("instructor review screen", () => {
     expect(requestedPaths).toEqual([
       "/api/v1/session",
       "/api/v1/assignment-options",
+      "/api/v1/assignment-learners",
       "/api/v1/runs/RUN%20%2F%20001/timeline",
       "/api/v1/runs/RUN%20%2F%20001/competencies",
       "/api/v1/runs/RUN%20%2F%20001/rubric-evidence",

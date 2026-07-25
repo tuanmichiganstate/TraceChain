@@ -12,6 +12,7 @@ import type { ApplicationRole } from "../contracts/run-events";
 import type {
   AssignmentRunMode,
   CreateHostedAssignmentRequest,
+  HostedAssignmentLearnerOptionV1,
   HostedAssignmentMonitorV1,
   HostedAssignmentReportV1,
   HostedAssignmentScenarioOptionV1,
@@ -79,6 +80,9 @@ export interface InstructorReviewApi {
   loadSession(): Promise<InstructorSession>;
   loadAssignmentScenarioOptions(): Promise<
     readonly HostedAssignmentScenarioOptionV1[]
+  >;
+  loadAssignmentLearnerOptions(): Promise<
+    readonly HostedAssignmentLearnerOptionV1[]
   >;
   loadRunReview(runId: string): Promise<InstructorRunReview>;
   loadRunReplay(
@@ -188,6 +192,14 @@ export function createInstructorReviewApi(
             readonly HostedAssignmentScenarioOptionV1[];
         }>(fetcher, "/api/v1/assignment-options")
       ).options;
+    },
+    async loadAssignmentLearnerOptions() {
+      return (
+        await responseJson<{
+          readonly learners:
+            readonly HostedAssignmentLearnerOptionV1[];
+        }>(fetcher, "/api/v1/assignment-learners")
+      ).learners;
     },
     async loadRunReview(runId) {
       const encodedRunId = encodeURIComponent(runId);
@@ -827,7 +839,16 @@ function AssignmentCreation({
   const [isLibraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState(false);
   const [mode, setMode] = useState<AssignmentRunMode>("standard");
-  const [learnerIds, setLearnerIds] = useState("");
+  const [learnerOptions, setLearnerOptions] = useState<
+    readonly HostedAssignmentLearnerOptionV1[]
+  >([]);
+  const [selectedLearnerIds, setSelectedLearnerIds] = useState<
+    readonly string[]
+  >([]);
+  const [isLearnerRosterLoading, setLearnerRosterLoading] =
+    useState(true);
+  const [learnerRosterError, setLearnerRosterError] =
+    useState(false);
   const [created, setCreated] = useState<HostedAssignmentV1 | null>(
     null,
   );
@@ -864,6 +885,27 @@ function AssignmentCreation({
     };
   }, [api, t]);
 
+  useEffect(() => {
+    let active = true;
+    void api.loadAssignmentLearnerOptions().then(
+      (available) => {
+        if (!active) return;
+        setLearnerOptions(available);
+        setLearnerRosterLoading(false);
+      },
+      () => {
+        if (!active) return;
+        setLearnerOptions([]);
+        setSelectedLearnerIds([]);
+        setLearnerRosterError(true);
+        setLearnerRosterLoading(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [api]);
+
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (selectedScenario === undefined) {
@@ -883,10 +925,7 @@ function AssignmentCreation({
           scenarioId: selectedScenario.scenarioId,
           scenarioVersion: selectedScenario.scenarioVersion,
           mode,
-          learnerUserIds: learnerIds
-            .split(/[\s,]+/u)
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0),
+          learnerUserIds: selectedLearnerIds,
         }),
       );
     } catch (error) {
@@ -990,30 +1029,64 @@ function AssignmentCreation({
             </span>
           )}
         </div>
-        <div className="field">
-          <label
-            className="field__label"
-            htmlFor="assignment-learners"
-          >
-            {t("instructorReview.learnerIds")}
-          </label>
-          <textarea
-            className="field__control"
-            id="assignment-learners"
-            value={learnerIds}
-            onChange={(event) => setLearnerIds(event.target.value)}
-            rows={3}
-            required
-          />
+        <fieldset className="field instructor-review__learner-picker">
+          <legend className="field__label">
+            {t("instructorReview.learners")}
+          </legend>
+          {isLearnerRosterLoading ? (
+            <p>{t("instructorReview.learnersLoading")}</p>
+          ) : learnerOptions.length === 0 ? (
+            <p>{t("instructorReview.learnersEmpty")}</p>
+          ) : (
+            <div className="instructor-review__learner-options">
+              {learnerOptions.map((learner) => {
+                const checked = selectedLearnerIds.includes(
+                  learner.userId,
+                );
+                return (
+                  <label key={learner.userId}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={
+                        !checked &&
+                        selectedLearnerIds.length >= 200
+                      }
+                      onChange={(event) => {
+                        setSelectedLearnerIds((current) =>
+                          event.target.checked
+                            ? [...current, learner.userId].sort()
+                            : current.filter(
+                                (userId) =>
+                                  userId !== learner.userId,
+                              ),
+                        );
+                      }}
+                    />
+                    <span>
+                      {t("instructorReview.learnerOption", {
+                        email: learner.email,
+                        userId: learner.userId,
+                      })}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
           <span className="field__hint">
-            {t("instructorReview.learnerIdsHint")}
+            {t("instructorReview.learnersHint")}
           </span>
-        </div>
+        </fieldset>
         <div className="instructor-review__form-actions">
           <button
             className="button button--primary"
             type="submit"
-            disabled={isSaving || selectedScenario === undefined}
+            disabled={
+              isSaving ||
+              selectedScenario === undefined ||
+              selectedLearnerIds.length === 0
+            }
           >
             {isSaving
               ? t("instructorReview.assignmentCreating")
@@ -1024,6 +1097,11 @@ function AssignmentCreation({
       {libraryError ? (
         <p className="notice notice--standalone" role="alert">
           {t("instructorReview.error.scenarioLibrary")}
+        </p>
+      ) : null}
+      {learnerRosterError ? (
+        <p className="notice notice--standalone" role="alert">
+          {t("instructorReview.error.learnerRoster")}
         </p>
       ) : null}
       {created === null ? null : (

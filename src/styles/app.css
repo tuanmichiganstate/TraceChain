@@ -268,6 +268,35 @@
   align-items: end;
 }
 
+.instructor-review__learner-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.instructor-review__learner-options {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 12rem;
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__learner-options label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: start;
+  overflow-wrap: anywhere;
+}
+
+.instructor-review__learner-options input {
+  flex: 0 0 auto;
+  margin-block-start: 0.2em;
+}
+
 .instructor-review__export {
   margin-block: var(--space-4);
 }

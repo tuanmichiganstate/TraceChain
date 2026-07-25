@@ -1035,6 +1035,17 @@ test("creates an exact published assignment for a provisioned learner", async ()
       "unassigned-learner@example.edu",
       ["learner"],
     );
+    seedUser(
+      database,
+      "USER_LEARNER_DISABLED",
+      "disabled-learner@example.edu",
+      ["learner"],
+    );
+    database.sqlite
+      .prepare(
+        "UPDATE application_users SET status = 'disabled' WHERE user_id = ?",
+      )
+      .run("USER_LEARNER_DISABLED");
     const pack = await standardCoffeePack();
     const publish = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/publish", {
@@ -1076,6 +1087,41 @@ test("creates an exact published assignment for a provisioned learner", async ()
       },
     );
     assert.equal(Object.hasOwn(available[0], "initialState"), false);
+
+    const learnerOptions = await worker.fetch(
+      apiRequest("/api/v1/assignment-learners", {
+        email: "assignment-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      learnerOptions.status,
+      200,
+      await learnerOptions.clone().text(),
+    );
+    assert.deepEqual((await learnerOptions.json()).learners, [
+      {
+        schemaVersion: "1.0.0",
+        userId: "USER_LEARNER_ASSIGNMENT",
+        email: "assignment-learner@example.edu",
+      },
+      {
+        schemaVersion: "1.0.0",
+        userId: "USER_LEARNER_UNASSIGNED",
+        email: "unassigned-learner@example.edu",
+      },
+    ]);
+    const learnerRosterDenied = await worker.fetch(
+      apiRequest("/api/v1/assignment-learners", {
+        email: "assignment-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(learnerRosterDenied.status, 403);
+    assert.equal(
+      (await learnerRosterDenied.json()).error.code,
+      "APPLICATION_ROLE_REQUIRED",
+    );
 
     const assignmentBody = {
       commandId: "COMMAND_ASSIGNMENT_CREATE_001",

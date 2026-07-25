@@ -23,7 +23,10 @@ Assignment creation loads the versioned scenario library and offers only
 published scenarios with a registered hosted runtime. Selecting one binds its
 exact pack and scenario versions and limits the mode control to the modes
 authored in that scenario. Draft, retired, and preview-only packs remain
-available to authors but cannot be assigned accidentally.
+available to authors but cannot be assigned accidentally. The same form loads
+only active users with the server-provisioned learner role. The instructor
+selects that bounded roster rather than copying internal user identifiers;
+disabled users and non-learners are not offered.
 
 The administrator workspace also exposes the latest 100 access-change commands
 as a read-only audit. Performer identity comes from the authenticated principal,

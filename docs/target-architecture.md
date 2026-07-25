@@ -28,7 +28,9 @@ integrity and data-governance reasoning, and Stage 9 scoped recall with a
 trusted regulator handoff and final debrief. A focused authenticated instructor
 run-evidence screen presents
 the existing timeline, competency, and rubric projections without duplicating
-them. It now also provides exact-version assignment creation, assignment-bound
+them. It now also provides exact-version assignment creation from the
+published runnable scenario library and active provisioned learner roster,
+assignment-bound
 run start, evidence-linked manual rating revisions, one-way feedback release,
 and a focused assignment report, exact replay, competency reports, stable
 assignment exports with authoritative event-span timing and event-derived

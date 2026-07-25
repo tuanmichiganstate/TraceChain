@@ -1,6 +1,7 @@
 import type { ScenarioPackV1 } from "../src/platform/contracts/scenario-pack";
 import type {
   CreateHostedAssignmentRequest,
+  HostedAssignmentLearnerOptionV1,
   HostedAssignmentScenarioOptionV1,
   HostedAssignmentMonitorV1,
   HostedRunMonitorV1,
@@ -1192,6 +1193,42 @@ async function apiResponse(
             : 0;
       }),
     });
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/assignment-learners"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const learners: HostedAssignmentLearnerOptionV1[] = (
+      await new D1ApplicationAccessRepository(
+        environment.DB,
+        new SystemUtcClock(),
+      ).list()
+    )
+      .filter(
+        (user) =>
+          user.status === "active" &&
+          user.roles.includes("learner"),
+      )
+      .map<HostedAssignmentLearnerOptionV1>((user) => ({
+        schemaVersion: "1.0.0",
+        userId: user.userId,
+        email: user.email,
+      }))
+      .sort((left, right) => {
+        const leftKey = `${left.email}\u0000${left.userId}`;
+        const rightKey = `${right.email}\u0000${right.userId}`;
+        return leftKey < rightKey
+          ? -1
+          : leftKey > rightKey
+            ? 1
+            : 0;
+      });
+    return jsonResponse(200, { learners });
   }
 
   if (
