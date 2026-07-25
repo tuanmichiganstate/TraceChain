@@ -67,6 +67,7 @@ function interpolate(
 
 export interface Translator {
   readonly locale: LocaleCode;
+  readonly formatNumber: (value: number) => string;
   (key: string, parameters?: TranslationParameters): string;
 }
 
@@ -87,7 +88,10 @@ export function createTranslator(locale: LocaleCode): Translator {
     return interpolate(template, locale, parameters);
   };
 
-  return Object.assign(translate, { locale }) as Translator;
+  return Object.assign(translate, {
+    locale,
+    formatNumber: (value: number) => formatNumber(value, locale),
+  }) as Translator;
 }
 
 export function getCatalogue(locale: LocaleCode): TranslationCatalogue {

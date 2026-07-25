@@ -112,7 +112,7 @@ function ProvenanceNode({
         <code>{asset.assetId}</code>
         <span className="provenance__name">{asset.productName}</span>
         <span className="provenance__quantity">
-          {asset.quantity.toLocaleString("vi-VN")} {t(`unit.${asset.quantityUnit}`)}
+          {t.formatNumber(asset.quantity)} {t(`unit.${asset.quantityUnit}`)}
         </span>
         <StatusPill tone={isRecalled ? "fail" : "neutral"}>
           {t(`lifecycle.${asset.lifecycleStatus}`)}

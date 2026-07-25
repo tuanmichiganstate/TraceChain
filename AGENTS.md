@@ -130,10 +130,6 @@ createdAt`, as `integrity.ts` does.
   are correct by construction and by axe, which is not the same thing.
 - **No Vietnamese subject-expert review.** All copy to date is unreviewed by a
   domain teacher. `docs/content-review/` regenerates a bilingual pack for this.
-- **`toLocaleString("vi-VN")` is hardcoded** — `grep -rn toLocaleString src/`
-  finds both sites, in `provenance-viewer.tsx` and `asset-card.tsx`. Those two
-  quantities ignore the active locale. Known; the fix is to route them through
-  the translator like everything else.
 - **Attempts completed under the old stage-wide hint policy** display scores
   recomputed under the current item-scoped one.
 - Branch protection is unavailable on the current GitHub plan, so `master` is

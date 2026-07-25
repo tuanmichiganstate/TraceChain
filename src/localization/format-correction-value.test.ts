@@ -45,8 +45,7 @@ describe("learner-facing correction values", () => {
   });
 
   it("groups no digits, so it matches the panels either side of it", () => {
-    // The asset card groups with toLocaleString, but nothing it shows reaches
-    // 1000. The manifest does, and it is written plainly there too.
+    // The asset card, provenance view, and manifest all write 1000 plainly.
     expect(formatCorrectionValueLabel(kilograms(1000), vi)).not.toContain(".");
     expect(formatCorrectionValueLabel(kilograms(1000), vi)).not.toContain(",");
   });

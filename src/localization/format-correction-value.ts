@@ -14,10 +14,9 @@
  * one in each language -- which is precisely why this cannot be a lookup table
  * of SI abbreviations.
  *
- * Numbers are written plainly, without digit grouping. The asset card groups
- * with `toLocaleString`, but every quantity it shows is below 1000 so no
- * separator has ever appeared there; the manifest's 1000 is the only value that
- * would, and grouping it here would print `1.000 kg` beside the manifest
+ * Numbers are written plainly, without digit grouping. The asset card and
+ * provenance viewer now use the translator's matching no-grouping formatter;
+ * grouping here would still print `1.000 kg` in Vietnamese beside the manifest
  * panel's `1000 kg` -- trading one inconsistency for a worse one.
  */
 

@@ -49,6 +49,10 @@
 
 ### Fixed
 
+- Asset-card and provenance quantities now use the active reading locale
+  instead of hard-coded Vietnamese decimal punctuation. They share the
+  translator's existing no-grouping rule, so English writes `1.2`, Vietnamese
+  writes `1,2`, and `1000` remains consistent with the manifest.
 - **A hint claimed to cost more than it could after a failed attempt.** The
   points-at-risk figure read `attemptCount` — attempts already made — as though
   it were the attempt the item would be scored on. Those differ exactly when the

@@ -38,7 +38,7 @@ export function AssetCard({ asset }: { asset: SupplyChainAsset }): ReactNode {
     ["field.originLocation", asset.originLocation],
     [
       "field.quantity",
-      `${asset.quantity.toLocaleString("vi-VN")} ${t(`unit.${asset.quantityUnit}`)}`,
+      `${t.formatNumber(asset.quantity)} ${t(`unit.${asset.quantityUnit}`)}`,
     ],
     ["field.owner", organizationName(asset.currentOwnerId)],
     ["field.custodian", organizationName(asset.currentCustodianId)],
