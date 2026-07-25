@@ -4,6 +4,8 @@
 
 ### Added
 
+- An administrator-only, read-only access-change audit showing the latest 100
+  append-only role and account-status commands with their trusted performer.
 - Optional pseudonymous JSON and CSV assignment evidence exports. Learner user
   IDs become deterministic assignment-scoped codes across roster, run, and
   event evidence while staff and simulation identifiers remain intact; the UI

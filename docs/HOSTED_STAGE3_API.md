@@ -106,6 +106,7 @@ All endpoints use `/api/v1`.
 |---|---|---|
 | `GET /session` | provisioned user | Server-owned user ID, email and roles |
 | `GET /admin/users` | administrator | Active and disabled application users with server-owned roles |
+| `GET /admin/access-audit` | administrator | Latest 100 append-only application-access commands with trusted performer identity |
 | `POST /admin/users` | administrator | Idempotent user provisioning, role replacement, disablement, or reactivation |
 | `POST /scenario-packs/validate` | scenario author or administrator | Path-specific validation report without persistence |
 | `POST /scenario-packs/import` | scenario author or administrator | Validated mutable draft |

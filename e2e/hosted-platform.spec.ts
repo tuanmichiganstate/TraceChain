@@ -257,7 +257,11 @@ test("provisions server-owned access from the administrator workspace", async ({
       createdAt: "2026-07-25T04:00:00.000Z",
     },
   ];
+  const audit: Record<string, unknown>[] = [];
   let submitted: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/admin/access-audit", async (route) => {
+    await route.fulfill({ json: { audit } });
+  });
   await page.route("**/api/v1/admin/users", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({ json: { users } });
@@ -276,6 +280,17 @@ test("provisions server-owned access from the administrator workspace", async ({
       createdAt: "2026-07-25T04:05:00.000Z",
     };
     users.push(created);
+    audit.unshift({
+      schemaVersion: "1.0.0",
+      commandId: submitted.commandId,
+      targetUserId: created.userId,
+      targetEmail: created.email,
+      status: created.status,
+      roles: created.roles,
+      performedAt: "2026-07-25T04:05:00.000Z",
+      performedByUserId: "USER_BROWSER_ADMIN",
+      performedByEmail: "admin@example.edu",
+    });
     await route.fulfill({
       status: 201,
       json: {
@@ -296,8 +311,11 @@ test("provisions server-owned access from the administrator workspace", async ({
     .fill("browser.learner@example.edu");
   await page.getByRole("button", { name: "Save access" }).click();
 
+  const usersPanel = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Provisioned users" }),
+  });
   await expect(
-    page.getByRole("cell", {
+    usersPanel.getByRole("cell", {
       name: "browser.learner@example.edu",
       exact: true,
     }),
@@ -308,6 +326,18 @@ test("provisions server-owned access from the administrator workspace", async ({
     roles: ["learner"],
   });
   expect(submitted).not.toHaveProperty("userId");
+  const auditPanel = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Access-change audit" }),
+  });
+  await expect(
+    auditPanel.getByRole("cell", {
+      name: "browser.learner@example.edu",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    auditPanel.getByText(/^COMMAND_ACCESS_/u),
+  ).toBeVisible();
 });
 
 test("refreshes replay-derived instructor status without hidden outcomes", async ({

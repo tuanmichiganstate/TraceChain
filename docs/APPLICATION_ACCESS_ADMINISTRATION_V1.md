@@ -15,7 +15,8 @@ The administrator workspace can:
 - assign one or more learner, instructor, scenario-author, rater, or
   administrator roles;
 - update those roles; and
-- disable or reactivate application access.
+- disable or reactivate application access; and
+- review the latest 100 append-only access commands, newest first.
 
 It does not create passwords, authenticate an email address, synchronize an
 institutional directory, create courses, or create a multi-tenant account.
@@ -26,6 +27,7 @@ Only an authenticated `administrator` may request:
 
 ```text
 GET  /api/v1/admin/users
+GET  /api/v1/admin/access-audit
 POST /api/v1/admin/users
 ```
 
@@ -55,6 +57,11 @@ content or a different administrator is a conflict.
 
 The user projection, role replacement, and audit command are one D1 batch.
 Partial role updates are not published.
+
+The audit route is a bounded read-only projection. It reports the command,
+target user, resulting status and roles, authoritative timestamp, and the
+authenticated administrator who performed the change. It never accepts actor
+identity from the client and does not mutate the stored command history.
 
 ## Safety boundary
 

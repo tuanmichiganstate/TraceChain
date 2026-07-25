@@ -1,6 +1,7 @@
 import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
+  ApplicationAccessAuditRecordV1,
   ApplicationUserAccessV1,
   ApplicationUserStatus,
   UpsertApplicationUserAccessRequest,
@@ -28,6 +29,22 @@ const LIST_USERS = `SELECT
   LEFT JOIN application_role_assignments AS roles
     ON roles.user_id = users.user_id
   ORDER BY users.email COLLATE NOCASE, roles.application_role`;
+const LIST_AUDIT = `SELECT
+    commands.command_id,
+    commands.target_user_id,
+    commands.target_email,
+    commands.target_status,
+    commands.roles_json,
+    commands.performed_at_utc,
+    commands.performed_by_user_id,
+    performers.email AS performed_by_email
+  FROM application_access_commands AS commands
+  INNER JOIN application_users AS performers
+    ON performers.user_id = commands.performed_by_user_id
+  ORDER BY
+    commands.performed_at_utc DESC,
+    commands.command_id DESC
+  LIMIT 100`;
 const FIND_USER_BY_EMAIL = `SELECT
     user_id,
     email,
@@ -87,6 +104,17 @@ interface AccessCommandRow {
   readonly roles_json: string;
   readonly result_json: string;
   readonly performed_by_user_id: string;
+}
+
+interface AccessAuditRow {
+  readonly command_id: string;
+  readonly target_user_id: string;
+  readonly target_email: string;
+  readonly target_status: string;
+  readonly roles_json: string;
+  readonly performed_at_utc: string;
+  readonly performed_by_user_id: string;
+  readonly performed_by_email: string;
 }
 
 interface NormalizedRequest {
@@ -208,6 +236,33 @@ function roleFromRow(value: string): ApplicationRole {
   return value as ApplicationRole;
 }
 
+function rolesFromJson(value: string): readonly ApplicationRole[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new ApplicationAccessRepositoryError(
+      "ACCESS_STORAGE_FAILED",
+      "Stored application roles are not valid JSON.",
+    );
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some(
+      (role) =>
+        typeof role !== "string" ||
+        !APPLICATION_ROLES.has(role as ApplicationRole),
+    ) ||
+    new Set(parsed).size !== parsed.length
+  ) {
+    throw new ApplicationAccessRepositoryError(
+      "ACCESS_STORAGE_FAILED",
+      "Stored application roles are invalid.",
+    );
+  }
+  return parsed.map((role) => roleFromRow(role));
+}
+
 export class D1ApplicationAccessRepository {
   constructor(
     private readonly database: D1DatabaseLike,
@@ -258,6 +313,42 @@ export class D1ApplicationAccessRepository {
       }
     }
     return [...users.values()];
+  }
+
+  async listAudit(): Promise<
+    readonly ApplicationAccessAuditRecordV1[]
+  > {
+    const result = await this.database
+      .prepare(LIST_AUDIT)
+      .all<AccessAuditRow>();
+    if (!result.success) {
+      throw new ApplicationAccessRepositoryError(
+        "ACCESS_STORAGE_FAILED",
+        result.error ?? "Application access audit could not be listed.",
+      );
+    }
+    return result.results.map((row) => {
+      if (
+        row.target_status !== "active" &&
+        row.target_status !== "disabled"
+      ) {
+        throw new ApplicationAccessRepositoryError(
+          "ACCESS_STORAGE_FAILED",
+          "Stored application-user status is invalid.",
+        );
+      }
+      return {
+        schemaVersion: "1.0.0",
+        commandId: row.command_id,
+        targetUserId: row.target_user_id,
+        targetEmail: row.target_email,
+        status: row.target_status,
+        roles: rolesFromJson(row.roles_json),
+        performedAt: row.performed_at_utc,
+        performedByUserId: row.performed_by_user_id,
+        performedByEmail: row.performed_by_email,
+      };
+    });
   }
 
   async upsert(

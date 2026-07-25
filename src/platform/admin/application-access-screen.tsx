@@ -6,6 +6,7 @@ import {
 } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import type {
+  ApplicationAccessAuditRecordV1,
   ApplicationUserAccessV1,
   ApplicationUserStatus,
   UpsertApplicationUserAccessRequest,
@@ -35,6 +36,7 @@ export class ApplicationAccessApiError extends Error {
 
 export interface ApplicationAccessApi {
   loadUsers(): Promise<readonly ApplicationUserAccessV1[]>;
+  loadAudit(): Promise<readonly ApplicationAccessAuditRecordV1[]>;
   saveUser(
     request: UpsertApplicationUserAccessRequest,
   ): Promise<UpsertApplicationUserAccessResult>;
@@ -42,9 +44,10 @@ export interface ApplicationAccessApi {
 
 async function apiJson<T>(
   fetcher: FetchLike,
+  path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetcher("/api/v1/admin/users", {
+  const response = await fetcher(path, {
     ...init,
     headers: {
       accept: "application/json",
@@ -73,14 +76,25 @@ export function createApplicationAccessApi(
       return (
         await apiJson<{
           readonly users: readonly ApplicationUserAccessV1[];
-        }>(fetcher)
+        }>(fetcher, "/api/v1/admin/users")
       ).users;
     },
+    async loadAudit() {
+      return (
+        await apiJson<{
+          readonly audit: readonly ApplicationAccessAuditRecordV1[];
+        }>(fetcher, "/api/v1/admin/access-audit")
+      ).audit;
+    },
     saveUser(request) {
-      return apiJson<UpsertApplicationUserAccessResult>(fetcher, {
-        method: "POST",
-        body: JSON.stringify(request),
-      });
+      return apiJson<UpsertApplicationUserAccessResult>(
+        fetcher,
+        "/api/v1/admin/users",
+        {
+          method: "POST",
+          body: JSON.stringify(request),
+        },
+      );
     },
   };
 }
@@ -107,6 +121,11 @@ export function ApplicationAccessScreen({
   const t = useTranslator();
   const [users, setUsers] =
     useState<readonly ApplicationUserAccessV1[] | null>(null);
+  const [audit, setAudit] =
+    useState<readonly ApplicationAccessAuditRecordV1[] | null>(
+      null,
+    );
+  const [auditError, setAuditError] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] =
     useState<ApplicationUserStatus>("active");
@@ -133,6 +152,17 @@ export function ApplicationAccessScreen({
               : "APPLICATION_ACCESS_REQUEST_FAILED",
           );
         }
+      },
+    );
+    void api.loadAudit().then(
+      (loaded) => {
+        if (active) {
+          setAudit(loaded);
+          setAuditError(false);
+        }
+      },
+      () => {
+        if (active) setAuditError(true);
       },
     );
     return () => {
@@ -170,6 +200,13 @@ export function ApplicationAccessScreen({
       );
       setSavedEmail(result.user.email);
       resetForm();
+      void api.loadAudit().then(
+        (loaded) => {
+          setAudit(loaded);
+          setAuditError(false);
+        },
+        () => setAuditError(true),
+      );
     } catch (error: unknown) {
       setErrorCode(
         error instanceof ApplicationAccessApiError
@@ -352,6 +389,65 @@ export function ApplicationAccessScreen({
                           >
                             {t("adminAccess.edit")}
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="card card--reference">
+            <h2>{t("adminAccess.audit")}</h2>
+            <p>{t("adminAccess.auditDescription")}</p>
+            {auditError ? (
+              <p className="notice notice--standalone" role="alert">
+                {t("adminAccess.auditError")}
+              </p>
+            ) : audit === null ? (
+              <p role="status">{t("adminAccess.auditLoading")}</p>
+            ) : audit.length === 0 ? (
+              <p>{t("adminAccess.auditEmpty")}</p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        {t("adminAccess.performedAt")}
+                      </th>
+                      <th scope="col">
+                        {t("adminAccess.performedBy")}
+                      </th>
+                      <th scope="col">{t("adminAccess.target")}</th>
+                      <th scope="col">{t("adminAccess.status")}</th>
+                      <th scope="col">{t("adminAccess.roles")}</th>
+                      <th scope="col">{t("adminAccess.command")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {audit.map((record) => (
+                      <tr key={record.commandId}>
+                        <td>
+                          <time dateTime={record.performedAt}>
+                            {record.performedAt}
+                          </time>
+                        </td>
+                        <td>{record.performedByEmail}</td>
+                        <td>{record.targetEmail}</td>
+                        <td>
+                          {t(`adminAccess.status.${record.status}`)}
+                        </td>
+                        <td>
+                          {record.roles
+                            .map((role) =>
+                              t(`adminAccess.role.${role}`),
+                            )
+                            .join(", ")}
+                        </td>
+                        <td>
+                          <code>{record.commandId}</code>
                         </td>
                       </tr>
                     ))}

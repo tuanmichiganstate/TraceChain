@@ -8,6 +8,43 @@ import {
 } from "./application-access-screen";
 
 describe("application access administration", () => {
+  it("shows the append-only access-change audit history", async () => {
+    const api = {
+      loadUsers: vi.fn().mockResolvedValue([]),
+      loadAudit: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: "1.0.0",
+          commandId: "COMMAND_DISABLE_ACCESS_001",
+          targetUserId: "USER_LEARNER_001",
+          targetEmail: "learner@example.edu",
+          status: "disabled",
+          roles: ["learner", "rater"],
+          performedAt: "2026-07-25T04:00:00.000Z",
+          performedByUserId: "USER_ADMIN_001",
+          performedByEmail: "admin@example.edu",
+        },
+      ]),
+      saveUser: vi.fn(),
+    } as unknown as ApplicationAccessApi;
+
+    render(
+      <LocaleProvider locale="en">
+        <ApplicationAccessScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Access-change audit",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("COMMAND_DISABLE_ACCESS_001"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("admin@example.edu")).toBeInTheDocument();
+    expect(screen.getByText("learner@example.edu")).toBeInTheDocument();
+  });
+
   it("provisions one user with server-owned application roles", async () => {
     const api: ApplicationAccessApi = {
       loadUsers: vi.fn().mockResolvedValue([
@@ -20,6 +57,7 @@ describe("application access administration", () => {
           createdAt: "2026-07-24T03:00:00.000Z",
         },
       ]),
+      loadAudit: vi.fn().mockResolvedValue([]),
       saveUser: vi.fn().mockResolvedValue({
         user: {
           schemaVersion: "1.0.0",
@@ -77,6 +115,7 @@ describe("application access administration", () => {
     };
     const api: ApplicationAccessApi = {
       loadUsers: vi.fn().mockResolvedValue([existing]),
+      loadAudit: vi.fn().mockResolvedValue([]),
       saveUser: vi.fn().mockResolvedValue({
         user: {
           ...existing,

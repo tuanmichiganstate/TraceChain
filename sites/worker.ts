@@ -576,6 +576,20 @@ async function apiResponse(
     });
   }
 
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/admin/access-audit"
+  ) {
+    requireApplicationRole(principal, ["administrator"]);
+    const accessRepository = new D1ApplicationAccessRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    return jsonResponse(200, {
+      audit: await accessRepository.listAudit(),
+    });
+  }
+
   if (url.pathname === "/api/v1/admin/users") {
     requireApplicationRole(principal, ["administrator"]);
     const accessRepository = new D1ApplicationAccessRepository(

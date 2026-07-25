@@ -57,7 +57,8 @@ cold-chain starter, validates and previews roles and modes, compares versions,
 and controls publication and retirement. The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and
-course management remain outside TraceChain. Assignment
+course management remain outside TraceChain. Administrators can review the
+latest 100 append-only access changes without editing that history. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
 revisions, event-derived learner activity counts, deterministic rejection

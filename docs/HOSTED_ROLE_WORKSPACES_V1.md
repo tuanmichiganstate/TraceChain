@@ -19,6 +19,10 @@ simulation identity.
 The UI is a thin client. Every privileged action is authorized again in the
 worker and repository layer.
 
+The administrator workspace also exposes the latest 100 access-change commands
+as a read-only audit. Performer identity comes from the authenticated principal,
+and the underlying append-only records cannot be edited from the workspace.
+
 The assignment live monitor is refresh-based rather than a separate real-time
 transport. It reconstructs each started run through the existing deterministic
 service and exposes only status, wall-clock elapsed time, the active role's

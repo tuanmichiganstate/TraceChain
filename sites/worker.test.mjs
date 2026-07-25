@@ -460,6 +460,13 @@ test("lets only administrators provision idempotent application access", async (
       env,
     );
     assert.equal(forbidden.status, 403);
+    const forbiddenAudit = await worker.fetch(
+      apiRequest("/api/v1/admin/access-audit", {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(forbiddenAudit.status, 403);
 
     const command = {
       commandId: "COMMAND_PROVISION_ACCESS_001",
@@ -539,6 +546,41 @@ test("lets only administrators provision idempotent application access", async (
         "instructor@example.edu",
         "new.learner@example.edu",
       ],
+    );
+
+    const auditResponse = await worker.fetch(
+      apiRequest("/api/v1/admin/access-audit", {
+        email: "admin@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      auditResponse.status,
+      200,
+      await auditResponse.clone().text(),
+    );
+    const audit = (await auditResponse.json()).audit;
+    assert.equal(audit.length, 1);
+    assert.deepEqual(
+      {
+        ...audit[0],
+        performedAt: "(verified separately)",
+      },
+      {
+        schemaVersion: "1.0.0",
+        commandId: "COMMAND_PROVISION_ACCESS_001",
+        targetUserId: createdBody.user.userId,
+        targetEmail: "new.learner@example.edu",
+        status: "active",
+        roles: ["learner", "rater"],
+        performedAt: "(verified separately)",
+        performedByUserId: "USER_ADMIN_001",
+        performedByEmail: "admin@example.edu",
+      },
+    );
+    assert.equal(
+      Number.isFinite(Date.parse(audit[0].performedAt)),
+      true,
     );
 
     const selfRemoval = await worker.fetch(
