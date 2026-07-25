@@ -4,6 +4,10 @@
 
 ### Added
 
+- Administrator-only application-user provisioning and role maintenance. Each
+  access change is idempotent, transactionally replaces the current role
+  projection, records an append-only audit command, preserves disabled users,
+  and prevents administrators from removing their own access.
 - A released learner competency-evidence profile derived from the same
   append-only run events and exact scenario version as the instructor report.
   It remains withheld with feedback, exposes only the authenticated learner,

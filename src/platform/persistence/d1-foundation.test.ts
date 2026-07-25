@@ -209,6 +209,7 @@ describe("D1 instructor-platform foundation", () => {
         "0004_assignment_mode_configuration.sql",
         "0005_scenario_pack_retirement.sql",
         "0006_scorm_package_jobs.sql",
+        "0007_application_access_administration.sql",
       ]) {
         database.exec(
           readFileSync(
@@ -250,6 +251,7 @@ describe("D1 instructor-platform foundation", () => {
         expect.arrayContaining([
           "rubric_moderation_resolutions",
           "scorm_package_jobs",
+          "application_access_commands",
         ]),
       );
       const packColumns = database

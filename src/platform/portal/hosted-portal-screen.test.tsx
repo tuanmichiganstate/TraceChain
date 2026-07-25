@@ -41,4 +41,30 @@ describe("hosted role portal", () => {
       ),
     ).toEqual(["/instructor", "/author"]);
   });
+
+  it("shows user administration only to an administrator", async () => {
+    const api: HostedPortalApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_ADMIN_001",
+        email: "admin@example.edu",
+        roles: ["administrator"],
+      }),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <HostedPortalScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "User and role administration",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("link", { name: "Open workspace" })
+        .some((link) => link.getAttribute("href") === "/admin"),
+    ).toBe(true);
+  });
 });

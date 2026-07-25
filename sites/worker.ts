@@ -11,6 +11,10 @@ import type {
   CreateScormPackageJobRequest,
   HostedScormPackageCatalogV1,
 } from "../src/platform/contracts/scorm-package-job";
+import type {
+  ApplicationUserStatus,
+} from "../src/platform/contracts/access-administration";
+import type { ApplicationRole } from "../src/platform/contracts/run-events";
 import en from "../src/locales/en.json";
 import vi from "../src/locales/vi.json";
 import {
@@ -37,6 +41,10 @@ import type {
   HostedStage3Command,
 } from "../src/platform/hosted/stage3-types";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
+import {
+  ApplicationAccessRepositoryError,
+  D1ApplicationAccessRepository,
+} from "../src/platform/persistence/d1-application-access-repository";
 import {
   AssignmentRepositoryError,
   D1AssignmentRepository,
@@ -310,6 +318,17 @@ function errorResponse(error: unknown): Response {
       error: { code: error.code },
     });
   }
+  if (error instanceof ApplicationAccessRepositoryError) {
+    const status =
+      error.code === "ACCESS_COMMAND_CONFLICT"
+        ? 409
+        : error.code === "ACCESS_STORAGE_FAILED"
+          ? 500
+          : 400;
+    return jsonResponse(status, {
+      error: { code: error.code },
+    });
+  }
   if (error instanceof ScormPackageJobRepositoryError) {
     const status =
       error.code === "PACKAGE_JOB_NOT_FOUND"
@@ -540,6 +559,48 @@ async function apiResponse(
       email: principal.email,
       roles: principal.roles,
     });
+  }
+
+  if (url.pathname === "/api/v1/admin/users") {
+    requireApplicationRole(principal, ["administrator"]);
+    const accessRepository = new D1ApplicationAccessRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    if (request.method === "GET") {
+      return jsonResponse(200, {
+        users: await accessRepository.list(),
+      });
+    }
+    if (request.method === "POST") {
+      const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+      if (
+        !isRecord(body) ||
+        !Array.isArray(body.roles) ||
+        !body.roles.every((role) => typeof role === "string")
+      ) {
+        throw new ApplicationAccessRepositoryError(
+          "INVALID_ACCESS_COMMAND",
+          "Application access requires a role list.",
+        );
+      }
+      const result = await accessRepository.upsert(
+        {
+          commandId: requiredText(body.commandId, "commandId"),
+          email: requiredText(body.email, "email"),
+          status: requiredText(
+            body.status,
+            "status",
+          ) as ApplicationUserStatus,
+          roles: body.roles as ApplicationRole[],
+        },
+        principal,
+      );
+      return jsonResponse(
+        result.wasIdempotentReplay ? 200 : 201,
+        { ...result },
+      );
+    }
   }
 
   if (

@@ -294,6 +294,7 @@ test("serves the application shell for browser navigation routes", async () => {
     "/learner",
     "/instructor",
     "/author",
+    "/admin",
   ]) {
     const { env, requestedPaths } = createAssetEnvironment();
     const response = await worker.fetch(
@@ -432,6 +433,155 @@ test("bootstraps only a server-allowlisted administrator into an empty D1 databa
       env,
     );
     assert.equal(denied.status, 403);
+  } finally {
+    database.close();
+  }
+});
+
+test("lets only administrators provision idempotent application access", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  await worker.fetch(apiRequest("/api/v1/session"), env);
+  seedUser(database, "USER_ADMIN_001", "admin@example.edu", [
+    "administrator",
+  ]);
+  seedUser(
+    database,
+    "USER_INSTRUCTOR_001",
+    "instructor@example.edu",
+    ["instructor"],
+  );
+  try {
+    const forbidden = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(forbidden.status, 403);
+
+    const command = {
+      commandId: "COMMAND_PROVISION_ACCESS_001",
+      email: " New.Learner@Example.edu ",
+      status: "active",
+      roles: ["rater", "learner"],
+    };
+    const created = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        method: "POST",
+        email: "admin@example.edu",
+        body: command,
+      }),
+      env,
+    );
+    assert.equal(created.status, 201, await created.clone().text());
+    const createdBody = await created.json();
+    assert.equal(createdBody.wasIdempotentReplay, false);
+    assert.deepEqual(
+      {
+        ...createdBody.user,
+        createdAt: "(verified separately)",
+      },
+      {
+        schemaVersion: "1.0.0",
+        userId: createdBody.user.userId,
+        email: "new.learner@example.edu",
+        status: "active",
+        roles: ["learner", "rater"],
+        createdAt: "(verified separately)",
+      },
+    );
+    assert.equal(
+      Number.isFinite(Date.parse(createdBody.user.createdAt)),
+      true,
+    );
+
+    const replayed = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        method: "POST",
+        email: "admin@example.edu",
+        body: command,
+      }),
+      env,
+    );
+    assert.equal(replayed.status, 200);
+    assert.equal((await replayed.json()).wasIdempotentReplay, true);
+
+    const conflict = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        method: "POST",
+        email: "admin@example.edu",
+        body: {
+          ...command,
+          roles: ["learner"],
+        },
+      }),
+      env,
+    );
+    assert.equal(conflict.status, 409);
+    assert.equal(
+      (await conflict.json()).error.code,
+      "ACCESS_COMMAND_CONFLICT",
+    );
+
+    const listed = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        email: "admin@example.edu",
+      }),
+      env,
+    );
+    assert.equal(listed.status, 200);
+    assert.deepEqual(
+      (await listed.json()).users.map((user) => user.email),
+      [
+        "admin@example.edu",
+        "instructor@example.edu",
+        "new.learner@example.edu",
+      ],
+    );
+
+    const selfRemoval = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        method: "POST",
+        email: "admin@example.edu",
+        body: {
+          commandId: "COMMAND_REMOVE_SELF_ADMIN_001",
+          email: "admin@example.edu",
+          status: "active",
+          roles: ["learner"],
+        },
+      }),
+      env,
+    );
+    assert.equal(selfRemoval.status, 400);
+    assert.equal(
+      (await selfRemoval.json()).error.code,
+      "SELF_ADMINISTRATION_FORBIDDEN",
+    );
+
+    const disabled = await worker.fetch(
+      apiRequest("/api/v1/admin/users", {
+        method: "POST",
+        email: "admin@example.edu",
+        body: {
+          commandId: "COMMAND_DISABLE_ACCESS_001",
+          email: "new.learner@example.edu",
+          status: "disabled",
+          roles: ["learner", "rater"],
+        },
+      }),
+      env,
+    );
+    assert.equal(disabled.status, 201);
+    assert.equal((await disabled.json()).user.status, "disabled");
+    const disabledSession = await worker.fetch(
+      apiRequest("/api/v1/session", {
+        email: "new.learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(disabledSession.status, 403);
   } finally {
     database.close();
   }

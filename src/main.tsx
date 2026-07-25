@@ -14,6 +14,7 @@ import { InstructorReviewScreen } from "./platform/instructor/instructor-review-
 import { ScenarioAuthorScreen } from "./platform/author/scenario-author-screen";
 import { HostedLearnerScreen } from "./platform/learner/hosted-learner-screen";
 import { HostedPortalScreen } from "./platform/portal/hosted-portal-screen";
+import { ApplicationAccessScreen } from "./platform/admin/application-access-screen";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
@@ -32,7 +33,7 @@ function hostedInterfaceLocale(): LocaleCode {
 }
 
 if (
-  /^\/(?:platform|instructor|author|learner)\/?$/u.test(
+  /^\/(?:platform|instructor|author|learner|admin)\/?$/u.test(
     window.location.pathname,
   )
 ) {
@@ -43,6 +44,8 @@ if (
       <LocaleProvider locale={locale}>
         {/^\/platform\/?$/u.test(window.location.pathname) ? (
           <HostedPortalScreen />
+        ) : /^\/admin\/?$/u.test(window.location.pathname) ? (
+          <ApplicationAccessScreen />
         ) : /^\/author\/?$/u.test(window.location.pathname) ? (
           <ScenarioAuthorScreen />
         ) : /^\/learner\/?$/u.test(window.location.pathname) ? (

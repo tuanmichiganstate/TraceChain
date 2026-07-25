@@ -77,12 +77,14 @@ The current schema is in `db/schema.ts`; migration history begins at
 `db/migrations/0001_instructor_platform_foundation.sql` and adds assignments
 and assessment records in `0002_assignments.sql`, rubric moderation in `0003`,
 resolved assignment-mode configuration in `0004`, pack retirement metadata in
-`0005`, and content-addressed SCORM package jobs in `0006`.
+`0005`, content-addressed SCORM package jobs in `0006`, and idempotent
+application-access audit commands in `0007`.
 
 Tables:
 
 - `application_users`
 - `application_role_assignments`
+- `application_access_commands`
 - `scenario_pack_versions`
 - `assignments`
 - `assignment_learners`
@@ -103,6 +105,8 @@ All endpoints use `/api/v1`.
 | Method and path | Application role | Result |
 |---|---|---|
 | `GET /session` | provisioned user | Server-owned user ID, email and roles |
+| `GET /admin/users` | administrator | Active and disabled application users with server-owned roles |
+| `POST /admin/users` | administrator | Idempotent user provisioning, role replacement, disablement, or reactivation |
 | `POST /scenario-packs/validate` | scenario author or administrator | Path-specific validation report without persistence |
 | `POST /scenario-packs/import` | scenario author or administrator | Validated mutable draft |
 | `GET /scenario-packs` | instructor, scenario author or administrator | Versioned scenario library |
@@ -139,7 +143,7 @@ All endpoints use `/api/v1`.
 | `GET /scorm-package-jobs/:jobId` | owner or administrator | Package identity and download URL |
 | `GET /scorm-package-jobs/:jobId/download` | owner or administrator | Exact content-addressed ZIP |
 
-The hosted `/instructor`, `/learner`, and `/author` routes are thin workspaces
+The hosted `/instructor`, `/learner`, `/author`, and `/admin` routes are thin workspaces
 over these endpoints. They do not create a second reporting, replay, authoring,
 or package-generation model. See `docs/HOSTED_ROLE_WORKSPACES_V1.md`.
 
@@ -316,8 +320,10 @@ score and does not expose the scenario seed or random draw. See
   distinct from the stable event-span timing in the assignment report.
 - Instructor timeline replay reconstructs the exact role-filtered view at a
   selected event sequence and never returns hidden actual state.
-- Course and roster-provisioning screens are not implemented.
-- The learner, instructor/rater/administrator, and author workspaces are
+- Application-user and role provisioning are implemented for administrators;
+  course creation and institutional directory synchronization remain
+  deployment concerns.
+- The learner, instructor/rater, author, and administrator workspaces are
   implemented. The author workspace includes a self-localized pharmaceutical
   starter for validation and preview; the complete hosted runtime remains the
   coffee journey.

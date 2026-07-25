@@ -65,6 +65,7 @@ export function HostedPortalScreen({
   const mayManageAuthor = roles.some((role) =>
     ["scenario-author", "administrator"].includes(role)
   );
+  const mayAdminister = roles.includes("administrator");
   const mayBrowseScenarios =
     mayManageAuthor || roles.includes("instructor");
 
@@ -129,6 +130,16 @@ export function HostedPortalScreen({
                         mayManageAuthor
                           ? "hostedPortal.author.description"
                           : "hostedPortal.library.description",
+                      )}
+                      action={t("hostedPortal.open")}
+                    />
+                  ) : null}
+                  {mayAdminister ? (
+                    <WorkspaceLink
+                      href="/admin"
+                      title={t("hostedPortal.admin.title")}
+                      description={t(
+                        "hostedPortal.admin.description",
                       )}
                       action={t("hostedPortal.open")}
                     />

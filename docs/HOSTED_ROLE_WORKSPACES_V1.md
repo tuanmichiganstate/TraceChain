@@ -14,6 +14,7 @@ simulation identity.
 | `/instructor` | rater | Review evidence and save append-only ratings without assignment, publication, moderation, or package controls |
 | `/author` | scenario-author | Import, edit, validate, preview, compare, publish, and retire scenario packs |
 | `/instructor` and `/author` | administrator | Management, moderation, package, and authoring controls |
+| `/admin` | administrator | Provision application access, assign server-owned roles, and disable or reactivate users |
 
 The UI is a thin client. Every privileged action is authorized again in the
 worker and repository layer.
@@ -71,6 +72,8 @@ scenario seeds, outcome draws, authored correctness, and unreleased feedback.
 
 ## Current administrative boundary
 
-User and roster provisioning remain deployment administration. TraceChain does
-not implement passwords, institutional directory synchronization, course
+Application-user and role provisioning are available in the administrator
+workspace. The hosting layer still authenticates the email address; TraceChain
+does not implement passwords, institutional directory synchronization, course
 management, multi-tenant administration, or collaborative multi-learner runs.
+See `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md`.

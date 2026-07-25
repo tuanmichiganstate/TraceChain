@@ -244,6 +244,72 @@ test("shows only role-authorized hosted workspaces", async ({ page }) => {
   ).toHaveCount(0);
 });
 
+test("provisions server-owned access from the administrator workspace", async ({
+  page,
+}) => {
+  const users: Record<string, unknown>[] = [
+    {
+      schemaVersion: "1.0.0",
+      userId: "USER_BROWSER_ADMIN",
+      email: "admin@example.edu",
+      status: "active",
+      roles: ["administrator"],
+      createdAt: "2026-07-25T04:00:00.000Z",
+    },
+  ];
+  let submitted: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/admin/users", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { users } });
+      return;
+    }
+    submitted = route.request().postDataJSON() as Record<
+      string,
+      unknown
+    >;
+    const created = {
+      schemaVersion: "1.0.0",
+      userId: "USER_BROWSER_LEARNER",
+      email: String(submitted.email).trim().toLowerCase(),
+      status: submitted.status,
+      roles: submitted.roles,
+      createdAt: "2026-07-25T04:05:00.000Z",
+    };
+    users.push(created);
+    await route.fulfill({
+      status: 201,
+      json: {
+        user: created,
+        wasIdempotentReplay: false,
+      },
+    });
+  });
+
+  await page.goto("/admin?locale=en");
+  await expect(
+    page.getByRole("heading", {
+      name: "User and role administration",
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Email address" })
+    .fill("browser.learner@example.edu");
+  await page.getByRole("button", { name: "Save access" }).click();
+
+  await expect(
+    page.getByRole("cell", {
+      name: "browser.learner@example.edu",
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(submitted).toMatchObject({
+    email: "browser.learner@example.edu",
+    status: "active",
+    roles: ["learner"],
+  });
+  expect(submitted).not.toHaveProperty("userId");
+});
+
 test("refreshes replay-derived instructor status without hidden outcomes", async ({
   page,
 }) => {

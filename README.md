@@ -54,8 +54,10 @@ adverse-event probability estimate as one atomic submission. The `/author`
 route imports bounded JSON, YAML, or
 ZIP packs, provides a compact visual draft editor and pharmaceutical
 cold-chain starter, validates and previews roles and modes, compares versions,
-and controls publication and retirement. Course and roster provisioning remain
-deployment administration rather than application screens. Assignment
+and controls publication and retirement. The `/admin` route provisions
+application users, replaces server-owned roles, and disables or reactivates
+access through idempotent audited commands. Deployment authentication and
+course management remain outside TraceChain. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
 revisions, event-derived learner activity counts, deterministic rejection
@@ -231,6 +233,8 @@ schemas/               published versioned JSON Schemas
   compatibility-adapter, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
+- `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md` — administrator-only user and
+  role provisioning, idempotency, audit, and self-protection boundaries
 - `docs/ASSIGNMENT_EXPORT_V1.md` — the stable assignment JSON/CSV evidence
   contract and data dictionary
 - `docs/DECISION_OUTCOME_REPORT_V1.md` — replay-derived completed decision
