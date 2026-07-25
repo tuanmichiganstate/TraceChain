@@ -25,6 +25,10 @@ import type {
   HostedAssignmentCompetencyReportV1,
 } from "../contracts/competency-report";
 import type {
+  AssignmentCurriculumCrosswalkReportV1,
+  AssignmentCurriculumCrosswalkV1,
+} from "../contracts/curriculum-crosswalk";
+import type {
   HostedAssignmentDecisionOutcomeReportV1,
 } from "../contracts/decision-outcome-report";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
@@ -109,6 +113,9 @@ export interface InstructorReviewApi {
   loadAssignmentCompetencies(
     assignmentId: string,
   ): Promise<HostedAssignmentCompetencyReportV1>;
+  loadAssignmentCurriculumCrosswalks(
+    assignmentId: string,
+  ): Promise<AssignmentCurriculumCrosswalkReportV1>;
   loadAssignmentDecisionOutcomes(
     assignmentId: string,
   ): Promise<HostedAssignmentDecisionOutcomeReportV1>;
@@ -296,6 +303,16 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/competencies`,
       );
       return result.competencies;
+    },
+    async loadAssignmentCurriculumCrosswalks(assignmentId) {
+      const result = await responseJson<{
+        readonly curriculumCrosswalks:
+          AssignmentCurriculumCrosswalkReportV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/curriculum-crosswalks`,
+      );
+      return result.curriculumCrosswalks;
     },
     async loadAssignmentDecisionOutcomes(assignmentId) {
       const result = await responseJson<{
@@ -1626,6 +1643,8 @@ function AssignmentReport({
     useState<HostedAssignmentMonitorV1 | null>(null);
   const [competencies, setCompetencies] =
     useState<HostedAssignmentCompetencyReportV1 | null>(null);
+  const [curriculumCrosswalks, setCurriculumCrosswalks] =
+    useState<AssignmentCurriculumCrosswalkReportV1 | null>(null);
   const [decisionOutcomes, setDecisionOutcomes] =
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
@@ -1639,6 +1658,7 @@ function AssignmentReport({
     setReport(null);
     setMonitor(null);
     setCompetencies(null);
+    setCurriculumCrosswalks(null);
     setDecisionOutcomes(null);
     setErrorKey(null);
     try {
@@ -1647,12 +1667,16 @@ function AssignmentReport({
         loadedReport,
         loadedMonitor,
         loadedCompetencies,
+        loadedCurriculumCrosswalks,
         loadedDecisionOutcomes,
       ] =
         await Promise.all([
           api.loadAssignmentReport(requestedAssignmentId),
           api.loadAssignmentMonitor(requestedAssignmentId),
           api.loadAssignmentCompetencies(requestedAssignmentId),
+          api.loadAssignmentCurriculumCrosswalks(
+            requestedAssignmentId,
+          ),
           api.loadAssignmentDecisionOutcomes(
             requestedAssignmentId,
           ),
@@ -1660,6 +1684,7 @@ function AssignmentReport({
       setReport(loadedReport);
       setMonitor(loadedMonitor);
       setCompetencies(loadedCompetencies);
+      setCurriculumCrosswalks(loadedCurriculumCrosswalks);
       setDecisionOutcomes(loadedDecisionOutcomes);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
@@ -2053,7 +2078,154 @@ function AssignmentReport({
               onReviewEvent={onReviewEvent}
             />
           )}
+          {curriculumCrosswalks === null ? null : (
+            <ClassCurriculumCrosswalkReport
+              report={curriculumCrosswalks}
+            />
+          )}
         </div>
+      )}
+    </section>
+  );
+}
+
+function curriculumCrosswalkLabels(
+  crosswalk: AssignmentCurriculumCrosswalkV1,
+  locale: string,
+): AssignmentCurriculumCrosswalkV1["labelsByLocale"][string] {
+  return (
+    crosswalk.labelsByLocale[locale] ??
+    crosswalk.labelsByLocale.en ??
+    Object.values(crosswalk.labelsByLocale)[0] ?? {
+      title: crosswalk.titleKey,
+      externalFrameworkTitle:
+        crosswalk.externalFrameworkTitleKey,
+      outcomeTitles: {},
+    }
+  );
+}
+
+function ClassCurriculumCrosswalkReport({
+  report,
+}: {
+  readonly report: AssignmentCurriculumCrosswalkReportV1;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="instructor-review__curriculum-crosswalks">
+      <h3>{t("instructorReview.curriculumHeading")}</h3>
+      <p>{t("instructorReview.curriculumHelp")}</p>
+      <a
+        className="button button--secondary"
+        href={`/api/v1/assignments/${encodeURIComponent(report.assignmentId)}/curriculum-crosswalks.json`}
+        download
+      >
+        {t("instructorReview.curriculumDownloadJson")}
+      </a>
+      {report.crosswalks.length === 0 ? (
+        <p>{t("instructorReview.curriculumNone")}</p>
+      ) : (
+        report.crosswalks.map((crosswalk) => {
+          const labels = curriculumCrosswalkLabels(
+            crosswalk,
+            t.locale,
+          );
+          return (
+            <article key={crosswalk.crosswalkId}>
+              <h4>{labels.title}</h4>
+              <p>
+                {t("instructorReview.curriculumFrameworkValue", {
+                  framework: labels.externalFrameworkTitle,
+                  crosswalkVersion: crosswalk.crosswalkVersion,
+                  frameworkVersion:
+                    crosswalk.externalFrameworkVersion,
+                })}
+              </p>
+              <p>
+                {t("instructorReview.curriculumEffectiveValue", {
+                  date: crosswalk.effectiveFrom,
+                })}
+              </p>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        {t("instructorReview.curriculumOutcome")}
+                      </th>
+                      <th scope="col">
+                        {t(
+                          "instructorReview.curriculumPrimaryIndicators",
+                        )}
+                      </th>
+                      <th scope="col">
+                        {t(
+                          "instructorReview.curriculumSupportingIndicators",
+                        )}
+                      </th>
+                      <th scope="col">
+                        {t("instructorReview.learnersObserved")}
+                      </th>
+                      <th scope="col">
+                        {t(
+                          "instructorReview.evidenceRecordCount",
+                        )}
+                      </th>
+                      <th scope="col">
+                        {t(
+                          "instructorReview.currentRatingCount",
+                        )}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crosswalk.classOutcomes.map((outcome) => (
+                      <tr key={outcome.outcomeId}>
+                        <td>
+                          <strong>
+                            {labels.outcomeTitles[
+                              outcome.outcomeId
+                            ] ?? outcome.outcomeTitleKey}
+                          </strong>
+                          <br />
+                          <code>{outcome.outcomeId}</code>
+                        </td>
+                        <td>
+                          {outcome.primaryIndicatorIds.length === 0
+                            ? t("instructorReview.none")
+                            : outcome.primaryIndicatorIds.join(", ")}
+                        </td>
+                        <td>
+                          {outcome.supportingIndicatorIds.length ===
+                          0
+                            ? t("instructorReview.none")
+                            : outcome.supportingIndicatorIds.join(
+                                ", ",
+                              )}
+                        </td>
+                        <td>
+                          {t(
+                            "instructorReview.learnersObservedValue",
+                            {
+                              observed:
+                                outcome.learnersWithEvidence,
+                              assigned:
+                                outcome.assignedLearnerCount,
+                            },
+                          )}
+                        </td>
+                        <td>
+                          {outcome.evidenceObservationCount}
+                        </td>
+                        <td>{outcome.currentRatingCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          );
+        })
       )}
     </section>
   );

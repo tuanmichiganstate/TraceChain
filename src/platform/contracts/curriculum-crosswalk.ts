@@ -85,12 +85,22 @@ export interface AssignmentCurriculumCrosswalkV1 {
   readonly externalFrameworkId: string;
   readonly externalFrameworkVersion: string;
   readonly externalFrameworkTitleKey: string;
+  readonly labelsByLocale: Readonly<
+    Record<
+      string,
+      {
+        readonly title: string;
+        readonly externalFrameworkTitle: string;
+        readonly outcomeTitles: Readonly<Record<string, string>>;
+      }
+    >
+  >;
   readonly learners: readonly LearnerCurriculumCrosswalkEvidenceV1[];
   readonly classOutcomes: readonly ClassCurriculumOutcomeEvidenceV1[];
 }
 
 export interface AssignmentCurriculumCrosswalkReportV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly interpretation:
     "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE";
   readonly assignmentId: string;

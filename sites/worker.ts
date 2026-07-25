@@ -129,6 +129,12 @@ import {
   createAssignmentCompetencyReport,
   createLearnerCompetencyProfile,
 } from "../src/platform/reporting/assignment-competency-report";
+import {
+  assignmentCurriculumCrosswalkFilename,
+  createAssignmentCurriculumCrosswalkReport,
+  CurriculumCrosswalkReportError,
+  serializeAssignmentCurriculumCrosswalkReportJson,
+} from "../src/platform/reporting/curriculum-crosswalk-report";
 import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
 import { assignmentStartAvailability } from "../src/platform/runs/assignment-availability";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
@@ -459,6 +465,11 @@ function errorResponse(error: unknown): Response {
     });
   }
   if (error instanceof AssignmentCompetencyReportError) {
+    return jsonResponse(500, {
+      error: { code: error.code },
+    });
+  }
+  if (error instanceof CurriculumCrosswalkReportError) {
     return jsonResponse(500, {
       error: { code: error.code },
     });
@@ -2168,6 +2179,92 @@ async function apiResponse(
         evidenceByRun,
       }),
     });
+  }
+
+  const curriculumCrosswalkAssignmentId = pathAssignmentId(
+    url.pathname,
+    "curriculum-crosswalks",
+  );
+  const curriculumCrosswalkDownloadAssignmentId = pathAssignmentId(
+    url.pathname,
+    "curriculum-crosswalks.json",
+  );
+  const requestedCurriculumCrosswalkAssignmentId =
+    curriculumCrosswalkAssignmentId ??
+    curriculumCrosswalkDownloadAssignmentId;
+  if (
+    request.method === "GET" &&
+    requestedCurriculumCrosswalkAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const assignmentReport = await repository.report(
+      requestedCurriculumCrosswalkAssignmentId,
+    );
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(
+      assignmentReport.assignment.packId,
+      assignmentReport.assignment.packVersion,
+    );
+    if (pack === null || pack.status !== "published") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Curriculum crosswalk reporting requires the assignment's exact published pack.",
+      );
+    }
+    const service = createHostedRuntimeService({
+      pack,
+      scenarioId: assignmentReport.assignment.scenarioId,
+      scenarioVersion:
+        assignmentReport.assignment.scenarioVersion,
+      eventStore: new D1RunEventStore(environment.DB),
+      clock,
+      ids: new WebCryptoIdGenerator(),
+    });
+    const evidenceByRun = await Promise.all(
+      assignmentReport.learners.flatMap((learner) =>
+        learner.runs.map(async (run) => ({
+          runId: run.runId,
+          indicators: await service.competencyReport(
+            principal,
+            run.runId,
+          ),
+        })),
+      ),
+    );
+    const curriculumCrosswalks =
+      createAssignmentCurriculumCrosswalkReport({
+        pack,
+        competencyReport: createAssignmentCompetencyReport({
+          assignmentReport,
+          pack,
+          evidenceByRun,
+        }),
+        localizationCatalogs: scenarioPackCatalogs,
+      });
+    if (curriculumCrosswalkDownloadAssignmentId !== null) {
+      return downloadResponse(
+        serializeAssignmentCurriculumCrosswalkReportJson(
+          curriculumCrosswalks,
+        ),
+        "application/json; charset=utf-8",
+        assignmentCurriculumCrosswalkFilename(
+          requestedCurriculumCrosswalkAssignmentId,
+        ),
+      );
+    }
+    return jsonResponse(200, { curriculumCrosswalks });
   }
 
   const counterfactualReportAssignmentId = pathAssignmentId(

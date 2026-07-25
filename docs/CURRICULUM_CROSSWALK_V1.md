@@ -6,9 +6,10 @@ The curriculum-crosswalk layer connects TraceChain's versioned performance
 indicators to institution-owned outcomes without changing simulation scoring
 or claiming that one activity proves mastery.
 
-The initial implementation is a pack contract, validator, sample
-pharmaceutical crosswalk, and deterministic evidence report. It is not a
-curriculum-management system or an attainment calculator.
+The implementation is a pack contract, validator, sample pharmaceutical
+crosswalk, deterministic evidence report, hosted instructor endpoint, report
+workspace presentation, and JSON download. It is not a curriculum-management
+system or an attainment calculator.
 
 ## Authored contract
 
@@ -95,6 +96,24 @@ official grade. Institutions may use the linked evidence in a separately
 approved assessment process, but TraceChain does not infer attainment from the
 mapping.
 
+## Hosted instructor delivery
+
+The hosted platform exposes:
+
+```text
+GET /api/v1/assignments/{assignmentId}/curriculum-crosswalks
+GET /api/v1/assignments/{assignmentId}/curriculum-crosswalks.json
+```
+
+Both routes require an instructor, rater, or administrator role and reconstruct
+competency evidence from the assignment's exact published pack and scenario
+version. Learners cannot request the class projection.
+
+The instructor assignment report displays localized external-framework and
+outcome labels, primary and supporting indicators, learners with evidence,
+unique evidence records, and current ratings. The JSON download contains the
+same report contract and preserves stable IDs and versions.
+
 ## Seeded example
 
 The pharmaceutical cold-chain pack defines
@@ -118,12 +137,13 @@ Implemented:
 - JSON Schema and runtime validation;
 - a versioned sample crosswalk;
 - deterministic learner and class evidence projection; and
+- an instructor-only hosted report and deterministic JSON download;
+- bilingual, self-localized report presentation; and
 - unit tests for deduplication, mismatch rejection, and no-attainment output.
 
 Deferred:
 
 - graphical crosswalk editing;
-- instructor report UI;
 - CSV export;
 - external framework import;
 - institution-specific attainment rules; and

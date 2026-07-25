@@ -33,6 +33,46 @@ function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function crosswalkLabels(
+  crosswalk: CurriculumCrosswalkV1,
+  supportedLocales: readonly string[],
+  applicationCatalogs: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  >,
+  packCatalogs: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  > | undefined,
+): AssignmentCurriculumCrosswalkV1["labelsByLocale"] {
+  return Object.fromEntries(
+    supportedLocales.map((locale) => {
+      const catalog = {
+        ...(applicationCatalogs[locale] ?? {}),
+        ...(packCatalogs?.[locale] ?? {}),
+      };
+      return [
+        locale,
+        {
+          title:
+            catalog[crosswalk.title.localizationKey] ??
+            crosswalk.title.localizationKey,
+          externalFrameworkTitle:
+            catalog[
+              crosswalk.externalFramework.title.localizationKey
+            ] ??
+            crosswalk.externalFramework.title.localizationKey,
+          outcomeTitles: Object.fromEntries(
+            crosswalk.externalFramework.outcomes.map((outcome) => [
+              outcome.outcomeId,
+              catalog[outcome.title.localizationKey] ??
+                outcome.title.localizationKey,
+            ]),
+          ),
+        },
+      ];
+    }),
+  );
+}
+
 function uniqueObservationCount(
   indicators: readonly LearnerCompetencyIndicatorV1[],
 ): number {
@@ -92,6 +132,10 @@ function learnerOutcome(
 function projectCrosswalk(
   crosswalk: CurriculumCrosswalkV1,
   report: HostedAssignmentCompetencyReportV1,
+  pack: ScenarioPackV1,
+  localizationCatalogs: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  >,
 ): AssignmentCurriculumCrosswalkV1 {
   const classIndicatorById = new Map(
     report.classIndicators.map((indicator) => [
@@ -125,6 +169,12 @@ function projectCrosswalk(
     externalFrameworkVersion: crosswalk.externalFramework.version,
     externalFrameworkTitleKey:
       crosswalk.externalFramework.title.localizationKey,
+    labelsByLocale: crosswalkLabels(
+      crosswalk,
+      pack.supportedLocales,
+      localizationCatalogs,
+      pack.localizationCatalogs,
+    ),
     learners,
     classOutcomes: crosswalk.externalFramework.outcomes.map(
       (outcome) => {
@@ -202,6 +252,9 @@ function projectCrosswalk(
 export function createAssignmentCurriculumCrosswalkReport(options: {
   readonly pack: ScenarioPackV1;
   readonly competencyReport: HostedAssignmentCompetencyReportV1;
+  readonly localizationCatalogs?: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  >;
 }): AssignmentCurriculumCrosswalkReportV1 {
   const { pack, competencyReport } = options;
   if (
@@ -221,7 +274,7 @@ export function createAssignmentCurriculumCrosswalkReport(options: {
   }
 
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     interpretation:
       "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
     assignmentId: competencyReport.assignmentId,
@@ -231,10 +284,31 @@ export function createAssignmentCurriculumCrosswalkReport(options: {
     scenarioVersion: competencyReport.scenarioVersion,
     crosswalks: pack.curriculumCrosswalks
       .map((crosswalk) =>
-        projectCrosswalk(crosswalk, competencyReport),
+        projectCrosswalk(
+          crosswalk,
+          competencyReport,
+          pack,
+          options.localizationCatalogs ?? {},
+        ),
       )
       .sort((left, right) =>
         compareText(left.crosswalkId, right.crosswalkId),
       ),
   };
+}
+
+export function serializeAssignmentCurriculumCrosswalkReportJson(
+  report: AssignmentCurriculumCrosswalkReportV1,
+): string {
+  return `${JSON.stringify(report, null, 2)}\n`;
+}
+
+export function assignmentCurriculumCrosswalkFilename(
+  assignmentId: string,
+): string {
+  const safeAssignmentId = assignmentId.replaceAll(
+    /[^A-Za-z0-9._-]/gu,
+    "_",
+  );
+  return `TraceChain_${safeAssignmentId}_curriculum_crosswalk_v1.json`;
 }

@@ -80,7 +80,8 @@ second score. Versioned declarative evidence rules are evaluated against their
 referenced append-only events before competency evidence is recorded.
 Versioned curriculum crosswalks can project that evidence onto external course
 or program outcomes while explicitly refusing to infer attainment or create a
-second grade.
+second grade. The instructor assignment report presents this projection with
+pack-localized labels and offers an exact-version JSON download.
 Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
 at that point, with the submitted response beside the evidence available at

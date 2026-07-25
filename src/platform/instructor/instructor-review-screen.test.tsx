@@ -148,6 +148,7 @@ describe("instructor review screen", () => {
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
@@ -239,6 +240,7 @@ describe("instructor review screen", () => {
         },
       ]),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
@@ -503,6 +505,81 @@ describe("instructor review screen", () => {
           },
         ],
       }),
+      loadAssignmentCurriculumCrosswalks: vi.fn().mockResolvedValue({
+        schemaVersion: "1.1.0",
+        interpretation:
+          "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        packId: "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
+        packVersion: "1.3.0",
+        scenarioId: "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+        scenarioVersion: "1.0.0",
+        crosswalks: [
+          {
+            crosswalkId: "CROSSWALK_PHARMA_PILOT_CLO",
+            crosswalkVersion: "1.0.0",
+            effectiveFrom: "2026-07-25",
+            titleKey:
+              "platformPack.pharmaColdChain.crosswalk.title",
+            externalFrameworkId:
+              "PHARMA_PILOT_COURSE_OUTCOMES",
+            externalFrameworkVersion: "1.0.0",
+            externalFrameworkTitleKey:
+              "platformPack.pharmaColdChain.crosswalk.framework.title",
+            labelsByLocale: {
+              en: {
+                title:
+                  "Pharmaceutical pilot curriculum crosswalk",
+                externalFrameworkTitle:
+                  "Pilot pharmaceutical course outcomes",
+                outcomeTitles: {
+                  CLO_EVIDENCE_EVALUATION:
+                    "Evaluate evidence integrity and physical-condition evidence",
+                },
+              },
+              vi: {
+                title:
+                  "Bảng đối chiếu chương trình thí điểm dược phẩm",
+                externalFrameworkTitle:
+                  "Chuẩn đầu ra học phần dược phẩm thí điểm",
+                outcomeTitles: {
+                  CLO_EVIDENCE_EVALUATION:
+                    "Đánh giá tính toàn vẹn và bằng chứng điều kiện thực tế",
+                },
+              },
+            },
+            learners: [
+              {
+                learnerUserId: "USER_LEARNER_001",
+                outcomes: [
+                  {
+                    outcomeId: "CLO_EVIDENCE_EVALUATION",
+                    mappedIndicatorIds: ["BC3.PI1"],
+                    evidenceObservationCount: 2,
+                    currentRatingCount: 1,
+                  },
+                ],
+              },
+            ],
+            classOutcomes: [
+              {
+                outcomeId: "CLO_EVIDENCE_EVALUATION",
+                outcomeType: "COURSE_LEARNING_OUTCOME",
+                outcomeTitleKey:
+                  "platformPack.pharmaColdChain.crosswalk.outcome.evidence",
+                mappedIndicatorIds: ["BC3.PI1"],
+                primaryIndicatorIds: ["BC3.PI1"],
+                supportingIndicatorIds: [],
+                targetTypes: ["primary"],
+                assignedLearnerCount: 1,
+                learnersWithEvidence: 1,
+                evidenceObservationCount: 2,
+                currentRatingCount: 1,
+              },
+            ],
+          },
+        ],
+      }),
       loadAssignmentDecisionOutcomes: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
         interpretation:
@@ -619,6 +696,9 @@ describe("instructor review screen", () => {
       "ASSIGNMENT_EXPORT_001",
     );
     expect(
+      api.loadAssignmentCurriculumCrosswalks,
+    ).toHaveBeenCalledWith("ASSIGNMENT_EXPORT_001");
+    expect(
       await report.findByRole("heading", {
         name: "Live learner status",
       }),
@@ -731,6 +811,43 @@ describe("instructor review screen", () => {
         name: "Learner competency profiles",
       }),
     ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Curriculum outcome evidence",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "This crosswalk projects recorded evidence onto versioned external outcomes. It does not calculate attainment, mastery, or another grade.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Pharmaceutical pilot curriculum crosswalk",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Pilot pharmaceutical course outcomes (crosswalk 1.0.0; framework 1.0.0)",
+      ),
+    ).toBeInTheDocument();
+    const curriculumOutcome = report
+      .getByText("CLO_EVIDENCE_EVALUATION")
+      .closest("tr");
+    if (curriculumOutcome === null) {
+      throw new Error("Expected curriculum outcome row.");
+    }
+    expect(
+      within(curriculumOutcome).getByText("BC3.PI1"),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("link", {
+        name: "Download curriculum evidence JSON",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/api/v1/assignments/ASSIGNMENT_EXPORT_001/curriculum-crosswalks.json",
+    );
     const learnerSummary = report.getByText("USER_LEARNER_001", {
       selector: "summary code",
     });
@@ -839,6 +956,7 @@ describe("instructor review screen", () => {
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
@@ -1072,6 +1190,7 @@ describe("instructor review screen", () => {
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
@@ -1173,6 +1292,7 @@ describe("instructor review screen", () => {
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
@@ -1226,8 +1346,15 @@ describe("instructor review screen", () => {
               }
           : path.endsWith("/timeline")
             ? { timeline: [] }
-            : path.endsWith("/monitor")
+          : path.endsWith("/monitor")
               ? { monitor: { schemaVersion: "1.0.0" } }
+            : path.endsWith("/curriculum-crosswalks")
+              ? {
+                  curriculumCrosswalks: {
+                    schemaVersion: "1.1.0",
+                    crosswalks: [],
+                  },
+                }
             : path.includes("/replay?sequence=")
               ? { replay: { throughSequenceNumber: 2 } }
             : path.endsWith("/competencies")
@@ -1277,6 +1404,9 @@ describe("instructor review screen", () => {
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
     await api.loadAssignmentMonitor("ASSIGNMENT / 001");
+    await api.loadAssignmentCurriculumCrosswalks(
+      "ASSIGNMENT / 001",
+    );
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
@@ -1289,6 +1419,7 @@ describe("instructor review screen", () => {
       "/api/v1/runs/RUN%20%2F%20001/ratings",
       "/api/v1/runs/RUN%20%2F%20001/replay?sequence=2",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/monitor",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/curriculum-crosswalks",
     ]);
   });
 });

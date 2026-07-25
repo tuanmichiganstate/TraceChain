@@ -7,8 +7,10 @@ import type {
 } from "../contracts/competency-report";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import {
+  assignmentCurriculumCrosswalkFilename,
   createAssignmentCurriculumCrosswalkReport,
   CurriculumCrosswalkReportError,
+  serializeAssignmentCurriculumCrosswalkReportJson,
 } from "./curriculum-crosswalk-report";
 
 const pack = pharmaceuticalPackJson as ScenarioPackV1;
@@ -151,7 +153,7 @@ describe("curriculum crosswalk report", () => {
     });
 
     expect(report).toMatchObject({
-      schemaVersion: "1.0.0",
+      schemaVersion: "1.1.0",
       interpretation:
         "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
       assignmentId: "ASSIGNMENT_PHARMA_TRANSFER",
@@ -163,6 +165,16 @@ describe("curriculum crosswalk report", () => {
     expect(crosswalk).toMatchObject({
       crosswalkId: "CROSSWALK_PHARMA_PILOT_CLO",
       externalFrameworkId: "PHARMA_PILOT_COURSE_OUTCOMES",
+      labelsByLocale: {
+        en: {
+          externalFrameworkTitle:
+            "Pilot pharmaceutical course outcomes",
+        },
+        vi: {
+          externalFrameworkTitle:
+            "Chuẩn đầu ra học phần dược phẩm thí điểm",
+        },
+      },
     });
     expect(crosswalk?.classOutcomes).toEqual([
       expect.objectContaining({
@@ -194,6 +206,16 @@ describe("curriculum crosswalk report", () => {
     ]);
     expect(JSON.stringify(report)).not.toContain("attainment");
     expect(JSON.stringify(report)).not.toContain("mastery");
+    expect(
+      serializeAssignmentCurriculumCrosswalkReportJson(report),
+    ).toBe(`${JSON.stringify(report, null, 2)}\n`);
+    expect(
+      assignmentCurriculumCrosswalkFilename(
+        "ASSIGNMENT PHARMA/TRANSFER",
+      ),
+    ).toBe(
+      "TraceChain_ASSIGNMENT_PHARMA_TRANSFER_curriculum_crosswalk_v1.json",
+    );
   });
 
   it("rejects crosswalk projection against another pack version", () => {

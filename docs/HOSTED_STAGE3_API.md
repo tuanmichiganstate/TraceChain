@@ -125,6 +125,8 @@ All endpoints use `/api/v1`.
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, authoritative event-span timing, event-derived activity, event-count and current-rating report |
 | `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
+| `GET /assignments/:assignmentId/curriculum-crosswalks` | instructor, rater or administrator | Exact-version external-outcome evidence projection with localized labels and no attainment inference |
+| `GET /assignments/:assignmentId/curriculum-crosswalks.json` | instructor, rater or administrator | Downloadable JSON form of the same curriculum evidence projection |
 | `GET /assignments/:assignmentId/decision-outcomes` | instructor, rater or administrator | Completed-run authored decision evidence beside realized outcomes; active-run correctness and outcomes remain hidden |
 | `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary; `?identity=pseudonymous` replaces learner user IDs with assignment-scoped codes |
 | `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same identified or pseudonymous evidence in the documented flat CSV V1 layout |

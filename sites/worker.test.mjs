@@ -1074,6 +1074,75 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       ["PHARMA.COLD_CHAIN.PI1"],
     );
 
+    const curriculumCrosswalkResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/curriculum-crosswalks",
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      curriculumCrosswalkResponse.status,
+      200,
+      await curriculumCrosswalkResponse.clone().text(),
+    );
+    const curriculumCrosswalks = (
+      await curriculumCrosswalkResponse.json()
+    ).curriculumCrosswalks;
+    assert.equal(curriculumCrosswalks.schemaVersion, "1.1.0");
+    assert.equal(
+      curriculumCrosswalks.interpretation,
+      "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
+    );
+    assert.equal(curriculumCrosswalks.crosswalks.length, 1);
+    const curriculumCrosswalk =
+      curriculumCrosswalks.crosswalks[0];
+    assert.equal(
+      curriculumCrosswalk.labelsByLocale.vi
+        .externalFrameworkTitle,
+      "Chuẩn đầu ra học phần dược phẩm thí điểm",
+    );
+    const evidenceOutcome =
+      curriculumCrosswalk.classOutcomes.find(
+        (outcome) =>
+          outcome.outcomeId === "CLO_EVIDENCE_EVALUATION",
+      );
+    assert.deepEqual(evidenceOutcome.primaryIndicatorIds, [
+      "PHARMA.COLD_CHAIN.PI1",
+    ]);
+    assert.equal(evidenceOutcome.learnersWithEvidence, 1);
+    assert.equal(evidenceOutcome.evidenceObservationCount, 1);
+    assert.equal(Object.hasOwn(evidenceOutcome, "attainment"), false);
+    assert.equal(Object.hasOwn(evidenceOutcome, "mastery"), false);
+
+    const curriculumCrosswalkDownload = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/curriculum-crosswalks.json",
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      curriculumCrosswalkDownload.status,
+      200,
+      await curriculumCrosswalkDownload.clone().text(),
+    );
+    assert.equal(
+      curriculumCrosswalkDownload.headers.get(
+        "content-disposition",
+      ),
+      'attachment; filename="TraceChain_ASSIGNMENT_PHARMA_001_curriculum_crosswalk_v1.json"',
+    );
+
+    const learnerCurriculumCrosswalk = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/curriculum-crosswalks",
+        { email: "pharma-learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerCurriculumCrosswalk.status, 403);
+
     const withheldFeedback = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/feedback`, {
         email: "pharma-learner@example.edu",
