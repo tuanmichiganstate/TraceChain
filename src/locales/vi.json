@@ -425,6 +425,7 @@
   "hostedLearner.competencyNoEvidence": "Chưa quan sát thấy bản ghi bằng chứng nào cho chỉ báo này.",
   "hostedLearner.currentAction": "Gửi thao tác hiện tại",
   "hostedLearner.complete": "Lượt chạy này đã hoàn thành.",
+  "hostedLearner.timeLimitExpired": "Giới hạn {minutes} phút của lượt chạy đã kết thúc. Bạn có thể xem lại lượt chạy này nhưng không thể gửi thêm thao tác.",
   "hostedLearner.submit": "Gửi",
   "hostedLearner.certificateAssessment": "Nội dung và hiệu lực của chứng nhận",
   "hostedLearner.issuerAssessment": "Danh tính và thẩm quyền của bên cấp",

@@ -232,6 +232,156 @@ test("runs an assigned hosted learner action from role-filtered server state", a
   expect(submittedCommand).not.toHaveProperty("roleId");
 });
 
+test("keeps a time-limited hosted run reviewable after its deadline", async ({
+  page,
+}) => {
+  let commandRequests = 0;
+  const runId = "RUN_BROWSER_EXPIRED";
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/v1/session") {
+      await route.fulfill({
+        json: {
+          userId: "USER_BROWSER_LEARNER",
+          email: "browser-learner@example.edu",
+          roles: ["learner"],
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/learner/assignments") {
+      await route.fulfill({
+        json: {
+          assignments: [
+            {
+              assignment: {
+                schemaVersion: "1.0.0",
+                assignmentId: "ASSIGNMENT_BROWSER_EXPIRED",
+                title: "Time-limited coffee governance",
+                packId: "PACK_STANDARD_COFFEE_STAGE3",
+                packVersion: "1.6.0",
+                scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+                scenarioVersion: "1.6.0",
+                mode: "standard",
+                runConfiguration: {
+                  mode: "standard",
+                  allowHints: false,
+                  allowRetry: false,
+                  allowBacktracking: false,
+                  feedbackTiming: "final",
+                  showScores: false,
+                  outcomeStrategy: "forced",
+                  seedPolicy: "supplied",
+                  timeLimitMinutes: 30,
+                  allowCommunication: false,
+                  allowEvidenceRequests: true,
+                },
+                learnerUserIds: ["USER_BROWSER_LEARNER"],
+                status: "active",
+                feedbackReleaseStatus: "withheld",
+                createdAt: "2026-07-24T08:00:00.000Z",
+                createdByUserId: "USER_BROWSER_INSTRUCTOR",
+              },
+              startAvailability: {
+                status: "available",
+                observedAt: "2026-07-24T08:30:00.000Z",
+              },
+              runs: [
+                {
+                  runId,
+                  learnerUserId: "USER_BROWSER_LEARNER",
+                  status: "active",
+                  eventCount: 3,
+                  startedAt: "2026-07-24T08:00:00.000Z",
+                  lastActivityAt: "2026-07-24T08:30:00.000Z",
+                  completedAt: null,
+                  elapsedSeconds: 1_800,
+                  activity: {
+                    evidenceInspectionCount: 0,
+                    policyConsultationCount: 0,
+                    citedEvidenceCount: 0,
+                    decisionAttemptCount: 0,
+                    rejectedAttemptCount: 1,
+                    mitigationCount: 0,
+                    rejectionFindings: [
+                      {
+                        findingCode: "RUN_TIME_LIMIT_EXCEEDED",
+                        count: 1,
+                      },
+                    ],
+                  },
+                  ratings: [],
+                  moderationResolutions: [],
+                },
+              ],
+            },
+          ],
+        },
+      });
+      return;
+    }
+    if (
+      pathname === `/api/v1/runs/${runId}` &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({
+        json: {
+          projection: {
+            schemaVersion: "1.0.0",
+            runId,
+            version: 3,
+            roleId: "LOGISTICS_COORDINATOR",
+            businessState: [],
+            ledgerState: { transactions: [] },
+            informationState: [
+              {
+                recordId: "EVID_CERTIFICATE_RECORD",
+                value: { certificateStatus: "visible" },
+              },
+            ],
+            policyState: [],
+            workflowState: {
+              currentNodeId: "certificate-evidence",
+              completedNodeIds: [],
+              permittedActionIds: ["INSPECT_EVIDENCE"],
+            },
+            timing: {
+              status: "expired",
+              startedAt: "2026-07-24T08:00:00.000Z",
+              observedAt: "2026-07-24T08:30:00.000Z",
+              deadline: "2026-07-24T08:30:00.000Z",
+              timeLimitMinutes: 30,
+            },
+          },
+        },
+      });
+      return;
+    }
+    if (pathname === `/api/v1/runs/${runId}/commands`) {
+      commandRequests += 1;
+    }
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: "UNEXPECTED_TEST_ROUTE" } },
+    });
+  });
+
+  await page.goto("/learner?locale=en");
+  await page.getByRole("button", { name: "Resume" }).click();
+
+  await expect(
+    page.getByText(
+      "The 30-minute run time limit has ended. You can review this run, but no further actions can be submitted.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Submit" }),
+  ).toBeDisabled();
+  await expect(page.getByText("Quality certificate record")).toBeVisible();
+  expect(commandRequests).toBe(0);
+});
+
 test("shows only role-authorized hosted workspaces", async ({ page }) => {
   await page.route("**/api/v1/session", async (route) => {
     await route.fulfill({

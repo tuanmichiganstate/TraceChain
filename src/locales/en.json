@@ -425,6 +425,7 @@
   "hostedLearner.competencyNoEvidence": "No evidence record has been observed for this indicator.",
   "hostedLearner.currentAction": "Submit the current action",
   "hostedLearner.complete": "This run is complete.",
+  "hostedLearner.timeLimitExpired": "The {minutes}-minute run time limit has ended. You can review this run, but no further actions can be submitted.",
   "hostedLearner.submit": "Submit",
   "hostedLearner.certificateAssessment": "Certificate content and validity",
   "hostedLearner.issuerAssessment": "Issuer identity and authorization",

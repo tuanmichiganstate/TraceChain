@@ -312,6 +312,15 @@ The same continuation rule applies after `availableUntil`: the boundary blocks
 only new run creation. Invalid or reversed availability windows are rejected at
 assignment creation rather than repaired or silently reordered.
 
+An assignment's exact published mode may also define `timeLimitMinutes`. That
+limit begins at `RUN_CREATED`, independently of the assignment start window.
+The deadline is exclusive for command acceptance: commands before it may
+proceed, while a command at or after it records one
+`RUN_TIME_LIMIT_EXCEEDED` audit event and performs no business or ledger
+mutation. The learner can continue to review the role-filtered run, but the
+server and interface reject further submissions. An authored mode without a
+limit remains unlimited.
+
 ## Current limits
 
 - The complete current nine-stage coffee journey is hosted for one assigned

@@ -139,6 +139,7 @@ export class HostedRunCommandError extends Error {
       | "RUN_ALREADY_EXISTS"
       | "RUN_NOT_FOUND"
       | "RUN_VERSION_CONFLICT"
+      | "RUN_TIME_LIMIT_EXCEEDED"
       | "COMMAND_ID_REUSED"
       | "INVALID_COMMAND"
       | "WORKFLOW_PRECONDITION_FAILED"
@@ -1093,6 +1094,69 @@ export class HostedStage3RunService {
         "WORKFLOW_PRECONDITION_FAILED",
         "A completed run cannot accept another learner command.",
       );
+    }
+    const startedAt = events[0]?.serverTimestampUtc;
+    if (startedAt === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "A hosted run must retain its creation event.",
+      );
+    }
+    const timing = this.runTiming(
+      state,
+      startedAt,
+      this.clock.now(),
+    );
+    if (timing.status === "expired") {
+      if (
+        events.some(
+          (event) =>
+            event.eventType === "RUN_TIME_LIMIT_EXCEEDED",
+        )
+      ) {
+        throw new HostedRunCommandError(
+          "RUN_TIME_LIMIT_EXCEEDED",
+          "The authored run time limit has elapsed.",
+        );
+      }
+      const deadline = timing.deadline;
+      const timeLimitMinutes = timing.timeLimitMinutes;
+      if (
+        deadline === undefined ||
+        timeLimitMinutes === undefined
+      ) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "An expired run must have an authored deadline.",
+        );
+      }
+      const expired = await this.buildEvent({
+        runId: command.runId,
+        state,
+        principal: learner,
+        context: state.activeTrustedContext,
+        commandId: command.commandId,
+        commandDigest: digest,
+        batchIndex: 0,
+        eventType: "RUN_TIME_LIMIT_EXCEEDED",
+        payload: {
+          attemptedCommandType: command.commandType,
+          timeLimitMinutes,
+          deadlineUtc: deadline,
+        },
+      });
+      const appendResult = await this.eventStore.append({
+        runId: command.runId,
+        expectedNextSequenceNumber: events.length + 1,
+        events: [expired.unsequenced],
+      });
+      return {
+        state: expired.nextState,
+        appendedEventIds: appendResult.events.map(
+          (event) => event.eventId,
+        ),
+        wasIdempotentReplay: appendResult.wasIdempotentReplay,
+      };
     }
 
     const built: BuiltEvent[] = [];
@@ -2384,12 +2448,27 @@ export class HostedStage3RunService {
     principal: ApplicationPrincipal | null,
     runId: string,
   ): Promise<LearnerRunProjectionV1> {
-    const state = await this.loadState(runId);
+    const events = await this.eventStore.load(runId);
+    const firstEvent = events[0];
+    if (firstEvent === undefined) {
+      throw new HostedRunCommandError(
+        "RUN_NOT_FOUND",
+        `Run ${runId} does not exist.`,
+      );
+    }
+    const state = await this.replay(events);
     requireAssignedLearner(principal, state.learnerUserId);
-    return projectRunStateForRole(
-      this.toProjectionState(state),
-      state.activeTrustedContext.roleId,
-    );
+    return {
+      ...projectRunStateForRole(
+        this.toProjectionState(state),
+        state.activeTrustedContext.roleId,
+      ),
+      timing: this.runTiming(
+        state,
+        firstEvent.serverTimestampUtc,
+        this.clock.now(),
+      ),
+    };
   }
 
   async instructorTimeline(
@@ -2744,6 +2823,7 @@ export class HostedStage3RunService {
         "Run event stream did not create a run.",
       );
     }
+    this.assertTimeLimitAuditEvents(events, state);
     return state;
   }
 
@@ -4018,6 +4098,34 @@ export class HostedStage3RunService {
           status: "completed",
           workflowStep: "complete",
         });
+      case "RUN_TIME_LIMIT_EXCEEDED": {
+        const state = this.stateOrThrow(current);
+        const timeLimitMinutes = requiredNumber(
+          event.payload.timeLimitMinutes,
+          "timeLimitMinutes",
+        );
+        const deadlineUtc = requiredString(
+          event.payload.deadlineUtc,
+          "deadlineUtc",
+        );
+        requiredString(
+          event.payload.attemptedCommandType,
+          "attemptedCommandType",
+        );
+        if (
+          state.modeConfiguration.timeLimitMinutes !==
+            timeLimitMinutes ||
+          !Number.isInteger(timeLimitMinutes) ||
+          Date.parse(event.serverTimestampUtc) <
+            Date.parse(deadlineUtc)
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Run time-limit audit evidence does not match the authored limit.",
+          );
+        }
+        return this.updateRequiredState(current, event, {});
+      }
       default:
         throw new HostedRunCommandError(
           "PACK_CONTRACT_MISMATCH",
@@ -4163,6 +4271,92 @@ export class HostedStage3RunService {
       ...patch,
       version: event.sequenceNumber,
     };
+  }
+
+  private runTiming(
+    state: HostedStage3RunState,
+    startedAt: string,
+    observedAt: string,
+  ): NonNullable<LearnerRunProjectionV1["timing"]> {
+    const startedAtMs = Date.parse(startedAt);
+    const observedAtMs = Date.parse(observedAt);
+    if (
+      !Number.isFinite(startedAtMs) ||
+      !Number.isFinite(observedAtMs)
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Run timing requires valid UTC timestamps.",
+      );
+    }
+    const normalizedStartedAt = new Date(startedAtMs).toISOString();
+    const normalizedObservedAt = new Date(observedAtMs).toISOString();
+    const timeLimitMinutes =
+      state.modeConfiguration.timeLimitMinutes;
+    if (timeLimitMinutes === undefined) {
+      return {
+        status:
+          state.status === "completed" ? "completed" : "unlimited",
+        startedAt: normalizedStartedAt,
+        observedAt: normalizedObservedAt,
+      };
+    }
+    const deadline = new Date(
+      startedAtMs + timeLimitMinutes * 60_000,
+    ).toISOString();
+    return {
+      status:
+        state.status === "completed"
+          ? "completed"
+          : observedAtMs >= Date.parse(deadline)
+            ? "expired"
+            : "active",
+      startedAt: normalizedStartedAt,
+      observedAt: normalizedObservedAt,
+      deadline,
+      timeLimitMinutes,
+    };
+  }
+
+  private assertTimeLimitAuditEvents(
+    events: readonly RunEventV1[],
+    state: HostedStage3RunState,
+  ): void {
+    const auditEvents = events.filter(
+      (event) => event.eventType === "RUN_TIME_LIMIT_EXCEEDED",
+    );
+    if (auditEvents.length === 0) return;
+    const firstEvent = events[0];
+    const auditEvent = auditEvents[0];
+    if (
+      firstEvent === undefined ||
+      auditEvent === undefined ||
+      auditEvents.length !== 1
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "A run may contain at most one time-limit audit event.",
+      );
+    }
+    const timing = this.runTiming(
+      {
+        ...state,
+        status: "active",
+      },
+      firstEvent.serverTimestampUtc,
+      auditEvent.serverTimestampUtc,
+    );
+    if (
+      timing.status !== "expired" ||
+      timing.deadline !== auditEvent.payload.deadlineUtc ||
+      timing.timeLimitMinutes !==
+        auditEvent.payload.timeLimitMinutes
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Run time-limit audit evidence is not reproducible from the run start.",
+      );
+    }
   }
 
   private stateOrThrow(

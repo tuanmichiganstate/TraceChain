@@ -80,7 +80,9 @@ rejected-attempt, and mitigation counts from the immutable event stream. Its
 rejected submitted actions. A rejected action can contribute more than one
 finding, so the finding total need not equal `rejectedAttemptCount`. When a
 rejected decision has no validation-rule IDs, the deterministic fallback is
-`DECISION_REJECTED:{commandType}`. These findings are diagnostic evidence,
+`DECISION_REJECTED:{commandType}`. A submitted command blocked by the authored
+run deadline contributes the stable `RUN_TIME_LIMIT_EXCEEDED` finding. These
+findings are diagnostic evidence,
 not a second grade or a technical-error classification.
 
 Generation fails as an invariant error if:

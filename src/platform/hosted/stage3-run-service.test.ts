@@ -410,6 +410,166 @@ describe("server-authoritative hosted Stage 3 run", () => {
     expect(first.state.outcomeResolution).not.toHaveProperty("draw");
   });
 
+  it("accepts commands before the authored deadline and audits the first command at the deadline", async () => {
+    const pack = publishedPack();
+    const beforeStore = new MemoryRunEventStore();
+    const beforeRunId = "RUN_BEFORE_TIME_LIMIT";
+    const beforeCreated = await new HostedStage3RunService(
+      pack,
+      beforeStore,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    ).createRun(
+      instructor,
+      createRequest("authorized-certifier", beforeRunId),
+    );
+    const beforeDeadline = new HostedStage3RunService(
+      pack,
+      beforeStore,
+      new FixedClock("2026-07-24T03:29:59.999Z"),
+      new SequenceIdGenerator(100),
+    );
+    const accepted = await beforeDeadline.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_BEFORE_TIME_LIMIT",
+      runId: beforeRunId,
+      expectedRunVersion: beforeCreated.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    expect(accepted.state.workflowStep).toBe("certificate-decision");
+
+    const deadlineStore = new MemoryRunEventStore();
+    const deadlineRunId = "RUN_AT_TIME_LIMIT";
+    const deadlineCreated = await new HostedStage3RunService(
+      pack,
+      deadlineStore,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(200),
+    ).createRun(
+      instructor,
+      createRequest("authorized-certifier", deadlineRunId),
+    );
+    const atDeadline = new HostedStage3RunService(
+      pack,
+      deadlineStore,
+      new FixedClock("2026-07-24T03:30:00.000Z"),
+      new SequenceIdGenerator(300),
+    );
+    const rejected = await atDeadline.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_AT_TIME_LIMIT",
+      runId: deadlineRunId,
+      expectedRunVersion: deadlineCreated.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    const deadlineEvents = await deadlineStore.load(deadlineRunId);
+    const projection = await atDeadline.learnerProjection(
+      learner,
+      deadlineRunId,
+    );
+
+    expect(rejected.state.workflowStep).toBe(
+      "certificate-evidence",
+    );
+    expect(rejected.state.inspectedEvidenceIds).toEqual([]);
+    expect(
+      rejected.state.simulation.domain.transactionOrder,
+    ).toEqual(
+      deadlineCreated.state.simulation.domain.transactionOrder,
+    );
+    expect(
+      rejected.state.simulation.attemptAuditEvents,
+    ).toEqual(deadlineCreated.state.simulation.attemptAuditEvents);
+    expect(deadlineEvents.at(-1)).toMatchObject({
+      eventType: "RUN_TIME_LIMIT_EXCEEDED",
+      causationId: "COMMAND_AT_TIME_LIMIT",
+      payload: {
+        attemptedCommandType: "INSPECT_EVIDENCE",
+        timeLimitMinutes: 30,
+        deadlineUtc: "2026-07-24T03:30:00.000Z",
+      },
+    });
+    expect(projection.timing).toEqual({
+      status: "expired",
+      startedAt: NOW,
+      observedAt: "2026-07-24T03:30:00.000Z",
+      deadline: "2026-07-24T03:30:00.000Z",
+      timeLimitMinutes: 30,
+    });
+    expect(projection.workflowState.permittedActionIds).toEqual([
+      "INSPECT_EVIDENCE",
+    ]);
+    expect(
+      await atDeadline.loadState(deadlineRunId),
+    ).toEqual(rejected.state);
+    const repeated = await atDeadline.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_AT_TIME_LIMIT",
+      runId: deadlineRunId,
+      expectedRunVersion: deadlineCreated.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    expect(repeated.wasIdempotentReplay).toBe(true);
+    expect(await deadlineStore.load(deadlineRunId)).toHaveLength(
+      deadlineEvents.length,
+    );
+    await expect(
+      atDeadline.submit(learner, {
+        commandType: "INSPECT_EVIDENCE",
+        commandId: "COMMAND_AFTER_TIME_LIMIT",
+        runId: deadlineRunId,
+        expectedRunVersion: rejected.state.version,
+        evidenceId: "EVID_CERTIFICATE_RECORD",
+      }),
+    ).rejects.toMatchObject({
+      code: "RUN_TIME_LIMIT_EXCEEDED",
+    });
+    expect(await deadlineStore.load(deadlineRunId)).toHaveLength(
+      deadlineEvents.length,
+    );
+  });
+
+  it("keeps an authored unlimited mode open after the bounded modes expire", async () => {
+    const pack = publishedPack();
+    const store = new MemoryRunEventStore();
+    const runId = "RUN_UNLIMITED_SANDBOX";
+    const created = await new HostedStage3RunService(
+      pack,
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(400),
+    ).createRun(instructor, {
+      ...createRequest("authorized-certifier", runId),
+      mode: "sandbox",
+    });
+    const muchLater = new HostedStage3RunService(
+      pack,
+      store,
+      new FixedClock("2027-07-24T03:00:00.000Z"),
+      new SequenceIdGenerator(500),
+    );
+    const accepted = await muchLater.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_UNLIMITED_INSPECT",
+      runId,
+      expectedRunVersion: created.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    const projection = await muchLater.learnerProjection(
+      learner,
+      runId,
+    );
+
+    expect(accepted.state.workflowStep).toBe(
+      "certificate-decision",
+    );
+    expect(projection.timing).toEqual({
+      status: "unlimited",
+      startedAt: NOW,
+      observedAt: "2027-07-24T03:00:00.000Z",
+    });
+  });
+
   it("loads exact pre-mode-config coffee runs without rewriting their state hashes", async () => {
     const pack = legacyPublishedPack();
     const store = new MemoryRunEventStore();

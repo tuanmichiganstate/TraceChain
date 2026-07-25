@@ -2470,6 +2470,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "ENDORSEMENT_PROPOSAL_REJECTED",
       "ENDORSEMENT_REJECTED",
       "ENDORSED_TRANSACTION_REJECTED",
+      "RUN_TIME_LIMIT_EXCEEDED",
       "TRANSACTION_REJECTED",
     ]);
     const rejectionFindingCounts = new Map();

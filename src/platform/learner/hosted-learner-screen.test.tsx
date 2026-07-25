@@ -321,6 +321,110 @@ describe("hosted learner workspace", () => {
     );
   });
 
+  it("keeps an expired run reviewable while disabling further submissions", async () => {
+    const expiredProjection: LearnerRunProjectionV1 = {
+      ...projection(),
+      timing: {
+        status: "expired",
+        startedAt: "2026-07-24T08:00:00.000Z",
+        observedAt: "2026-07-24T08:30:00.000Z",
+        deadline: "2026-07-24T08:30:00.000Z",
+        timeLimitMinutes: 30,
+      },
+    };
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments: vi.fn().mockResolvedValue([
+        {
+          assignment: {
+            schemaVersion: "1.0.0",
+            assignmentId: "ASSIGNMENT_001",
+            title: "Coffee governance",
+            packId: "PACK_COFFEE",
+            packVersion: "1.4.0",
+            scenarioId: "SCN_COFFEE",
+            scenarioVersion: "1.4.0",
+            mode: "standard",
+            runConfiguration: {
+              mode: "standard",
+              allowHints: false,
+              allowRetry: false,
+              allowBacktracking: false,
+              feedbackTiming: "final",
+              showScores: false,
+              outcomeStrategy: "forced",
+              seedPolicy: "supplied",
+              timeLimitMinutes: 30,
+              allowCommunication: false,
+              allowEvidenceRequests: true,
+            },
+            learnerUserIds: ["USER_LEARNER_001"],
+            status: "active",
+            feedbackReleaseStatus: "withheld",
+            createdAt: "2026-07-24T08:00:00.000Z",
+            createdByUserId: "USER_INSTRUCTOR_001",
+          },
+          startAvailability: availableStart,
+          runs: [
+            {
+              runId: "RUN_LEARNER_001",
+              learnerUserId: "USER_LEARNER_001",
+              status: "active",
+              eventCount: 3,
+              startedAt: "2026-07-24T08:00:00.000Z",
+              lastActivityAt: "2026-07-24T08:30:00.000Z",
+              completedAt: null,
+              elapsedSeconds: 1_800,
+              activity: {
+                evidenceInspectionCount: 0,
+                policyConsultationCount: 0,
+                citedEvidenceCount: 0,
+                decisionAttemptCount: 0,
+                rejectedAttemptCount: 1,
+                mitigationCount: 0,
+                rejectionFindings: [
+                  {
+                    findingCode: "RUN_TIME_LIMIT_EXCEEDED",
+                    count: 1,
+                  },
+                ],
+              },
+              ratings: [],
+              moderationResolutions: [],
+            },
+          ],
+        },
+      ]),
+      startRun: vi.fn(),
+      loadRun: vi.fn().mockResolvedValue(expiredProjection),
+      loadFeedback: vi.fn(),
+      submit: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", { name: "Resume" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "The 30-minute run time limit has ended. You can review this run, but no further actions can be submitted.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Submit" }),
+    ).toBeDisabled();
+    expect(api.loadFeedback).not.toHaveBeenCalled();
+  });
+
   it("shows an honest withheld state after a completed run", async () => {
     const completedProjection = {
       ...projection(),

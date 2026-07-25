@@ -639,6 +639,7 @@ function RunWorkspace({
 }): ReactNode {
   const t = useTranslator();
   const actions = projection.workflowState.permittedActionIds;
+  const isExpired = projection.timing?.status === "expired";
   return (
     <>
       <section className="card card--brief">
@@ -670,6 +671,13 @@ function RunWorkspace({
           </div>
         </dl>
       </section>
+      {isExpired ? (
+        <p className="notice notice--standalone" role="status">
+          {t("hostedLearner.timeLimitExpired", {
+            minutes: projection.timing?.timeLimitMinutes ?? 0,
+          })}
+        </p>
+      ) : null}
       <section className="card card--reference">
         <h2>{t("hostedLearner.evidence")}</h2>
         {projection.informationState.length === 0 ? (
@@ -728,7 +736,7 @@ function RunWorkspace({
               key={action}
               action={action}
               projection={projection}
-              busy={busy}
+              busy={busy || isExpired}
               onSubmit={onSubmit}
             />
           ))

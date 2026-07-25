@@ -38,6 +38,23 @@ The standard coffee pack defines Tutorial, Standard, Sandbox, and Configured
 behavior. Selecting a mode in the instructor interface selects that published
 configuration; it does not activate undocumented application defaults.
 
+## Authored run time limits
+
+The run starts at the authoritative `RUN_CREATED` server timestamp. When a mode
+defines `timeLimitMinutes`, its deadline is that timestamp plus the authored
+number of minutes. A command received before the deadline may proceed; a
+command received exactly at or after the deadline cannot change business or
+ledger state.
+
+The first late submitted command creates one `RUN_TIME_LIMIT_EXCEEDED` audit
+event. It records the attempted command type and derived deadline, increments
+only the hosted event-stream version, and is included in assignment rejection
+evidence. It creates no simulation event, ledger transaction, or asset-version
+change. Further late command IDs are rejected without growing the event stream.
+The learner projection retains the current action for review, reports the
+server-observed expired status, and disables submission. Modes with no authored
+limit remain unlimited.
+
 ## Outcome engine
 
 Scenario packs may define:

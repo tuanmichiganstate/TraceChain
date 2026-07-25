@@ -32,6 +32,7 @@ export type PlatformRunEventType =
   | "FEEDBACK_VIEWED"
   | "REFLECTION_SUBMITTED"
   | "RUBRIC_RATED"
+  | "RUN_TIME_LIMIT_EXCEEDED"
   | "RUN_COMPLETED";
 
 export interface UnsequencedRunEventV1 {
@@ -112,5 +113,16 @@ export interface LearnerRunProjectionV1 {
     readonly currentNodeId: string;
     readonly completedNodeIds: readonly string[];
     readonly permittedActionIds: readonly string[];
+  };
+  readonly timing?: {
+    readonly status:
+      | "unlimited"
+      | "active"
+      | "expired"
+      | "completed";
+    readonly startedAt: string;
+    readonly observedAt: string;
+    readonly deadline?: string;
+    readonly timeLimitMinutes?: number;
   };
 }
