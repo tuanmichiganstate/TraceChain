@@ -204,11 +204,14 @@ export class Activity {
   async continue(): Promise<void> {
     // Stage assertions verify the resulting navigation. Force the click so
     // WebKit CI does not spend the full test timeout on intermittent
-    // actionability checks for this already-enabled control.
-    await this.page
+    // actionability checks for this already-enabled control. Explicitly bring
+    // the stage-footer control into view first: Firefox can otherwise reject a
+    // forced click because the control remains below the viewport.
+    const continueButton = this.page
       .getByRole("button", { name: "Tiếp tục" })
-      .last()
-      .click({ force: true });
+      .last();
+    await continueButton.scrollIntoViewIfNeeded();
+    await continueButton.click({ force: true });
   }
 
   /** Stages 1 to 5, ending with the committed manifest correction. */
