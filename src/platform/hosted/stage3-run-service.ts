@@ -32,6 +32,10 @@ import type {
   UnsequencedRunEventV1,
 } from "../contracts/run-events";
 import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
+import type {
+  HostedDecisionItemEvidenceV1,
+  HostedRunDecisionOutcomeEvidenceV1,
+} from "../contracts/decision-outcome-report";
 import type { JsonObject, JsonValue } from "../contracts/json";
 import { isJsonObject } from "../contracts/json";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
@@ -2528,6 +2532,93 @@ export class HostedStage3RunService {
         this.toProjectionState(state),
         state.activeTrustedContext.roleId,
       ),
+    };
+  }
+
+  async instructorDecisionOutcomeEvidence(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<HostedRunDecisionOutcomeEvidenceV1> {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const state = await this.loadState(runId);
+    if (state.status === "active") {
+      return {
+        runId: state.runId,
+        learnerUserId: state.learnerUserId,
+        status: "active",
+        decisionItems: [],
+        realizedOutcome: null,
+      };
+    }
+    const decisionItems: HostedDecisionItemEvidenceV1[] = [];
+    if (state.decision !== null) {
+      decisionItems.push({
+        decisionItemId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        isAuthoredCorrect: state.decision.isAuthoredCorrect,
+      });
+    }
+    if (state.discrepancyDecision !== null) {
+      decisionItems.push({
+        decisionItemId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
+        isAuthoredCorrect:
+          state.discrepancyDecision.isScorableCorrect,
+      });
+    }
+    for (const decisionItemId of [
+      "INT_TRANSFORMATION_PROVENANCE",
+      "INT_TAMPER_DEMONSTRATION",
+    ] as const) {
+      const decision = state.knowledgeDecisions[decisionItemId];
+      if (decision !== undefined) {
+        decisionItems.push({
+          decisionItemId,
+          isAuthoredCorrect: decision.isAuthoredCorrect,
+        });
+      }
+    }
+    if (state.dataGovernanceDecision !== null) {
+      decisionItems.push({
+        decisionItemId:
+          state.dataGovernanceDecision.decisionId,
+        isAuthoredCorrect:
+          state.dataGovernanceDecision.isAuthoredCorrect,
+      });
+    }
+    if (state.recallScopeDecision !== null) {
+      decisionItems.push({
+        decisionItemId: state.recallScopeDecision.decisionId,
+        isAuthoredCorrect:
+          state.recallScopeDecision.isAuthoredCorrect,
+      });
+    }
+    const finalDecision =
+      state.knowledgeDecisions["INT_BLOCKCHAIN_NECESSITY"];
+    if (finalDecision !== undefined) {
+      decisionItems.push({
+        decisionItemId: finalDecision.decisionId,
+        isAuthoredCorrect: finalDecision.isAuthoredCorrect,
+      });
+    }
+    if (decisionItems.length !== 7) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "A completed coffee run is missing authored decision evidence.",
+      );
+    }
+    return {
+      runId: state.runId,
+      learnerUserId: state.learnerUserId,
+      status: "completed",
+      decisionItems,
+      realizedOutcome: {
+        outcomeModelId: state.outcomeResolution.outcomeModelId,
+        strategy: state.outcomeResolution.strategy,
+        outcomeCode: state.outcomeResolution.outcomeCode,
+      },
     };
   }
 

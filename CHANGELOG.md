@@ -4,6 +4,10 @@
 
 ### Added
 
+- A replay-derived instructor decision/outcome report for completed hosted
+  runs. It summarizes authored decision-item correctness separately from the
+  realized scenario outcome, adds no grade, and withholds both correctness and
+  outcomes for active runs.
 - Event-derived activity summaries in hosted assignment reports and evidence
   exports. Each run now reports evidence inspections, policy consultations,
   cited evidence, decision attempts, rejected attempts, and mitigation from

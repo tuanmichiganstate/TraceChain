@@ -119,6 +119,7 @@ All endpoints use `/api/v1`.
 | `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, authoritative event-span timing, event-derived activity, event-count and current-rating report |
 | `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
+| `GET /assignments/:assignmentId/decision-outcomes` | instructor, rater or administrator | Completed-run authored decision evidence beside realized outcomes; active-run correctness and outcomes remain hidden |
 | `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary |
 | `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same evidence in the documented flat CSV V1 layout |
 | `POST /assignments/:assignmentId/feedback-release` | instructor or administrator | One-way release of current feedback |
@@ -279,6 +280,13 @@ review. Current stage and pending actions are limited to the active trusted
 role. A replay failure is reported as a technical status requiring attention;
 learner decision rejections are not misclassified as technical failures.
 
+The versioned decision/outcome report replays the same exact pack and event
+stream. It returns the seven bounded authored decision results only after a
+run completes, and keeps the realized outcome separate from that evidence.
+Active runs return no correctness or outcome data. The projection adds no
+score and does not expose the scenario seed or random draw. See
+`docs/DECISION_OUTCOME_REPORT_V1.md`.
+
 ## Current limits
 
 - The complete current nine-stage coffee journey is hosted for one assigned
@@ -299,7 +307,9 @@ learner decision rejections are not misclassified as technical failures.
   The instructor workspace exposes the same data as expandable per-learner
   profiles with evidence recency, rubric comments, and supporting event
   actions that focus the existing run timeline, plus the current class rating
-  distribution for each indicator.
+  distribution for each indicator. It also compares completed-run authored
+  decision evidence with realized outcomes while concealing both for active
+  runs.
 - The assignment live monitor reports learner status, current workflow stage,
   wall-clock elapsed time, last activity, active-role pending actions, and
   replay health without returning hidden outcome state. This live value is

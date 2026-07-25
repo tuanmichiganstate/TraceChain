@@ -5,6 +5,9 @@ import type {
   HostedRunMonitorV1,
 } from "../src/platform/contracts/assessment";
 import type {
+  HostedAssignmentDecisionOutcomeReportV1,
+} from "../src/platform/contracts/decision-outcome-report";
+import type {
   CreateScormPackageJobRequest,
   HostedScormPackageCatalogV1,
 } from "../src/platform/contracts/scorm-package-job";
@@ -1231,6 +1234,70 @@ async function apiResponse(
       new SystemUtcClock(),
     ).report(reportAssignmentId);
     return jsonResponse(200, { report });
+  }
+
+  const decisionOutcomeAssignmentId = pathAssignmentId(
+    url.pathname,
+    "decision-outcomes",
+  );
+  if (
+    request.method === "GET" &&
+    decisionOutcomeAssignmentId !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(
+      decisionOutcomeAssignmentId,
+    );
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      principal.userId,
+    ).find(
+      report.assignment.packId,
+      report.assignment.packVersion,
+    );
+    if (pack === null || pack.status !== "published") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Decision reporting requires the assignment's exact published pack.",
+      );
+    }
+    const service = new HostedStage3RunService(
+      pack,
+      new D1RunEventStore(environment.DB),
+      clock,
+      new WebCryptoIdGenerator(),
+    );
+    const decisionOutcomes: HostedAssignmentDecisionOutcomeReportV1 = {
+      schemaVersion: "1.0.0",
+      interpretation:
+        "DECISION_PROCESS_SEPARATE_FROM_REALIZED_OUTCOME",
+      assignmentId: report.assignment.assignmentId,
+      packId: report.assignment.packId,
+      packVersion: report.assignment.packVersion,
+      scenarioId: report.assignment.scenarioId,
+      scenarioVersion: report.assignment.scenarioVersion,
+      runs: await Promise.all(
+        report.learners.flatMap((learner) =>
+          learner.runs.map((run) =>
+            service.instructorDecisionOutcomeEvidence(
+              principal,
+              run.runId,
+            ),
+          ),
+        ),
+      ),
+    };
+    return jsonResponse(200, { decisionOutcomes });
   }
 
   const monitorAssignmentId = pathAssignmentId(

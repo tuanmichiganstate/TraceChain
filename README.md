@@ -72,8 +72,10 @@ that decision time, including explicit cited and available-but-not-cited
 labels when the selected response recorded citations. The assignment monitor
 uses the same replay boundary for current stage and pending actions, and
 reports a technical issue when a run cannot be reconstructed. It does not
-expose hidden outcomes. The hosted work does not alter the current SCORM
-activity.
+expose hidden outcomes. A separate completed-run report compares authored
+decision evidence with the realized scenario outcome without turning either
+into another grade; active-run correctness and outcomes remain hidden. The
+hosted work does not alter the current SCORM activity.
 
 | | |
 |---|---|
@@ -229,6 +231,8 @@ schemas/               published versioned JSON Schemas
   role boundaries, and bootstrap procedure
 - `docs/ASSIGNMENT_EXPORT_V1.md` — the stable assignment JSON/CSV evidence
   contract and data dictionary
+- `docs/DECISION_OUTCOME_REPORT_V1.md` — replay-derived completed decision
+  evidence, realized outcomes, and active-run concealment
 - `docs/COMPETENCY_REPORT_V1.md` — versioned learner and class competency
   evidence aggregation and its no-inference boundary
 - `docs/RUN_REPLAY_V1.md` — exact sequence-bounded instructor replay and the

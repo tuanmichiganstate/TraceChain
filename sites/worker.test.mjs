@@ -1147,6 +1147,40 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       mitigationCount: 0,
       rejectionFindings: [],
     });
+    const activeDecisionOutcomeResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/decision-outcomes",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      activeDecisionOutcomeResponse.status,
+      200,
+      await activeDecisionOutcomeResponse.clone().text(),
+    );
+    assert.deepEqual(
+      (await activeDecisionOutcomeResponse.json()).decisionOutcomes,
+      {
+        schemaVersion: "1.0.0",
+        interpretation:
+          "DECISION_PROCESS_SEPARATE_FROM_REALIZED_OUTCOME",
+        assignmentId: "ASSIGNMENT_SITE_001",
+        packId: pack.packId,
+        packVersion: pack.version,
+        scenarioId: pack.scenarios[0].scenarioId,
+        scenarioVersion: pack.scenarios[0].version,
+        runs: [
+          {
+            runId,
+            learnerUserId: "USER_LEARNER_001",
+            status: "active",
+            decisionItems: [],
+            realizedOutcome: null,
+          },
+        ],
+      },
+    );
 
     const decision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -2037,6 +2071,74 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       true,
     );
     assert.deepEqual(reportedRun.activity, expectedActivity);
+    const decisionOutcomeResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/decision-outcomes",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      decisionOutcomeResponse.status,
+      200,
+      await decisionOutcomeResponse.clone().text(),
+    );
+    assert.deepEqual(
+      (await decisionOutcomeResponse.json()).decisionOutcomes,
+      {
+        schemaVersion: "1.0.0",
+        interpretation:
+          "DECISION_PROCESS_SEPARATE_FROM_REALIZED_OUTCOME",
+        assignmentId: "ASSIGNMENT_SITE_001",
+        packId: pack.packId,
+        packVersion: pack.version,
+        scenarioId: pack.scenarios[0].scenarioId,
+        scenarioVersion: pack.scenarios[0].version,
+        runs: [
+          {
+            runId,
+            learnerUserId: "USER_LEARNER_001",
+            status: "completed",
+            decisionItems: [
+              {
+                decisionItemId: "INT_CERTIFICATE_INITIAL_SUBMITTED",
+                isAuthoredCorrect: true,
+              },
+              {
+                decisionItemId: "INT_DISCREPANCY_INITIAL_SUBMITTED",
+                isAuthoredCorrect: false,
+              },
+              {
+                decisionItemId: "INT_TRANSFORMATION_PROVENANCE",
+                isAuthoredCorrect: true,
+              },
+              {
+                decisionItemId: "INT_TAMPER_DEMONSTRATION",
+                isAuthoredCorrect: true,
+              },
+              {
+                decisionItemId:
+                  "INT_DATA_GOVERNANCE_CLASSIFICATION",
+                isAuthoredCorrect: true,
+              },
+              {
+                decisionItemId: "INT_RECALL_SCOPE",
+                isAuthoredCorrect: true,
+              },
+              {
+                decisionItemId: "INT_BLOCKCHAIN_NECESSITY",
+                isAuthoredCorrect: true,
+              },
+            ],
+            realizedOutcome: {
+              outcomeModelId: "CERTIFICATE_CASE",
+              strategy: "forced",
+              outcomeCode: "authorized-certifier",
+            },
+          },
+        ],
+      },
+    );
 
     const monitorResponse = await worker.fetch(
       apiRequest(

@@ -42,6 +42,12 @@ current rubric comments, and source-event references. It can load and focus a
 referenced event in the existing run timeline. It does not derive a second
 score or claim stable competence from one run.
 
+The decision/outcome section is another read-only replay projection. For
+completed runs it reports whether each bounded decision matched the authored
+response and shows the realized scenario outcome separately. It adds no grade
+and exposes neither authored correctness nor hidden outcomes for active runs.
+See `docs/DECISION_OUTCOME_REPORT_V1.md`.
+
 ## Learner authority boundary
 
 `GET /api/v1/learner/assignments` joins the authenticated user ID to the

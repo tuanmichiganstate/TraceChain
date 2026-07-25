@@ -20,6 +20,9 @@ import type {
 import type {
   HostedAssignmentCompetencyReportV1,
 } from "../contracts/competency-report";
+import type {
+  HostedAssignmentDecisionOutcomeReportV1,
+} from "../contracts/decision-outcome-report";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
   ScormPackageJobV1,
@@ -89,6 +92,9 @@ export interface InstructorReviewApi {
   loadAssignmentCompetencies(
     assignmentId: string,
   ): Promise<HostedAssignmentCompetencyReportV1>;
+  loadAssignmentDecisionOutcomes(
+    assignmentId: string,
+  ): Promise<HostedAssignmentDecisionOutcomeReportV1>;
   saveRating(
     runId: string,
     input: SaveInstructorRatingInput,
@@ -254,6 +260,16 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/competencies`,
       );
       return result.competencies;
+    },
+    async loadAssignmentDecisionOutcomes(assignmentId) {
+      const result = await responseJson<{
+        readonly decisionOutcomes:
+          HostedAssignmentDecisionOutcomeReportV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/decision-outcomes`,
+      );
+      return result.decisionOutcomes;
     },
     async saveRating(runId, input) {
       const result = await mutationJson<{
@@ -954,6 +970,8 @@ function AssignmentReport({
     useState<HostedAssignmentMonitorV1 | null>(null);
   const [competencies, setCompetencies] =
     useState<HostedAssignmentCompetencyReportV1 | null>(null);
+  const [decisionOutcomes, setDecisionOutcomes] =
+    useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isMonitorLoading, setMonitorLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -964,18 +982,28 @@ function AssignmentReport({
     setReport(null);
     setMonitor(null);
     setCompetencies(null);
+    setDecisionOutcomes(null);
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
-      const [loadedReport, loadedMonitor, loadedCompetencies] =
+      const [
+        loadedReport,
+        loadedMonitor,
+        loadedCompetencies,
+        loadedDecisionOutcomes,
+      ] =
         await Promise.all([
           api.loadAssignmentReport(requestedAssignmentId),
           api.loadAssignmentMonitor(requestedAssignmentId),
           api.loadAssignmentCompetencies(requestedAssignmentId),
+          api.loadAssignmentDecisionOutcomes(
+            requestedAssignmentId,
+          ),
         ]);
       setReport(loadedReport);
       setMonitor(loadedMonitor);
       setCompetencies(loadedCompetencies);
+      setDecisionOutcomes(loadedDecisionOutcomes);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -1227,6 +1255,9 @@ function AssignmentReport({
               </div>
             )}
           </section>
+          {decisionOutcomes === null ? null : (
+            <ClassDecisionOutcomeReport report={decisionOutcomes} />
+          )}
           {competencies === null ? null : (
             <ClassCompetencyReport
               report={competencies}
@@ -1235,6 +1266,135 @@ function AssignmentReport({
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+function ClassDecisionOutcomeReport({
+  report,
+}: {
+  readonly report: HostedAssignmentDecisionOutcomeReportV1;
+}): ReactNode {
+  const t = useTranslator();
+  const itemCounts = new Map<
+    string,
+    { submittedCount: number; authoredCorrectCount: number }
+  >();
+  for (const run of report.runs) {
+    for (const item of run.decisionItems) {
+      const counts = itemCounts.get(item.decisionItemId) ?? {
+        submittedCount: 0,
+        authoredCorrectCount: 0,
+      };
+      itemCounts.set(item.decisionItemId, {
+        submittedCount: counts.submittedCount + 1,
+        authoredCorrectCount:
+          counts.authoredCorrectCount +
+          (item.isAuthoredCorrect ? 1 : 0),
+      });
+    }
+  }
+  const itemSummaries = [...itemCounts]
+    .map(([decisionItemId, counts]) => ({
+      decisionItemId,
+      ...counts,
+    }))
+    .sort((left, right) =>
+      left.decisionItemId < right.decisionItemId
+        ? -1
+        : left.decisionItemId > right.decisionItemId
+          ? 1
+          : 0,
+    );
+  return (
+    <section>
+      <h3>{t("instructorReview.decisionOutcomeHeading")}</h3>
+      <p>{t("instructorReview.decisionOutcomeHelp")}</p>
+      <h4>{t("instructorReview.decisionItemSummaryHeading")}</h4>
+      {itemSummaries.length === 0 ? (
+        <p>{t("instructorReview.decisionOutcomeUnavailable")}</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">
+                  {t("instructorReview.decisionItem")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.completedSubmissions")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.authoredCorrectSubmissions")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {itemSummaries.map((item) => (
+                <tr key={item.decisionItemId}>
+                  <td>
+                    <code>{item.decisionItemId}</code>
+                  </td>
+                  <td>{item.submittedCount}</td>
+                  <td>{item.authoredCorrectCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <h4>{t("instructorReview.runOutcomeComparisonHeading")}</h4>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th scope="col">{t("instructorReview.learner")}</th>
+              <th scope="col">{t("instructorReview.runId")}</th>
+              <th scope="col">
+                {t("instructorReview.authoredDecisionEvidence")}
+              </th>
+              <th scope="col">
+                {t("instructorReview.realizedOutcome")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.runs.map((run) => {
+              const authoredCorrectCount = run.decisionItems.filter(
+                (item) => item.isAuthoredCorrect,
+              ).length;
+              return (
+                <tr key={run.runId}>
+                  <td>
+                    <code>{run.learnerUserId}</code>
+                  </td>
+                  <td>
+                    <code>{run.runId}</code>
+                  </td>
+                  <td>
+                    {run.status === "active"
+                      ? t("instructorReview.decisionOutcomeUnavailable")
+                      : t(
+                          "instructorReview.authoredDecisionEvidenceValue",
+                          {
+                            correct: authoredCorrectCount,
+                            total: run.decisionItems.length,
+                          },
+                        )}
+                  </td>
+                  <td>
+                    {run.realizedOutcome === null ? (
+                      t("instructorReview.decisionOutcomeUnavailable")
+                    ) : (
+                      <code>{run.realizedOutcome.outcomeCode}</code>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

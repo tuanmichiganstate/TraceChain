@@ -456,6 +456,50 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       });
       return;
     }
+    if (
+      pathname ===
+      `/api/v1/assignments/${assignmentId}/decision-outcomes`
+    ) {
+      await route.fulfill({
+        json: {
+          decisionOutcomes: {
+            schemaVersion: "1.0.0",
+            interpretation:
+              "DECISION_PROCESS_SEPARATE_FROM_REALIZED_OUTCOME",
+            assignmentId,
+            packId: assignment.packId,
+            packVersion: assignment.packVersion,
+            scenarioId: assignment.scenarioId,
+            scenarioVersion: assignment.scenarioVersion,
+            runs: [
+              {
+                runId: "RUN_MONITOR_001",
+                learnerUserId: "USER_MONITOR_LEARNER",
+                status: "completed",
+                decisionItems: [
+                  {
+                    decisionItemId:
+                      "INT_CERTIFICATE_INITIAL_SUBMITTED",
+                    isAuthoredCorrect: true,
+                  },
+                  {
+                    decisionItemId:
+                      "INT_DISCREPANCY_INITIAL_SUBMITTED",
+                    isAuthoredCorrect: false,
+                  },
+                ],
+                realizedOutcome: {
+                  outcomeModelId: "CERTIFICATE_CASE",
+                  strategy: "forced",
+                  outcomeCode: "authorized-certifier",
+                },
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
     if (pathname === "/api/v1/runs/RUN_MONITOR_001/timeline") {
       await route.fulfill({
         json: {
@@ -614,6 +658,18 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await expect(
     page.getByText("RULE_ORGANIZATION_NOT_AUTHORIZED"),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Decision and outcome evidence",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("INT_CERTIFICATE_INITIAL_SUBMITTED"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("1 of 2 matched the authored response"),
+  ).toBeVisible();
+  await expect(page.getByText("authorized-certifier")).toBeVisible();
   await expect(page.getByText("certificate-decision")).toBeVisible();
   await expect(
     page.getByText("SUBMIT_CERTIFICATE_DECISION"),

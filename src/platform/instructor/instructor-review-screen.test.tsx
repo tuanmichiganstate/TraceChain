@@ -42,6 +42,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
@@ -104,6 +105,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment,
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
@@ -286,6 +288,25 @@ describe("instructor review screen", () => {
           },
         ],
       }),
+      loadAssignmentDecisionOutcomes: vi.fn().mockResolvedValue({
+        schemaVersion: "1.0.0",
+        interpretation:
+          "DECISION_PROCESS_SEPARATE_FROM_REALIZED_OUTCOME",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        packId: "PACK_STANDARD_COFFEE_STAGE3",
+        packVersion: "1.4.0",
+        scenarioId: "SCN_COFFEE_001",
+        scenarioVersion: "2.2.0",
+        runs: [
+          {
+            runId: "RUN_EXPORT_001",
+            learnerUserId: "USER_LEARNER_001",
+            status: "active",
+            decisionItems: [],
+            realizedOutcome: null,
+          },
+        ],
+      }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.3.0",
         assignment,
@@ -405,6 +426,14 @@ describe("instructor review screen", () => {
     expect(
       report.getByText("RULE_ORGANIZATION_NOT_AUTHORIZED"),
     ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Decision and outcome evidence",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getAllByText("Available after run completion"),
+    ).toHaveLength(3);
     await user.click(
       report.getByRole("button", { name: "Refresh status" }),
     );
@@ -544,6 +573,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
@@ -771,6 +801,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
@@ -866,6 +897,7 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
       loadAssignmentMonitor: vi.fn(),
       loadAssignmentReport: vi.fn(),
       loadSession: vi.fn().mockResolvedValue({
