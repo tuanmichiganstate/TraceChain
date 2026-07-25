@@ -204,6 +204,36 @@
   overflow-wrap: anywhere;
 }
 
+.instructor-review__activity {
+  min-width: 12rem;
+}
+
+.instructor-review__activity summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.instructor-review__activity dl {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
+.instructor-review__activity dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.instructor-review__activity dt {
+  color: var(--colour-text-muted);
+}
+
+.instructor-review__activity dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .instructor-review__message,
 .instructor-review__results {
   margin-top: var(--space-4);

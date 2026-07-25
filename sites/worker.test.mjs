@@ -1138,6 +1138,14 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           1_000,
       ),
     );
+    assert.deepEqual(activeReportedRun.activity, {
+      evidenceInspectionCount: 1,
+      policyConsultationCount: 0,
+      citedEvidenceCount: 0,
+      decisionAttemptCount: 0,
+      rejectedAttemptCount: 0,
+      mitigationCount: 0,
+    });
 
     const decision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -1900,6 +1908,55 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       moderated.resolution,
     ]);
 
+    const activityTimelineResponse = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/timeline`, {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      activityTimelineResponse.status,
+      200,
+      await activityTimelineResponse.clone().text(),
+    );
+    const activityTimeline = (
+      await activityTimelineResponse.json()
+    ).timeline;
+    const rejectionEventTypes = new Set([
+      "DECISION_REJECTED",
+      "ENDORSEMENT_PROPOSAL_REJECTED",
+      "ENDORSEMENT_REJECTED",
+      "ENDORSED_TRANSACTION_REJECTED",
+      "TRANSACTION_REJECTED",
+    ]);
+    const expectedActivity = {
+      evidenceInspectionCount: activityTimeline.filter(
+        (event) => event.eventType === "EVIDENCE_INSPECTED",
+      ).length,
+      policyConsultationCount: activityTimeline.filter(
+        (event) => event.eventType === "POLICY_CONSULTED",
+      ).length,
+      citedEvidenceCount: activityTimeline.reduce(
+        (total, event) =>
+          total +
+          (Array.isArray(event.payload.citedEvidenceIds)
+            ? event.payload.citedEvidenceIds.length
+            : 0),
+        0,
+      ),
+      decisionAttemptCount: activityTimeline.filter(
+        (event) =>
+          event.eventType === "DECISION_SUBMITTED" ||
+          event.eventType === "DECISION_REJECTED",
+      ).length,
+      rejectedAttemptCount: activityTimeline.filter((event) =>
+        rejectionEventTypes.has(event.eventType),
+      ).length,
+      mitigationCount: activityTimeline.filter(
+        (event) => event.eventType === "MITIGATION_RECORDED",
+      ).length,
+    };
+
     const report = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_SITE_001/report",
@@ -1909,7 +1966,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(report.status, 200, await report.clone().text());
     const classReport = (await report.json()).report;
-    assert.equal(classReport.schemaVersion, "1.1.0");
+    assert.equal(classReport.schemaVersion, "1.2.0");
     assert.equal(classReport.learners.length, 1);
     const reportedRun = classReport.learners[0].runs[0];
     assert.deepEqual(
@@ -1951,6 +2008,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         reportedRun.elapsedSeconds >= 0,
       true,
     );
+    assert.deepEqual(reportedRun.activity, expectedActivity);
 
     const monitorResponse = await worker.fetch(
       apiRequest(
@@ -2066,8 +2124,8 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.1.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.1.0");
+    assert.equal(exportedEvidence.schemaVersion, "1.2.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.2.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",
@@ -2091,6 +2149,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       lastActivityAt: reportedRun.lastActivityAt,
       completedAt: reportedRun.completedAt,
       elapsedSeconds: reportedRun.elapsedSeconds,
+      activity: expectedActivity,
     });
     assert.deepEqual(
       exportedEvidence.dataDictionary.datasets
@@ -2102,6 +2161,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
             "lastActivityAt",
             "completedAt",
             "elapsedSeconds",
+            "activity",
           ].includes(name),
         ),
       [
@@ -2109,6 +2169,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         "lastActivityAt",
         "completedAt",
         "elapsedSeconds",
+        "activity",
       ],
     );
     assert.deepEqual(exportedEvidence.ratingRevisions, [rated.rating]);
@@ -2163,6 +2224,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       /moderation_resolution,ASSIGNMENT_SITE_001,/u,
     );
     assert.match(exportedCsv, /""elapsedSeconds"":\d+/u);
+    assert.match(exportedCsv, /""rejectedAttemptCount"":3/u);
 
     const learnerExport = await worker.fetch(
       apiRequest(

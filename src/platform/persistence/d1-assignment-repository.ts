@@ -63,6 +63,12 @@ interface RunSummaryRow {
   readonly run_id: string;
   readonly learner_user_id: string;
   readonly event_count: number;
+  readonly evidence_inspection_count: number;
+  readonly policy_consultation_count: number;
+  readonly cited_evidence_count: number;
+  readonly decision_attempt_count: number;
+  readonly rejected_attempt_count: number;
+  readonly mitigation_count: number;
   readonly completed: number;
   readonly started_at_utc: string;
   readonly last_activity_at_utc: string;
@@ -327,6 +333,62 @@ const FIND_ASSIGNMENT_RUNS = `SELECT
       ELSE 0
     END
   ) AS completed,
+  SUM(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') =
+        'EVIDENCE_INSPECTED'
+      THEN 1
+      ELSE 0
+    END
+  ) AS evidence_inspection_count,
+  SUM(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') =
+        'POLICY_CONSULTED'
+      THEN 1
+      ELSE 0
+    END
+  ) AS policy_consultation_count,
+  SUM(
+    COALESCE(
+      json_array_length(
+        events.event_json,
+        '$.payload.citedEvidenceIds'
+      ),
+      0
+    )
+  ) AS cited_evidence_count,
+  SUM(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') IN (
+        'DECISION_SUBMITTED',
+        'DECISION_REJECTED'
+      )
+      THEN 1
+      ELSE 0
+    END
+  ) AS decision_attempt_count,
+  SUM(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') IN (
+        'DECISION_REJECTED',
+        'ENDORSEMENT_PROPOSAL_REJECTED',
+        'ENDORSEMENT_REJECTED',
+        'ENDORSED_TRANSACTION_REJECTED',
+        'TRANSACTION_REJECTED'
+      )
+      THEN 1
+      ELSE 0
+    END
+  ) AS rejected_attempt_count,
+  SUM(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') =
+        'MITIGATION_RECORDED'
+      THEN 1
+      ELSE 0
+    END
+  ) AS mitigation_count,
   MIN(events.server_timestamp_utc) AS started_at_utc,
   MAX(events.server_timestamp_utc) AS last_activity_at_utc,
   MAX(
@@ -411,6 +473,20 @@ function identifier(value: unknown, path: string): string {
     );
   }
   return normalized;
+}
+
+function activityCount(
+  value: number,
+  field: string,
+  runId: string,
+): number {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      `Run ${runId} contains invalid ${field}.`,
+    );
+  }
+  return value;
 }
 
 function assignmentMode(value: unknown): AssignmentRunMode {
@@ -1389,13 +1465,45 @@ export class D1AssignmentRepository {
         elapsedSeconds: Math.floor(
           (elapsedUntilMs - startedAtMs) / 1_000,
         ),
+        activity: {
+          evidenceInspectionCount: activityCount(
+            row.evidence_inspection_count,
+            "evidence inspection count",
+            row.run_id,
+          ),
+          policyConsultationCount: activityCount(
+            row.policy_consultation_count,
+            "policy consultation count",
+            row.run_id,
+          ),
+          citedEvidenceCount: activityCount(
+            row.cited_evidence_count,
+            "cited evidence count",
+            row.run_id,
+          ),
+          decisionAttemptCount: activityCount(
+            row.decision_attempt_count,
+            "decision attempt count",
+            row.run_id,
+          ),
+          rejectedAttemptCount: activityCount(
+            row.rejected_attempt_count,
+            "rejected attempt count",
+            row.run_id,
+          ),
+          mitigationCount: activityCount(
+            row.mitigation_count,
+            "mitigation count",
+            row.run_id,
+          ),
+        },
         ratings: await this.currentRatings(row.run_id),
         moderationResolutions:
           await this.currentModerationResolutions(row.run_id),
       });
     }
     return {
-      schemaVersion: "1.1.0",
+      schemaVersion: "1.2.0",
       assignment,
       learners: assignment.learnerUserIds.map((learnerUserId) => ({
         learnerUserId,

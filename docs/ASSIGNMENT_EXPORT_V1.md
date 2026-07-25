@@ -10,7 +10,8 @@ the evidence and contains:
 
 - assignment and feedback-release metadata;
 - the provisioned learner roster;
-- hosted run status, event counts, and authoritative event-span timing;
+- hosted run status, event counts, authoritative event-span timing, and
+  event-derived activity counts;
 - complete append-only run events;
 - complete append-only manual rubric rating revisions; and
 - complete append-only rubric moderation resolutions.
@@ -43,12 +44,12 @@ Learners cannot call these routes.
 The JSON document has:
 
 ```text
-schemaVersion       1.1.0
+schemaVersion       1.2.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
 generatedAt         UTC export timestamp
 assignment          exact HostedAssignmentV1
 participants        assignment and learner identifiers
-runs                learner, status, event count, and event-span timing
+runs                learner, status, event count, timing, and activity
 events              complete RunEventV1 envelopes
 ratingRevisions     complete ManualRubricRatingV1 history
 moderationResolutions complete RubricModerationResolutionV1 history
@@ -61,10 +62,12 @@ state-hash, and payload evidence. Every rating revision retains its rubric
 version, criterion, evidence links, rater, and timestamp. Every moderation
 resolution retains its source rating IDs, moderator, rationale, and revision.
 Each run records `startedAt`, `lastActivityAt`, nullable `completedAt`, and
-`elapsedSeconds`. The elapsed value is the whole-second difference from the
-first authoritative event to `RUN_COMPLETED`, or to the latest recorded event
-while the run is active. It is therefore stable evidence, not a live
-wall-clock timer.
+`elapsedSeconds`, plus an `activity` object. The elapsed value is the
+whole-second difference from the first authoritative event to `RUN_COMPLETED`,
+or to the latest recorded event while the run is active. It is therefore
+stable evidence, not a live wall-clock timer. `activity` derives evidence
+inspection, policy consultation, cited-evidence, decision-attempt,
+rejected-attempt, and mitigation counts from the immutable event stream.
 
 Generation fails as an invariant error if:
 
@@ -142,7 +145,8 @@ Columns that do not apply to a row type are empty. Nested values use canonical
 JSON. Text beginning with a spreadsheet formula prefix is escaped with a
 leading apostrophe in CSV only. The JSON export retains the original text.
 For a `run` row, `recorded_at` is `startedAt` and `payload_json` contains
-`startedAt`, `lastActivityAt`, nullable `completedAt`, and `elapsedSeconds`.
+`startedAt`, `lastActivityAt`, nullable `completedAt`, `elapsedSeconds`, and
+the event-derived `activity` object.
 
 ## Interpretation and privacy
 

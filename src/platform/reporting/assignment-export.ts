@@ -22,7 +22,7 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.1.0",
+  schemaVersion: "1.2.0",
   csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
   datasets: [
     {
@@ -134,6 +134,13 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           required: true,
           description:
             "Whole seconds from the first event to completion or latest recorded activity.",
+        },
+        {
+          name: "activity",
+          type: "object",
+          required: true,
+          description:
+            "Event-derived counts of evidence inspection, policy consultation, evidence citation, decision attempts, rejected attempts, and mitigation.",
         },
       ],
     },
@@ -269,6 +276,7 @@ export function createAssignmentEvidenceExport(
           lastActivityAt: run.lastActivityAt,
           completedAt: run.completedAt,
           elapsedSeconds: run.elapsedSeconds,
+          activity: run.activity,
         };
       }),
   );
@@ -353,7 +361,7 @@ export function createAssignmentEvidenceExport(
   }
 
   return {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     generatedAt: input.generatedAt,
     assignment,
@@ -471,6 +479,7 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
           lastActivityAt: run.lastActivityAt,
           completedAt: run.completedAt,
           elapsedSeconds: run.elapsedSeconds,
+          activity: run.activity,
         }),
       }),
     ),

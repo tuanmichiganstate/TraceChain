@@ -296,7 +296,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       await route.fulfill({
         json: {
           report: {
-            schemaVersion: "1.1.0",
+            schemaVersion: "1.2.0",
             assignment,
             learners: [
               {
@@ -311,6 +311,14 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                     lastActivityAt: "2026-07-24T08:04:30.000Z",
                     completedAt: null,
                     elapsedSeconds: 270,
+                    activity: {
+                      evidenceInspectionCount: 2,
+                      policyConsultationCount: 1,
+                      citedEvidenceCount: 1,
+                      decisionAttemptCount: 3,
+                      rejectedAttemptCount: 1,
+                      mitigationCount: 1,
+                    },
                     ratings: [],
                     moderationResolutions: [],
                   },
@@ -588,6 +596,9 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     page.getByText("2026-07-24T08:00:00.000Z"),
   ).toBeVisible();
   await expect(page.getByText("270 seconds")).toBeVisible();
+  await page.getByText("View activity", { exact: true }).click();
+  await expect(page.getByText("Evidence inspections")).toBeVisible();
+  await expect(page.getByText("Rejected attempts")).toBeVisible();
   await expect(page.getByText("certificate-decision")).toBeVisible();
   await expect(
     page.getByText("SUBMIT_CERTIFICATE_DECISION"),

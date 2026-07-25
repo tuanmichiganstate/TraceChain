@@ -287,12 +287,33 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
-        schemaVersion: "1.1.0",
+        schemaVersion: "1.2.0",
         assignment,
         learners: [
           {
             learnerUserId: "USER_LEARNER_001",
-            runs: [],
+            runs: [
+              {
+                runId: "RUN_EXPORT_001",
+                learnerUserId: "USER_LEARNER_001",
+                status: "active",
+                eventCount: 4,
+                startedAt: "2026-07-24T08:00:00.000Z",
+                lastActivityAt: "2026-07-24T08:04:00.000Z",
+                completedAt: null,
+                elapsedSeconds: 240,
+                activity: {
+                  evidenceInspectionCount: 2,
+                  policyConsultationCount: 1,
+                  citedEvidenceCount: 1,
+                  decisionAttemptCount: 3,
+                  rejectedAttemptCount: 1,
+                  mitigationCount: 1,
+                },
+                ratings: [],
+                moderationResolutions: [],
+              },
+            ],
           },
         ],
       }),
@@ -364,6 +385,11 @@ describe("instructor review screen", () => {
       report.getByText("SUBMIT_CERTIFICATE_TRANSACTION"),
     ).toBeInTheDocument();
     expect(report.getByText("No issue detected")).toBeInTheDocument();
+    await user.click(
+      report.getByText("View activity", { selector: "summary" }),
+    );
+    expect(report.getByText("Evidence inspections")).toBeVisible();
+    expect(report.getByText("Rejected attempts")).toBeVisible();
     await user.click(
       report.getByRole("button", { name: "Refresh status" }),
     );

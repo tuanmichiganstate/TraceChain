@@ -11,7 +11,7 @@ import {
 } from "./assignment-export";
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.1.0",
+  schemaVersion: "1.2.0",
   assignment: {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
@@ -56,6 +56,14 @@ const assignmentReport: HostedAssignmentReportV1 = {
           lastActivityAt: "2026-07-24T03:00:00.000Z",
           completedAt: "2026-07-24T03:00:00.000Z",
           elapsedSeconds: 0,
+          activity: {
+            evidenceInspectionCount: 2,
+            policyConsultationCount: 1,
+            citedEvidenceCount: 1,
+            decisionAttemptCount: 3,
+            rejectedAttemptCount: 1,
+            mitigationCount: 1,
+          },
           moderationResolutions: [],
           ratings: [],
         },
@@ -119,7 +127,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.1.0",
+      schemaVersion: "1.2.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       generatedAt: "2026-07-24T09:00:00.000Z",
       assignment: {
@@ -145,6 +153,7 @@ describe("assignment evidence export", () => {
           lastActivityAt: "2026-07-24T03:00:00.000Z",
           completedAt: "2026-07-24T03:00:00.000Z",
           elapsedSeconds: 0,
+          activity: assignmentReport.learners[0]?.runs[0]?.activity,
         },
       ],
       events: [runEvent],
@@ -170,9 +179,10 @@ describe("assignment evidence export", () => {
         "lastActivityAt",
         "completedAt",
         "elapsedSeconds",
+        "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("1.1.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("1.2.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -198,6 +208,7 @@ describe("assignment evidence export", () => {
       "event,ASSIGNMENT_EXPORT_001,USER_LEARNER_001,RUN_EXPORT_001,1,EVENT_EXPORT_001,RUN_CREATED",
     );
     expect(csv).toContain('"elapsedSeconds"":0');
+    expect(csv).toContain('"rejectedAttemptCount"":1');
     expect(csv).toContain("rating_revision,ASSIGNMENT_EXPORT_001");
     expect(csv).toContain(
       "\"'=HYPERLINK(\"\"https://invalid.example\"\",\"\"quoted,\ntext\"\")\"",

@@ -1042,6 +1042,9 @@ function AssignmentReport({
                   <th scope="col">
                     {t("instructorReview.monitorElapsed")}
                   </th>
+                  <th scope="col">
+                    {t("instructorReview.activitySummary")}
+                  </th>
                   <th scope="col">{t("instructorReview.eventCount")}</th>
                   <th scope="col">{t("instructorReview.ratingCount")}</th>
                 </tr>
@@ -1054,7 +1057,7 @@ function AssignmentReport({
                           <td>
                             <code>{learner.learnerUserId}</code>
                           </td>
-                          <td colSpan={7}>
+                          <td colSpan={8}>
                             {t("instructorReview.notStarted")}
                           </td>
                         </tr>,
@@ -1089,6 +1092,67 @@ function AssignmentReport({
                               "instructorReview.monitorElapsedValue",
                               { count: run.elapsedSeconds },
                             )}
+                          </td>
+                          <td>
+                            <details className="instructor-review__activity">
+                              <summary>
+                                {t("instructorReview.activityView")}
+                              </summary>
+                              <dl>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityEvidenceInspections",
+                                    )}
+                                  </dt>
+                                  <dd>
+                                    {run.activity.evidenceInspectionCount}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityPolicyConsultations",
+                                    )}
+                                  </dt>
+                                  <dd>
+                                    {run.activity.policyConsultationCount}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityEvidenceCitations",
+                                    )}
+                                  </dt>
+                                  <dd>{run.activity.citedEvidenceCount}</dd>
+                                </div>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityDecisionAttempts",
+                                    )}
+                                  </dt>
+                                  <dd>{run.activity.decisionAttemptCount}</dd>
+                                </div>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityRejectedAttempts",
+                                    )}
+                                  </dt>
+                                  <dd>{run.activity.rejectedAttemptCount}</dd>
+                                </div>
+                                <div>
+                                  <dt>
+                                    {t(
+                                      "instructorReview.activityMitigations",
+                                    )}
+                                  </dt>
+                                  <dd>{run.activity.mitigationCount}</dd>
+                                </div>
+                              </dl>
+                            </details>
                           </td>
                           <td>{run.eventCount}</td>
                           <td>{run.ratings.length}</td>

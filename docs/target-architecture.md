@@ -31,8 +31,8 @@ the existing timeline, competency, and rubric projections without duplicating
 them. It now also provides exact-version assignment creation, assignment-bound
 run start, evidence-linked manual rating revisions, one-way feedback release,
 and a focused assignment report, exact replay, competency reports, stable
-assignment exports with authoritative event-span timing, and append-only
-rubric moderation. Learner and author
+assignment exports with authoritative event-span timing and event-derived
+activity summaries, and append-only rubric moderation. Learner and author
 portals now expose the bounded individual coffee journey and pack-authoring
 lifecycle. Role-aware navigation includes learner, instructor, rater, author,
 and administrator capabilities, and hosted package jobs reuse verified

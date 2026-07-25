@@ -58,7 +58,7 @@ and controls publication and retirement. Course and roster provisioning remain
 deployment administration rather than application screens. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
-revisions, and a data dictionary.
+revisions, event-derived learner activity counts, and a data dictionary.
 They also summarize class competency evidence and its rating distribution, and
 expose expandable per-learner profiles with evidence recency, current rubric
 comments, and direct supporting-event review, without inferring stable

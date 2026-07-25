@@ -113,6 +113,15 @@ export interface RubricModerationResult {
   readonly wasIdempotentReplay: boolean;
 }
 
+export interface HostedRunActivitySummaryV1 {
+  readonly evidenceInspectionCount: number;
+  readonly policyConsultationCount: number;
+  readonly citedEvidenceCount: number;
+  readonly decisionAttemptCount: number;
+  readonly rejectedAttemptCount: number;
+  readonly mitigationCount: number;
+}
+
 export interface HostedAssignmentRunSummary {
   readonly runId: string;
   readonly learnerUserId: string;
@@ -122,6 +131,7 @@ export interface HostedAssignmentRunSummary {
   readonly lastActivityAt: string;
   readonly completedAt: string | null;
   readonly elapsedSeconds: number;
+  readonly activity: HostedRunActivitySummaryV1;
   readonly ratings: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
@@ -133,7 +143,7 @@ export interface HostedAssignmentLearnerReport {
 }
 
 export interface HostedAssignmentReportV1 {
-  readonly schemaVersion: "1.1.0";
+  readonly schemaVersion: "1.2.0";
   readonly assignment: HostedAssignmentV1;
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }

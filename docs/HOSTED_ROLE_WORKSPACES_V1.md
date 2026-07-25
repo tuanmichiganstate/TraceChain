@@ -27,8 +27,12 @@ remain excluded.
 The assignment report records stable timing from the authoritative event log:
 the first event, latest activity, completion event when present, and their
 whole-second span. An active run's report duration stops at its latest recorded
-event, unlike the live monitor's wall-clock value. The report also includes
-expandable learner competency profiles. Each profile presents the exact
+event, unlike the live monitor's wall-clock value. It also derives bounded
+counts for evidence inspections, policy consultations, cited evidence,
+decision attempts, rejected attempts, and mitigation directly from that same
+immutable event log. These counts describe observable activity; they are not a
+second score. The report also includes expandable learner competency profiles.
+Each profile presents the exact
 scenario version's targeted indicators, observation counts and recency,
 current rubric comments, and source-event references. It can load and focus a
 referenced event in the existing run timeline. It does not derive a second
