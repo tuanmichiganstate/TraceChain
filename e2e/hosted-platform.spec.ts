@@ -356,8 +356,8 @@ test("creates an assignment from the published hosted scenario library", async (
 }) => {
   const availableFromLocal = "2026-08-01T09:00";
   const availableUntilLocal = "2026-08-02T17:00";
-  const availableFrom = new Date(availableFromLocal).toISOString();
-  const availableUntil = new Date(availableUntilLocal).toISOString();
+  const availableFrom = "2026-08-01T02:00:00.000Z";
+  const availableUntil = "2026-08-02T10:00:00.000Z";
   const option = {
     schemaVersion: "1.0.0",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
