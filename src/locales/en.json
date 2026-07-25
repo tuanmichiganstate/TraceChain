@@ -117,6 +117,8 @@
   "instructorReview.classReportHeading": "Assignment report",
   "instructorReview.classReportLoad": "Load report",
   "instructorReview.classReportLoading": "Loading report...",
+  "instructorReview.runStarted": "Started",
+  "instructorReview.runCompleted": "Completed",
   "instructorReview.monitorHeading": "Live learner status",
   "instructorReview.monitorHelp": "Refreshes replay-derived workflow status without revealing hidden scenario outcomes.",
   "instructorReview.monitorRefresh": "Refresh status",

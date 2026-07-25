@@ -20,14 +20,19 @@ worker and repository layer.
 
 The assignment live monitor is refresh-based rather than a separate real-time
 transport. It reconstructs each started run through the existing deterministic
-service and exposes only status, timing, the active role's workflow stage and
-pending actions, and replay health. Hidden authored outcomes remain excluded.
+service and exposes only status, wall-clock elapsed time, the active role's
+workflow stage and pending actions, and replay health. Hidden authored outcomes
+remain excluded.
 
-The assignment report includes expandable learner competency profiles. Each
-profile presents the exact scenario version's targeted indicators, observation
-counts and recency, current rubric comments, and source-event references. It
-can load and focus a referenced event in the existing run timeline. It does not
-derive a second score or claim stable competence from one run.
+The assignment report records stable timing from the authoritative event log:
+the first event, latest activity, completion event when present, and their
+whole-second span. An active run's report duration stops at its latest recorded
+event, unlike the live monitor's wall-clock value. The report also includes
+expandable learner competency profiles. Each profile presents the exact
+scenario version's targeted indicators, observation counts and recency,
+current rubric comments, and source-event references. It can load and focus a
+referenced event in the existing run timeline. It does not derive a second
+score or claim stable competence from one run.
 
 ## Learner authority boundary
 

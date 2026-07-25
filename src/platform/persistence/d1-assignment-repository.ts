@@ -64,6 +64,9 @@ interface RunSummaryRow {
   readonly learner_user_id: string;
   readonly event_count: number;
   readonly completed: number;
+  readonly started_at_utc: string;
+  readonly last_activity_at_utc: string;
+  readonly completed_at_utc: string | null;
 }
 
 interface ModerationRow {
@@ -323,7 +326,17 @@ const FIND_ASSIGNMENT_RUNS = `SELECT
       THEN 1
       ELSE 0
     END
-  ) AS completed
+  ) AS completed,
+  MIN(events.server_timestamp_utc) AS started_at_utc,
+  MAX(events.server_timestamp_utc) AS last_activity_at_utc,
+  MAX(
+    CASE
+      WHEN json_extract(events.event_json, '$.eventType') =
+        'RUN_COMPLETED'
+      THEN events.server_timestamp_utc
+      ELSE NULL
+    END
+  ) AS completed_at_utc
 FROM hosted_run_events AS created
 JOIN hosted_run_events AS events
   ON events.run_id = created.run_id
@@ -1344,18 +1357,45 @@ export class D1AssignmentRepository {
     }
     const runs: HostedAssignmentRunSummary[] = [];
     for (const row of result.results) {
+      const startedAtMs = Date.parse(row.started_at_utc);
+      const lastActivityAtMs = Date.parse(row.last_activity_at_utc);
+      const completedAtMs =
+        row.completed_at_utc === null
+          ? null
+          : Date.parse(row.completed_at_utc);
+      if (
+        !Number.isFinite(startedAtMs) ||
+        !Number.isFinite(lastActivityAtMs) ||
+        (completedAtMs !== null &&
+          !Number.isFinite(completedAtMs)) ||
+        lastActivityAtMs < startedAtMs ||
+        (completedAtMs !== null && completedAtMs < startedAtMs)
+      ) {
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_STORAGE_FAILED",
+          `Run ${row.run_id} contains invalid event timing.`,
+        );
+      }
+      const elapsedUntilMs =
+        completedAtMs ?? lastActivityAtMs;
       runs.push({
         runId: row.run_id,
         learnerUserId: row.learner_user_id,
         status: row.completed === 1 ? "completed" : "active",
         eventCount: row.event_count,
+        startedAt: row.started_at_utc,
+        lastActivityAt: row.last_activity_at_utc,
+        completedAt: row.completed_at_utc,
+        elapsedSeconds: Math.floor(
+          (elapsedUntilMs - startedAtMs) / 1_000,
+        ),
         ratings: await this.currentRatings(row.run_id),
         moderationResolutions:
           await this.currentModerationResolutions(row.run_id),
       });
     }
     return {
-      schemaVersion: "1.0.0",
+      schemaVersion: "1.1.0",
       assignment,
       learners: assignment.learnerUserIds.map((learnerUserId) => ({
         learnerUserId,

@@ -22,7 +22,7 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "1.1.0",
   csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
   datasets: [
     {
@@ -108,6 +108,32 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           type: "integer",
           required: true,
           description: "Number of append-only authoritative run events.",
+        },
+        {
+          name: "startedAt",
+          type: "string",
+          required: true,
+          description: "Timestamp of the first authoritative run event.",
+        },
+        {
+          name: "lastActivityAt",
+          type: "string",
+          required: true,
+          description: "Timestamp of the latest authoritative run event.",
+        },
+        {
+          name: "completedAt",
+          type: "string",
+          required: false,
+          description:
+            "Timestamp of RUN_COMPLETED, absent while the run is active.",
+        },
+        {
+          name: "elapsedSeconds",
+          type: "integer",
+          required: true,
+          description:
+            "Whole seconds from the first event to completion or latest recorded activity.",
         },
       ],
     },
@@ -239,6 +265,10 @@ export function createAssignmentEvidenceExport(
           learnerUserId: learner.learnerUserId,
           status: run.status,
           eventCount: run.eventCount,
+          startedAt: run.startedAt,
+          lastActivityAt: run.lastActivityAt,
+          completedAt: run.completedAt,
+          elapsedSeconds: run.elapsedSeconds,
         };
       }),
   );
@@ -323,7 +353,7 @@ export function createAssignmentEvidenceExport(
   }
 
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     generatedAt: input.generatedAt,
     assignment,
@@ -435,6 +465,13 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
         run_id: run.runId,
         status: run.status,
         event_count: run.eventCount,
+        recorded_at: run.startedAt,
+        payload_json: canonicalize({
+          startedAt: run.startedAt,
+          lastActivityAt: run.lastActivityAt,
+          completedAt: run.completedAt,
+          elapsedSeconds: run.elapsedSeconds,
+        }),
       }),
     ),
     ...exported.events.map((event): CsvRow => {

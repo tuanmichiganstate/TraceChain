@@ -1108,6 +1108,37 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.equal(inspect.status, 200, await inspect.clone().text());
     assert.equal((await inspect.json()).projection.version, 4);
 
+    const activeReportResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/report",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      activeReportResponse.status,
+      200,
+      await activeReportResponse.clone().text(),
+    );
+    const activeReportedRun = (
+      await activeReportResponse.json()
+    ).report.learners[0].runs[0];
+    assert.equal(activeReportedRun.status, "active");
+    assert.equal(activeReportedRun.completedAt, null);
+    assert.equal(
+      Date.parse(activeReportedRun.lastActivityAt) >=
+        Date.parse(activeReportedRun.startedAt),
+      true,
+    );
+    assert.equal(
+      activeReportedRun.elapsedSeconds,
+      Math.floor(
+        (Date.parse(activeReportedRun.lastActivityAt) -
+          Date.parse(activeReportedRun.startedAt)) /
+          1_000,
+      ),
+    );
+
     const decision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
         method: "POST",
@@ -1878,8 +1909,18 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(report.status, 200, await report.clone().text());
     const classReport = (await report.json()).report;
+    assert.equal(classReport.schemaVersion, "1.1.0");
     assert.equal(classReport.learners.length, 1);
-    assert.deepEqual(classReport.learners[0].runs, [
+    const reportedRun = classReport.learners[0].runs[0];
+    assert.deepEqual(
+      {
+        runId: reportedRun.runId,
+        learnerUserId: reportedRun.learnerUserId,
+        status: reportedRun.status,
+        eventCount: reportedRun.eventCount,
+        ratings: reportedRun.ratings,
+        moderationResolutions: reportedRun.moderationResolutions,
+      },
       {
         runId,
         learnerUserId: "USER_LEARNER_001",
@@ -1888,7 +1929,28 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         ratings: [rated.rating],
         moderationResolutions: [moderated.resolution],
       },
-    ]);
+    );
+    assert.equal(
+      Number.isFinite(Date.parse(reportedRun.startedAt)),
+      true,
+    );
+    assert.equal(
+      Number.isFinite(Date.parse(reportedRun.lastActivityAt)),
+      true,
+    );
+    assert.equal(
+      Number.isFinite(Date.parse(reportedRun.completedAt)),
+      true,
+    );
+    assert.equal(
+      reportedRun.lastActivityAt === reportedRun.completedAt,
+      true,
+    );
+    assert.equal(
+      Number.isInteger(reportedRun.elapsedSeconds) &&
+        reportedRun.elapsedSeconds >= 0,
+      true,
+    );
 
     const monitorResponse = await worker.fetch(
       apiRequest(
@@ -2004,7 +2066,8 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.0.0");
+    assert.equal(exportedEvidence.schemaVersion, "1.1.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.1.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",
@@ -2018,6 +2081,36 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       pack.scenarios[0].version,
     );
     assert.equal(exportedEvidence.events.length, 54);
+    assert.deepEqual(exportedEvidence.runs[0], {
+      assignmentId: "ASSIGNMENT_SITE_001",
+      runId,
+      learnerUserId: "USER_LEARNER_001",
+      status: "completed",
+      eventCount: 54,
+      startedAt: reportedRun.startedAt,
+      lastActivityAt: reportedRun.lastActivityAt,
+      completedAt: reportedRun.completedAt,
+      elapsedSeconds: reportedRun.elapsedSeconds,
+    });
+    assert.deepEqual(
+      exportedEvidence.dataDictionary.datasets
+        .find((dataset) => dataset.id === "runs")
+        .fields.map((field) => field.name)
+        .filter((name) =>
+          [
+            "startedAt",
+            "lastActivityAt",
+            "completedAt",
+            "elapsedSeconds",
+          ].includes(name),
+        ),
+      [
+        "startedAt",
+        "lastActivityAt",
+        "completedAt",
+        "elapsedSeconds",
+      ],
+    );
     assert.deepEqual(exportedEvidence.ratingRevisions, [rated.rating]);
     assert.deepEqual(exportedEvidence.moderationResolutions, [
       moderated.resolution,
@@ -2069,6 +2162,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       exportedCsv,
       /moderation_resolution,ASSIGNMENT_SITE_001,/u,
     );
+    assert.match(exportedCsv, /""elapsedSeconds"":\d+/u);
 
     const learnerExport = await worker.fetch(
       apiRequest(

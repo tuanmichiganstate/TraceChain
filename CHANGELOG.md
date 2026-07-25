@@ -4,6 +4,11 @@
 
 ### Added
 
+- Authoritative hosted-run timing in instructor assignment reports and evidence
+  exports. Each run now records its first event, latest recorded activity,
+  completion event when present, and whole-second event span without treating
+  the current wall clock as persisted run evidence. The additive assignment
+  report and evidence-export schemas advance to `1.1.0`.
 - Executable declarative competency-evidence rules for hosted runs. The
   constrained event, field-equality, and field-membership operators now verify
   their referenced source events before evidence is recorded; each new

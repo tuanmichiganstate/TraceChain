@@ -118,6 +118,10 @@ export interface HostedAssignmentRunSummary {
   readonly learnerUserId: string;
   readonly status: "active" | "completed";
   readonly eventCount: number;
+  readonly startedAt: string;
+  readonly lastActivityAt: string;
+  readonly completedAt: string | null;
+  readonly elapsedSeconds: number;
   readonly ratings: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
@@ -129,7 +133,7 @@ export interface HostedAssignmentLearnerReport {
 }
 
 export interface HostedAssignmentReportV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly assignment: HostedAssignmentV1;
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }

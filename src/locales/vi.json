@@ -117,6 +117,8 @@
   "instructorReview.classReportHeading": "Báo cáo bài tập",
   "instructorReview.classReportLoad": "Tải báo cáo",
   "instructorReview.classReportLoading": "Đang tải báo cáo...",
+  "instructorReview.runStarted": "Bắt đầu",
+  "instructorReview.runCompleted": "Hoàn thành",
   "instructorReview.monitorHeading": "Trạng thái trực tiếp của người học",
   "instructorReview.monitorHelp": "Làm mới trạng thái quy trình được dựng lại từ sự kiện mà không tiết lộ kết quả ẩn của kịch bản.",
   "instructorReview.monitorRefresh": "Làm mới trạng thái",

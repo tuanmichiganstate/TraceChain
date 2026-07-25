@@ -116,7 +116,7 @@ All endpoints use `/api/v1`.
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
 | `GET /learner/assignments` | learner | Only the signed-in learner's assignment and run summaries |
 | `POST /assignments/:assignmentId/start-run` | assigned learner, instructor or administrator | New run using server-owned assignment configuration |
-| `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, event-count and current-rating report |
+| `GET /assignments/:assignmentId/report` | instructor, rater or administrator | Learner, run, completion, authoritative event-span timing, event-count and current-rating report |
 | `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
 | `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary |
@@ -264,12 +264,14 @@ IDs make retries deterministic and prevent silent overwrites.
 Feedback release is one-way in this increment. Learners receive no manual
 ratings through the feedback endpoint until an instructor explicitly releases
 the assignment. The assignment report keeps observable event counts,
-completion, and manual ratings separate; it does not invent a second overall
-grade. Its live-status panel is a refreshable projection of the same
-authoritative replay used by run review. Current stage and pending actions are
-limited to the active trusted role. A replay failure is reported as a technical
-status requiring attention; learner decision rejections are not misclassified
-as technical failures.
+completion, authoritative first/latest/completion timestamps, event-span
+duration, and manual ratings separate; it does not invent a second overall
+grade. Active-run report duration stops at the latest recorded event and is
+stable across reads. The report response schema is `1.1.0`. Its live-status
+panel is a refreshable projection of the same authoritative replay used by run
+review. Current stage and pending actions are limited to the active trusted
+role. A replay failure is reported as a technical status requiring attention;
+learner decision rejections are not misclassified as technical failures.
 
 ## Current limits
 
@@ -279,7 +281,8 @@ as technical failures.
   assignment-bound run start, manual rating, feedback release, and a focused
   assignment report are implemented. Stable JSON and CSV assignment evidence
   exports include exact content versions, complete event streams, append-only
-  rating and moderation revisions, and the V1 data dictionary. The assignment competency
+  rating and moderation revisions, authoritative event-span timing, and the V1
+  data dictionary. The assignment competency
   report links targeted indicator versions to observable evidence and current
   ratings while explicitly avoiding a single-simulation competence inference.
   Versioned declarative evidence rules are executed against their referenced
@@ -291,8 +294,9 @@ as technical failures.
   actions that focus the existing run timeline, plus the current class rating
   distribution for each indicator.
 - The assignment live monitor reports learner status, current workflow stage,
-  elapsed time, last activity, active-role pending actions, and replay health
-  without returning hidden outcome state.
+  wall-clock elapsed time, last activity, active-role pending actions, and
+  replay health without returning hidden outcome state. This live value is
+  distinct from the stable event-span timing in the assignment report.
 - Instructor timeline replay reconstructs the exact role-filtered view at a
   selected event sequence and never returns hidden actual state.
 - Course and roster-provisioning screens are not implemented.

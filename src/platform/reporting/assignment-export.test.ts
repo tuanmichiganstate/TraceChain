@@ -11,7 +11,7 @@ import {
 } from "./assignment-export";
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "1.1.0",
   assignment: {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
@@ -52,6 +52,10 @@ const assignmentReport: HostedAssignmentReportV1 = {
           learnerUserId: "USER_LEARNER_001",
           status: "completed",
           eventCount: 1,
+          startedAt: "2026-07-24T03:00:00.000Z",
+          lastActivityAt: "2026-07-24T03:00:00.000Z",
+          completedAt: "2026-07-24T03:00:00.000Z",
+          elapsedSeconds: 0,
           moderationResolutions: [],
           ratings: [],
         },
@@ -115,7 +119,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.0.0",
+      schemaVersion: "1.1.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       generatedAt: "2026-07-24T09:00:00.000Z",
       assignment: {
@@ -137,6 +141,10 @@ describe("assignment evidence export", () => {
           learnerUserId: "USER_LEARNER_001",
           status: "completed",
           eventCount: 1,
+          startedAt: "2026-07-24T03:00:00.000Z",
+          lastActivityAt: "2026-07-24T03:00:00.000Z",
+          completedAt: "2026-07-24T03:00:00.000Z",
+          elapsedSeconds: 0,
         },
       ],
       events: [runEvent],
@@ -152,6 +160,19 @@ describe("assignment evidence export", () => {
         "moderationResolutions",
       ],
     );
+    expect(
+      exported.dataDictionary.datasets
+        .find((dataset) => dataset.id === "runs")
+        ?.fields.map((field) => field.name),
+    ).toEqual(
+      expect.arrayContaining([
+        "startedAt",
+        "lastActivityAt",
+        "completedAt",
+        "elapsedSeconds",
+      ]),
+    );
+    expect(exported.dataDictionary.schemaVersion).toBe("1.1.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -176,6 +197,7 @@ describe("assignment evidence export", () => {
     expect(csv).toContain(
       "event,ASSIGNMENT_EXPORT_001,USER_LEARNER_001,RUN_EXPORT_001,1,EVENT_EXPORT_001,RUN_CREATED",
     );
+    expect(csv).toContain('"elapsedSeconds"":0');
     expect(csv).toContain("rating_revision,ASSIGNMENT_EXPORT_001");
     expect(csv).toContain(
       "\"'=HYPERLINK(\"\"https://invalid.example\"\",\"\"quoted,\ntext\"\")\"",

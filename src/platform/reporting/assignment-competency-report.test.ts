@@ -15,7 +15,7 @@ if (scenario === undefined) {
 }
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "1.1.0",
   assignment: {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_COMPETENCY_001",
@@ -47,6 +47,10 @@ const assignmentReport: HostedAssignmentReportV1 = {
           learnerUserId: "USER_LEARNER_001",
           status: "completed",
           eventCount: 12,
+          startedAt: "2026-07-24T03:00:00.000Z",
+          lastActivityAt: "2026-07-24T03:05:00.000Z",
+          completedAt: "2026-07-24T03:05:00.000Z",
+          elapsedSeconds: 300,
           moderationResolutions: [],
           ratings: [
             {

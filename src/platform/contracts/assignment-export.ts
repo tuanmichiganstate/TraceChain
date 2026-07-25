@@ -16,6 +16,10 @@ export interface AssignmentExportRunV1 {
   readonly learnerUserId: string;
   readonly status: "active" | "completed";
   readonly eventCount: number;
+  readonly startedAt: string;
+  readonly lastActivityAt: string;
+  readonly completedAt: string | null;
+  readonly elapsedSeconds: number;
 }
 
 export interface ExportFieldDefinitionV1 {
@@ -38,13 +42,13 @@ export interface ExportDatasetDefinitionV1 {
 }
 
 export interface AssignmentExportDataDictionaryV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1";
   readonly datasets: readonly ExportDatasetDefinitionV1[];
 }
 
 export interface AssignmentEvidenceExportV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE";
   readonly generatedAt: string;
   readonly assignment: HostedAssignmentV1;

@@ -287,7 +287,7 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
-        schemaVersion: "1.0.0",
+        schemaVersion: "1.1.0",
         assignment,
         learners: [
           {

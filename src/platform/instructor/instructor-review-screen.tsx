@@ -1033,6 +1033,15 @@ function AssignmentReport({
                   <th scope="col">{t("instructorReview.learner")}</th>
                   <th scope="col">{t("instructorReview.runId")}</th>
                   <th scope="col">{t("instructorReview.status")}</th>
+                  <th scope="col">
+                    {t("instructorReview.runStarted")}
+                  </th>
+                  <th scope="col">
+                    {t("instructorReview.runCompleted")}
+                  </th>
+                  <th scope="col">
+                    {t("instructorReview.monitorElapsed")}
+                  </th>
                   <th scope="col">{t("instructorReview.eventCount")}</th>
                   <th scope="col">{t("instructorReview.ratingCount")}</th>
                 </tr>
@@ -1045,7 +1054,7 @@ function AssignmentReport({
                           <td>
                             <code>{learner.learnerUserId}</code>
                           </td>
-                          <td colSpan={4}>
+                          <td colSpan={7}>
                             {t("instructorReview.notStarted")}
                           </td>
                         </tr>,
@@ -1060,6 +1069,26 @@ function AssignmentReport({
                           </td>
                           <td>
                             {t(`instructorReview.runStatus.${run.status}`)}
+                          </td>
+                          <td>
+                            <time dateTime={run.startedAt}>
+                              {run.startedAt}
+                            </time>
+                          </td>
+                          <td>
+                            {run.completedAt === null ? (
+                              t("instructorReview.none")
+                            ) : (
+                              <time dateTime={run.completedAt}>
+                                {run.completedAt}
+                              </time>
+                            )}
+                          </td>
+                          <td>
+                            {t(
+                              "instructorReview.monitorElapsedValue",
+                              { count: run.elapsedSeconds },
+                            )}
                           </td>
                           <td>{run.eventCount}</td>
                           <td>{run.ratings.length}</td>
