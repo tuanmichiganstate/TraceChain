@@ -4,6 +4,10 @@
 
 ### Added
 
+- Optional pseudonymous JSON and CSV assignment evidence exports. Learner user
+  IDs become deterministic assignment-scoped codes across roster, run, and
+  event evidence while staff and simulation identifiers remain intact; the UI
+  states explicitly that these records are not anonymous.
 - Administrator-only application-user provisioning and role maintenance. Each
   access change is idempotent, transactionally replaces the current role
   projection, records an append-only audit command, preserves disabled users,

@@ -8,6 +8,9 @@ import type {
   HostedAssignmentDecisionOutcomeReportV1,
 } from "../src/platform/contracts/decision-outcome-report";
 import type {
+  AssignmentExportIdentityMode,
+} from "../src/platform/contracts/assignment-export";
+import type {
   CreateScormPackageJobRequest,
   HostedScormPackageCatalogV1,
 } from "../src/platform/contracts/scorm-package-job";
@@ -178,6 +181,18 @@ function shouldServeAppShell(request: Request): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assignmentExportIdentityMode(
+  url: URL,
+): AssignmentExportIdentityMode {
+  const value = url.searchParams.get("identity");
+  if (value === null || value === "identified") return "identified";
+  if (value === "pseudonymous") return "pseudonymous";
+  throw new HostedRunCommandError(
+    "INVALID_COMMAND",
+    "Assignment export identity mode is invalid.",
+  );
 }
 
 function requiredText(
@@ -1520,6 +1535,7 @@ async function apiResponse(
       environment.DB,
       clock,
     );
+    const identityMode = assignmentExportIdentityMode(url);
     const report = await repository.report(exportAssignmentId);
     const eventStore = new D1RunEventStore(environment.DB);
     const events = (
@@ -1539,18 +1555,27 @@ async function apiResponse(
         exportAssignmentId,
       ),
       generatedAt: clock.now(),
+      identityMode,
     });
     if (jsonExportAssignmentId !== null) {
       return downloadResponse(
         serializeAssignmentEvidenceJson(exported),
         "application/json; charset=utf-8",
-        assignmentEvidenceFilename(exportAssignmentId, "json"),
+        assignmentEvidenceFilename(
+          exportAssignmentId,
+          "json",
+          identityMode,
+        ),
       );
     }
     return downloadResponse(
       serializeAssignmentEvidenceCsv(exported),
       "text/csv; charset=utf-8",
-      assignmentEvidenceFilename(exportAssignmentId, "csv"),
+      assignmentEvidenceFilename(
+        exportAssignmentId,
+        "csv",
+        identityMode,
+      ),
     );
   }
 

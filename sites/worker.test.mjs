@@ -2424,12 +2424,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.3.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.3.0");
+    assert.equal(exportedEvidence.schemaVersion, "1.4.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.4.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     );
+    assert.equal(exportedEvidence.identityMode, "identified");
     assert.equal(
       exportedEvidence.assignment.packVersion,
       pack.version,
@@ -2488,6 +2489,82 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         "ratingRevisions",
         "moderationResolutions",
       ],
+    );
+
+    const pseudonymousJsonExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json?identity=pseudonymous",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      pseudonymousJsonExport.status,
+      200,
+      await pseudonymousJsonExport.clone().text(),
+    );
+    assert.equal(
+      pseudonymousJsonExport.headers.get("content-disposition"),
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v1.json"',
+    );
+    const pseudonymousJsonText =
+      await pseudonymousJsonExport.text();
+    assert.doesNotMatch(
+      pseudonymousJsonText,
+      /USER_LEARNER_001/u,
+    );
+    assert.match(
+      pseudonymousJsonText,
+      /LEARNER_[A-F0-9]{24}/u,
+    );
+    assert.match(
+      pseudonymousJsonText,
+      /USER_INSTRUCTOR_001/u,
+    );
+    assert.equal(
+      JSON.parse(pseudonymousJsonText).identityMode,
+      "pseudonymous",
+    );
+    const pseudonymousCsvExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.csv?identity=pseudonymous",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      pseudonymousCsvExport.status,
+      200,
+      await pseudonymousCsvExport.clone().text(),
+    );
+    assert.equal(
+      pseudonymousCsvExport.headers.get("content-disposition"),
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v1.csv"',
+    );
+    const pseudonymousCsvText = await pseudonymousCsvExport.text();
+    assert.doesNotMatch(
+      pseudonymousCsvText,
+      /USER_LEARNER_001/u,
+    );
+    assert.match(
+      pseudonymousCsvText,
+      /LEARNER_[A-F0-9]{24}/u,
+    );
+    assert.match(
+      pseudonymousCsvText,
+      /""exportIdentityMode"":""pseudonymous""/u,
+    );
+    const invalidIdentityExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json?identity=anonymous",
+        { email: "instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(invalidIdentityExport.status, 400);
+    assert.equal(
+      (await invalidIdentityExport.json()).error.code,
+      "INVALID_COMMAND",
     );
 
     const csvExport = await worker.fetch(

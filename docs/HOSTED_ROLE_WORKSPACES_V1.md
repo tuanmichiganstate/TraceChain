@@ -43,6 +43,12 @@ current rubric comments, and source-event references. It can load and focus a
 referenced event in the existing run timeline. It does not derive a second
 score or claim stable competence from one run.
 
+Assignment evidence downloads are identified by default. An instructor may
+instead request deterministic assignment-scoped learner pseudonyms in JSON or
+CSV. Staff, run, event, evidence, and simulation-role identifiers remain
+available for interpretation, so the result is pseudonymous rather than
+anonymous.
+
 The decision/outcome section is another read-only replay projection. For
 completed runs it reports whether each bounded decision matched the authored
 response and shows the realized scenario outcome separately. It adds no grade

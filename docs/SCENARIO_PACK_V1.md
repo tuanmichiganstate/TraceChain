@@ -209,10 +209,11 @@ The first hosted vertical slice now provides:
 - an optional server-managed initial-administrator allowlist for an empty D1
   deployment.
 
-The hosted role workspaces, JSON/CSV exports, moderation, deterministic run
-modes, author lifecycle, and graphical Guided/Challenge package jobs are now
-implemented. Application-role, course, and roster provisioning remain
-deployment administration. The pharmaceutical starter validates and previews
-through the generic authoring layer; a compatible hosted runtime adapter is
-still required before it can be assigned. SCORM continues to use the current
-compact deterministic TC3 journal.
+The hosted role workspaces, identified or pseudonymous JSON/CSV exports,
+moderation, deterministic run modes, author lifecycle, and graphical
+Guided/Challenge package jobs are now implemented. Application-user access and
+role provisioning are available in the administrator workspace; course
+management remains deployment administration. The pharmaceutical starter
+validates and previews through the generic authoring layer; a compatible hosted
+runtime adapter is still required before it can be assigned. SCORM continues
+to use the current compact deterministic TC3 journal.

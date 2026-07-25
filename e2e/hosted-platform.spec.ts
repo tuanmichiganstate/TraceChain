@@ -736,6 +736,19 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     page.getByText("1 of 2 matched the authored response"),
   ).toBeVisible();
   await expect(page.getByText("authorized-certifier")).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "Download pseudonymous JSON",
+    }),
+  ).toHaveAttribute(
+    "href",
+    `/api/v1/assignments/${assignmentId}/export.json?identity=pseudonymous`,
+  );
+  await expect(
+    page.getByText(
+      "Pseudonymous downloads replace learner user IDs with assignment-scoped codes. They are not anonymized records.",
+    ),
+  ).toBeVisible();
   await expect(page.getByText("certificate-decision")).toBeVisible();
   await expect(
     page.getByText("SUBMIT_CERTIFICATE_DECISION"),

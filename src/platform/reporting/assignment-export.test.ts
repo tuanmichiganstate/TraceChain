@@ -133,8 +133,9 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.3.0",
+      schemaVersion: "1.4.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+      identityMode: "identified",
       generatedAt: "2026-07-24T09:00:00.000Z",
       assignment: {
         assignmentId: "ASSIGNMENT_EXPORT_001",
@@ -188,7 +189,7 @@ describe("assignment evidence export", () => {
         "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("1.3.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("1.4.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -223,5 +224,47 @@ describe("assignment evidence export", () => {
       "\"'=HYPERLINK(\"\"https://invalid.example\"\",\"\"quoted,\ntext\"\")\"",
     );
     expect(csv.endsWith("\r\n")).toBe(true);
+  });
+
+  it("can replace learner identities with deterministic assignment-scoped pseudonyms", () => {
+    const input = {
+      report: assignmentReport,
+      events: [runEvent],
+      ratingRevisions: [ratingRevision],
+      moderationResolutions: [],
+      generatedAt: "2026-07-24T09:00:00.000Z",
+      identityMode: "pseudonymous" as const,
+    };
+    const first = createAssignmentEvidenceExport(input);
+    const repeated = createAssignmentEvidenceExport(input);
+    const pseudonym = first.assignment.learnerUserIds[0];
+
+    expect(first).toMatchObject({
+      identityMode: "pseudonymous",
+      assignment: {
+        learnerUserIds: [expect.stringMatching(/^LEARNER_[A-F0-9]{24}$/u)],
+      },
+      participants: [
+        {
+          learnerUserId: pseudonym,
+        },
+      ],
+      runs: [
+        {
+          learnerUserId: pseudonym,
+        },
+      ],
+    });
+    expect(repeated.assignment.learnerUserIds[0]).toBe(pseudonym);
+
+    const json = serializeAssignmentEvidenceJson(first);
+    const csv = serializeAssignmentEvidenceCsv(first);
+    expect(json).not.toContain("USER_LEARNER_001");
+    expect(csv).not.toContain("USER_LEARNER_001");
+    expect(csv).toContain(
+      '""exportIdentityMode"":""pseudonymous""',
+    );
+    expect(json).toContain("USER_INSTRUCTOR_001");
+    expect(csv).toContain("USER_INSTRUCTOR_001");
   });
 });

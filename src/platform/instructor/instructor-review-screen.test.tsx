@@ -452,6 +452,27 @@ describe("instructor review screen", () => {
       "/api/v1/assignments/ASSIGNMENT_EXPORT_001/export.csv",
     );
     expect(
+      report.getByRole("link", {
+        name: "Download pseudonymous JSON",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/api/v1/assignments/ASSIGNMENT_EXPORT_001/export.json?identity=pseudonymous",
+    );
+    expect(
+      report.getByRole("link", {
+        name: "Download pseudonymous CSV",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/api/v1/assignments/ASSIGNMENT_EXPORT_001/export.csv?identity=pseudonymous",
+    );
+    expect(
+      report.getByText(
+        "Pseudonymous downloads replace learner user IDs with assignment-scoped codes. They are not anonymized records.",
+      ),
+    ).toBeInTheDocument();
+    expect(
       report.getByRole("heading", {
         name: "Class competency evidence",
       }),

@@ -124,8 +124,8 @@ All endpoints use `/api/v1`.
 | `GET /assignments/:assignmentId/monitor` | instructor, rater or administrator | Replay-derived current stage, elapsed time, pending actions, last activity, and technical status without hidden outcomes |
 | `GET /assignments/:assignmentId/competencies` | instructor, rater or administrator | Versioned learner and class competency evidence without inferring stable competence |
 | `GET /assignments/:assignmentId/decision-outcomes` | instructor, rater or administrator | Completed-run authored decision evidence beside realized outcomes; active-run correctness and outcomes remain hidden |
-| `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary |
-| `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same evidence in the documented flat CSV V1 layout |
+| `GET /assignments/:assignmentId/export.json` | instructor, rater or administrator | Versioned assignment, roster, complete event, rating, and moderation evidence with an embedded data dictionary; `?identity=pseudonymous` replaces learner user IDs with assignment-scoped codes |
+| `GET /assignments/:assignmentId/export.csv` | instructor, rater or administrator | The same identified or pseudonymous evidence in the documented flat CSV V1 layout |
 | `POST /assignments/:assignmentId/feedback-release` | instructor or administrator | One-way release of current feedback |
 | `POST /runs` | instructor, scenario author or administrator | New assigned hosted coffee run metadata |
 | `GET /runs/:runId` | assigned learner | Role-filtered projection only |
@@ -300,7 +300,9 @@ score and does not expose the scenario seed or random draw. See
   assignment report are implemented. Stable JSON and CSV assignment evidence
   exports include exact content versions, complete event streams, append-only
   rating and moderation revisions, authoritative event-span timing,
-  event-derived activity summaries, and the V1 data dictionary. The assignment
+  event-derived activity summaries, and the V1 data dictionary. Instructors
+  may select identified exports or assignment-scoped learner pseudonyms; the
+  latter remain assessment records and are not anonymous. The assignment
   competency
   report links targeted indicator versions to observable evidence and current
   ratings while explicitly avoiding a single-simulation competence inference.

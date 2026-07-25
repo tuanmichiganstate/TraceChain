@@ -28,6 +28,8 @@ assignment export.
 ```text
 GET /api/v1/assignments/{assignmentId}/export.json
 GET /api/v1/assignments/{assignmentId}/export.csv
+GET /api/v1/assignments/{assignmentId}/export.json?identity=pseudonymous
+GET /api/v1/assignments/{assignmentId}/export.csv?identity=pseudonymous
 ```
 
 Both responses use `Cache-Control: no-store` and an attachment filename:
@@ -35,6 +37,8 @@ Both responses use `Cache-Control: no-store` and an attachment filename:
 ```text
 TraceChain_{assignmentId}_evidence_v1.json
 TraceChain_{assignmentId}_evidence_v1.csv
+TraceChain_{assignmentId}_pseudonymous_evidence_v1.json
+TraceChain_{assignmentId}_pseudonymous_evidence_v1.csv
 ```
 
 Learners cannot call these routes.
@@ -44,8 +48,9 @@ Learners cannot call these routes.
 The JSON document has:
 
 ```text
-schemaVersion       1.3.0
+schemaVersion       1.4.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
+identityMode        identified or pseudonymous
 generatedAt         UTC export timestamp
 assignment          exact HostedAssignmentV1
 participants        assignment and learner identifiers
@@ -150,6 +155,8 @@ payload_json
 Columns that do not apply to a row type are empty. Nested values use canonical
 JSON. Text beginning with a spreadsheet formula prefix is escaped with a
 leading apostrophe in CSV only. The JSON export retains the original text.
+The assignment row's `payload_json` includes `exportIdentityMode` so a renamed
+CSV remains self-describing.
 For a `run` row, `recorded_at` is `startedAt` and `payload_json` contains
 `startedAt`, `lastActivityAt`, nullable `completedAt`, `elapsedSeconds`, and
 the event-derived `activity` object.
@@ -158,11 +165,23 @@ the event-derived `activity` object.
 
 - `generatedAt` records when the snapshot was requested; it is not a run
   event.
+- Identified export remains the default.
+- Pseudonymous export replaces each server-owned learner user ID with a stable
+  assignment-scoped `LEARNER_…` code in the assignment roster, participant and
+  run records, authenticated learner event context, and exact learner-ID values
+  inside event payloads.
+- The pseudonym derives deterministically from the assignment ID and learner
+  user ID using a domain-separated SHA-256 input. The same learner receives a
+  different code in another assignment.
+- Instructor, rater, moderator, simulation actor, organization, role, run,
+  event, evidence, and rating identifiers remain unchanged.
+- No identity mapping is included in the pseudonymous file.
+- Pseudonymization is not anonymization. Run content, timestamps, decisions,
+  and other evidence may still permit re-identification and must be handled as
+  assessment records.
 - All authoritative run, rating, and moderation timestamps are UTC.
 - A newer export may contain later events, rating revisions, or resolutions.
 - The JSON data dictionary and this document define export schema V1.
-- User IDs are server-provisioned identifiers. Pseudonymization is not yet an
-  assignment option, so exported files must be handled as assessment records.
 - Export access does not imply that learners may see withheld feedback.
 
 Changing column meaning, record types, or required JSON fields requires a new

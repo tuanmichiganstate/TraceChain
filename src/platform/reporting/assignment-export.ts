@@ -1,14 +1,20 @@
 import { canonicalize } from "../../infrastructure/hashing/canonicalize";
+import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
   HostedAssignmentReportV1,
   ManualRubricRatingV1,
   RubricModerationResolutionV1,
 } from "../contracts/assessment";
 import type {
+  AssignmentExportIdentityMode,
   AssignmentEvidenceExportV1,
   AssignmentExportDataDictionaryV1,
   AssignmentExportRunV1,
 } from "../contracts/assignment-export";
+import type {
+  JsonObject,
+  JsonValue,
+} from "../contracts/json";
 import type { RunEventV1 } from "../contracts/run-events";
 
 export class AssignmentExportError extends Error {
@@ -22,7 +28,7 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.3.0",
+  schemaVersion: "1.4.0",
   csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
   datasets: [
     {
@@ -76,7 +82,8 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           name: "learnerUserId",
           type: "string",
           required: true,
-          description: "Server-provisioned learner user identifier.",
+          description:
+            "Server-provisioned learner identifier or assignment-scoped pseudonym, according to identityMode.",
         },
       ],
     },
@@ -95,7 +102,8 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           name: "learnerUserId",
           type: "string",
           required: true,
-          description: "Assigned learner who owns the run.",
+          description:
+            "Assigned learner identifier or assignment-scoped pseudonym, according to identityMode.",
         },
         {
           name: "status",
@@ -241,6 +249,7 @@ export interface CreateAssignmentEvidenceExportInput {
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
   readonly generatedAt: string;
+  readonly identityMode?: AssignmentExportIdentityMode;
 }
 
 function sourceMismatch(message: string): never {
@@ -254,14 +263,63 @@ function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function learnerPseudonym(
+  assignmentId: string,
+  learnerUserId: string,
+): string {
+  return `LEARNER_${sha256Hex(
+    `TRACECHAIN_ASSIGNMENT_EXPORT_V1\u0000${assignmentId}\u0000${learnerUserId}`,
+  )
+    .slice(0, 24)
+    .toUpperCase()}`;
+}
+
+function replaceLearnerIdentity(
+  value: JsonValue,
+  pseudonyms: ReadonlyMap<string, string>,
+): JsonValue {
+  if (typeof value === "string") {
+    return pseudonyms.get(value) ?? value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      replaceLearnerIdentity(entry, pseudonyms),
+    );
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        replaceLearnerIdentity(entry, pseudonyms),
+      ]),
+    );
+  }
+  return value;
+}
+
+function replaceLearnerIdentityInObject(
+  value: JsonObject,
+  pseudonyms: ReadonlyMap<string, string>,
+): JsonObject {
+  return replaceLearnerIdentity(value, pseudonyms) as JsonObject;
+}
+
 export function createAssignmentEvidenceExport(
   input: CreateAssignmentEvidenceExportInput,
 ): AssignmentEvidenceExportV1 {
   const { assignment } = input.report;
+  const identityMode = input.identityMode ?? "identified";
+  const roster = new Set(assignment.learnerUserIds);
+  if (roster.size !== assignment.learnerUserIds.length) {
+    sourceMismatch("Assignment roster contains a duplicate learner.");
+  }
   const runs: AssignmentExportRunV1[] = input.report.learners.flatMap(
     (learner) =>
       learner.runs.map((run) => {
-        if (run.learnerUserId !== learner.learnerUserId) {
+        if (
+          run.learnerUserId !== learner.learnerUserId ||
+          !roster.has(learner.learnerUserId)
+        ) {
           return sourceMismatch(
             `Run ${run.runId} is attributed to a different learner.`,
           );
@@ -360,17 +418,57 @@ export function createAssignmentEvidenceExport(
     }
   }
 
+  const pseudonyms =
+    identityMode === "pseudonymous"
+      ? new Map(
+          assignment.learnerUserIds.map((learnerUserId) => [
+            learnerUserId,
+            learnerPseudonym(
+              assignment.assignmentId,
+              learnerUserId,
+            ),
+          ]),
+        )
+      : new Map<string, string>();
+  if (
+    new Set(pseudonyms.values()).size !== pseudonyms.size
+  ) {
+    sourceMismatch("Assignment-scoped learner pseudonyms are not unique.");
+  }
+  const protectedAssignment = {
+    ...assignment,
+    learnerUserIds: assignment.learnerUserIds.map(
+      (learnerUserId) =>
+        pseudonyms.get(learnerUserId) ?? learnerUserId,
+    ),
+  };
+
   return {
-    schemaVersion: "1.3.0",
+    schemaVersion: "1.4.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+    identityMode,
     generatedAt: input.generatedAt,
-    assignment,
+    assignment: protectedAssignment,
     participants: assignment.learnerUserIds.map((learnerUserId) => ({
       assignmentId: assignment.assignmentId,
-      learnerUserId,
+      learnerUserId:
+        pseudonyms.get(learnerUserId) ?? learnerUserId,
     })),
-    runs,
-    events: sortedEvents,
+    runs: runs.map((run) => ({
+      ...run,
+      learnerUserId:
+        pseudonyms.get(run.learnerUserId) ?? run.learnerUserId,
+    })),
+    events: sortedEvents.map((event) => ({
+      ...event,
+      authenticatedUserId:
+        pseudonyms.get(event.authenticatedUserId) ??
+        event.authenticatedUserId,
+      payload: replaceLearnerIdentityInObject(
+        event.payload,
+        pseudonyms,
+      ),
+    })),
     ratingRevisions: sortedRatings,
     moderationResolutions: sortedModeration,
     dataDictionary: DATA_DICTIONARY,
@@ -454,7 +552,10 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
       status: assignment.status,
       recorded_at: assignment.createdAt,
       authenticated_user_id: assignment.createdByUserId,
-      payload_json: canonicalize(assignment),
+      payload_json: canonicalize({
+        ...assignment,
+        exportIdentityMode: exported.identityMode,
+      }),
     },
     ...exported.participants.map(
       (participant): CsvRow => ({
@@ -572,10 +673,13 @@ export function serializeAssignmentEvidenceCsv(
 export function assignmentEvidenceFilename(
   assignmentId: string,
   extension: "json" | "csv",
+  identityMode: AssignmentExportIdentityMode = "identified",
 ): string {
   const safeAssignmentId = assignmentId.replaceAll(
     /[^A-Za-z0-9._-]/gu,
     "_",
   );
-  return `TraceChain_${safeAssignmentId}_evidence_v1.${extension}`;
+  const identityLabel =
+    identityMode === "pseudonymous" ? "_pseudonymous" : "";
+  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v1.${extension}`;
 }

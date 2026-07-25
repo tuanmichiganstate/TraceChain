@@ -62,6 +62,9 @@ reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
 revisions, event-derived learner activity counts, deterministic rejection
 findings, and a data dictionary.
+Instructors may download those records with identified learner IDs or with
+deterministic assignment-scoped pseudonyms; the interface explicitly warns
+that pseudonymized records are not anonymous.
 They also summarize class competency evidence and its rating distribution, and
 expose expandable per-learner profiles with evidence recency, current rubric
 comments, and direct supporting-event review, without inferring stable

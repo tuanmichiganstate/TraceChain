@@ -1086,6 +1086,23 @@ function AssignmentReport({
                 {t("instructorReview.exportCsv")}
               </a>
             </div>
+            <p>{t("instructorReview.exportPseudonymousHelp")}</p>
+            <div className="instructor-review__export-actions">
+              <a
+                className="button button--secondary"
+                href={`/api/v1/assignments/${encodeURIComponent(report.assignment.assignmentId)}/export.json?identity=pseudonymous`}
+                download
+              >
+                {t("instructorReview.exportPseudonymousJson")}
+              </a>
+              <a
+                className="button button--secondary"
+                href={`/api/v1/assignments/${encodeURIComponent(report.assignment.assignmentId)}/export.csv?identity=pseudonymous`}
+                download
+              >
+                {t("instructorReview.exportPseudonymousCsv")}
+              </a>
+            </div>
           </div>
           <div className="table-scroll">
             <table className="data-table">

@@ -38,8 +38,9 @@ moderation. Learner and author
 portals now expose the bounded individual coffee journey and pack-authoring
 lifecycle. Role-aware navigation includes learner, instructor, rater, author,
 and administrator capabilities, and hosted package jobs reuse verified
-artifacts from the existing generator. Course, roster, and institutional
-identity provisioning remain deployment-administration boundaries.
+artifacts from the existing generator. Application-user access and roles are
+managed in the administrator workspace. Course management and institutional
+identity authentication remain deployment-administration boundaries.
 
 ## Target layers
 

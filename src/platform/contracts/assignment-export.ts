@@ -6,6 +6,10 @@ import type {
 } from "./assessment";
 import type { RunEventV1 } from "./run-events";
 
+export type AssignmentExportIdentityMode =
+  | "identified"
+  | "pseudonymous";
+
 export interface AssignmentExportParticipantV1 {
   readonly assignmentId: string;
   readonly learnerUserId: string;
@@ -44,14 +48,15 @@ export interface ExportDatasetDefinitionV1 {
 }
 
 export interface AssignmentExportDataDictionaryV1 {
-  readonly schemaVersion: "1.3.0";
+  readonly schemaVersion: "1.4.0";
   readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1";
   readonly datasets: readonly ExportDatasetDefinitionV1[];
 }
 
 export interface AssignmentEvidenceExportV1 {
-  readonly schemaVersion: "1.3.0";
+  readonly schemaVersion: "1.4.0";
   readonly exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE";
+  readonly identityMode: AssignmentExportIdentityMode;
   readonly generatedAt: string;
   readonly assignment: HostedAssignmentV1;
   readonly participants: readonly AssignmentExportParticipantV1[];
