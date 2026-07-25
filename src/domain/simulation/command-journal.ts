@@ -26,7 +26,7 @@ import type {
   Tc3CodecSchema,
 } from "../../infrastructure/persistence/tc3-codec";
 import { runtimeCommand, trustedContext } from "../scenario/runtime";
-import { MAX_ATTEMPT_COUNT } from "../../infrastructure/persistence/state-codec";
+import { MAX_ATTEMPT_COUNT } from "../../infrastructure/persistence/attempt-state";
 
 export const JournalOpcode = {
   CREATE_BATCH: 1,

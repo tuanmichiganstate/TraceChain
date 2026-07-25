@@ -29,7 +29,7 @@ are integrated into custody transfer and append-only quantity correction.
 Organizational identity and key custody remain explicitly educational
 simulations.
 
-The additive instructor-platform migration now defines versioned
+The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
 role-projection contracts. The server-authoritative coffee service now carries
 an authorized run through Stage 3 certificate handling, Stage 4 endorsed
@@ -123,10 +123,10 @@ For a clean release tree:
 
 ```bash
 npm run package:scorm -- --preset guided
-npm run package:scorm -- --preset guided,challenge
+npm run package:scorm -- --preset guided,challenge,assessment
 ```
 
-For local verification of both presets from an existing build:
+For local verification of all accepted presets from an existing build:
 
 ```bash
 npm run build
@@ -136,10 +136,13 @@ npm run verify:scorm
 
 Strict release generation produces
 `TraceChain_Guided_StandardCoffee_vi_v2.2.0.zip` and
-`TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip`. The local command appends
-`_NON_RELEASE` to both archive names and to the legacy guided alias. The Docker
-demo selects the current Guided and Challenge archives by their embedded build
-metadata, deploys them into separate reset activities, and ignores stale ZIPs.
+`TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip`, plus
+`TraceChain_Assessment_StandardCoffee_vi_v2.2.0.zip`. The local command appends
+`_NON_RELEASE` to every archive name. The Docker demo selects the current Guided
+and Challenge archives by their embedded build metadata, deploys them into
+separate reset activities, and ignores stale ZIPs. Assessment is generated and
+verified but is not deployed to the demo unless that deployment workflow is
+explicitly extended.
 Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
 
@@ -199,7 +202,7 @@ test/
 
 scripts/               locale + scenario validators, SCORM build + verify
 sites/                 authenticated Sites worker and hosted API boundary
-db/                    D1 schema and ordered migration history
+db/                    Current fresh-install D1 schema
 scenario-packs/        declarative hosted-platform pack sources
 schemas/               published versioned JSON Schemas
 ```
@@ -220,8 +223,8 @@ schemas/               published versioned JSON Schemas
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
-| `npm run build:scorm` | Build both local non-release preset packages |
-| `npm run verify:scorm` | Validate both packages and their shared static build |
+| `npm run build:scorm` | Build all three local non-release preset packages |
+| `npm run verify:scorm` | Validate all three packages and their shared static build |
 | `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 
@@ -229,16 +232,16 @@ schemas/               published versioned JSON Schemas
 
 - `AGENTS.md` — how to verify a change here, and the conventions one follows
 - `docs/CANONICAL_CONFIGURABLE_SCORM_PLAN.md` — the approved configurable
-  simulation boundary, exact scoring migration, TC3 budget, and delivery gates
+  simulation boundary, exact scoring allocation, TC3 budget, and delivery gates
 - `docs/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md` — the approved,
   two-increment follow-on plan for genuine Ed25519 signatures, authorization,
   and endorsement policies
 - `docs/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md` — the approved stopping
   point B roadmap for the hosted instructor-ready platform
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
-  repository audit, migration seams, and target hosted/SCORM boundaries
+  repository audit and target hosted/SCORM boundaries
 - `docs/SCENARIO_PACK_V1.md` — the V1 pack schema, validation, publication,
-  compatibility-adapter, and security contract
+  native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
 - `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md` — administrator-only user and

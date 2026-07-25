@@ -2,8 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { Activity } from "./support/activity";
 import { installScormApi, peek } from "./scorm-harness";
 import { embedConfiguration, hashConfiguration } from "../src/config/hash";
-import { CHALLENGE_PRESET } from "../src/config/presets";
+import {
+  ASSESSMENT_PRESET,
+  CHALLENGE_PRESET,
+} from "../src/config/presets";
 import { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
+import { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 
 async function installChallengeRuntime(page: Page): Promise<void> {
@@ -36,6 +40,64 @@ async function installChallengeRuntime(page: Page): Promise<void> {
     });
   });
 }
+
+async function installAssessmentRuntime(page: Page): Promise<void> {
+  await page.route("**/tracechain.config.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(embedConfiguration(ASSESSMENT_PRESET)),
+    });
+  });
+  await page.route("**/scenario.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(coffeeScenario),
+    });
+  });
+  await page.route("**/build-info.json", async (route) => {
+    const response = await route.fetch();
+    const buildInformation = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...buildInformation,
+        scenarioHash: sha256Hex(
+          `${JSON.stringify(coffeeScenario, null, 2)}\n`,
+        ),
+      }),
+    });
+  });
+}
+
+test("loads Assessment with no hints and final-only feedback", async ({
+  page,
+}) => {
+  await installScormApi(page);
+  await installAssessmentRuntime(page);
+  await page.goto("/");
+  const activity = new Activity(page);
+
+  await activity.start();
+  await activity.answer(/Có\. Dữ liệu đã ghi lên blockchain/);
+  await expect(
+    page.getByText(
+      "Đã ghi nhận câu trả lời; phản hồi sẽ hiển thị vào thời điểm được cấu hình.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Chưa chính xác.")).toHaveCount(0);
+  await activity.continue();
+  await expect(
+    page.getByRole("heading", {
+      name: /Bước 2 – Tạo lô cà phê trên sổ cái/,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Xem gợi ý" }),
+  ).toHaveCount(0);
+});
 
 test("loads Challenge A and preserves mitigation history through its causal report", async ({
   page,

@@ -8,7 +8,6 @@
 
 import {
   IncompatibleAttemptError,
-  LegacyAttemptError,
   PersistenceError,
   UnsupportedStateVersionError,
 } from "../../domain/errors";
@@ -18,7 +17,7 @@ import {
   MAX_ATTEMPT_COUNT,
   MAX_DECISION_VALUE,
   type DecisionRecord,
-} from "./state-codec";
+} from "./attempt-state";
 
 export const TC3_MAGIC = "TC3";
 export const TC3_INTERNAL_CHARACTER_LIMIT = 3_800;
@@ -458,11 +457,6 @@ export function encodeTc3Attempt(
 
 function parseWire(encoded: string): Tc3Wire {
   const [magic, payload, checksum, ...extra] = encoded.trim().split(".");
-  if (magic === "TC2" || magic === "TC1") {
-    throw new LegacyAttemptError(
-      "This attempt uses the previous fixed-package format and requires a new LMS attempt",
-    );
-  }
   if (magic !== TC3_MAGIC) {
     throw new UnsupportedStateVersionError(
       `Unsupported state schema: expected ${TC3_MAGIC}, found "${magic ?? ""}"`,

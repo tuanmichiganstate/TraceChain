@@ -1,6 +1,6 @@
 # ADR 0001: Instructor-platform foundation
 
-Status: accepted for the foundation phase
+Status: superseded by the native-runtime pre-release policy
 Date: 24 July 2026
 
 Post-decision implementation note: cryptographic endorsement Increment B was
@@ -31,11 +31,11 @@ blob storage.
 The domain and application services will not import D1 types. A future
 PostgreSQL adapter can implement the same repository and event-store ports.
 
-### Extend the current engine through compatibility adapters
+### Register the current engine as a native runtime profile
 
 The working coffee command, event, ledger, scoring, and replay services remain
-authoritative for the migrated coffee experience. A versioned scenario-pack
-envelope may select a registered legacy renderer and engine adapter.
+authoritative for the coffee experience. A versioned scenario-pack envelope
+selects the registered native coffee runtime profile.
 
 Generic nodes are added for new packs. Coffee rules are not copied into a new
 generic implementation merely to satisfy a folder structure.

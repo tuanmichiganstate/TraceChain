@@ -1,6 +1,8 @@
 import type { ScenarioDefinitionV1 } from "../contracts/scenario-pack";
 
-export type HostedRuntimeKind = "coffee-v2" | "generic-v1";
+export type HostedRuntimeKind =
+  | "native-coffee-v2"
+  | "generic-v1";
 
 const GENERIC_V1_NODE_TYPES = new Set([
   "BRIEFING",
@@ -15,7 +17,7 @@ export function isGenericHostedRuntimeScenario(
   scenario: ScenarioDefinitionV1,
 ): boolean {
   return (
-    scenario.legacyCompatibility === undefined &&
+    scenario.hostedRuntime === undefined &&
     scenario.roles.length > 0 &&
     scenario.nodes.length > 0 &&
     scenario.nodes.every(
@@ -38,12 +40,12 @@ export function hostedRuntimeKindFor(
   scenario: ScenarioDefinitionV1,
 ): HostedRuntimeKind | null {
   if (
-    scenario.legacyCompatibility?.adapterId ===
+    scenario.hostedRuntime?.runtimeId ===
       "tracechain-coffee-v2" &&
-    scenario.legacyCompatibility.stageId ===
+    scenario.hostedRuntime.entryStageId ===
       "STG_03_ANCHOR_CERTIFICATE"
   ) {
-    return "coffee-v2";
+    return "native-coffee-v2";
   }
   if (isGenericHostedRuntimeScenario(scenario)) {
     return "generic-v1";

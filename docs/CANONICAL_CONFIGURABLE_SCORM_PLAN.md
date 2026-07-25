@@ -1,7 +1,12 @@
 # TraceChain canonical configurable SCORM plan
 
 Status: approved implementation specification
-Current boundary: configurable guided and Challenge A packages only
+Current boundary: configurable Guided, Challenge A, and Assessment packages
+
+Pre-release policy: only the current schemas and TC3 state format are
+supported. When a load-bearing contract changes, reset development attempts and
+regenerate packages; do not add migration readers, aliases, fallback adapters,
+or dual-format behavior.
 
 Approved follow-on work for genuine Ed25519 signatures, authorization, and
 endorsement policies is specified separately in
@@ -417,8 +422,9 @@ adapter. Runtime overflow is an invariant failure, not a normal learner path.
 Worst-case tests use every permitted record and maximum string length.
 
 Configuration hash and scenario version are exact resume boundaries. TC2 data
-is not migrated, overwritten, or cleared. The learner is told to exit and
-start a new LMS attempt; the package does not claim it can create one.
+is unsupported and is never read, overwritten, or cleared. The learner is told
+to exit and start a new LMS attempt; the package does not claim it can create
+one.
 
 ### Transactional persistence sequence
 

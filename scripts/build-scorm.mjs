@@ -58,7 +58,7 @@ function usage() {
   return [
     "Usage:",
     "  npm run package:scorm -- --preset guided",
-    "  npm run package:scorm -- --preset guided,challenge",
+    "  npm run package:scorm -- --preset guided,challenge,assessment",
     "  npm run package:scorm -- --config configs/package.json",
     "",
     "Options:",
@@ -67,7 +67,6 @@ function usage() {
     "  --title <text>       Manifest title (only when generating one package)",
     "  --no-build           Reuse the existing dist/ application build",
     "  --allow-dirty        Permit a non-release local-development package",
-    "  --legacy-guided      Also write tracechain-scorm-v<app-version>.zip",
     "  --help               Show this help",
   ].join("\n");
 }
@@ -79,7 +78,6 @@ function parseArguments(arguments_) {
     title: undefined,
     noBuild: false,
     allowDirty: false,
-    legacyGuided: false,
     help: false,
   };
 
@@ -109,8 +107,6 @@ function parseArguments(arguments_) {
       options.noBuild = true;
     } else if (argument === "--allow-dirty") {
       options.allowDirty = true;
-    } else if (argument === "--legacy-guided") {
-      options.legacyGuided = true;
     } else if (argument === "--help" || argument === "-h") {
       options.help = true;
     } else {
@@ -390,12 +386,16 @@ function resolvePackageText(configuration, scenario, titleOverride) {
       "utf8",
     ),
   );
+  const modeTitleKey = `package.${configuration.mode}.title`;
+  const modeDescriptionKey = `package.${configuration.mode}.description`;
   return {
     title:
       titleOverride ??
+      locale[modeTitleKey] ??
       locale[scenario.titleKey] ??
       `TraceChain ${configuration.mode}`,
     description:
+      locale[modeDescriptionKey] ??
       locale[scenario.descriptionKey] ??
       locale["app.subtitle"] ??
       "TraceChain supply-chain decision simulation",
@@ -777,20 +777,6 @@ async function main() {
         text,
       }),
   );
-
-  if (options.legacyGuided) {
-    const guided = results.find(
-      (result) => result.configuration.mode === "guided",
-    );
-    if (guided === undefined) {
-      throw new Error("--legacy-guided requires a guided package input");
-    }
-    const legacyFileName = classifyPackageFileName(
-      `tracechain-scorm-v${applicationVersion}.zip`,
-      provenance.releaseBuild,
-    );
-    cpSync(guided.outputPath, join(projectRoot, legacyFileName));
-  }
 
   for (const result of results) {
     const sizeKilobytes = (statSync(result.outputPath).size / 1024).toFixed(1);

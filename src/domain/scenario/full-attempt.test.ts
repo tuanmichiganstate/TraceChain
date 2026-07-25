@@ -9,15 +9,11 @@ import {
 } from "../../../test/support/scenario-driver";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { SCENARIO_STAGE_ORDER, ScenarioStageId } from "../types/enums";
-import { encodeAttemptState, decodeAttemptState } from "../../infrastructure/persistence/state-codec";
-import { calculateScore } from "../scoring/score-engine";
-import { deriveCorrectness, deriveDecisions } from "./interaction-log";
+import {
+  deriveCorrectness,
+  deriveDecisions,
+} from "./interaction-log";
 import { currentStage } from "./stage-completion";
-
-const codecSchema = {
-  decisionIds: coffeeScenario.decisionIds,
-  hintIds: coffeeScenario.hintIds,
-};
 
 /** A learner who did everything, correctly, first time. */
 async function playFlawlessAttempt(): Promise<{
@@ -76,59 +72,6 @@ describe("a complete attempt, headless", () => {
     }
   });
 
-  it("fits the whole attempt inside the SCORM budget", async () => {
-    const { recorder, state } = await playFlawlessAttempt();
-    const progress = recorder.progress(state.getState());
-
-    const encoded = encodeAttemptState(
-      {
-        currentStageId: progress.current,
-        completedStageIds: progress.completed,
-        decisions: recorder.decisions,
-        hintsUsed: recorder.hintsUsed,
-        isCompleted: progress.isFinished,
-        isPassed: recorder.isPassing(),
-      },
-      codecSchema,
-    );
-
-    expect(encoded.length).toBeLessThan(3800);
-    expect(encoded.length).toBeLessThan(200);
-  });
-
-  /**
-   * The reproducibility requirement in section 19.3, tested where it actually
-   * matters: across a save and reload, not merely within one session.
-   */
-  it("recomputes the identical score after a save and restore", async () => {
-    const { recorder, state } = await playFlawlessAttempt();
-    const progress = recorder.progress(state.getState());
-    const before = recorder.score().score;
-
-    const encoded = encodeAttemptState(
-      {
-        currentStageId: progress.current,
-        completedStageIds: progress.completed,
-        decisions: recorder.decisions,
-        hintsUsed: recorder.hintsUsed,
-        isCompleted: progress.isFinished,
-        isPassed: recorder.isPassing(),
-      },
-      codecSchema,
-    );
-
-    const restored = decodeAttemptState(encoded, codecSchema);
-    const after = calculateScore(
-      {
-        decisions: restored.decisions,
-        hintsUsed: restored.hintsUsed,
-        correctness: deriveCorrectness(recorder.interactions),
-      },
-      coffeeScenario,
-    ).score;
-
-    expect(after).toEqual(before);
-  });
 });
 
 describe("stage progression", () => {

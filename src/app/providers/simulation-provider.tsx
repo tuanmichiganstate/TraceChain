@@ -103,10 +103,7 @@ import {
   type DiscrepancyDecisionEvaluation,
 } from "../../domain/simulation/consequential-decisions";
 import { replayCommandJournal } from "../../domain/simulation/replay-journal";
-import {
-  LegacyAttemptError,
-  TraceChainError,
-} from "../../domain/errors";
+import { TraceChainError } from "../../domain/errors";
 import { useScenario } from "./scenario-provider";
 import { useOptionalConfiguration } from "./configuration-provider";
 import { GUIDED_PRESET } from "../../config/presets";
@@ -150,12 +147,9 @@ function recoveryDetails(
   readonly requiresNewLmsAttempt: boolean;
 } {
   const messageKey =
-    platformMode === PlatformMode.STANDALONE &&
-    error instanceof LegacyAttemptError
-      ? "errors.legacyStandaloneAttempt"
-      : error instanceof TraceChainError
-        ? error.messageKey
-        : "errors.persistence";
+    error instanceof TraceChainError
+      ? error.messageKey
+      : "errors.persistence";
 
   return {
     messageKey,
@@ -254,9 +248,9 @@ function trustedPayload(
   command: SupplyChainCommand,
   context: TrustedExecutionContext,
 ): SupplyChainCommand {
-  // Legacy ledger payloads still contain initiatedByActorId. It is overwritten
-  // at the trust boundary and can never be asserted by a learner-controlled
-  // form. Actor, organization and role authority live in command metadata.
+  // The domain payload retains the initiating actor for ledger attribution.
+  // It is always overwritten at the trust boundary and cannot be asserted by
+  // a learner-controlled form.
   return { ...command, initiatedByActorId: context.actorId };
 }
 

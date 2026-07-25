@@ -1,6 +1,6 @@
 /** Deterministic reconstruction of accepted scenario history. */
 
-import type { AttemptSnapshot } from "../../infrastructure/persistence/state-codec";
+import type { AttemptSnapshot } from "../../infrastructure/persistence/attempt-state";
 import type { DomainState } from "../ledger/domain-state";
 import { SimulatedLedger } from "../ledger/ledger-engine";
 import type { ValidationRegistries } from "../rules/types";

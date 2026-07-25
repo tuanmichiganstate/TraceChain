@@ -182,9 +182,9 @@ describe("suspend data that no longer decodes", () => {
   afterEach(() => uninstall?.());
 
   /**
-   * TC2 is not migrated or cleared. A package cannot create a new Moodle
-   * attempt, so the recovery screen must say that honestly and leave the LMS
-   * value untouched.
+   * Unsupported data is not interpreted or cleared. A package cannot create a
+   * new Moodle attempt, so the recovery screen must say that honestly and
+   * leave the LMS value untouched.
    */
   it("offers recovery rather than pretending the attempt is new", async () => {
     const api = new MockScorm12Api({

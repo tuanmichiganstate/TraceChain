@@ -1,5 +1,12 @@
 # TraceChain Instructor-Ready Configurable Platform Refactor and Implementation Plan
 
+## Active pre-release upgrade policy
+
+TraceChain has no student or production data to preserve. Upgrade every active
+contract directly, reset development data and generated packages, and maintain
+one current implementation. Do not add backfills, compatibility adapters, dual
+formats, or old-version readers.
+
 ## 1. Instructions to the coding agent
 
 Refactor the existing TraceChain application into a configurable, domain-agnostic platform for blockchain-enabled business simulations. Preserve the current working functionality and existing technology stack wherever reasonable. Do not perform a full rewrite unless the repository audit shows that incremental refactoring is impractical.
@@ -7,10 +14,10 @@ Refactor the existing TraceChain application into a configurable, domain-agnosti
 Before writing production code:
 
 1. Inspect the repository, database, deployment configuration, and current scenario flow.
-2. Produce a brief current-state architecture map and identify reusable modules, hard-coded scenario logic, and migration risks.
+2. Produce a brief current-state architecture map and identify reusable modules, hard-coded scenario logic, and direct-upgrade risks.
 3. Establish or repair the automated test baseline.
 4. Propose any deviations from this plan before implementing them.
-5. Implement the work in small, reviewable phases behind feature flags where practical.
+5. Implement the work in small, reviewable phases while keeping one current implementation.
 
 The core application must not hard-code a particular academic major, institution, scenario, role, asset type, or competency set. New scenario packs should be addable mainly through validated configuration rather than application-code changes.
 
@@ -1161,7 +1168,7 @@ Do not store learner-visible text directly in core business logic.
 - instructor reviews and scores a response;
 - competency evidence links to the correct events;
 - a published scenario version remains unchanged after a new version is created;
-- current TraceChain scenario is migrated and remains playable.
+- the current TraceChain scenario remains playable through its native runtime profile.
 
 ### Scenario validation tests
 
@@ -1178,18 +1185,19 @@ Create a test runner that can simulate all declared branches and flag:
 
 ---
 
-## 29. Migration of the current TraceChain application
+## 29. Direct upgrade of the current TraceChain application
 
 1. Inventory the current stages, roles, assets, decisions, ledger functions, scoring, and stored data.
-2. Define a legacy scenario pack representing the current coffee simulation.
+2. Define the current scenario pack representing the coffee simulation.
 3. Convert hard-coded stages into versioned scenario nodes.
-4. Convert existing records into the new asset, transaction, and event structures.
-5. Preserve existing identifiers where they have external or stored references.
-6. Add regression tests that compare the current expected flow with the migrated flow.
-7. Place the new engine behind feature flags until the migrated scenario passes acceptance tests.
-8. Remove old hard-coded logic only after the new scenario pack is stable.
+4. Replace development records with the current asset, transaction, and event structures.
+5. Keep identifiers only when the current source contracts require them.
+6. Add regression tests that preserve the intended learner flow and outcomes.
+7. Switch to the upgraded engine directly after its acceptance tests pass.
+8. Remove superseded hard-coded logic in the same delivery.
 
-Do not create a second parallel implementation of the same business logic unless it is temporary and explicitly scheduled for removal.
+Do not create a second parallel implementation or retain a compatibility path
+for superseded business logic.
 
 ---
 
@@ -1346,7 +1354,7 @@ The selected platform release is complete only when it includes:
 1. authenticated learner, instructor, scenario-author, administrator, and optional rater roles;
 2. configurable blockchain and professional competency frameworks;
 3. validated, versioned scenario packs and immutable publication;
-4. migration of the current coffee simulation into the scenario-pack engine;
+4. the current coffee simulation registered through its native scenario-pack runtime;
 5. actual, ledger, business, and role-filtered information-state separation;
 6. server-authoritative, append-only run events for hosted single-learner runs;
 7. evidence workspace and detailed evidence-use logging;

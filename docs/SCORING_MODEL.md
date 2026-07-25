@@ -116,15 +116,10 @@ points to 13.2. Per hint:
 | `HINT_TRANSFORMATION_YIELD` | 6 | `INT_TRANSFORM_BATCH` | 1.2 |
 | `HINT_RECALL_PROVENANCE` | 9 | `INT_RECALL_SCOPE` | 4.5 |
 
-**No migration is needed and none is performed.** `HINT_IDS` did not move, so
-the hint bitmap in `cmi.suspend_data` means exactly what it meant before, and
-the codec format is unchanged — old state decodes as it always did. The score
-itself was never stored: it is recomputed from decisions and hints on every
-load, which is what makes recalculation safe rather than a reinterpretation.
-
-The recomputation is one-directional. The new rule caps a subset of what the old
-one capped, so a resumed attempt can only score the same or higher; no learner
-loses a mark they had already been awarded, and a test asserts that across every
+TC3 stores hint identifiers positionally and recomputes the score from the
+current scenario contract. If this load-bearing contract changes before
+release, development attempts are reset; no older state reader is retained.
+The item-scoped rule is asserted across every
 combination of hints. A grade already written to the LMS is untouched: it lives
 in the gradebook, not in suspend data, and a relaunch of a completed attempt is
 read-only, so nothing can overwrite it. The scenario version moved to 2.1.0 to

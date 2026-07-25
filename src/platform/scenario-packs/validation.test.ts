@@ -25,7 +25,7 @@ function validPack(): ScenarioPackV1 {
 }
 
 describe("scenario-pack validation", () => {
-  it("validates the bilingual Stage 3 compatibility pack", () => {
+  it("validates the bilingual native coffee pack", () => {
     const result = validate(structuredClone(packJson));
 
     expect(result.isValid).toBe(true);
@@ -115,30 +115,7 @@ describe("scenario-pack validation", () => {
     }
   });
 
-  it("accepts the pre-mode-config coffee pack only through its registered legacy adapter", () => {
-    const legacy = structuredClone(packJson) as unknown as {
-      scenarios: {
-        supportedModes: string[];
-        modeConfigurations?: unknown;
-        outcomeModels?: unknown;
-      }[];
-    };
-    const scenario = legacy.scenarios[0];
-    if (scenario === undefined) throw new Error("Expected scenario.");
-    scenario.supportedModes = [
-      "tutorial",
-      "standard",
-      "configured",
-    ];
-    delete scenario.modeConfigurations;
-    delete scenario.outcomeModels;
-
-    const result = validate(legacy);
-
-    expect(result.isValid).toBe(true);
-  });
-
-  it("rejects missing mode contracts for scenarios without the registered legacy adapter", () => {
+  it("rejects missing authored mode contracts", () => {
     const invalid = structuredClone(pharmaceuticalPackJson) as unknown as {
       scenarios: {
         modeConfigurations?: unknown;
@@ -355,26 +332,26 @@ describe("scenario-pack validation", () => {
     }
   });
 
-  it("binds the vertical slice to the current coffee scenario contract", () => {
+  it("binds the native runtime to the current coffee domain contract", () => {
     const pack = validPack();
     const scenario = pack.scenarios[0];
-    const compatibility = scenario?.legacyCompatibility;
-    expect(compatibility).toBeDefined();
-    if (scenario === undefined || compatibility === undefined) return;
+    const runtime = scenario?.hostedRuntime;
+    expect(runtime).toBeDefined();
+    if (scenario === undefined || runtime === undefined) return;
 
-    expect(compatibility.scenarioId).toBe(coffeeScenario.scenarioId);
-    expect(compatibility.scenarioVersion).toBe(
+    expect(runtime.domainScenarioId).toBe(coffeeScenario.scenarioId);
+    expect(runtime.domainScenarioVersion).toBe(
       coffeeScenario.scenarioVersion,
     );
     expect(
       coffeeScenario.stages.some(
-        (stage) => stage.stageId === compatibility.stageId,
+        (stage) => stage.stageId === runtime.entryStageId,
       ),
     ).toBe(true);
-    for (const binding of compatibility.actionBindings) {
+    for (const binding of runtime.actionBindings) {
       expect(
         coffeeScenario.runtime.learnerCommandTemplates[
-          binding.legacyActionId
+          binding.domainActionId
         ],
       ).toBeDefined();
     }

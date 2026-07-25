@@ -30,7 +30,8 @@ which silently voids the integrity lesson the stage exists to teach.
 
 Prefer typed document metadata (a discriminated union) over optional fields
 sprayed onto every anchor. `DocumentAnchor` is not persisted — it is rebuilt by
-replay — so its shape can change with no migration.
+replay, so a pre-release shape change is handled by resetting development
+attempts rather than adding an upgrade reader.
 
 ## Injection
 

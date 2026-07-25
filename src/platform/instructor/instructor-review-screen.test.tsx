@@ -14,9 +14,9 @@ import {
 const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
   schemaVersion: "1.0.0",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
-  packVersion: "1.6.0",
+  packVersion: "1.7.0",
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-  scenarioVersion: "1.6.0",
+  scenarioVersion: "1.7.0",
   packTitleKey:
     "platformPack.standardCoffeeStage3.manifest.title",
   scenarioTitleKey:
@@ -97,27 +97,27 @@ function renderScreen(api: InstructorReviewApi) {
 }
 
 describe("instructor review screen", () => {
-  it("generates accepted guided or challenge packages through the hosted job API", async () => {
+  it("generates an accepted assessment package through the hosted job API", async () => {
     const createScormPackageJob = vi.fn().mockResolvedValue({
       schemaVersion: "1.0.0",
-      jobId: "JOB_SCORM_CHALLENGE_001",
-      presetId: "challenge",
+      jobId: "JOB_SCORM_ASSESSMENT_001",
+      presetId: "assessment",
       status: "completed",
-      title: "TraceChain Challenge A",
-      filename: "TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip",
+      title: "TraceChain Assessment",
+      filename: "TraceChain_Assessment_StandardCoffee_vi_v2.2.0.zip",
       sha256: "a".repeat(64),
       sizeBytes: 1234,
       release: true,
       configurationHash: "b".repeat(64),
-      scenarioId: "SCN_COFFEE_CHALLENGE_A",
-      scenarioVersion: "1.1.0",
+      scenarioId: "SCN_COFFEE_001",
+      scenarioVersion: "2.2.0",
       applicationBuildHash: "c".repeat(64),
       sourceCommit: "d".repeat(40),
       artifactKey: "scorm-packages/a/package.zip",
       requestedAt: "2026-07-24T08:00:00.000Z",
       completedAt: "2026-07-24T08:00:00.000Z",
       requestedByUserId: "USER_INSTRUCTOR_001",
-      downloadUrl: "/api/v1/scorm-package-jobs/JOB_SCORM_CHALLENGE_001/download",
+      downloadUrl: "/api/v1/scorm-package-jobs/JOB_SCORM_ASSESSMENT_001/download",
     });
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
@@ -149,7 +149,7 @@ describe("instructor review screen", () => {
     const user = userEvent.setup();
     await user.selectOptions(
       within(builder).getByLabelText("Package preset"),
-      "challenge",
+      "assessment",
     );
     await user.click(
       within(builder).getByRole("button", {
@@ -157,13 +157,13 @@ describe("instructor review screen", () => {
       }),
     );
 
-    expect(createScormPackageJob).toHaveBeenCalledWith("challenge");
+    expect(createScormPackageJob).toHaveBeenCalledWith("assessment");
     const download = await within(builder).findByRole("link", {
       name: "Download ZIP",
     });
     expect(download).toHaveAttribute(
       "href",
-      "/api/v1/scorm-package-jobs/JOB_SCORM_CHALLENGE_001/download",
+      "/api/v1/scorm-package-jobs/JOB_SCORM_ASSESSMENT_001/download",
     );
     expect(within(builder).getByText("Release")).toBeInTheDocument();
   });
@@ -745,7 +745,7 @@ describe("instructor review screen", () => {
             recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
             value: {
               policyId: "AUTH_ISSUE_CERTIFICATE",
-              policyType: "LEGACY_POLICY",
+              policyType: "RUNTIME_POLICY",
               titleKey:
                 "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
             },

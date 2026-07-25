@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockScorm12Api } from "../../../test/scorm-mock/mock-scorm-api";
 import { StandalonePersistenceAdapter } from "./standalone-adapter";
-import { decodeAttemptState, encodeAttemptState, MAX_ATTEMPT_COUNT } from "./state-codec";
-import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
-import { SCENARIO_STAGE_ORDER } from "../../domain/types/enums";
-import type { DecisionRecord } from "./state-codec";
 import { readFileSync } from "node:fs";
 
 /**
@@ -25,7 +21,6 @@ import { readFileSync } from "node:fs";
  *   - the budget:   how much headroom this product deliberately keeps
  */
 const SCORM_LIMIT = 4096;
-const PRODUCT_BUDGET = 4000;
 const SCORM_ERROR_INCORRECT_DATA_TYPE = "405";
 
 const characters = (count: number): string => "x".repeat(count);
@@ -82,82 +77,6 @@ describe("the standalone adapter reports the boundary rather than enforcing it",
     // Stored, not refused -- and the diagnostic is what makes that safe.
     expect(await adapter.loadAttemptState()).toHaveLength(SCORM_LIMIT + 1);
     expect(adapter.getDiagnostics().join(" ")).toMatch(/over the 4096.*rejected by a real LMS/s);
-  });
-});
-
-describe("the encoded payload keeps the budget claim true", () => {
-  const schema = { decisionIds: coffeeScenario.decisionIds, hintIds: coffeeScenario.hintIds };
-
-  const worstCase = (): string => {
-    const decisions: Record<string, DecisionRecord> = {};
-    coffeeScenario.decisionIds.forEach((id, index) => {
-      decisions[id] = { encodedValue: (index % 7) + 1, attemptCount: 3 };
-    });
-    return encodeAttemptState(
-      {
-        currentStageId: SCENARIO_STAGE_ORDER[SCENARIO_STAGE_ORDER.length - 1] as never,
-        completedStageIds: [...SCENARIO_STAGE_ORDER],
-        decisions,
-        hintsUsed: [...coffeeScenario.hintIds],
-        isCompleted: true,
-        isPassed: true,
-      },
-      schema,
-    );
-  };
-
-  /**
-   * "Worst case" is bounded by construction rather than by assumption: the codec
-   * saturates attemptCount at MAX_ATTEMPT_COUNT when encoding, so no learner can
-   * grow the payload by retrying. The claim is scoped to this scenario -- a
-   * future scenario with more decisions would need its own budget check.
-   */
-  it("keeps the coffee scenario's maximum encoded state inside the product budget", () => {
-    expect(worstCase().length).toBeLessThanOrEqual(PRODUCT_BUDGET);
-  });
-
-  it("saturates attempt counts, so retrying cannot grow the payload", () => {
-    const schemaLocal = schema;
-    const build = (attempts: number): string => {
-      const decisions: Record<string, DecisionRecord> = {};
-      coffeeScenario.decisionIds.forEach((id) => {
-        decisions[id] = { encodedValue: 1, attemptCount: attempts };
-      });
-      return encodeAttemptState(
-        {
-          currentStageId: SCENARIO_STAGE_ORDER[0] as never,
-          completedStageIds: [],
-          decisions,
-          hintsUsed: [],
-          isCompleted: false,
-          isPassed: false,
-        },
-        schemaLocal,
-      );
-    };
-    // Against the exported limit, not a hardcoded guess at it.
-    expect(build(MAX_ATTEMPT_COUNT).length).toBe(build(MAX_ATTEMPT_COUNT + 1).length);
-
-    // Semantic saturation, not merely equal encoded length: the decoded value
-    // is clamped, so an over-limit count cannot round-trip back out.
-    const decoded = decodeAttemptState(build(MAX_ATTEMPT_COUNT + 100), schema);
-    const firstDecision = coffeeScenario.decisionIds[0] as string;
-    expect(decoded.decisions[firstDecision]?.attemptCount).toBe(MAX_ATTEMPT_COUNT);
-  });
-
-  /**
-   * ASCII is what makes `.length` mean the same thing to us and to the LMS.
-   * It holds only because nothing learner-authored is ever persisted -- the
-   * codec stores enum indices and counts. Persist a free-text field and the
-   * payload becomes multi-byte, at which point character counting and whatever
-   * the LMS counts stop agreeing.
-   */
-  it("encodes as printable ASCII, and to the codec's own grammar", () => {
-    const encoded = worstCase();
-    expect(encoded).toMatch(/^[\x20-\x7E]+$/);
-    expect(encoded).toMatch(
-      /^TC2\.[0-9a-z]+\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-z]*\.[0-9a-f]+\.[0-9a-f]{8}$/,
-    );
   });
 });
 

@@ -2,14 +2,14 @@
 
 ## Boundary
 
-The `/instructor` graphical builder exposes only the accepted `guided` and
-`challenge` presets. It does not reimplement the Node package generator.
+The `/instructor` graphical builder exposes the accepted `guided`, `challenge`,
+and `assessment` presets. It does not reimplement the Node package generator.
 
 One site build:
 
 1. builds the static application once;
 2. invokes the existing multi-preset SCORM generator;
-3. verifies both ZIPs and their shared application digest;
+3. verifies all three ZIPs and their shared application digest;
 4. writes a content-addressed package catalogue; and
 5. copies the exact verified ZIP bytes into the hosted static artifact set.
 
@@ -45,8 +45,9 @@ Each job records:
 - ZIP filename, size, and SHA-256; and
 - the content-addressed object key.
 
-Guided and Challenge entries must carry the same static application-build hash.
-Their external runtime configuration and scenario files differ intentionally.
+Guided, Challenge, and Assessment entries must carry the same static
+application-build hash. Their external runtime configuration and scenario files
+differ intentionally.
 
 Local dirty builds remain non-release artifacts and retain the
 `_NON_RELEASE` filename suffix. The hosted flow does not convert them into
@@ -54,7 +55,6 @@ release artifacts.
 
 ## Current presets
 
-Guided and Challenge are available because both have accepted content and
-existing SCORM verification. Assessment and Technical Laboratory remain
-hidden until their separate content is complete and accepted. No empty or
-placeholder package is generated.
+Guided, Challenge, and Assessment are available because each has accepted
+content and SCORM verification. Technical Laboratory remains hidden until its
+content is complete and accepted. No empty or placeholder package is generated.

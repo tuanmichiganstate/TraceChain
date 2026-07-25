@@ -7,9 +7,9 @@ const assignment: HostedAssignmentV1 = {
   assignmentId: "ASSIGNMENT_AVAILABILITY_001",
   title: "Availability cohort",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
-  packVersion: "1.6.0",
+  packVersion: "1.7.0",
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-  scenarioVersion: "1.6.0",
+  scenarioVersion: "1.7.0",
   mode: "standard",
   runConfiguration: {
     mode: "standard",
@@ -57,7 +57,12 @@ describe("assignment start availability", () => {
   it("gives explicit closure precedence over the date window", () => {
     expect(
       assignmentStartAvailability(
-        { ...assignment, status: "closed" },
+        {
+          ...assignment,
+          status: "closed",
+          closedAt: "2026-07-25T12:00:00.000Z",
+          closedByUserId: "USER_INSTRUCTOR_001",
+        },
         "2026-08-01T12:00:00.000Z",
       ).status,
     ).toBe("closed");

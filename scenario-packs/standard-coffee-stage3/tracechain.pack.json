@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -680,7 +680,7 @@
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
@@ -988,57 +988,57 @@
       "policies": [
         {
           "policyId": "AUTH_ISSUE_CERTIFICATE",
-          "policyType": "LEGACY_POLICY",
+          "policyType": "RUNTIME_POLICY",
           "title": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title"
           },
           "configuration": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyPolicyId": "AUTH_ISSUE_CERTIFICATE"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainPolicyId": "AUTH_ISSUE_CERTIFICATE"
           }
         },
         {
           "policyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER",
-          "policyType": "LEGACY_POLICY",
+          "policyType": "RUNTIME_POLICY",
           "title": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CUSTODY_SENDER_AND_RECEIVER.title"
           },
           "configuration": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyPolicyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainPolicyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
           }
         },
         {
           "policyId": "POLICY_DISCREPANCY_DECISION",
-          "policyType": "LEGACY_POLICY",
+          "policyType": "RUNTIME_POLICY",
           "title": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.POLICY_DISCREPANCY_DECISION.title"
           },
           "configuration": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyPolicyId": "POLICY_DISCREPANCY_DECISION"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainPolicyId": "POLICY_DISCREPANCY_DECISION"
           }
         },
         {
           "policyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR",
-          "policyType": "LEGACY_POLICY",
+          "policyType": "RUNTIME_POLICY",
           "title": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR.title"
           },
           "configuration": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyPolicyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainPolicyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
           }
         },
         {
           "policyId": "AUTH_RECALL",
-          "policyType": "LEGACY_POLICY",
+          "policyType": "RUNTIME_POLICY",
           "title": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_RECALL.title"
           },
           "configuration": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyPolicyId": "AUTH_RECALL"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainPolicyId": "AUTH_RECALL"
           }
         }
       ],
@@ -1055,8 +1055,8 @@
             "LOGISTICS_COORDINATOR"
           ],
           "content": {
-            "adapterId": "tracechain-coffee-v2",
-            "legacyDocumentRole": "qualityCertificateAnchorId"
+            "runtimeId": "tracechain-coffee-v2",
+            "domainDocumentRole": "qualityCertificateAnchorId"
           }
         }
       ],
@@ -1265,7 +1265,7 @@
           "policyIds": [
             "AUTH_ISSUE_CERTIFICATE"
           ],
-          "legacyActionBindingId": "BIND_STAGE3_CERTIFICATE",
+          "runtimeActionBindingId": "BIND_STAGE3_CERTIFICATE",
           "transitions": [
             {
               "transitionId": "TRANSITION_PROPOSAL_TO_POLICY",
@@ -1400,7 +1400,7 @@
           "policyIds": [
             "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
           ],
-          "legacyActionBindingId": "BIND_STAGE4_CUSTODY",
+          "runtimeActionBindingId": "BIND_STAGE4_CUSTODY",
           "transitions": [
             {
               "transitionId": "TRANSITION_CUSTODY_PROPOSAL_TO_ENDORSEMENT",
@@ -1510,7 +1510,7 @@
           "proposalType": "RECORD_TRANSPORT_CONDITION",
           "sourceDecisionId": "DECISION_CUSTODY_SCOPE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE4_TRANSPORT",
+          "runtimeActionBindingId": "BIND_STAGE4_TRANSPORT",
           "transitions": [
             {
               "transitionId": "TRANSITION_TRANSPORT_TO_STAGE5",
@@ -1617,7 +1617,7 @@
           "proposalType": "RECEIVE_BATCH",
           "sourceDecisionId": "DECISION_RECEIPT_AND_PURCHASE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE5_RECEIPT",
+          "runtimeActionBindingId": "BIND_STAGE5_RECEIPT",
           "transitions": [
             {
               "transitionId": "TRANSITION_RECEIPT_TO_OWNERSHIP",
@@ -1637,7 +1637,7 @@
           "proposalType": "TRANSFER_OWNERSHIP",
           "sourceDecisionId": "DECISION_RECEIPT_AND_PURCHASE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE5_PURCHASE",
+          "runtimeActionBindingId": "BIND_STAGE5_PURCHASE",
           "transitions": [
             {
               "transitionId": "TRANSITION_OWNERSHIP_TO_DISCREPANCY",
@@ -1818,7 +1818,7 @@
           "policyIds": [
             "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
           ],
-          "legacyActionBindingId": "BIND_STAGE5_CORRECTION",
+          "runtimeActionBindingId": "BIND_STAGE5_CORRECTION",
           "transitions": [
             {
               "transitionId": "TRANSITION_CORRECTION_TO_ENDORSEMENT",
@@ -1992,7 +1992,7 @@
           "proposalType": "TRANSFORM_BATCH",
           "sourceDecisionId": "DECISION_TRANSFORMATION_ACTION",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE6_TRANSFORM",
+          "runtimeActionBindingId": "BIND_STAGE6_TRANSFORM",
           "transitions": [
             {
               "transitionId": "TRANSITION_TRANSFORMATION_TO_PROVENANCE_DECISION",
@@ -2083,7 +2083,7 @@
           "proposalType": "PACKAGE_BATCH",
           "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE7_PACKAGE",
+          "runtimeActionBindingId": "BIND_STAGE7_PACKAGE",
           "transitions": [
             {
               "transitionId": "TRANSITION_PACKAGE_TO_DISTRIBUTION_OWNERSHIP",
@@ -2103,7 +2103,7 @@
           "proposalType": "TRANSFER_OWNERSHIP",
           "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE7_DISTRIBUTION_OWNERSHIP",
+          "runtimeActionBindingId": "BIND_STAGE7_DISTRIBUTION_OWNERSHIP",
           "transitions": [
             {
               "transitionId": "TRANSITION_DISTRIBUTION_OWNERSHIP_TO_DISPATCH",
@@ -2123,7 +2123,7 @@
           "proposalType": "DISPATCH_BATCH",
           "sourceDecisionId": "INT_TRANSFORMATION_PROVENANCE",
           "policyIds": [],
-          "legacyActionBindingId": "BIND_STAGE7_DISPATCH",
+          "runtimeActionBindingId": "BIND_STAGE7_DISPATCH",
           "transitions": [
             {
               "transitionId": "TRANSITION_DISPATCH_TO_STAGE8",
@@ -2628,7 +2628,7 @@
           "policyIds": [
             "AUTH_RECALL"
           ],
-          "legacyActionBindingId": "BIND_STAGE9_RECALL",
+          "runtimeActionBindingId": "BIND_STAGE9_RECALL",
           "transitions": [
             {
               "transitionId": "TRANSITION_RECALL_PROPOSAL_TO_POLICY",
@@ -2830,77 +2830,77 @@
         "RULE_AUTHORIZED_RECALL_COMMITTED",
         "RULE_BLOCKCHAIN_SUITABILITY_RECOGNIZED"
       ],
-      "legacyCompatibility": {
-        "adapterId": "tracechain-coffee-v2",
-        "scenarioId": "SCN_COFFEE_001",
-        "scenarioVersion": "2.2.0",
-        "stageId": "STG_03_ANCHOR_CERTIFICATE",
+      "hostedRuntime": {
+        "runtimeId": "tracechain-coffee-v2",
+        "domainScenarioId": "SCN_COFFEE_001",
+        "domainScenarioVersion": "2.2.0",
+        "entryStageId": "STG_03_ANCHOR_CERTIFICATE",
         "actionBindings": [
           {
             "bindingId": "BIND_STAGE3_CERTIFICATE",
             "nodeId": "NODE_CERTIFICATE_PROPOSAL",
             "commandType": "SUBMIT_CERTIFICATE_DECISION",
-            "legacyActionId": "ISSUE_CERTIFICATE"
+            "domainActionId": "ISSUE_CERTIFICATE"
           },
           {
             "bindingId": "BIND_STAGE4_CUSTODY",
             "nodeId": "NODE_CUSTODY_PROPOSAL",
             "commandType": "CREATE_CUSTODY_TRANSFER_PROPOSAL",
-            "legacyActionId": "TRANSFER_CUSTODY"
+            "domainActionId": "TRANSFER_CUSTODY"
           },
           {
             "bindingId": "BIND_STAGE4_TRANSPORT",
             "nodeId": "NODE_TRANSPORT_PROPOSAL",
             "commandType": "RECORD_TRANSPORT_CONDITION",
-            "legacyActionId": "RECORD_TRANSPORT"
+            "domainActionId": "RECORD_TRANSPORT"
           },
           {
             "bindingId": "BIND_STAGE5_RECEIPT",
             "nodeId": "NODE_RECEIPT_PROPOSAL",
             "commandType": "RECEIVE_BATCH",
-            "legacyActionId": "RECEIVE_BATCH"
+            "domainActionId": "RECEIVE_BATCH"
           },
           {
             "bindingId": "BIND_STAGE5_PURCHASE",
             "nodeId": "NODE_OWNERSHIP_PROPOSAL",
             "commandType": "PURCHASE_ON_RECEIPT",
-            "legacyActionId": "PURCHASE_ON_RECEIPT"
+            "domainActionId": "PURCHASE_ON_RECEIPT"
           },
           {
             "bindingId": "BIND_STAGE5_CORRECTION",
             "nodeId": "NODE_CORRECTION_PROPOSAL",
             "commandType": "CREATE_CORRECTION_PROPOSAL",
-            "legacyActionId": "RECORD_CORRECTION"
+            "domainActionId": "RECORD_CORRECTION"
           },
           {
             "bindingId": "BIND_STAGE6_TRANSFORM",
             "nodeId": "NODE_TRANSFORMATION_PROPOSAL",
             "commandType": "TRANSFORM_BATCH",
-            "legacyActionId": "TRANSFORM_BATCH"
+            "domainActionId": "TRANSFORM_BATCH"
           },
           {
             "bindingId": "BIND_STAGE7_PACKAGE",
             "nodeId": "NODE_PACKAGING_PROPOSAL",
             "commandType": "PACKAGE_BATCH",
-            "legacyActionId": "PACKAGE_BATCH"
+            "domainActionId": "PACKAGE_BATCH"
           },
           {
             "bindingId": "BIND_STAGE7_DISTRIBUTION_OWNERSHIP",
             "nodeId": "NODE_DISTRIBUTION_OWNERSHIP_PROPOSAL",
             "commandType": "TRANSFER_DISTRIBUTION_OWNERSHIP",
-            "legacyActionId": "TRANSFER_OWNERSHIP"
+            "domainActionId": "TRANSFER_OWNERSHIP"
           },
           {
             "bindingId": "BIND_STAGE7_DISPATCH",
             "nodeId": "NODE_DISPATCH_PROPOSAL",
             "commandType": "DISPATCH_BATCH",
-            "legacyActionId": "DISPATCH_BATCH"
+            "domainActionId": "DISPATCH_BATCH"
           },
           {
             "bindingId": "BIND_STAGE9_RECALL",
             "nodeId": "NODE_RECALL_PROPOSAL",
             "commandType": "SUBMIT_RECALL_TRANSACTION",
-            "legacyActionId": "RECALL_BATCH"
+            "domainActionId": "RECALL_BATCH"
           }
         ]
       }

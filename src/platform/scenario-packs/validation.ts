@@ -1336,7 +1336,7 @@ function validateNodeContent(
           "proposalType",
           "sourceDecisionId",
           "policyIds",
-          "legacyActionBindingId",
+          "runtimeActionBindingId",
         ],
         path,
       );
@@ -1371,10 +1371,10 @@ function validateNodeContent(
           "must reference a policy in this scenario",
         );
       });
-      if (node.legacyActionBindingId !== undefined) {
+      if (node.runtimeActionBindingId !== undefined) {
         context.string(
-          node.legacyActionBindingId,
-          `${path}.legacyActionBindingId`,
+          node.runtimeActionBindingId,
+          `${path}.runtimeActionBindingId`,
           { identifier: true },
         );
       }
@@ -1805,6 +1805,7 @@ function validateScenario(
   context: ValidationContext,
   value: unknown,
   path: string,
+  schemaVersion: unknown,
   supportedLocales: readonly string[],
   competencyIds: ReadonlySet<string>,
   indicatorIds: ReadonlySet<string>,
@@ -1834,7 +1835,7 @@ function validateScenario(
       "nodes",
       "rubricIds",
       "evidenceRuleIds",
-      "legacyCompatibility",
+      "hostedRuntime",
     ],
     path,
   );
@@ -1871,18 +1872,10 @@ function validateScenario(
       "must be tutorial, standard, sandbox, or configured",
     );
   });
-  const usesLegacyCoffeeModeContract =
-    scenario.modeConfigurations === undefined &&
-    scenario.outcomeModels === undefined &&
-    isJsonObject(scenario.legacyCompatibility) &&
-    scenario.legacyCompatibility.adapterId ===
-      "tracechain-coffee-v2";
-  const outcomeModels = usesLegacyCoffeeModeContract
-    ? []
-    : context.array(
-        scenario.outcomeModels,
-        `${path}.outcomeModels`,
-      );
+  const outcomeModels = context.array(
+    scenario.outcomeModels,
+    `${path}.outcomeModels`,
+  );
   const outcomeCodesByModel = new Map<string, ReadonlySet<string>>();
   if (outcomeModels !== null) {
     outcomeModels.forEach((value, index) => {
@@ -2018,12 +2011,10 @@ function validateScenario(
     "must not contain duplicate outcome-model identifiers",
   );
 
-  const modeConfigurations = usesLegacyCoffeeModeContract
-    ? []
-    : context.array(
-        scenario.modeConfigurations,
-        `${path}.modeConfigurations`,
-      );
+  const modeConfigurations = context.array(
+    scenario.modeConfigurations,
+    `${path}.modeConfigurations`,
+  );
   const configuredModes: string[] = [];
   if (modeConfigurations !== null) {
     modeConfigurations.forEach((value, index) => {
@@ -2158,12 +2149,11 @@ function validateScenario(
     "must define each hosted mode at most once",
   );
   context.check(
-    usesLegacyCoffeeModeContract ||
-      (modes.length === configuredModes.length &&
-        modes.every((mode) => configuredModes.includes(mode))),
+    modes.length === configuredModes.length &&
+      modes.every((mode) => configuredModes.includes(mode)),
     "MODE_CONFIGURATION_MISMATCH",
     `${path}.modeConfigurations`,
-    "must define exactly one configuration for every supported mode unless using the registered legacy coffee adapter",
+    "must define exactly one configuration for every supported mode",
   );
 
   const targets = context.array(
@@ -2429,7 +2419,7 @@ function validateScenario(
       context.check(
         policy.policyType === "AUTHORIZATION" ||
           policy.policyType === "BUSINESS_RULE" ||
-          policy.policyType === "LEGACY_POLICY",
+          policy.policyType === "RUNTIME_POLICY",
         "INVALID_POLICY_TYPE",
         `${policyPath}.policyType`,
         "must use a supported declarative policy type",
@@ -2566,50 +2556,57 @@ function validateScenario(
     policyIds,
     roleIds,
   );
-  validateLegacyCompatibility(context, scenario, path);
+  validateHostedRuntime(context, scenario, path, schemaVersion);
 }
 
-function validateLegacyCompatibility(
+function validateHostedRuntime(
   context: ValidationContext,
   scenario: Readonly<Record<string, unknown>>,
   path: string,
+  schemaVersion: unknown,
 ): void {
-  if (scenario.legacyCompatibility === undefined) return;
-  const compatibility = context.object(
-    scenario.legacyCompatibility,
-    `${path}.legacyCompatibility`,
+  if (scenario.hostedRuntime === undefined) return;
+  context.check(
+    schemaVersion === "1.1.0",
+    "HOSTED_RUNTIME_REQUIRES_SCHEMA_1_1",
+    `${path}.hostedRuntime`,
+    "requires scenario-pack schema version 1.1.0",
   );
-  if (compatibility === null) return;
+  const runtime = context.object(
+    scenario.hostedRuntime,
+    `${path}.hostedRuntime`,
+  );
+  if (runtime === null) return;
   context.allowedKeys(
-    compatibility,
+    runtime,
     [
-      "adapterId",
-      "scenarioId",
-      "scenarioVersion",
-      "stageId",
+      "runtimeId",
+      "domainScenarioId",
+      "domainScenarioVersion",
+      "entryStageId",
       "actionBindings",
     ],
-    `${path}.legacyCompatibility`,
+    `${path}.hostedRuntime`,
   );
   context.check(
-    compatibility.adapterId === "tracechain-coffee-v2",
-    "UNKNOWN_LEGACY_ADAPTER",
-    `${path}.legacyCompatibility.adapterId`,
-    "must name a registered compatibility adapter",
+    runtime.runtimeId === "tracechain-coffee-v2",
+    "UNKNOWN_HOSTED_RUNTIME",
+    `${path}.hostedRuntime.runtimeId`,
+    "must name a registered native runtime",
   );
   context.string(
-    compatibility.scenarioId,
-    `${path}.legacyCompatibility.scenarioId`,
+    runtime.domainScenarioId,
+    `${path}.hostedRuntime.domainScenarioId`,
     { identifier: true },
   );
   context.string(
-    compatibility.scenarioVersion,
-    `${path}.legacyCompatibility.scenarioVersion`,
+    runtime.domainScenarioVersion,
+    `${path}.hostedRuntime.domainScenarioVersion`,
     { semanticVersion: true },
   );
   context.string(
-    compatibility.stageId,
-    `${path}.legacyCompatibility.stageId`,
+    runtime.entryStageId,
+    `${path}.hostedRuntime.entryStageId`,
     { identifier: true },
   );
   const nodes = Array.isArray(scenario.nodes)
@@ -2623,30 +2620,25 @@ function validateLegacyCompatibility(
   const proposalBindingIds = new Set(
     nodes.flatMap((node) =>
       node.nodeType === "TRANSACTION_PROPOSAL" &&
-      typeof node.legacyActionBindingId === "string"
-        ? [node.legacyActionBindingId]
+      typeof node.runtimeActionBindingId === "string"
+        ? [node.runtimeActionBindingId]
         : [],
     ),
   );
   const bindings = context.array(
-    compatibility.actionBindings,
-    `${path}.legacyCompatibility.actionBindings`,
+    runtime.actionBindings,
+    `${path}.hostedRuntime.actionBindings`,
   );
   if (bindings === null) return;
   const bindingIds = new Set<string>();
   bindings.forEach((bindingValue, bindingIndex) => {
     const bindingPath =
-      `${path}.legacyCompatibility.actionBindings[${String(bindingIndex)}]`;
+      `${path}.hostedRuntime.actionBindings[${String(bindingIndex)}]`;
     const binding = context.object(bindingValue, bindingPath);
     if (binding === null) return;
     context.allowedKeys(
       binding,
-      [
-        "bindingId",
-        "nodeId",
-        "commandType",
-        "legacyActionId",
-      ],
+      ["bindingId", "nodeId", "commandType", "domainActionId"],
       bindingPath,
     );
     const bindingId = context.string(
@@ -2657,7 +2649,7 @@ function validateLegacyCompatibility(
     if (bindingId !== null) {
       context.check(
         !bindingIds.has(bindingId),
-        "DUPLICATE_LEGACY_BINDING",
+        "DUPLICATE_RUNTIME_BINDING",
         `${bindingPath}.bindingId`,
         "must be unique",
       );
@@ -2679,16 +2671,18 @@ function validateLegacyCompatibility(
     context.string(binding.commandType, `${bindingPath}.commandType`, {
       identifier: true,
     });
-    context.string(binding.legacyActionId, `${bindingPath}.legacyActionId`, {
-      identifier: true,
-    });
+    context.string(
+      binding.domainActionId,
+      `${bindingPath}.domainActionId`,
+      { identifier: true },
+    );
   });
   for (const proposalBindingId of proposalBindingIds) {
     context.check(
       bindingIds.has(proposalBindingId),
-      "UNKNOWN_LEGACY_BINDING",
+      "UNKNOWN_RUNTIME_BINDING",
       `${path}.nodes`,
-      `references missing legacy binding ${proposalBindingId}`,
+      `references missing runtime binding ${proposalBindingId}`,
     );
   }
 }
@@ -2757,10 +2751,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.0.0",
+      pack.schemaVersion === "1.1.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.0.0",
+      "must equal 1.1.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });
@@ -2873,6 +2867,7 @@ export function validateScenarioPack(
           context,
           scenarioValue,
           `$.scenarios[${String(scenarioIndex)}]`,
+          pack.schemaVersion,
           supportedLocales,
           competencyIds,
           indicatorIds,

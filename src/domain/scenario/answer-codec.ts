@@ -30,7 +30,7 @@ import {
   type KnowledgeCheckDefinition,
   type ScenarioDefinition,
 } from "../types/scenario";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 import type { DomainState } from "../ledger/domain-state";
 import { scoringEvidenceSatisfied } from "./transaction-evidence";
 

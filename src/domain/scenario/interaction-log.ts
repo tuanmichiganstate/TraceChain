@@ -23,7 +23,7 @@
 
 import { LearnerInteractionType, type LearnerInteraction } from "../types/scoring";
 import type { ScenarioStageId } from "../types/enums";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 
 export interface RecordInteractionInput {
   readonly stageId: ScenarioStageId;

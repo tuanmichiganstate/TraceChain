@@ -24,7 +24,7 @@
     "test:content-review": "node --test scripts/generate-content-review.test.mjs",
     "test:package-generator": "node --test scripts/scorm-package-policy.test.mjs",
     "package:scorm": "node scripts/build-scorm.mjs",
-    "build:scorm": "node scripts/build-scorm.mjs --preset guided,challenge --no-build --allow-dirty --legacy-guided",
+    "build:scorm": "node scripts/build-scorm.mjs --preset guided,challenge,assessment --no-build --allow-dirty",
     "verify:scorm": "node scripts/verify-scorm.mjs",
     "verify:signature-evidence": "node scripts/verify-signature-evidence.mjs",
     "quality": "npm run lint && npm run typecheck && npm run test && npm run test:site && npm run validate:locales && npm run validate:scenario && npm run validate:platform-pack && npm run verify:e2e-matrix && npm run test:content-review && npm run test:package-generator && npm run verify:content-review && npm run build && npm run build:scorm && npm run verify:scorm && npm run build:site:from-artifacts",

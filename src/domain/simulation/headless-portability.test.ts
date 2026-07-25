@@ -31,7 +31,7 @@ import {
   TransactionType,
 } from "../types/enums";
 import { KnowledgeCheckType } from "../types/scenario";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import {
   commandJournalEntry,

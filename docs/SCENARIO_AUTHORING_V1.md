@@ -44,8 +44,8 @@ identifier form as application catalogue keys, and every value must be a
 non-empty string. Embedded values are part of the immutable pack content hash.
 They override application catalogue values only for that pack preview.
 
-The standard coffee compatibility pack continues to use the application
-catalogues. This preserves the existing SCORM localization contract while
+The standard coffee native pack uses the application catalogues. This preserves
+the existing SCORM localization contract while
 allowing new disciplinary authoring packs to be self-contained.
 
 ## Starter pack
@@ -68,12 +68,12 @@ runtime. Once published, it can be assigned and completed through its authored
 role-visible evidence, mode configuration, deterministic outcome model,
 decision schema, evidence rule, and rubric references. Consequences are shown
 as part of the run; authored feedback follows the assignment's existing
-instructor-release boundary. The complete coffee journey continues to use its
-compatibility runtime.
+instructor-release boundary. The complete coffee journey uses its registered
+native `tracechain-coffee-v2` runtime profile.
 
 This is a deliberately bounded runtime contract, not a claim that every V1
 node type is executable. A scenario is assignable through the generic runtime
-only when it has no legacy compatibility adapter and every node belongs to the
+only when it has no native domain runtime profile and every node belongs to the
 six-node subset above. Its transitions must use `ALWAYS` or
 `DECISION_OPTION_SELECTED`; policy-result and event-history transitions are not
 yet part of this runtime. Unsupported nodes or transitions remain valid

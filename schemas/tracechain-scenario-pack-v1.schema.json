@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1",
+  "title": "TraceChain Scenario Pack V1.1",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -20,7 +20,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -363,7 +363,11 @@
       "properties": {
         "policyId": { "$ref": "#/$defs/identifier" },
         "policyType": {
-          "enum": ["AUTHORIZATION", "BUSINESS_RULE", "LEGACY_POLICY"]
+          "enum": [
+            "AUTHORIZATION",
+            "BUSINESS_RULE",
+            "RUNTIME_POLICY"
+          ]
         },
         "title": { "$ref": "#/$defs/localizedText" },
         "configuration": { "type": "object" }
@@ -614,7 +618,7 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/identifier" }
         },
-        "legacyActionBindingId": { "$ref": "#/$defs/identifier" },
+        "runtimeActionBindingId": { "$ref": "#/$defs/identifier" },
         "proposalNodeId": { "$ref": "#/$defs/identifier" },
         "policyId": { "$ref": "#/$defs/identifier" },
         "permittedRoleIds": {
@@ -747,35 +751,35 @@
         }
       ]
     },
-    "legacyActionBinding": {
+    "hostedRuntimeActionBinding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["bindingId", "nodeId", "commandType", "legacyActionId"],
+      "required": ["bindingId", "nodeId", "commandType", "domainActionId"],
       "properties": {
         "bindingId": { "$ref": "#/$defs/identifier" },
         "nodeId": { "$ref": "#/$defs/identifier" },
         "commandType": { "$ref": "#/$defs/identifier" },
-        "legacyActionId": { "$ref": "#/$defs/identifier" }
+        "domainActionId": { "$ref": "#/$defs/identifier" }
       }
     },
-    "legacyCompatibility": {
+    "hostedRuntime": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "adapterId",
-        "scenarioId",
-        "scenarioVersion",
-        "stageId",
+        "runtimeId",
+        "domainScenarioId",
+        "domainScenarioVersion",
+        "entryStageId",
         "actionBindings"
       ],
       "properties": {
-        "adapterId": { "const": "tracechain-coffee-v2" },
-        "scenarioId": { "$ref": "#/$defs/identifier" },
-        "scenarioVersion": { "$ref": "#/$defs/version" },
-        "stageId": { "$ref": "#/$defs/identifier" },
+        "runtimeId": { "const": "tracechain-coffee-v2" },
+        "domainScenarioId": { "$ref": "#/$defs/identifier" },
+        "domainScenarioVersion": { "$ref": "#/$defs/version" },
+        "entryStageId": { "$ref": "#/$defs/identifier" },
         "actionBindings": {
           "type": "array",
-          "items": { "$ref": "#/$defs/legacyActionBinding" }
+          "items": { "$ref": "#/$defs/hostedRuntimeActionBinding" }
         }
       }
     },
@@ -890,6 +894,8 @@
         "status",
         "title",
         "supportedModes",
+        "modeConfigurations",
+        "outcomeModels",
         "competencyTargets",
         "organizations",
         "roles",
@@ -988,9 +994,7 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/identifier" }
         },
-        "legacyCompatibility": {
-          "$ref": "#/$defs/legacyCompatibility"
-        }
+        "hostedRuntime": { "$ref": "#/$defs/hostedRuntime" }
       }
     }
   }

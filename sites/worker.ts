@@ -1470,7 +1470,7 @@ async function apiResponse(
               ? `assignment:${assignment.assignmentId}:${learnerUserId}`
               : requiredText(body.scenarioSeed, "scenarioSeed"),
           }),
-      ...(service.runtimeKind === "coffee-v2"
+      ...(service.runtimeKind === "native-coffee-v2"
         ? {
             caseVariant: runCreator.roles.includes("learner")
               ? assignment.runConfiguration.forcedOutcomeCode ??
@@ -2109,87 +2109,6 @@ async function apiResponse(
       moderationResolutions:
         await repository.currentModerationResolutions(feedbackRunId),
       competencyProfile,
-    });
-  }
-
-  if (request.method === "POST" && url.pathname === "/api/v1/runs") {
-    requireApplicationRole(principal, [
-      "instructor",
-      "scenario-author",
-      "administrator",
-    ]);
-    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
-    if (!isRecord(body) || !isRecord(body.command)) {
-      throw new HostedRunCommandError(
-        "INVALID_COMMAND",
-        "Run request must contain a command object.",
-      );
-    }
-    const packId = requiredText(body.packId, "packId");
-    const packVersion = requiredText(body.packVersion, "packVersion");
-    const packRepository = new D1ScenarioPackRepository(
-      environment.DB,
-      new SystemUtcClock(),
-      principal.userId,
-    );
-    const pack = await packRepository.find(packId, packVersion);
-    if (pack === null || pack.status !== "published") {
-      throw new HostedRunCommandError(
-        "PACK_CONTRACT_MISMATCH",
-        "Run creation requires an exact published scenario pack.",
-      );
-    }
-    const requestedScenarioId =
-      typeof body.command.scenarioId === "string"
-        ? body.command.scenarioId
-        : undefined;
-    const requestedScenarioVersion =
-      typeof body.command.scenarioVersion === "string"
-        ? body.command.scenarioVersion
-        : undefined;
-    const runnableScenarios = pack.scenarios.filter(
-      hasRegisteredHostedRuntime,
-    );
-    const scenario =
-      requestedScenarioId === undefined &&
-      requestedScenarioVersion === undefined &&
-      runnableScenarios.length === 1
-        ? runnableScenarios[0]
-        : runnableScenarios.find(
-            (candidate) =>
-              candidate.scenarioId === requestedScenarioId &&
-              candidate.version === requestedScenarioVersion,
-          );
-    if (scenario === undefined) {
-      throw new HostedRunCommandError(
-        "INVALID_COMMAND",
-        "Run creation must identify one registered scenario version.",
-      );
-    }
-    const service = createHostedRuntimeService({
-      pack,
-      scenarioId: scenario.scenarioId,
-      scenarioVersion: scenario.version,
-      eventStore: new D1RunEventStore(environment.DB),
-      clock: new SystemUtcClock(),
-      ids: new WebCryptoIdGenerator(),
-    });
-    const result = await service.createRun(
-      principal,
-      body.command as unknown as Parameters<
-        HostedRuntimeService["createRun"]
-      >[1],
-    );
-    return jsonResponse(201, {
-      runId: result.state.runId,
-      version: result.state.version,
-      status: result.state.status,
-      packId: result.state.packId,
-      packVersion: result.state.packVersion,
-      scenarioId: result.state.scenarioId,
-      scenarioVersion: result.state.scenarioVersion,
-      learnerUserId: result.state.learnerUserId,
-      wasIdempotentReplay: result.wasIdempotentReplay,
     });
   }
 

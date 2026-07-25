@@ -6,9 +6,9 @@
  * TransactionType, and the compact state codec maps enum members to stable
  * positional indices.
  *
- * ORDER IS LOAD-BEARING for any enum consumed by the compact state codec:
- * appending is safe, reordering or removing is a breaking change that requires
- * a schema version bump and a migration.
+ * ORDER IS LOAD-BEARING for any enum consumed by the compact state codec.
+ * Reordering or removing members requires the active state schema to be
+ * upgraded and development attempts to be reset.
  */
 
 export enum OrganizationType {

@@ -16,7 +16,7 @@ import { createEmptyDomainState } from "../../domain/ledger/domain-state";
 import { PlatformMode } from "../../infrastructure/scorm/learning-platform-adapter";
 import type {
   DecisionRecord,
-} from "../../infrastructure/persistence/state-codec";
+} from "../../infrastructure/persistence/attempt-state";
 import type { LearnerInteraction } from "../../domain/types/scoring";
 import type {
   CompactCommandJournalEntry,

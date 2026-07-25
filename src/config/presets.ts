@@ -1,6 +1,9 @@
 import type { TraceChainConfiguration } from "./types";
 
-export type LecturerPresetId = "guided" | "challenge";
+export type LecturerPresetId =
+  | "guided"
+  | "challenge"
+  | "assessment";
 
 const COMMON = {
   configurationVersion: "1",
@@ -44,9 +47,23 @@ export const CHALLENGE_PRESET: TraceChainConfiguration = {
   hints: "limited",
 };
 
-export const LECTURER_PRESETS: Readonly<Record<LecturerPresetId, TraceChainConfiguration>> = {
+export const ASSESSMENT_PRESET: TraceChainConfiguration = {
+  ...COMMON,
+  mode: "assessment",
+  scenarioId: "SCN_COFFEE_001",
+  scenarioVersion: "2.2.0",
+  scenarioSeed: "assessment-standard-v1",
+  difficulty: "intermediate",
+  feedbackTiming: "final",
+  hints: "disabled",
+};
+
+export const LECTURER_PRESETS: Readonly<
+  Record<LecturerPresetId, TraceChainConfiguration>
+> = {
   guided: GUIDED_PRESET,
   challenge: CHALLENGE_PRESET,
+  assessment: ASSESSMENT_PRESET,
 };
 
 export function resolvePreset(presetId: LecturerPresetId): TraceChainConfiguration {

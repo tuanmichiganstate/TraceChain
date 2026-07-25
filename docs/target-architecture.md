@@ -16,7 +16,7 @@ event storage, replay, assessment, reporting, exports, and package-generation
 jobs around the reusable simulation core. It does not introduce collaborative
 multi-learner runs.
 
-As of 24 July 2026, the authenticated hosted migration implements the memory and
+As of 25 July 2026, the authenticated hosted runtime implements the memory and
 D1 event stores, D1 pack publication, server-authoritative commands,
 role-filtered learner projection, exact replay, and instructor evidence APIs.
 It carries an authorized run through Stage 3 certificate handling, Stage 4
@@ -73,7 +73,7 @@ Reusable platform core
   replay and evidence linkage
 
 Existing simulation capabilities
-  coffee compatibility adapter
+  coffee native domain runtime
   commands, validation and accepted/audit events
   ledger, state versions, provenance and correction
   Ed25519 signatures and authorization
@@ -174,11 +174,11 @@ Draft content may change. Validation produces structured diagnostics. Publishing
 freezes the exact definition and content hash. Editing a published pack creates
 a new version. Runs retain an exact pack-version reference.
 
-The first pack contains a compatibility scenario node that delegates to the
-current coffee stage engine. New domain packs use generic briefing, evidence,
+The coffee pack declares a native runtime profile that delegates to the
+existing coffee domain engine. New domain packs use generic briefing, evidence,
 decision, transaction, policy, communication, stochastic, consequence,
-feedback, reflection, and completion nodes. This permits migration without
-duplicating coffee business rules.
+feedback, reflection, and completion nodes. This reuses the coffee business
+rules without duplicating them.
 
 Scenario data is declarative. Imported content cannot contain executable code.
 Approved extension components are selected from a server-maintained registry,
@@ -318,7 +318,7 @@ competency result, and optional overall score are distinct records.
 - All authoritative timestamps are UTC.
 - Learner exports can use pseudonymous identifiers.
 
-## Migration sequence
+## Direct upgrade sequence
 
 ### Foundation
 
@@ -339,7 +339,7 @@ competency result, and optional overall score are distinct records.
 
 ### Product expansion
 
-10. Migrate the complete coffee scenario into the pack envelope.
+10. Register the complete coffee scenario as the pack's native runtime profile.
 11. Complete cryptographic endorsement Increment B. (Complete for the
     Guided/Challenge SCORM engine and the hosted custody/correction stages.)
 12. Add assignments, ratings, feedback release, reports, replay, and exports.
@@ -352,7 +352,7 @@ competency result, and optional overall score are distinct records.
     Phase 6 authoring boundary. The starter is also executable through the
     bounded generic hosted runtime for briefing, evidence release, structured
     decision, consequence, feedback, and completion nodes; the complete coffee
-    journey retains its compatibility runtime.)
+    journey uses its native runtime profile.)
 
 Collaborative multi-learner orchestration remains deferred.
 

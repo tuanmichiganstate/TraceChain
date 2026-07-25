@@ -637,7 +637,7 @@ function rejectionFindingCodes(
   if (!IDENTIFIER_PATTERN.test(eventType)) {
     throw new AssignmentRepositoryError(
       "ASSIGNMENT_STORAGE_FAILED",
-      `Run ${row.run_id} contains an invalid rejection fallback.`,
+      `Run ${row.run_id} contains an invalid rejection event type.`,
     );
   }
   return [eventType];
@@ -1059,7 +1059,6 @@ function assignmentFrom(
     (row.lifecycle_status === "active" &&
       hasAnyCloseMetadata) ||
     (row.lifecycle_status === "closed" &&
-      hasAnyCloseMetadata &&
       !hasCompleteCloseMetadata) ||
     (row.available_from_utc !== null &&
       availableFrom !== row.available_from_utc) ||

@@ -200,7 +200,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     expect(screen.getByText(/Chế độ chạy độc lập/)).toBeInTheDocument();
   });
 
-  it("clears legacy browser progress and starts again outside an LMS", async () => {
+  it("resets unsupported browser progress outside an LMS", async () => {
     const user = userEvent.setup();
     uninstall();
     const storageKey = `tracechain:${APP_VERSION}:${coffeeScenario.scenarioId}`;
@@ -219,7 +219,9 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     expect(
       await screen.findByRole("heading", { name: "Không khôi phục được tiến độ" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/chỉ được lưu trong trình duyệt này/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/phiên bản cũ và không còn tương thích/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Bắt đầu lại hoạt động" }));

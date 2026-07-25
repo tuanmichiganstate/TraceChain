@@ -46,7 +46,7 @@ import {
   type ScenarioDefinition,
   type ScenarioHint,
 } from "../types/scenario";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 
 /** How one item scored, for the final report's breakdown. */
 export interface ItemScore {

@@ -3,9 +3,8 @@
  *
  * The codec stores each decision by its INDEX in `DECISION_IDS`, never by name
  * -- that is what keeps a full attempt in a few hundred characters instead of
- * several thousand. Both arrays are therefore APPEND-ONLY. Reordering or
- * removing an entry silently reinterprets every learner's saved progress, so it
- * requires a schema version bump and a migration.
+ * several thousand. Reordering or removing an entry requires the active state
+ * schema to be upgraded and development attempts to be reset.
  *
  * The current list covers all nine implemented stages plus append-only replay
  * evidence for supporting and rejected transactions. The scenario validator

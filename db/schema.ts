@@ -2,7 +2,8 @@
  * Logical D1 schema for the first hosted TraceChain vertical slice.
  *
  * Keep one SQL statement per entry so deployment code can prepare and execute
- * statements independently. Migration files remain the operational history.
+ * statements independently. Development environments install this current
+ * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS application_users (
@@ -209,7 +210,7 @@ export const schemaStatements = [
     job_id TEXT PRIMARY KEY,
     creation_command_id TEXT NOT NULL UNIQUE,
     preset_id TEXT NOT NULL
-      CHECK (preset_id IN ('guided', 'challenge')),
+      CHECK (preset_id IN ('guided', 'challenge', 'assessment')),
     lifecycle_status TEXT NOT NULL
       CHECK (lifecycle_status = 'completed'),
     title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 120),

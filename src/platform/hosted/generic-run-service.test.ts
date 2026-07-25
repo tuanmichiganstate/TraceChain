@@ -48,7 +48,7 @@ function createService(store = new MemoryRunEventStore()) {
     service: new GenericHostedRunService(
       pack,
       "SCN_PHARMA_COLD_CHAIN_STARTER",
-      "1.0.0",
+      "1.1.0",
       store,
       new FixedClock(NOW),
       new SequenceIdGenerator(1),

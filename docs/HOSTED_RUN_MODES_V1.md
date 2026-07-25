@@ -26,13 +26,9 @@ An assignment stores the fully resolved configuration rather than only the mode
 name. A run event stores that assignment configuration and replay rejects a
 configuration that differs from the immutable scenario version.
 
-Migration `0004` backfills each pre-Phase-5 assignment with a bounded,
-mode-matched forced-outcome configuration. Exact coffee packs and run streams
-published before mode configuration was authored remain readable only through
-the registered `tracechain-coffee-v2` compatibility adapter. Their original
-state hashes are verified against the pre-Phase-5 state shape; no published
-pack, event, or hash is rewritten. Generic and newly authored scenarios receive
-no fallback and must declare one configuration for every supported mode.
+Every scenario declares one configuration for every supported mode. The
+repository accepts only the current contract; development assignments and run
+data are reset when that contract changes.
 
 The standard coffee pack defines Tutorial, Standard, Sandbox, and Configured
 behavior. Selecting a mode in the instructor interface selects that published

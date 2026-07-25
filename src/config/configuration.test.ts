@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "../infrastructure/hashing/canonicalize";
-import { CHALLENGE_PRESET, GUIDED_PRESET, LECTURER_PRESETS } from "./presets";
+import {
+  ASSESSMENT_PRESET,
+  CHALLENGE_PRESET,
+  GUIDED_PRESET,
+  LECTURER_PRESETS,
+} from "./presets";
 import { embedConfiguration, hashConfiguration } from "./hash";
 import { validateConfiguration } from "./validation";
 import { loadRuntimePackage, type RuntimeFetch } from "./runtime-loader";
@@ -57,8 +62,50 @@ describe("TraceChain configuration", () => {
     expect(embedConfiguration(GUIDED_PRESET).configurationHash).toBe(first);
   });
 
-  it("makes guided and challenge resolved configurations distinct", () => {
+  it("makes every shipped configuration identity distinct", () => {
     expect(hashConfiguration(GUIDED_PRESET)).not.toBe(hashConfiguration(CHALLENGE_PRESET));
+    expect(hashConfiguration(ASSESSMENT_PRESET)).not.toBe(
+      hashConfiguration(GUIDED_PRESET),
+    );
+    expect(hashConfiguration(ASSESSMENT_PRESET)).not.toBe(
+      hashConfiguration(CHALLENGE_PRESET),
+    );
+  });
+
+  it("fixes assessment feedback, hints, seed, and scoring", () => {
+    expect(ASSESSMENT_PRESET).toMatchObject({
+      mode: "assessment",
+      scenarioId: coffeeScenario.scenarioId,
+      scenarioVersion: coffeeScenario.scenarioVersion,
+      feedbackTiming: "final",
+      hints: "disabled",
+      scoring: {
+        maximumScore: 100,
+        passScore: 70,
+      },
+    });
+    expect(ASSESSMENT_PRESET.scenarioSeed).toBe(
+      "assessment-standard-v1",
+    );
+  });
+
+  it("rejects assessment configurations that reveal feedback or hints", () => {
+    const result = validateConfiguration({
+      ...ASSESSMENT_PRESET,
+      scenarioId: CHALLENGE_PRESET.scenarioId,
+      scenarioVersion: CHALLENGE_PRESET.scenarioVersion,
+      feedbackTiming: "immediate",
+      hints: "limited",
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(
+      expect.arrayContaining([
+        "scenarioId",
+        "feedbackTiming",
+        "hints",
+      ]),
+    );
   });
 
   it("rejects unavailable content and invalid scoring", () => {

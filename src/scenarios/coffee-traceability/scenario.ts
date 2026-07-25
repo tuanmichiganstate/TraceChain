@@ -23,9 +23,9 @@ export const coffeeScenario: ScenarioDefinition = {
   /*
    * 2.2.0: custody transfer and quantity correction use genuine Ed25519
    * approvals from the exact organizations required by constrained policies.
-   * The configuration hash and scenario version intentionally form a new TC3
-   * compatibility boundary because the command journal gained pending-proposal
-   * and endorsement actions.
+   * The configuration hash and scenario version are exact TC3 identity
+   * boundaries because the command journal includes pending-proposal and
+   * endorsement actions.
    */
   scenarioVersion: "2.2.0",
   titleKey: "app.title",

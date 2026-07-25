@@ -105,7 +105,10 @@ export interface ScenarioEvidenceItemV1 {
 
 export interface ScenarioPolicyV1 {
   readonly policyId: string;
-  readonly policyType: "AUTHORIZATION" | "BUSINESS_RULE" | "LEGACY_POLICY";
+  readonly policyType:
+    | "AUTHORIZATION"
+    | "BUSINESS_RULE"
+    | "RUNTIME_POLICY";
   readonly title: LocalizedText;
   readonly configuration: JsonObject;
 }
@@ -206,7 +209,7 @@ export interface TransactionProposalNodeV1 extends ScenarioNodeBaseV1 {
   readonly proposalType: string;
   readonly sourceDecisionId: string;
   readonly policyIds: readonly string[];
-  readonly legacyActionBindingId?: string;
+  readonly runtimeActionBindingId?: string;
 }
 
 export interface EndorsementNodeV1 extends ScenarioNodeBaseV1 {
@@ -279,19 +282,19 @@ export type ScenarioNodeV1 =
   | ReflectionNodeV1
   | CompletionNodeV1;
 
-export interface LegacyActionBindingV1 {
+export interface HostedRuntimeActionBindingV1 {
   readonly bindingId: string;
   readonly nodeId: string;
   readonly commandType: string;
-  readonly legacyActionId: string;
+  readonly domainActionId: string;
 }
 
-export interface LegacyScenarioCompatibilityV1 {
-  readonly adapterId: "tracechain-coffee-v2";
-  readonly scenarioId: string;
-  readonly scenarioVersion: string;
-  readonly stageId: string;
-  readonly actionBindings: readonly LegacyActionBindingV1[];
+export interface HostedRuntimeProfileV1 {
+  readonly runtimeId: "tracechain-coffee-v2";
+  readonly domainScenarioId: string;
+  readonly domainScenarioVersion: string;
+  readonly entryStageId: string;
+  readonly actionBindings: readonly HostedRuntimeActionBindingV1[];
 }
 
 export interface ScenarioDefinitionV1 {
@@ -300,14 +303,9 @@ export interface ScenarioDefinitionV1 {
   readonly status: VersionLifecycleStatus;
   readonly title: LocalizedText;
   readonly supportedModes: readonly HostedRunMode[];
-  /**
-   * Required for newly authored scenarios. The fields remain optional in the
-   * V1 TypeScript shape so already-published coffee compatibility packs can be
-   * loaded and replayed through their registered legacy adapter.
-   */
-  readonly modeConfigurations?:
+  readonly modeConfigurations:
     readonly HostedRunModeConfigurationV1[];
-  readonly outcomeModels?: readonly StochasticOutcomeModelV1[];
+  readonly outcomeModels: readonly StochasticOutcomeModelV1[];
   readonly competencyTargets: readonly CompetencyTargetV1[];
   readonly organizations: readonly ScenarioOrganizationV1[];
   readonly roles: readonly ScenarioRoleV1[];
@@ -324,12 +322,12 @@ export interface ScenarioDefinitionV1 {
   readonly nodes: readonly ScenarioNodeV1[];
   readonly rubricIds: readonly string[];
   readonly evidenceRuleIds: readonly string[];
-  readonly legacyCompatibility?: LegacyScenarioCompatibilityV1;
+  readonly hostedRuntime?: HostedRuntimeProfileV1;
 }
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

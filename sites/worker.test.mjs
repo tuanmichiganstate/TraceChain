@@ -376,7 +376,9 @@ test("rejects cross-origin state-changing API requests before authorization", as
   const { env } = createAssetEnvironment();
   env.DB = createPrincipalDatabase([]);
   const response = await worker.fetch(
-    new Request("https://tracechain.example/api/v1/runs", {
+    new Request(
+      "https://tracechain.example/api/v1/assignments/ASSIGNMENT_001/start-run",
+      {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -384,7 +386,8 @@ test("rejects cross-origin state-changing API requests before authorization", as
         origin: "https://attacker.example",
       },
       body: "{}",
-    }),
+      },
+    ),
     env,
   );
 
@@ -723,7 +726,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.match(publication.contentHash, /^[a-f0-9]{64}$/u);
 
     const next = structuredClone(pack);
-    next.version = "1.7.0";
+    next.version = "1.8.0";
     next.manifest.domain = "supply-chain-governance";
     const nextImport = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -738,7 +741,7 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
       apiRequest(
         `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
           `/compare?fromVersion=${encodeURIComponent(pack.version)}` +
-          "&toVersion=1.7.0",
+          "&toVersion=1.8.0",
         { email: "author@example.edu" },
       ),
       env,
@@ -1130,9 +1133,9 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
     .update(packageBytes)
     .digest("hex");
   const artifact = {
-    presetId: "guided",
-    title: "TraceChain Guided Practice",
-    filename: "TraceChain_Guided_NON_RELEASE.zip",
+    presetId: "assessment",
+    title: "TraceChain Assessment",
+    filename: "TraceChain_Assessment_NON_RELEASE.zip",
     downloadPath: `/scorm-packages/${sha256}.zip`,
     sha256,
     sizeBytes: packageBytes.byteLength,
@@ -1174,9 +1177,9 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
       ["instructor"],
     );
     const body = {
-      commandId: "CMD_PACKAGE_GUIDED_001",
-      jobId: "JOB_PACKAGE_GUIDED_001",
-      presetId: "guided",
+      commandId: "CMD_PACKAGE_ASSESSMENT_001",
+      jobId: "JOB_PACKAGE_ASSESSMENT_001",
+      presetId: "assessment",
     };
     const created = await worker.fetch(
       apiRequest("/api/v1/scorm-package-jobs", {
@@ -1199,7 +1202,7 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
       },
       {
         jobId: body.jobId,
-        presetId: "guided",
+        presetId: "assessment",
         status: "completed",
         release: false,
         sha256,
@@ -1797,21 +1800,15 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await assignmentCreate.clone().text(),
     );
     const create = await worker.fetch(
-      apiRequest("/api/v1/runs", {
+      apiRequest("/api/v1/assignments/ASSIGNMENT_SITE_001/start-run", {
         method: "POST",
         email: "instructor@example.edu",
         body: {
-          packId: pack.packId,
-          packVersion: pack.version,
-          command: {
-            commandId: "COMMAND_SITE_CREATE_001",
-            runId,
-            assignmentId: "ASSIGNMENT_SITE_001",
-            learnerUserId: "USER_LEARNER_001",
-            mode: "standard",
-            scenarioSeed: "site-stage3-seed-001",
-            caseVariant: "authorized-certifier",
-          },
+          commandId: "COMMAND_SITE_CREATE_001",
+          runId,
+          learnerUserId: "USER_LEARNER_001",
+          scenarioSeed: "site-stage3-seed-001",
+          caseVariant: "authorized-certifier",
         },
       }),
       env,

@@ -59,12 +59,3 @@ export class UnsupportedStateVersionError extends TraceChainError {
 export class IncompatibleAttemptError extends TraceChainError {
   readonly messageKey = "errors.incompatibleAttempt";
 }
-
-/**
- * TC2 data is intentionally not migrated. SCORM callers must leave the stored
- * value untouched and direct the learner to a new LMS attempt. Standalone
- * callers may explicitly clear browser-local progress and restart.
- */
-export class LegacyAttemptError extends TraceChainError {
-  readonly messageKey = "errors.legacyAttempt";
-}

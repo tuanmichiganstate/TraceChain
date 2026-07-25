@@ -6,7 +6,7 @@ SCORM runtime, or coffee business rules.
 
 The normative machine-readable schema is
 `schemas/tracechain-scenario-pack-v1.schema.json`. Runtime validation adds
-cross-reference, localization, graph-reachability, compatibility, and
+cross-reference, localization, graph-reachability, runtime-profile, and
 executable-content checks that JSON Schema alone cannot express.
 
 ## Validate a pack
@@ -53,19 +53,15 @@ A pack contains:
 
 Every localized object contains a stable `localizationKey`. The repository
 validator confirms that key exists in every locale declared by the pack.
-Compatibility packs may resolve those keys from `src/locales/`; portable
+Native application packs may resolve those keys from `src/locales/`; portable
 disciplinary packs may include bounded `localizationCatalogs` as immutable
 pack data. Embedded catalogues must cover every supported locale and override
 application values only inside that pack. Competency, indicator, rubric, evidence-rule,
-organization, role, policy, evidence, decision, node, transition, and
-compatibility references are validated.
+organization, role, policy, evidence, decision, node, transition, and native
+runtime references are validated.
 
-Mode configuration and outcome-model properties are structurally optional in
-the V1 JSON Schema only so content-addressed coffee packs published before
-Phase 5 remain loadable. Runtime validation permits that omission solely for
-the registered `tracechain-coffee-v2` compatibility adapter. Every generic and
-newly authored scenario must provide both `modeConfigurations` and
-`outcomeModels`; no application default is applied to authored content.
+Every scenario must provide `modeConfigurations` and `outcomeModels`; no
+application default or older pack shape is accepted.
 
 ## Workflow nodes
 
@@ -144,7 +140,7 @@ unique `(packId, version)` and immutable-publication rule transactionally.
 Editing published content requires a new semantic content version. Existing
 runs keep their exact pack and scenario versions.
 
-## Existing coffee compatibility
+## Native coffee runtime
 
 The first pack began with the Stage 3 certificate experience and now continues
 through Stage 4 custody and transport plus Stage 5 receipt, discrepancy
@@ -152,15 +148,16 @@ mitigation, and append-only correction, then Stage 6 transformation and Stage 7
 distribution, Stage 8 tamper and data-governance reasoning, and Stage 9 recall
 scope, trusted regulator handoff, and final debrief. It decomposes those stages into
 declarative briefing, evidence, decision, proposal, endorsement, policy,
-consequence, feedback, and completion nodes. Its compatibility block points to:
+consequence, feedback, and completion nodes. Its native runtime profile points
+to:
 
 ```text
-adapter: tracechain-coffee-v2
+runtime: tracechain-coffee-v2
 scenario: SCN_COFFEE_001@2.2.0
 stage: STG_03_ANCHOR_CERTIFICATE
 ```
 
-The compatibility bindings reuse the existing certificate, custody-transfer,
+The native action bindings reuse the existing certificate, custody-transfer,
 transport, receipt, ownership-transfer, and correction actions. Certificate
 authorization, sender-and-receiver custody endorsement, and
 producer-and-processor correction endorsement remain in the existing
@@ -168,9 +165,8 @@ simulation core, as do transformation, provenance, packaging, dispatch, ledger
 mutation, tamper detection, recall, scoring, mitigation, scripted manifest, and
 audit-event rules.
 
-The compatibility adapter is a migration seam. It may be removed only after a
-generic capability passes behavior-equivalence tests against the existing
-coffee stage.
+The generic hosted runtime remains separate and is used only by packs whose
+workflow is fully expressed by its supported declarative node set.
 
 ## Hosted run authority
 

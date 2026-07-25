@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Verify configured SCORM packages and prove that guided and challenge reuse
- * one byte-identical static application build.
+ * Verify configured SCORM packages and prove that every preset reuses one
+ * byte-identical static application build.
  */
 
 import {
@@ -99,7 +99,7 @@ function packageFileName(configuration, releaseBuild) {
 }
 
 function defaultPackagePaths() {
-  return ["guided", "challenge"].map((presetId) => {
+  return ["guided", "challenge", "assessment"].map((presetId) => {
     const configurationPath = join(
       projectRoot,
       "dist-scorm",
@@ -928,27 +928,14 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 }
 
 const defaultInvocation = process.argv.length === 2;
-if (defaultInvocation && results.length === 2) {
+if (defaultInvocation && results.length === 3) {
   const modes = results.map((result) => result.configuration?.mode).sort();
-  if (JSON.stringify(modes) !== JSON.stringify(["challenge", "guided"])) {
-    crossPackageErrors.push(
-      "Default verification must cover one guided and one challenge package",
-    );
-  }
-  const legacyPath = join(
-    projectRoot,
-    classifyPackageFileName(
-      `tracechain-scorm-v${packageJson.version}.zip`,
-      results[0]?.buildInformation?.releaseBuild === true,
-    ),
-  );
-  if (!existsSync(legacyPath)) {
-    crossPackageErrors.push("Legacy guided deployment alias is missing");
-  } else if (
-    !readFileSync(legacyPath).equals(readFileSync(results[0].zipPath))
+  if (
+    JSON.stringify(modes) !==
+    JSON.stringify(["assessment", "challenge", "guided"])
   ) {
     crossPackageErrors.push(
-      "Legacy guided deployment alias is not byte-identical to the guided package",
+      "Default verification must cover guided, challenge, and assessment packages",
     );
   }
 }
@@ -962,7 +949,7 @@ const allErrors = [
 const checkCount =
   results.reduce((total, result) => total + result.checks.length, 0) +
   Math.max(0, results.length - 1) +
-  (defaultInvocation ? 2 : 0);
+  (defaultInvocation ? 1 : 0);
 const passedCount = checkCount - allErrors.length;
 
 if (allErrors.length > 0) {

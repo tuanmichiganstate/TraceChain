@@ -10,7 +10,6 @@ import {
   type AppendRunEventsResult,
   type RunEventStore,
 } from "../runs/event-store";
-import { hashReplayState } from "../runs/replay";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import {
@@ -59,47 +58,6 @@ function publishedPack(): ScenarioPackV1 {
     publishedAt: NOW,
     publishedBy: instructor.userId,
   });
-}
-
-function legacyPublishedPack(): ScenarioPackV1 {
-  const legacy = structuredClone(packJson) as unknown as {
-    scenarios: {
-      supportedModes: string[];
-      modeConfigurations?: unknown;
-      outcomeModels?: unknown;
-    }[];
-  };
-  const scenario = legacy.scenarios[0];
-  if (scenario === undefined) throw new Error("Expected coffee scenario.");
-  scenario.supportedModes = [
-    "tutorial",
-    "standard",
-    "configured",
-  ];
-  delete scenario.modeConfigurations;
-  delete scenario.outcomeModels;
-  const result = validateScenarioPack(legacy);
-  if (!result.isValid) {
-    throw new Error(
-      result.issues
-        .map((issue) => `${issue.path}: ${issue.message}`)
-        .join("\n"),
-    );
-  }
-  return publishScenarioPack(result.pack, {
-    publishedAt: NOW,
-    publishedBy: instructor.userId,
-  });
-}
-
-function legacyStateHash(state: HostedStage3RunState): string {
-  const {
-    modeConfiguration: _modeConfiguration,
-    outcomeResolution: _outcomeResolution,
-    outcomeEvidenceStatus: _outcomeEvidenceStatus,
-    ...legacyState
-  } = state;
-  return hashReplayState(legacyState);
 }
 
 function createRequest(
@@ -567,62 +525,6 @@ describe("server-authoritative hosted Stage 3 run", () => {
       status: "unlimited",
       startedAt: NOW,
       observedAt: "2027-07-24T03:00:00.000Z",
-    });
-  });
-
-  it("loads exact pre-mode-config coffee runs without rewriting their state hashes", async () => {
-    const pack = legacyPublishedPack();
-    const store = new MemoryRunEventStore();
-    const created = await serviceFor(store, pack).createRun(
-      instructor,
-      createRequest(
-        "authorized-certifier",
-        "RUN_LEGACY_MODE_CONTRACT",
-      ),
-    );
-    const currentEvents = await store.load(created.state.runId);
-    const createdEvent = currentEvents[0];
-    const releasedEvent = currentEvents[1];
-    if (
-      createdEvent === undefined ||
-      releasedEvent === undefined ||
-      createdEvent.eventType !== "RUN_CREATED"
-    ) {
-      throw new Error("Expected the two initial hosted events.");
-    }
-    const {
-      modeConfiguration: _modeConfiguration,
-      ...legacyCreatedPayload
-    } = createdEvent.payload;
-    const stateAfterCreated: HostedStage3RunState = {
-      ...created.state,
-      version: 1,
-      releasedEvidenceIds: [],
-    };
-    const createdStateHash = legacyStateHash(stateAfterCreated);
-    const legacyEvents: readonly RunEventV1[] = [
-      {
-        ...createdEvent,
-        payload: legacyCreatedPayload,
-        resultingStateHash: createdStateHash,
-      },
-      {
-        ...releasedEvent,
-        previousStateHash: createdStateHash,
-        resultingStateHash: legacyStateHash(created.state),
-      },
-    ];
-
-    const replayed = await serviceFor(
-      new ReadOnlyEventStore(legacyEvents),
-      pack,
-    ).loadState(created.state.runId);
-
-    expect(replayed).toEqual(created.state);
-    expect(replayed.modeConfiguration).toMatchObject({
-      mode: "standard",
-      outcomeStrategy: "forced",
-      seedPolicy: "supplied",
     });
   });
 

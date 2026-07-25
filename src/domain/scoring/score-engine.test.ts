@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { ScoreComponent } from "../types/scoring";
 import { allHints, allScorableItems, type ScenarioDefinition } from "../types/scenario";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 import {
   calculateScore,
   creditFor,

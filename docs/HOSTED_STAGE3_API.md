@@ -1,4 +1,4 @@
-# Hosted coffee migration: Stages 3 through 9
+# Hosted coffee runtime: Stages 3 through 9
 
 Status: implemented locally; production publication requires a committed and
 pushed source state.
@@ -37,9 +37,8 @@ published scenario pack
 
 The service reuses the existing coffee command, rule, Ed25519, authorization,
 endorsement, event, state-version, scripted-transaction, and ledger services
-through the transitional `CoffeeStage3HostedAdapter`. The name remains until
-the staged migration covers the complete coffee journey; it does not denote a
-second transaction engine.
+through `CoffeeHostedDomainRuntime`. It is the native hosted profile for the
+complete coffee journey and does not create a second transaction engine.
 
 ## Authentication and identity
 
@@ -73,14 +72,9 @@ The logical Sites binding is:
 }
 ```
 
-The current schema is in `db/schema.ts`; migration history begins at
-`db/migrations/0001_instructor_platform_foundation.sql` and adds assignments
-and assessment records in `0002_assignments.sql`, rubric moderation in `0003`,
-resolved assignment-mode configuration in `0004`, pack retirement metadata in
-`0005`, content-addressed SCORM package jobs in `0006`, and idempotent
-application-access audit commands in `0007`. One-way assignment closure
-metadata is added in `0008`; optional immutable UTC assignment availability
-boundaries are added in `0009`.
+The complete fresh-install schema is in `db/schema.ts`. Development databases
+are reset when this pre-release schema changes; no upgrade chain or old-row
+backfill is maintained.
 
 Tables:
 
@@ -145,7 +139,7 @@ All endpoints use `/api/v1`.
 | `POST /runs/:runId/moderation` | instructor or administrator | Evidence-linked append-only rubric score resolution |
 | `GET /runs/:runId/feedback` | assigned learner | Released manual feedback and that learner's evidence-only competency profile, or an explicit withheld result |
 | `GET /scorm-package-jobs` | instructor or administrator | Authorized package-job history |
-| `POST /scorm-package-jobs` | instructor or administrator | Exact verified Guided or Challenge artifact |
+| `POST /scorm-package-jobs` | instructor or administrator | Exact verified Guided, Challenge, or Assessment artifact |
 | `GET /scorm-package-jobs/:jobId` | owner or administrator | Package identity and download URL |
 | `GET /scorm-package-jobs/:jobId/download` | owner or administrator | Exact content-addressed ZIP |
 
@@ -267,9 +261,8 @@ timestamps normalized to UTC. The opening boundary is inclusive; the closing
 boundary is exclusive. The learner-assignment projection includes
 `startAvailability.status` and the server observation time, but the normal
 assignment start route obtains pack, scenario, mode, and assignment identity
-from that server record and checks the authoritative clock again. The earlier
-direct run-creation route remains for compatibility with the vertical-slice
-tests and existing integrations.
+from that server record and checks the authoritative clock again. Runs cannot
+be created outside an assignment.
 
 Manual rubric ratings do not change the simulation event log or the existing
 100-point SCORM score. Each save appends a new criterion revision with the
@@ -358,14 +351,14 @@ limit remains unlimited.
   course creation and institutional directory synchronization remain
   deployment concerns.
 - The learner, instructor/rater, author, and administrator workspaces are
-  implemented. The complete coffee journey uses its compatibility runtime. A
+  implemented. The complete coffee journey uses its native runtime profile. A
   bounded generic runtime also makes the self-localized pharmaceutical starter
   publishable, assignable, and completable through authored briefing,
   evidence-release, structured-decision, consequence, feedback, and completion
   nodes. Authored feedback is returned only after the instructor releases
   assignment feedback.
-- Graphical Guided and Challenge package jobs reuse the exact Node-generated
-  artifacts and content-addressed R2 storage.
+- Graphical Guided, Challenge, and Assessment package jobs reuse the exact
+  Node-generated artifacts and content-addressed R2 storage.
 - The hosted service exposes both the custody-transfer and quantity-correction
   endorsement policies.
 - SCORM continues to use TC3 and is unchanged by hosted D1 persistence.

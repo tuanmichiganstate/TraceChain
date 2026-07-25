@@ -5,8 +5,8 @@ import {
 } from "../../domain/types/enums";
 import {
   IncompatibleAttemptError,
-  LegacyAttemptError,
   PersistenceError,
+  UnsupportedStateVersionError,
 } from "../../domain/errors";
 import { KnowledgeCheckType } from "../../domain/types/scenario";
 import type { ScenarioDefinition } from "../../domain/types/scenario";
@@ -34,7 +34,7 @@ import {
 import {
   MAX_ATTEMPT_COUNT,
   type DecisionRecord,
-} from "./state-codec";
+} from "./attempt-state";
 
 const schema: Tc3CodecSchema = {
   configurationHash: "a".repeat(64),
@@ -218,7 +218,7 @@ describe("TC3 attempt codec", () => {
     expect(encoded).not.toContain("isAccepted");
   });
 
-  it("uses exact configuration and scenario compatibility boundaries", () => {
+  it("uses exact configuration and scenario identity boundaries", () => {
     const encoded = encodeTc3Attempt(snapshot(), schema);
     expect(() =>
       decodeTc3Attempt(encoded, { ...schema, configurationHash: "b".repeat(64) }),
@@ -228,8 +228,10 @@ describe("TC3 attempt codec", () => {
     ).toThrow(IncompatibleAttemptError);
   });
 
-  it("identifies TC2 without modifying or attempting to migrate it", () => {
-    expect(() => decodeTc3Attempt("TC2.000....", schema)).toThrow(LegacyAttemptError);
+  it("rejects obsolete attempt formats", () => {
+    expect(() => decodeTc3Attempt("TC2.000....", schema)).toThrow(
+      UnsupportedStateVersionError,
+    );
   });
 
   it("rejects duplicate command identifiers", () => {

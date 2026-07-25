@@ -42,7 +42,6 @@ import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
   DecisionNodeV1,
   ScenarioPackV1,
-  WeightedCategoricalOutcomeModelV1,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
 import { evaluateAutomatedEvidenceRule } from "../runs/automated-evidence-rule";
@@ -65,7 +64,7 @@ import {
   requireAssignedLearner,
   type ApplicationPrincipal,
 } from "./access";
-import { CoffeeStage3HostedAdapter } from "./coffee-stage3-adapter";
+import { CoffeeHostedDomainRuntime } from "./coffee-domain-runtime";
 import type {
   CompetencyEvidenceProjection,
   CreateHostedStage3RunRequest,
@@ -91,22 +90,6 @@ import type {
 const EVIDENCE_ID = "EVID_CERTIFICATE_RECORD";
 const MAXIMUM_JUSTIFICATION_LENGTH = 1_000;
 const MINIMUM_CORRECTION_REASON_LENGTH = 10;
-const LEGACY_COFFEE_OUTCOME_MODEL: WeightedCategoricalOutcomeModelV1 =
-  {
-    outcomeModelId: "LEGACY_CERTIFICATE_CASE",
-    distribution: "weighted-categorical",
-    randomStreamId: "legacy-certificate-case",
-    outcomes: [
-      {
-        outcomeCode: "authorized-certifier",
-        weight: 1,
-      },
-      {
-        outcomeCode: "unauthorized-transporter",
-        weight: 1,
-      },
-    ],
-  };
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actorId",
   "authenticatedUserId",
@@ -159,19 +142,6 @@ interface BuiltEvent {
 
 function requestDigest(request: unknown): string {
   return sha256Hex(canonicalize(request));
-}
-
-function legacyHostedStateForHash(
-  state: Readonly<HostedStage3RunState | null>,
-): unknown {
-  if (state === null) return null;
-  const {
-    modeConfiguration: _modeConfiguration,
-    outcomeResolution: _outcomeResolution,
-    outcomeEvidenceStatus: _outcomeEvidenceStatus,
-    ...legacyState
-  } = state;
-  return legacyState;
 }
 
 function rejectSelfAssertedIdentity(
@@ -885,7 +855,7 @@ function assertReplayEvidenceMatches(
 }
 
 export class HostedStage3RunService {
-  private readonly adapter: CoffeeStage3HostedAdapter;
+  private readonly domainRuntime: CoffeeHostedDomainRuntime;
 
   constructor(
     private readonly pack: ScenarioPackV1,
@@ -893,7 +863,7 @@ export class HostedStage3RunService {
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
   ) {
-    this.adapter = new CoffeeStage3HostedAdapter(pack);
+    this.domainRuntime = new CoffeeHostedDomainRuntime(pack);
   }
 
   async createRun(
@@ -962,7 +932,7 @@ export class HostedStage3RunService {
         `Run ${request.runId} already exists.`,
       );
     }
-    const context = this.adapter.trustedContextFor(effectiveRequest);
+    const context = this.domainRuntime.trustedContextFor(effectiveRequest);
     let state: HostedStage3RunState | null = null;
     const built: BuiltEvent[] = [];
     const created = await this.buildEvent({
@@ -1295,13 +1265,13 @@ export class HostedStage3RunService {
           built.push(proposed);
           state = proposed.nextState;
           const transactionEvents: RunEventV1[] = [];
-          for (const actionId of this.adapter.actionIdsFor(
+          for (const actionId of this.domainRuntime.actionIdsFor(
             state.caseVariant,
           )) {
             const eventSequence = state.version + 1;
             const coreCommandId =
               `${command.commandId}_${actionId}`;
-            const preview = await this.adapter.executeAction({
+            const preview = await this.domainRuntime.executeAction({
               runId: state.runId,
               actionId,
               coreCommandId,
@@ -1384,11 +1354,11 @@ export class HostedStage3RunService {
       case "CREATE_CUSTODY_TRANSFER_PROPOSAL":
         this.requireWorkflow(state, "custody-proposal");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PRODUCER",
           );
           const coreCommandId = `${command.commandId}_TRANSFER_CUSTODY`;
-          const preview = await this.adapter.createCustodyProposal({
+          const preview = await this.domainRuntime.createCustodyProposal({
             runId: command.runId,
             coreCommandId,
             eventSequence: state.version + 1,
@@ -1429,11 +1399,11 @@ export class HostedStage3RunService {
           );
         }
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_LOGISTICS",
           );
           const coreCommandId = `${command.commandId}_ENDORSE`;
-          const preview = await this.adapter.endorseCustodyProposal({
+          const preview = await this.domainRuntime.endorseCustodyProposal({
             runId: command.runId,
             proposalId: command.proposalId,
             coreCommandId,
@@ -1491,11 +1461,11 @@ export class HostedStage3RunService {
           );
         }
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_LOGISTICS",
           );
           const coreCommandId = `${command.commandId}_COMMIT`;
-          const preview = this.adapter.commitCustodyProposal({
+          const preview = this.domainRuntime.commitCustodyProposal({
             runId: command.runId,
             proposalId: command.proposalId,
             coreCommandId,
@@ -1529,7 +1499,7 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "transport-transaction");
         {
           const coreCommandId = `${command.commandId}_RECORD_TRANSPORT`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "RECORD_TRANSPORT",
             coreCommandId,
@@ -1593,11 +1563,11 @@ export class HostedStage3RunService {
       case "RECEIVE_BATCH":
         this.requireWorkflow(state, "receipt-transaction");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const coreCommandId = `${command.commandId}_RECEIVE_BATCH`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "RECEIVE_BATCH",
             coreCommandId,
@@ -1630,12 +1600,12 @@ export class HostedStage3RunService {
       case "PURCHASE_ON_RECEIPT":
         this.requireWorkflow(state, "ownership-transaction");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PRODUCER",
           );
           const coreCommandId =
             `${command.commandId}_PURCHASE_ON_RECEIPT`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "PURCHASE_ON_RECEIPT",
             coreCommandId,
@@ -1669,7 +1639,7 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "discrepancy-decision");
         {
           this.validateDiscrepancyDecision(command);
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const decision = {
@@ -1714,7 +1684,7 @@ export class HostedStage3RunService {
       case "INVESTIGATE_DISCREPANCY":
         this.requireWorkflow(state, "discrepancy-mitigation");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const mitigation = await this.buildEvent({
@@ -1738,13 +1708,13 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "correction-proposal");
         this.validateCorrectionReason(command.reason);
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const coreCommandId =
             `${command.commandId}_RECORD_CORRECTION`;
           const preview =
-            await this.adapter.createCorrectionProposal({
+            await this.domainRuntime.createCorrectionProposal({
               runId: command.runId,
               coreCommandId,
               eventSequence: state.version + 1,
@@ -1784,12 +1754,12 @@ export class HostedStage3RunService {
           );
         }
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PRODUCER",
           );
           const coreCommandId = `${command.commandId}_ENDORSE`;
           const preview =
-            await this.adapter.endorseCorrectionProposal({
+            await this.domainRuntime.endorseCorrectionProposal({
               runId: command.runId,
               proposalId: command.proposalId,
               coreCommandId,
@@ -1848,11 +1818,11 @@ export class HostedStage3RunService {
           );
         }
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PRODUCER",
           );
           const coreCommandId = `${command.commandId}_COMMIT`;
-          const preview = this.adapter.commitCorrectionProposal({
+          const preview = this.domainRuntime.commitCorrectionProposal({
             runId: command.runId,
             proposalId: command.proposalId,
             coreCommandId,
@@ -1916,11 +1886,11 @@ export class HostedStage3RunService {
       case "TRANSFORM_BATCH":
         this.requireWorkflow(state, "transformation-transaction");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const coreCommandId = `${command.commandId}_TRANSFORM_BATCH`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "TRANSFORM_BATCH",
             coreCommandId,
@@ -2054,11 +2024,11 @@ export class HostedStage3RunService {
       case "PACKAGE_BATCH":
         this.requireWorkflow(state, "packaging-transaction");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const coreCommandId = `${command.commandId}_PACKAGE_BATCH`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "PACKAGE_BATCH",
             coreCommandId,
@@ -2094,12 +2064,12 @@ export class HostedStage3RunService {
           "distribution-ownership-transaction",
         );
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_PROCESSOR",
           );
           const coreCommandId =
             `${command.commandId}_TRANSFER_OWNERSHIP`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "TRANSFER_OWNERSHIP",
             coreCommandId,
@@ -2132,11 +2102,11 @@ export class HostedStage3RunService {
       case "DISPATCH_BATCH":
         this.requireWorkflow(state, "dispatch-transaction");
         {
-          const context = this.adapter.trustedContextForId(
+          const context = this.domainRuntime.trustedContextForId(
             "CTX_DISTRIBUTOR",
           );
           const coreCommandId = `${command.commandId}_DISPATCH_BATCH`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "DISPATCH_BATCH",
             coreCommandId,
@@ -2201,8 +2171,8 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "tamper-demonstration");
         {
           const context =
-            this.adapter.trustedContextForId("CTX_RETAILER");
-          const summary = this.adapter.tamperDemonstration(
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
+          const summary = this.domainRuntime.tamperDemonstration(
             state.simulation,
           );
           const demonstrated = await this.buildEvent({
@@ -2244,7 +2214,7 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "data-governance-decision");
         {
           const context =
-            this.adapter.trustedContextForId("CTX_RETAILER");
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
           const decision = hostedClassificationDecision(
             command.decisionId,
             command.categoryByItem,
@@ -2290,7 +2260,7 @@ export class HostedStage3RunService {
         this.requireWorkflow(state, "recall-scope-decision");
         {
           const context =
-            this.adapter.trustedContextForId("CTX_RETAILER");
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
           const decision = hostedRecallScopeDecision(
             command.selectedAssetIds,
           );
@@ -2383,7 +2353,7 @@ export class HostedStage3RunService {
         {
           const context = state.activeTrustedContext;
           const coreCommandId = `${command.commandId}_RECALL_BATCH`;
-          const preview = await this.adapter.executeAction({
+          const preview = await this.domainRuntime.executeAction({
             runId: command.runId,
             actionId: "RECALL_BATCH",
             coreCommandId,
@@ -2803,19 +2773,12 @@ export class HostedStage3RunService {
   private async replay(
     events: readonly RunEventV1[],
   ): Promise<HostedStage3RunState> {
-    const firstEvent = events[0];
-    const usesLegacyStateHashes =
-      firstEvent?.eventType === "RUN_CREATED" &&
-      firstEvent.payload.modeConfiguration === undefined;
     const state = await replayRunEventsAsync<
       HostedStage3RunState | null
     >(
       null,
       events,
       (current, event) => this.applyEvent(current, event),
-      usesLegacyStateHashes
-        ? legacyHostedStateForHash
-        : (value) => value,
     );
     if (state === null) {
       throw new HostedRunCommandError(
@@ -2946,7 +2909,7 @@ export class HostedStage3RunService {
             outcomeResolution.strategy === "probabilistic"
               ? "awaiting-draw"
               : "not-required",
-          activeTrustedContext: this.adapter.trustedContextFor(request),
+          activeTrustedContext: this.domainRuntime.trustedContextFor(request),
           version: event.sequenceNumber,
           status: "active",
           workflowStep: "certificate-evidence",
@@ -2979,7 +2942,7 @@ export class HostedStage3RunService {
           recallStatus: "not-started",
           recallHandoffStatus: "not-started",
           competencyEvidence: [],
-          simulation: this.adapter.createInitialSimulation(),
+          simulation: this.domainRuntime.createInitialSimulation(),
         };
       }
       case "RANDOM_DRAW_MADE": {
@@ -3105,7 +3068,7 @@ export class HostedStage3RunService {
             );
           }
           const trusted =
-            this.adapter.trustedContextForId("CTX_PROCESSOR");
+            this.domainRuntime.trustedContextForId("CTX_PROCESSOR");
           const decisionCommand = {
             metadata: {
               commandId: event.causationId,
@@ -3167,7 +3130,7 @@ export class HostedStage3RunService {
             );
           }
           const expected = tamperSummaryFromPayload(event.payload);
-          const actual = this.adapter.tamperDemonstration(
+          const actual = this.domainRuntime.tamperDemonstration(
             state.simulation,
           );
           if (
@@ -3187,7 +3150,7 @@ export class HostedStage3RunService {
             );
           }
           const trusted =
-            this.adapter.trustedContextForId("CTX_RETAILER");
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
           const payload = {
             commandType: "RUN_TAMPER_DEMONSTRATION" as const,
             transactionId: actual.transactionId,
@@ -3269,7 +3232,7 @@ export class HostedStage3RunService {
             categoryByItem,
           );
           const trusted =
-            this.adapter.trustedContextForId("CTX_RETAILER");
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
           const payload = {
             commandType:
               "SUBMIT_DATA_GOVERNANCE_DECISION" as const,
@@ -3331,7 +3294,7 @@ export class HostedStage3RunService {
             ),
           );
           const trusted =
-            this.adapter.trustedContextForId("CTX_RETAILER");
+            this.domainRuntime.trustedContextForId("CTX_RETAILER");
           const payload = {
             commandType:
               "SUBMIT_RECALL_SCOPE_DECISION" as const,
@@ -3528,7 +3491,7 @@ export class HostedStage3RunService {
           );
         }
         const trusted =
-          this.adapter.trustedContextForId("CTX_PROCESSOR");
+          this.domainRuntime.trustedContextForId("CTX_PROCESSOR");
         const payload: MitigationDecisionCommand = {
           commandType: "INVESTIGATE_DISCREPANCY",
         };
@@ -3599,13 +3562,13 @@ export class HostedStage3RunService {
         if (!isSupported) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
-            "Hosted workflow advanced to an unsupported migration step.",
+            "Hosted workflow advanced to an unsupported workflow step.",
           );
         }
         return this.updateRequiredState(current, event, {
           workflowStep,
           activeTrustedContext:
-            this.adapter.trustedContextForId(contextId),
+            this.domainRuntime.trustedContextForId(contextId),
           ...(workflowStep === "recall-authorized-transaction"
             ? { recallHandoffStatus: "completed" as const }
             : {}),
@@ -3625,7 +3588,7 @@ export class HostedStage3RunService {
           );
           this.validateCorrectionReason(reason);
           const executed =
-            await this.adapter.createCorrectionProposal({
+            await this.domainRuntime.createCorrectionProposal({
               runId: state.runId,
               coreCommandId,
               eventSequence: event.sequenceNumber,
@@ -3674,7 +3637,7 @@ export class HostedStage3RunService {
           event.payload.alsoTransfersOwnership,
           "alsoTransfersOwnership",
         );
-        const executed = await this.adapter.createCustodyProposal({
+        const executed = await this.domainRuntime.createCustodyProposal({
           runId: state.runId,
           coreCommandId,
           eventSequence: event.sequenceNumber,
@@ -3725,7 +3688,7 @@ export class HostedStage3RunService {
         );
         if (state.workflowStep === "correction-endorsement") {
           const executed =
-            await this.adapter.endorseCorrectionProposal({
+            await this.domainRuntime.endorseCorrectionProposal({
               runId: state.runId,
               proposalId,
               coreCommandId,
@@ -3763,7 +3726,7 @@ export class HostedStage3RunService {
               : "awaiting-endorsement",
             correctionEndorsement: executed.summary,
             activeTrustedContext:
-              this.adapter.trustedContextForId("CTX_PRODUCER"),
+              this.domainRuntime.trustedContextForId("CTX_PRODUCER"),
             simulation: executed.simulation,
           };
         }
@@ -3773,7 +3736,7 @@ export class HostedStage3RunService {
             "Endorsement event is not valid for the current workflow.",
           );
         }
-        const executed = await this.adapter.endorseCustodyProposal({
+        const executed = await this.domainRuntime.endorseCustodyProposal({
           runId: state.runId,
           proposalId,
           coreCommandId,
@@ -3809,7 +3772,7 @@ export class HostedStage3RunService {
             : "awaiting-endorsement",
           custodyEndorsement: executed.summary,
           activeTrustedContext:
-            this.adapter.trustedContextForId("CTX_LOGISTICS"),
+            this.domainRuntime.trustedContextForId("CTX_LOGISTICS"),
           simulation: executed.simulation,
         };
       }
@@ -3836,7 +3799,7 @@ export class HostedStage3RunService {
             );
           }
           const executed =
-            this.adapter.commitCorrectionProposal({
+            this.domainRuntime.commitCorrectionProposal({
               runId: state.runId,
               proposalId,
               coreCommandId,
@@ -3877,7 +3840,7 @@ export class HostedStage3RunService {
             "Endorsed transaction event is not valid for the current workflow.",
           );
         }
-        const executed = this.adapter.commitCustodyProposal({
+        const executed = this.domainRuntime.commitCustodyProposal({
           runId: state.runId,
           proposalId,
           coreCommandId,
@@ -3926,7 +3889,7 @@ export class HostedStage3RunService {
             "Recall transaction event has no recorded scope.",
           );
         }
-        const executed = await this.adapter.executeAction({
+        const executed = await this.domainRuntime.executeAction({
           runId: state.runId,
           actionId,
           coreCommandId,
@@ -3980,12 +3943,12 @@ export class HostedStage3RunService {
                 : state.workflowStep,
           activeTrustedContext:
             isReceipt && executed.summary.isAccepted
-              ? this.adapter.trustedContextForId("CTX_PRODUCER")
+              ? this.domainRuntime.trustedContextForId("CTX_PRODUCER")
               : isOwnership && executed.summary.isAccepted
-                ? this.adapter.trustedContextForId("CTX_PROCESSOR")
+                ? this.domainRuntime.trustedContextForId("CTX_PROCESSOR")
                 : isDistributionOwnership &&
                     executed.summary.isAccepted
-                  ? this.adapter.trustedContextForId(
+                  ? this.domainRuntime.trustedContextForId(
                       "CTX_DISTRIBUTOR",
                     )
                 : state.activeTrustedContext,
@@ -4725,13 +4688,7 @@ export class HostedStage3RunService {
     const model = (scenario.outcomeModels ?? []).find(
       (candidate) =>
         candidate.outcomeModelId === outcomeModelId,
-    ) ??
-      (scenario.outcomeModels === undefined &&
-      scenario.legacyCompatibility?.adapterId ===
-        "tracechain-coffee-v2" &&
-      modeConfiguration.outcomeStrategy === "forced"
-        ? LEGACY_COFFEE_OUTCOME_MODEL
-        : undefined);
+    );
     if (model === undefined) {
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",
@@ -4782,7 +4739,7 @@ export class HostedStage3RunService {
   private hostedScenario() {
     const scenario = this.pack.scenarios.find(
       (candidate) =>
-        candidate.legacyCompatibility?.stageId ===
+        candidate.hostedRuntime?.entryStageId ===
         "STG_03_ANCHOR_CERTIFICATE",
     );
     if (scenario === undefined) {
@@ -5167,7 +5124,7 @@ export class HostedStage3RunService {
         },
       ],
       ledgerState: {
-        transactions: this.adapter.transactionInventory(state.simulation),
+        transactions: this.domainRuntime.transactionInventory(state.simulation),
       },
       informationState: evidenceRecords,
       policyState: policyRecords,

@@ -127,7 +127,7 @@ export interface ExecutedCorrectionProposal {
   readonly summary: HostedCorrectionProposalSummary;
 }
 
-export class CoffeeStage3HostedAdapter {
+export class CoffeeHostedDomainRuntime {
   private readonly ledger = new SimulatedLedger(
     sha256Hex,
     coffeeScenario.ledgerConfiguration,
@@ -160,14 +160,14 @@ export class CoffeeStage3HostedAdapter {
     }
     const hostedScenario = pack.scenarios.find(
       (scenario) =>
-        scenario.legacyCompatibility?.adapterId ===
+        scenario.hostedRuntime?.runtimeId ===
           "tracechain-coffee-v2" &&
-        scenario.legacyCompatibility.stageId ===
+        scenario.hostedRuntime.entryStageId ===
           "STG_03_ANCHOR_CERTIFICATE",
     );
     if (hostedScenario === undefined) {
       throw new Error(
-        "Published pack has no registered coffee Stage 3 compatibility scenario.",
+        "Published pack has no registered native coffee runtime.",
       );
     }
     this.hostedScenarioId = hostedScenario.scenarioId;
@@ -194,7 +194,7 @@ export class CoffeeStage3HostedAdapter {
     );
     if (!created.isAccepted) {
       throw new Error(
-        "Coffee Stage 3 compatibility state could not create its source batch.",
+        "The native coffee runtime could not create its source batch.",
       );
     }
     return createSimulationRuntimeState(created.state);

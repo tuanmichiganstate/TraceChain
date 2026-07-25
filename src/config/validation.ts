@@ -184,7 +184,12 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
     if (value.hints !== "disabled") {
       issue("hints", "assessment mode requires disabled hints");
     }
-    issue("mode", "assessment content is not available in this release");
+    if (value.scenarioId !== "SCN_COFFEE_001") {
+      issue(
+        "scenarioId",
+        "assessment mode requires the reviewed standard coffee scenario",
+      );
+    }
   }
   if (value.feedbackTiming === "final" && value.mode === "guided") {
     issue("feedbackTiming", "guided mode requires feedback before the final report");

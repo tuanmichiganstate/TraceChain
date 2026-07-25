@@ -16,7 +16,11 @@ import { installMockScormApi, MockScorm12Api } from "../../test/scorm-mock/mock-
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../scenarios/challenge-a/scenario";
 import { ConfigurationProvider } from "./providers/configuration-provider";
-import { CHALLENGE_PRESET, GUIDED_PRESET } from "../config/presets";
+import {
+  ASSESSMENT_PRESET,
+  CHALLENGE_PRESET,
+  GUIDED_PRESET,
+} from "../config/presets";
 import { hashConfiguration } from "../config/hash";
 import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
 
@@ -56,6 +60,24 @@ function ChallengeAppUnderTest(): React.ReactElement {
     >
       <LocaleProvider locale="vi">
         <ScenarioProvider scenario={challengeAScenario}>
+          <SimulationProvider>
+            <App />
+          </SimulationProvider>
+        </ScenarioProvider>
+      </LocaleProvider>
+    </ConfigurationProvider>
+  );
+}
+
+function AssessmentAppUnderTest(): React.ReactElement {
+  return (
+    <ConfigurationProvider
+      configuration={ASSESSMENT_PRESET}
+      configurationHash={hashConfiguration(ASSESSMENT_PRESET)}
+      cryptographicRuntime={coffeeCryptographicRuntime}
+    >
+      <LocaleProvider locale="vi">
+        <ScenarioProvider scenario={coffeeScenario}>
           <SimulationProvider>
             <App />
           </SimulationProvider>
@@ -663,6 +685,41 @@ describe("the whole activity in the browser", () => {
       screen.getByText(/chữ ký hợp lệ nhưng danh tính tổ chức không được công nhận/),
     ).toBeInTheDocument();
   }, 120_000);
+
+  it("keeps assessment hints hidden and detailed feedback until completion", async () => {
+    const user = userEvent.setup();
+    render(<AssessmentAppUnderTest />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Bắt đầu mô phỏng",
+      }),
+    );
+    await user.click(
+      screen.getByRole("radio", {
+        name: /Có\. Dữ liệu đã ghi lên blockchain/,
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Trả lời" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Đã ghi nhận câu trả lời; phản hồi sẽ hiển thị vào thời điểm được cấu hình.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Chưa chính xác.")).toBeNull();
+    await advance(user);
+    expect(
+      await screen.findByRole("heading", {
+        name: /Bước 2 – Tạo lô cà phê trên sổ cái/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Xem gợi ý" }),
+    ).toBeNull();
+  });
 });
 
 describe("the reference panels", () => {

@@ -9,9 +9,9 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     assignmentId: "ASSIGNMENT_BROWSER_001",
     title: "Hosted coffee governance",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
-    packVersion: "1.6.0",
+    packVersion: "1.7.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-    scenarioVersion: "1.6.0",
+    scenarioVersion: "1.7.0",
     mode: "tutorial",
     runConfiguration: {
       mode: "tutorial",
@@ -98,7 +98,7 @@ test("runs an assigned hosted learner action from role-filtered server state", a
         recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
         value: {
           policyId: "AUTH_ISSUE_CERTIFICATE",
-          policyType: "LEGACY_POLICY",
+          policyType: "RUNTIME_POLICY",
           titleKey:
             "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
         },
@@ -420,9 +420,9 @@ test("completes an authored pharmaceutical decision through the generic runtime 
                 assignmentId: "ASSIGNMENT_BROWSER_PHARMA",
                 title: "Pharmaceutical cold-chain review",
                 packId: "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-                packVersion: "1.0.0",
+                packVersion: "1.1.0",
                 scenarioId: "SCN_PHARMA_COLD_CHAIN_STARTER",
-                scenarioVersion: "1.0.0",
+                scenarioVersion: "1.1.0",
                 mode: "tutorial",
                 runConfiguration: modeConfiguration,
                 learnerUserIds: ["USER_BROWSER_LEARNER"],
@@ -575,9 +575,9 @@ test("keeps a time-limited hosted run reviewable after its deadline", async ({
                 assignmentId: "ASSIGNMENT_BROWSER_EXPIRED",
                 title: "Time-limited coffee governance",
                 packId: "PACK_STANDARD_COFFEE_STAGE3",
-                packVersion: "1.6.0",
+                packVersion: "1.7.0",
                 scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-                scenarioVersion: "1.6.0",
+                scenarioVersion: "1.7.0",
                 mode: "standard",
                 runConfiguration: {
                   mode: "standard",
@@ -826,9 +826,9 @@ test("creates an assignment from the published hosted scenario library", async (
   const option = {
     schemaVersion: "1.0.0",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
-    packVersion: "1.6.0",
+    packVersion: "1.7.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
-    scenarioVersion: "1.6.0",
+    scenarioVersion: "1.7.0",
     packTitleKey:
       "platformPack.standardCoffeeStage3.manifest.title",
     scenarioTitleKey:
@@ -1403,7 +1403,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                   recordId: "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
                   value: {
                     policyId: "AUTH_ISSUE_CERTIFICATE",
-                    policyType: "LEGACY_POLICY",
+                    policyType: "RUNTIME_POLICY",
                     titleKey:
                       "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
                   },

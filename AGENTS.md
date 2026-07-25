@@ -22,6 +22,20 @@ escape hatch and is for docs-only changes.
 Never pipe the gate through `head`/`tail` to read it — that reports the exit
 code of the pager, not the gate. Run it, then check `$?`.
 
+## Pre-release upgrade policy
+
+TraceChain is not deployed to students yet. Do not preserve backward
+compatibility for development-only application state, scenario packs, SCORM
+packages, local browser data, Moodle attempts, or hosted database contents.
+Upgrade the active schemas and implementations directly, regenerate artifacts,
+and reset development data when needed. Do not add migration readers,
+compatibility aliases, fallback adapters, or dual-format code unless the
+product owner explicitly changes this policy.
+
+Database schema-install tooling may remain so a fresh environment can be
+created; it must not be used as a reason to preserve obsolete application
+contracts.
+
 ## Three ways to believe something passed when it did not
 
 These have each already cost time on this repo.

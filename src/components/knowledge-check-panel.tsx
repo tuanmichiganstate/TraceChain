@@ -15,7 +15,7 @@ import { StatusPill } from "./status-pill";
 import { useOptionalConfiguration } from "../app/providers/configuration-provider";
 import { useScenario } from "../app/providers/scenario-provider";
 import { shouldRevealDetailedFeedback } from "../app/feedback-visibility";
-import { MAX_ATTEMPT_COUNT } from "../infrastructure/persistence/state-codec";
+import { MAX_ATTEMPT_COUNT } from "../infrastructure/persistence/attempt-state";
 
 /**
  * Renders any knowledge check from its definition (specification section 20).

@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -100,7 +100,7 @@
     {
       "schemaVersion": "1.0.0",
       "frameworkId": "PHARMA_COLD_CHAIN",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.framework.title"
@@ -108,7 +108,7 @@
       "competencies": [
         {
           "competencyId": "PHARMA.COLD_CHAIN",
-          "version": "1.0.0",
+          "version": "1.1.0",
           "title": {
             "localizationKey": "platformPack.pharmaColdChain.competency.title"
           },
@@ -118,7 +118,7 @@
           "indicators": [
             {
               "indicatorId": "PHARMA.COLD_CHAIN.PI1",
-              "version": "1.0.0",
+              "version": "1.1.0",
               "statement": {
                 "localizationKey": "platformPack.pharmaColdChain.indicator.statement"
               }
@@ -131,7 +131,7 @@
   "rubrics": [
     {
       "rubricId": "RUBRIC_PHARMA_COLD_CHAIN",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.rubric.title"
       },
@@ -171,7 +171,7 @@
   "evidenceRules": [
     {
       "evidenceRuleId": "EVIDENCE_RULE_PHARMA_DECISION",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "indicatorIds": [
         "PHARMA.COLD_CHAIN.PI1"
       ],
@@ -182,7 +182,7 @@
   "scenarios": [
     {
       "scenarioId": "SCN_PHARMA_COLD_CHAIN_STARTER",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.scenario.title"

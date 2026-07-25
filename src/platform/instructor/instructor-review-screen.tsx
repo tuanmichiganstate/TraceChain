@@ -679,6 +679,9 @@ function ScormPackageBuilder({
             <option value="challenge">
               {t("instructorReview.packagePreset.challenge")}
             </option>
+            <option value="assessment">
+              {t("instructorReview.packagePreset.assessment")}
+            </option>
           </select>
           <span className="field__hint">
             {t(`instructorReview.packagePresetHelp.${presetId}`)}
@@ -1540,20 +1543,15 @@ function AssignmentReport({
             </p>
             {report.assignment.status === "closed" ? (
               <p>
-                {report.assignment.closedAt === undefined ||
-                report.assignment.closedByUserId === undefined
-                  ? t(
-                      "instructorReview.assignmentClosedLegacy",
-                    )
-                  : t(
-                      "instructorReview.assignmentClosedDetail",
-                      {
-                        closedAt:
-                          report.assignment.closedAt,
-                        closedBy:
-                          report.assignment.closedByUserId,
-                      },
-                    )}
+                {t(
+                  "instructorReview.assignmentClosedDetail",
+                  {
+                    closedAt:
+                      report.assignment.closedAt!,
+                    closedBy:
+                      report.assignment.closedByUserId!,
+                  },
+                )}
               </p>
             ) : (
               <>

@@ -53,7 +53,8 @@ several thousand — and SCORM 1.2 gives us 4096 characters, total.
 Reordering or deleting an entry silently reinterprets the saved progress of
 every learner mid-attempt. Their stage 6 answer becomes their stage 4 answer.
 
-Appending is safe. Anything else needs a schema version bump and a migration.
+Changing a load-bearing identifier order requires upgrading the active schema
+and resetting development attempts. No compatibility reader is maintained.
 
 The same applies to `SCENARIO_STAGE_ORDER` in `src/domain/types/enums.ts`.
 

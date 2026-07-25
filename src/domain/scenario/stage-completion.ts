@@ -17,7 +17,7 @@ import type {
   StageCompletionCondition,
 } from "../types/scenario";
 import type { SupplyChainCommand } from "../commands/commands";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 import type { ScenarioStageId } from "../types/enums";
 import type { CommittedTransactionEvidence } from "../types/scenario";
 import { transactionMatchesEvidence } from "./transaction-evidence";

@@ -32,56 +32,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function legacyCoffeeModeConfiguration(
-  mode: HostedRunMode,
-): HostedRunModeConfigurationV1 {
-  const shared = {
-    mode,
-    outcomeStrategy: "forced",
-    seedPolicy: "supplied",
-    allowCommunication: false,
-    allowEvidenceRequests: true,
-  } as const;
-  switch (mode) {
-    case "tutorial":
-      return {
-        ...shared,
-        allowHints: true,
-        allowRetry: true,
-        allowBacktracking: true,
-        feedbackTiming: "immediate",
-        showScores: true,
-      };
-    case "standard":
-      return {
-        ...shared,
-        allowHints: false,
-        allowRetry: false,
-        allowBacktracking: false,
-        feedbackTiming: "final",
-        showScores: false,
-      };
-    case "configured":
-      return {
-        ...shared,
-        allowHints: false,
-        allowRetry: false,
-        allowBacktracking: false,
-        feedbackTiming: "stage-end",
-        showScores: false,
-      };
-    case "sandbox":
-      return {
-        ...shared,
-        allowHints: true,
-        allowRetry: true,
-        allowBacktracking: true,
-        feedbackTiming: "immediate",
-        showScores: false,
-      };
-  }
-}
-
 export function validateHostedModeConfiguration(
   value: unknown,
   expectedMode?: HostedRunMode,
@@ -172,12 +122,6 @@ export function modeConfigurationFor(
     );
   }
   if (scenario.modeConfigurations === undefined) {
-    if (
-      scenario.legacyCompatibility?.adapterId ===
-      "tracechain-coffee-v2"
-    ) {
-      return legacyCoffeeModeConfiguration(mode);
-    }
     throw new HostedModeConfigurationError(
       `Scenario has no authored configuration for hosted mode ${mode}.`,
     );

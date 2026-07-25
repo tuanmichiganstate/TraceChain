@@ -49,7 +49,7 @@ import {
   encodeAnswer,
   type Answer,
 } from "../scenario/answer-codec";
-import type { DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type { DecisionRecord } from "../../infrastructure/persistence/attempt-state";
 import { runtimeMitigationCommand } from "../scenario/runtime";
 import type {
   CryptographicRuntime,

@@ -6,7 +6,10 @@ import type {
 } from "../../domain/commands/commands";
 import { canonicalize } from "../../infrastructure/hashing/canonicalize";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
-import type { AttemptSnapshot, DecisionRecord } from "../../infrastructure/persistence/state-codec";
+import type {
+  AttemptSnapshot,
+  DecisionRecord,
+} from "../../infrastructure/persistence/attempt-state";
 import type { DomainState } from "../../domain/ledger/domain-state";
 import { SimulatedLedger } from "../../domain/ledger/ledger-engine";
 import { resolveEffectiveValue, correctionTargetValueInTransaction } from "../../domain/ledger/effective-value";
