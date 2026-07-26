@@ -59,6 +59,7 @@ test.describe("the whole activity in a real browser", () => {
   await page
     .getByRole("button", { name: "Bàn giao cho cơ quan quản lý" })
     .click();
+  await activity.expectNotification("Đã chuyển vai trò");
   await expect(
     page.getByText(/Bước bàn giao tổ chức tin cậy đã hoàn tất/),
   ).toBeVisible();
@@ -104,11 +105,110 @@ test.describe("rules the learner can feel", () => {
 
     const panel = activity.panel("Bàn giao lô hàng cho đơn vị vận chuyển");
     await panel.getByRole("button", { name: "Gửi giao dịch lên mạng" }).click();
+    await activity.expectNotification("Giao dịch bị từ chối");
 
     // A teaching message, not an error code.
     await expect(
-      page.getByText(/Đơn vị vận chuyển giữ hộ hàng chứ không mua lô hàng/),
+      panel.getByText(/Đơn vị vận chuyển giữ hộ hàng chứ không mua lô hàng/),
     ).toBeVisible();
+  });
+
+  test("retains a rejected overwrite attempt and offers mitigation", async ({
+    page,
+    browserName,
+  }) => {
+    allowMeasuredWebKitWalkthrough(browserName);
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.playToStageFive();
+    await activity.submitAndSeal("Tiếp nhận lô hàng");
+    await activity.submitAndSeal("Ghi nhận việc mua lô hàng");
+    await page
+      .getByRole("combobox", {
+        name: "Hành động đề xuất đối với bản ghi",
+      })
+      .selectOption("OVERWRITE");
+    await page
+      .getByRole("combobox", {
+        name: "Nguyên nhân có khả năng nhất",
+      })
+      .selectOption("TYPING_ERROR");
+    await page
+      .getByRole("button", {
+        name: "Gửi quyết định xử lý chênh lệch",
+      })
+      .click();
+
+    await activity.expectNotification(
+      "Lần thử đã được ghi nhận và bị từ chối",
+    );
+    await expect(
+      page.getByText(
+        /Yêu cầu được giữ lại để phản hồi và chấm điểm, nhưng không thay đổi sổ cái/,
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Điều tra và chuẩn bị giao dịch điều chỉnh chỉ ghi thêm",
+      }),
+    ).toBeVisible();
+  });
+
+  test("keeps notifications usable at 390 and 320 pixels", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const activity = new Activity(page);
+
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    const panel = activity.panel("Thông tin lô hàng");
+    const submit = panel.getByRole("button", {
+      name: "Gửi giao dịch lên mạng",
+    });
+    await submit.evaluate((button) => {
+      const submitButton = button as HTMLButtonElement;
+      submitButton.click();
+      submitButton.click();
+    });
+    await activity.expectNotification("Giao dịch đã được kiểm tra");
+    await expect(
+      activity.notificationRegion().locator(".app-notification"),
+    ).toHaveCSS("animation-name", "none");
+    await expect(
+      activity
+        .notificationRegion()
+        .getByText("Giao dịch đã được kiểm tra", { exact: true }),
+    ).toHaveCount(1);
+
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 320, height: 640 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const notificationBox =
+        await activity.notificationRegion().boundingBox();
+      const primaryActionBox = await panel
+        .getByRole("button", {
+          name: "Ghi giao dịch vào khối",
+        })
+        .boundingBox();
+      expect(notificationBox).not.toBeNull();
+      expect(primaryActionBox).not.toBeNull();
+      expect(notificationBox?.x).toBeGreaterThanOrEqual(0);
+      expect(
+        (notificationBox?.x ?? 0) +
+          (notificationBox?.width ?? viewport.width),
+      ).toBeLessThanOrEqual(viewport.width);
+      expect(
+        (notificationBox?.y ?? 0) +
+          (notificationBox?.height ?? 0),
+      ).toBeLessThanOrEqual(primaryActionBox?.y ?? 0);
+    }
   });
 
   test("shows the tamper escalation without touching the learner's ledger", async ({

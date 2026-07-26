@@ -4,6 +4,7 @@ import { useScenario } from "../app/providers/scenario-provider";
 import type { SignatureTrustEvidence } from "../crypto/signatures/types";
 import { verificationBundleFromEvidence } from "../crypto/signatures/signing-service";
 import { StatusPill } from "./status-pill";
+import { copyText } from "./copy-text";
 
 export function SignatureTrustSummary({
   evidence,
@@ -28,18 +29,6 @@ export function SignatureTrustSummary({
     organization === undefined
       ? evidence.signature.organizationId
       : t(organization.displayNameKey);
-  const announcement = !evidence.signatureValid
-    ? t("signature.announcement.invalid")
-    : !evidence.authorization.recognizedIdentity
-      ? t("signature.announcement.unknown", { organization: signer })
-      : !evidence.authorization.authorized
-        ? t("signature.announcement.unauthorized", {
-            organization: signer,
-          })
-        : t("signature.announcement.authorized", {
-            organization: signer,
-          });
-
   return (
     <section
       className="signature-trust"
@@ -48,9 +37,6 @@ export function SignatureTrustSummary({
       <h4 id={`signature-heading-${evidence.proposal.proposalId}`}>
         {t("signature.heading")}
       </h4>
-      <p className="visually-hidden" role="status" aria-live="polite">
-        {announcement}
-      </p>
       <dl className="asset-card__grid">
         <TrustRow
           label={t("signature.signatureLabel")}
@@ -203,23 +189,6 @@ export function SignatureTrustSummary({
       </details>
     </section>
   );
-}
-
-async function copyText(value: string): Promise<void> {
-  if (navigator.clipboard?.writeText !== undefined) {
-    await navigator.clipboard.writeText(value);
-    return;
-  }
-  const field = document.createElement("textarea");
-  field.value = value;
-  field.setAttribute("readonly", "");
-  field.style.position = "fixed";
-  field.style.insetInlineStart = "-9999px";
-  document.body.append(field);
-  field.select();
-  const copied = document.execCommand("copy");
-  field.remove();
-  if (!copied) throw new Error("Copy command was rejected");
 }
 
 function TrustRow({

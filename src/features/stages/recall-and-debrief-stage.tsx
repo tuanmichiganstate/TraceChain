@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ScenarioStageId,
   TransactionStatus,
@@ -51,6 +51,7 @@ export function RecallAndDebriefStage(): ReactNode {
   } = useSimulation();
   const packageConfiguration = useOptionalConfiguration();
   const [handoffPending, setHandoffPending] = useState(false);
+  const handoffInFlight = useRef(false);
   const definition = stage(ScenarioStageId.RECALL_AND_DEBRIEF);
   const [scopeCheck, debriefCheck] = definition?.knowledgeChecks ?? [];
 
@@ -166,13 +167,22 @@ export function RecallAndDebriefStage(): ReactNode {
               handoffPending
             }
             onClick={() => {
+              if (handoffInFlight.current) return;
+              handoffInFlight.current = true;
               setHandoffPending(true);
-              void requestRoleHandoff(handoff.handoffId).finally(() =>
-                setHandoffPending(false),
-              );
+              void requestRoleHandoff(handoff.handoffId)
+                .catch(() => undefined)
+                .finally(() => {
+                  handoffInFlight.current = false;
+                  setHandoffPending(false);
+                });
             }}
           >
-            {t(handoff.labelKey)}
+            {t(
+              handoffPending
+                ? "action.processing"
+                : handoff.labelKey,
+            )}
           </button>
         ))}
       </div>

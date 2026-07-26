@@ -672,6 +672,134 @@
 .top-bar__progress::-webkit-progress-value { background: var(--colour-navy); }
 .top-bar__progress::-moz-progress-bar { background: var(--colour-navy); }
 
+/* ---- Durable-action notifications ---- */
+
+.notification-viewport {
+  position: fixed;
+  inset-block-start: 6.5rem;
+  inset-inline-end: max(var(--space-4), env(safe-area-inset-right));
+  width: min(28rem, calc(100vw - 2 * var(--space-4)));
+  z-index: 40;
+  pointer-events: none;
+}
+
+.notification-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-notification {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 2.75rem;
+  gap: var(--space-2);
+  align-items: start;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border-strong);
+  border-inline-start: 4px solid var(--colour-navy);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface);
+  box-shadow: var(--shadow-raised);
+  pointer-events: auto;
+  animation: notification-enter var(--duration-step) var(--easing-standard);
+}
+
+.app-notification--success {
+  border-inline-start-color: var(--colour-pass);
+}
+
+.app-notification--warning {
+  border-inline-start-color: var(--colour-warn);
+}
+
+.app-notification--error {
+  border-inline-start-color: var(--colour-fail);
+}
+
+.app-notification__icon {
+  display: grid;
+  place-items: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  border-radius: 50%;
+  background: var(--colour-navy-soft);
+  color: var(--colour-navy-strong);
+  font-weight: 750;
+  line-height: 1;
+}
+
+.app-notification--success .app-notification__icon {
+  background: var(--colour-pass-soft);
+  color: var(--colour-pass);
+}
+
+.app-notification--warning .app-notification__icon {
+  background: var(--colour-warn-soft);
+  color: var(--colour-warn);
+}
+
+.app-notification--error .app-notification__icon {
+  background: var(--colour-fail-soft);
+  color: var(--colour-fail);
+}
+
+.app-notification__title,
+.app-notification__message {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-notification__title {
+  color: var(--colour-navy-strong);
+  font-weight: 700;
+}
+
+.app-notification__message {
+  margin-top: var(--space-1);
+  color: var(--colour-text);
+  font-size: var(--size-small);
+}
+
+.app-notification__dismiss {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  color: var(--colour-text);
+  font: inherit;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.app-notification__dismiss:hover {
+  background: var(--colour-surface-sunken);
+}
+
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-notification {
+    animation: none;
+  }
+}
+
 /* ---- Workspace ---- */
 
 .workspace,
@@ -1228,6 +1356,24 @@
   .field-handoff__receipt summary {
     align-items: center;
     flex-direction: row;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .notification-viewport {
+    inset-block-start: calc(8.5rem + env(safe-area-inset-top));
+    inset-inline: max(var(--space-2), env(safe-area-inset-left))
+      max(var(--space-2), env(safe-area-inset-right));
+    width: auto;
+  }
+
+  .notification-list > li:not(:last-child) {
+    display: none;
+  }
+
+  .app-notification {
+    grid-template-columns: 1.5rem minmax(0, 1fr) 2.75rem;
+    padding: var(--space-2) var(--space-3);
   }
 }
 

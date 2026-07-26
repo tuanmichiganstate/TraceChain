@@ -51,6 +51,20 @@ export class Activity {
     this.mark(`reached stage ${number}`);
   }
 
+  notificationRegion(): Locator {
+    return this.page.getByRole("status", {
+      name: "Thông báo về thao tác",
+    });
+  }
+
+  async expectNotification(text: string | RegExp): Promise<void> {
+    await expect(
+      this.notificationRegion()
+        .getByText(text, { exact: typeof text === "string" })
+        .last(),
+    ).toBeVisible();
+  }
+
   /** Answer a single- or multi-choice check by matching its option text. */
   async answer(optionPattern: RegExp): Promise<void> {
     await this.page.getByRole("radio", { name: optionPattern }).check();
@@ -107,9 +121,17 @@ export class Activity {
   async submitAndSeal(name: string): Promise<void> {
     const panel = this.panel(name);
     await panel.getByRole("button", { name: "Gửi giao dịch lên mạng" }).click();
+    await this.expectNotification("Giao dịch đã được kiểm tra");
     const seal = panel.getByRole("button", { name: "Ghi giao dịch vào khối" });
     await expect(seal).toBeVisible();
     await seal.click();
+    await this.expectNotification(
+      name.includes("điều chỉnh")
+        ? "Bản sửa chữa đã được ghi nhận"
+        : name.includes("thu hồi")
+          ? "Lệnh thu hồi đã được ghi nhận"
+          : "Giao dịch đã được ghi nhận",
+    );
   }
 
   async submitEndorsedAndSeal(name: string): Promise<void> {
@@ -119,6 +141,8 @@ export class Activity {
         name: "Gửi giao dịch lên mạng",
       })
       .click();
+    await this.expectNotification("Đề xuất đã được ký");
+    await this.expectNotification(/Đề xuất đang chờ xác nhận của/);
     await expect(
       panel.getByRole("heading", {
         name: "Phê duyệt bắt buộc",
@@ -129,11 +153,13 @@ export class Activity {
         name: /Bàn giao cho (bên tiếp nhận lưu giữ|nhà sản xuất)|Yêu cầu tổ chức khác xem xét/,
       })
       .click();
+    await this.expectNotification("Đã chuyển vai trò");
     await panel
       .getByRole("button", {
         name: "Ký và phê duyệt đề xuất",
       })
       .click();
+    await this.expectNotification("Đã đáp ứng yêu cầu xác nhận");
     await expect(
       panel.getByText(/Đã đáp ứng yêu cầu/),
     ).toBeVisible();
@@ -142,11 +168,17 @@ export class Activity {
         name: "Cam kết giao dịch đã được phê duyệt",
       })
       .click();
+    await this.expectNotification("Giao dịch đã được kiểm tra");
     const seal = panel.getByRole("button", {
       name: "Ghi giao dịch vào khối",
     });
     await expect(seal).toBeVisible();
     await seal.click();
+    await this.expectNotification(
+      name.includes("điều chỉnh")
+        ? "Bản sửa chữa đã được ghi nhận"
+        : "Giao dịch đã được ghi nhận",
+    );
   }
 
   async submitSoundCertificateDecision(): Promise<void> {
@@ -167,6 +199,7 @@ export class Activity {
     await this.page
       .getByRole("button", { name: "Gửi quyết định về chứng nhận" })
       .click();
+    await this.expectNotification("Quyết định đã được ghi nhận");
   }
 
   async inspectUnauthorizedCertificateSignature(): Promise<void> {
@@ -176,6 +209,7 @@ export class Activity {
     await panel
       .getByRole("button", { name: "Gửi giao dịch lên mạng" })
       .click();
+    await this.expectNotification("Giao dịch bị từ chối");
     await expect(
       panel.getByText("Công ty Vận tải Liên Việt", { exact: true }),
     ).toBeVisible();
@@ -213,11 +247,12 @@ export class Activity {
       .getByRole("button", { name: "Tiếp tục" })
       .last();
     await continueButton.scrollIntoViewIfNeeded();
+    await expect(continueButton).toBeEnabled();
     await continueButton.click({ force: true });
   }
 
   /** Stages 1 to 5, ending with the committed manifest correction. */
-  async playThroughStageFive(): Promise<void> {
+  async playToStageFive(): Promise<void> {
     await this.start();
     await this.expectStage(1);
     await this.answer(/Không\. Blockchain giúp xác định/);
@@ -244,6 +279,11 @@ export class Activity {
     await this.continue();
 
     await this.expectStage(5);
+  }
+
+  /** Stages 1 to 5, ending with the committed manifest correction. */
+  async playThroughStageFive(): Promise<void> {
+    await this.playToStageFive();
     await this.submitAndSeal("Tiếp nhận lô hàng");
     await this.submitAndSeal("Ghi nhận việc mua lô hàng");
     await this.submitSoundDiscrepancyDecision();

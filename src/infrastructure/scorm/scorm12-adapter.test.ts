@@ -310,11 +310,13 @@ describe("Scorm12Adapter", () => {
   });
 
   describe("resilience", () => {
-    it("treats a failing LMSCommit as non-fatal", async () => {
+    it("reports initialization failure but rejects later authoritative commits", async () => {
       const failing = new MockScorm12Api({ failCommit: true });
       const adapter = makeAdapter(failing);
       await expect(adapter.initialize()).resolves.toBeDefined();
-      await expect(adapter.commit()).resolves.toBeUndefined();
+      await expect(adapter.commit()).rejects.toThrow(
+        /authoritative state was not stored/,
+      );
       expect(adapter.getDiagnostics().join(" ")).toMatch(/LMSCommit failed/);
     });
 

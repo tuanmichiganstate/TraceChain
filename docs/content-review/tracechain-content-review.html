@@ -14,7 +14,8 @@
 <body>
 <a class="skip" href="#main">Tới nội dung</a>
 <div class="layout">
-<nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol><li><a href="#group-activity"><span>activity</span><b>6</b></a></li>
+<nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol><li><a href="#group-action"><span>action</span><b>1</b></a></li>
+<li><a href="#group-activity"><span>activity</span><b>6</b></a></li>
 <li><a href="#group-actors"><span>actors</span><b>9</b></a></li>
 <li><a href="#group-adminAccess"><span>adminAccess</span><b>38</b></a></li>
 <li><a href="#group-app"><span>app</span><b>7</b></a></li>
@@ -40,6 +41,7 @@
 <li><a href="#group-locations"><span>locations</span><b>5</b></a></li>
 <li><a href="#group-message"><span>message</span><b>6</b></a></li>
 <li><a href="#group-navigation"><span>navigation</span><b>5</b></a></li>
+<li><a href="#group-notification"><span>notification</span><b>37</b></a></li>
 <li><a href="#group-organizations"><span>organizations</span><b>8</b></a></li>
 <li><a href="#group-package"><span>package</span><b>6</b></a></li>
 <li><a href="#group-pipeline"><span>pipeline</span><b>11</b></a></li>
@@ -68,7 +70,7 @@
 <li><a href="#group-status"><span>status</span><b>5</b></a></li>
 <li><a href="#group-terms"><span>terms</span><b>26</b></a></li>
 <li><a href="#group-traceability"><span>traceability</span><b>9</b></a></li>
-<li><a href="#group-transaction"><span>transaction</span><b>13</b></a></li>
+<li><a href="#group-transaction"><span>transaction</span><b>14</b></a></li>
 <li><a href="#group-transactionType"><span>transactionType</span><b>12</b></a></li>
 <li><a href="#group-unit"><span>unit</span><b>3</b></a></li>
 <li><a href="#group-validation"><span>validation</span><b>94</b></a></li>
@@ -79,13 +81,21 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>1753/1753</b>chuỗi song ngữ</li>
+    <li><b>1792/1792</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
     <li><b>1</b>phiên bản định dạng</li>
   </ul>
 </header>
+<section id="group-action">
+  <h2>action <span>1 chuỗi</span></h2>
+  <article class="entry" data-locale-key="action.processing">
+  <header><code>action.processing</code></header>
+  <p class="vi" lang="vi">Đang xử lý…</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Processing…</p></details>
+</article>
+</section>
 <section id="group-activity">
   <h2>activity <span>6 chuỗi</span></h2>
   <article class="entry" data-locale-key="activity.certificateStorage">
@@ -4334,6 +4344,194 @@
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Skip the introduction</p></details>
 </article>
 </section>
+<section id="group-notification">
+  <h2>notification <span>37 chuỗi</span></h2>
+  <article class="entry" data-locale-key="notification.correctionCommitted.message">
+  <header><code>notification.correctionCommitted.message</code></header>
+  <p class="vi" lang="vi">Bản sửa chữa chỉ ghi thêm đã được ghi vào khối {blockNumber}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The append-only correction was recorded in Block {blockNumber}.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.correctionCommitted.title">
+  <header><code>notification.correctionCommitted.title</code></header>
+  <p class="vi" lang="vi">Bản sửa chữa đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Correction committed</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRecorded.message">
+  <header><code>notification.decisionRecorded.message</code></header>
+  <p class="vi" lang="vi">Quyết định này đã được thêm vào lịch sử của lượt mô phỏng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This decision has been added to the attempt history.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRecorded.title">
+  <header><code>notification.decisionRecorded.title</code></header>
+  <p class="vi" lang="vi">Quyết định đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Decision recorded</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRejected.message">
+  <header><code>notification.decisionRejected.message</code></header>
+  <p class="vi" lang="vi">Thay đổi đã thử được giữ trong lịch sử kiểm tra nhưng không làm thay đổi trạng thái sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The attempted change was retained in the audit history but changed no ledger state.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRejected.title">
+  <header><code>notification.decisionRejected.title</code></header>
+  <p class="vi" lang="vi">Lần thử đã được ghi nhận và bị từ chối</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Attempt recorded and rejected</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRisk.message">
+  <header><code>notification.decisionRisk.message</code></header>
+  <p class="vi" lang="vi">Cần thực hiện thêm hành động trước khi có thể hoàn tất tình huống này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Further action is required before this case can be completed.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.decisionRisk.title">
+  <header><code>notification.decisionRisk.title</code></header>
+  <p class="vi" lang="vi">Quyết định đã được ghi nhận, nhưng vẫn còn rủi ro</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Decision recorded with unresolved risk</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.dismiss">
+  <header><code>notification.dismiss</code></header>
+  <p class="vi" lang="vi">Đóng thông báo</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Dismiss notification</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementDeclined.message">
+  <header><code>notification.endorsementDeclined.message</code></header>
+  <p class="vi" lang="vi">Quyết định được giữ lại và đề xuất chưa được ghi vào sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The decision was retained, and the proposal remains uncommitted.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementDeclined.title">
+  <header><code>notification.endorsementDeclined.title</code></header>
+  <p class="vi" lang="vi">Tổ chức đã từ chối xác nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement declined</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementPending.message">
+  <header><code>notification.endorsementPending.message</code></header>
+  <p class="vi" lang="vi">Vẫn cần một tổ chức bắt buộc khác xác nhận cùng đề xuất.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Another required organization must still approve the same proposal.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementPending.organization">
+  <header><code>notification.endorsementPending.organization</code></header>
+  <p class="vi" lang="vi">Vẫn cần xác nhận của {organization}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Approval from {organization} is still required.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementPending.title">
+  <header><code>notification.endorsementPending.title</code></header>
+  <p class="vi" lang="vi">Ý kiến xác nhận đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement recorded</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementRejected.message">
+  <header><code>notification.endorsementRejected.message</code></header>
+  <p class="vi" lang="vi">Ý kiến đã gửi không đáp ứng yêu cầu của đề xuất.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The submitted endorsement did not satisfy the proposal requirements.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementRejected.title">
+  <header><code>notification.endorsementRejected.title</code></header>
+  <p class="vi" lang="vi">Ý kiến xác nhận bị từ chối</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement rejected</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementSatisfied.message">
+  <header><code>notification.endorsementSatisfied.message</code></header>
+  <p class="vi" lang="vi">Tất cả tổ chức bắt buộc đã xác nhận cùng một nội dung giao dịch.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">All required organizations approved the same transaction content.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.endorsementSatisfied.title">
+  <header><code>notification.endorsementSatisfied.title</code></header>
+  <p class="vi" lang="vi">Đã đáp ứng yêu cầu xác nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorsement requirement satisfied</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.hashCopied.title">
+  <header><code>notification.hashCopied.title</code></header>
+  <p class="vi" lang="vi">Đã sao chép mã băm giao dịch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction hash copied</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.hashCopyFailed.message">
+  <header><code>notification.hashCopyFailed.message</code></header>
+  <p class="vi" lang="vi">Trình duyệt này không cho phép truy cập bảng nhớ tạm.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This browser did not permit access to the clipboard.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.hashCopyFailed.title">
+  <header><code>notification.hashCopyFailed.title</code></header>
+  <p class="vi" lang="vi">Chưa sao chép được mã băm giao dịch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction hash not copied</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.mitigationRecorded.message">
+  <header><code>notification.mitigationRecorded.message</code></header>
+  <p class="vi" lang="vi">Hành động tiếp theo đã được thêm vào mà không thay thế quyết định ban đầu.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The follow-up action has been added without replacing the initial decision.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.mitigationRecorded.title">
+  <header><code>notification.mitigationRecorded.title</code></header>
+  <p class="vi" lang="vi">Hành động khắc phục đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Corrective action recorded</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.proposalCreated.awaiting">
+  <header><code>notification.proposalCreated.awaiting</code></header>
+  <p class="vi" lang="vi">Đề xuất đang chờ xác nhận của {organization}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The proposal is waiting for approval from {organization}.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.proposalCreated.message">
+  <header><code>notification.proposalCreated.message</code></header>
+  <p class="vi" lang="vi">Hãy xem lại nội dung chính xác của đề xuất trước khi yêu cầu xác nhận.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Review the exact proposal before requesting the required endorsement.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.proposalCreated.title">
+  <header><code>notification.proposalCreated.title</code></header>
+  <p class="vi" lang="vi">Đề xuất đã được ký</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Proposal signed</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.recallCommitted.message">
+  <header><code>notification.recallCommitted.message</code></header>
+  <p class="vi" lang="vi">Lệnh thu hồi được ủy quyền đã được ghi vào khối {blockNumber}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The authorized recall was recorded in Block {blockNumber}.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.recallCommitted.title">
+  <header><code>notification.recallCommitted.title</code></header>
+  <p class="vi" lang="vi">Lệnh thu hồi đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Recall committed</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.regionLabel">
+  <header><code>notification.regionLabel</code></header>
+  <p class="vi" lang="vi">Thông báo về thao tác</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Action notifications</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.roleHandoff.message">
+  <header><code>notification.roleHandoff.message</code></header>
+  <p class="vi" lang="vi">Bạn đang thực hiện nhiệm vụ của {role}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">You are now acting as {role}.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.roleHandoff.title">
+  <header><code>notification.roleHandoff.title</code></header>
+  <p class="vi" lang="vi">Đã chuyển vai trò</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Role changed</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionAccepted.message">
+  <header><code>notification.transactionAccepted.message</code></header>
+  <p class="vi" lang="vi">Giao dịch đã được sắp thứ tự và sẵn sàng ghi vào khối tiếp theo.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The transaction is ordered and ready to be committed in the next block.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionAccepted.title">
+  <header><code>notification.transactionAccepted.title</code></header>
+  <p class="vi" lang="vi">Giao dịch đã được kiểm tra</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction validated</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionCommitted.message">
+  <header><code>notification.transactionCommitted.message</code></header>
+  <p class="vi" lang="vi">Giao dịch đã được ghi vào khối {blockNumber}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The transaction was recorded in Block {blockNumber}.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionCommitted.title">
+  <header><code>notification.transactionCommitted.title</code></header>
+  <p class="vi" lang="vi">Giao dịch đã được ghi nhận</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction committed</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionRejected.message">
+  <header><code>notification.transactionRejected.message</code></header>
+  <p class="vi" lang="vi">Kết quả kiểm tra thường trực giải thích vì sao không có thay đổi nào trên sổ cái.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The persistent validation result explains why no ledger mutation occurred.</p></details>
+</article>
+  <article class="entry" data-locale-key="notification.transactionRejected.title">
+  <header><code>notification.transactionRejected.title</code></header>
+  <p class="vi" lang="vi">Giao dịch bị từ chối</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Transaction rejected</p></details>
+</article>
+</section>
 <section id="group-organizations">
   <h2>organizations <span>8 chuỗi</span></h2>
   <article class="entry" data-locale-key="organizations.certificationBody.name">
@@ -8339,7 +8537,7 @@
 </article>
 </section>
 <section id="group-transaction">
-  <h2>transaction <span>13 chuỗi</span></h2>
+  <h2>transaction <span>14 chuỗi</span></h2>
   <article class="entry" data-locale-key="transaction.cancel">
   <header><code>transaction.cancel</code></header>
   <p class="vi" lang="vi">Hủy giao dịch</p>
@@ -8349,6 +8547,11 @@
   <header><code>transaction.compose</code></header>
   <p class="vi" lang="vi">Soạn giao dịch</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Compose transaction</p></details>
+</article>
+  <article class="entry" data-locale-key="transaction.copyHash">
+  <header><code>transaction.copyHash</code></header>
+  <p class="vi" lang="vi">Sao chép mã băm giao dịch</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Copy transaction hash</p></details>
 </article>
   <article class="entry" data-locale-key="transaction.edit">
   <header><code>transaction.edit</code></header>
@@ -9029,7 +9232,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>108dc8261e175f8d07f2f040d010fbcd4c8598d5</code> · SHA-256 nguồn: <code>18f74d5a4ad114bb6d44d5a6113642dc737596e04ed59fdd7f3d8b282192689d</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>42cdbe82febf7ca7fbc6c1051098a6540b9f0b59</code> · SHA-256 nguồn: <code>9d0ff941e2bfe8facad96469c523dbd2d824d6632d9dbeb5ce3e7402e15efc2c</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

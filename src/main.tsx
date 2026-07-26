@@ -5,6 +5,7 @@ import { LocaleProvider } from "./app/providers/locale-provider";
 import { ScenarioProvider } from "./app/providers/scenario-provider";
 import { SimulationProvider } from "./app/providers/simulation-provider";
 import { ConfigurationProvider } from "./app/providers/configuration-provider";
+import { NotificationProvider } from "./app/providers/notification-provider";
 import { loadRuntimePackage } from "./config/runtime-loader";
 import {
   createTranslator,
@@ -42,17 +43,19 @@ if (
   root.render(
     <StrictMode>
       <LocaleProvider locale={locale}>
-        {/^\/platform\/?$/u.test(window.location.pathname) ? (
-          <HostedPortalScreen />
-        ) : /^\/admin\/?$/u.test(window.location.pathname) ? (
-          <ApplicationAccessScreen />
-        ) : /^\/author\/?$/u.test(window.location.pathname) ? (
-          <ScenarioAuthorScreen />
-        ) : /^\/learner\/?$/u.test(window.location.pathname) ? (
-          <HostedLearnerScreen />
-        ) : (
-          <InstructorReviewScreen />
-        )}
+        <NotificationProvider>
+          {/^\/platform\/?$/u.test(window.location.pathname) ? (
+            <HostedPortalScreen />
+          ) : /^\/admin\/?$/u.test(window.location.pathname) ? (
+            <ApplicationAccessScreen />
+          ) : /^\/author\/?$/u.test(window.location.pathname) ? (
+            <ScenarioAuthorScreen />
+          ) : /^\/learner\/?$/u.test(window.location.pathname) ? (
+            <HostedLearnerScreen />
+          ) : (
+            <InstructorReviewScreen />
+          )}
+        </NotificationProvider>
       </LocaleProvider>
     </StrictMode>,
   );
@@ -68,11 +71,13 @@ if (
             cryptographicRuntime={runtime.cryptographicRuntime}
           >
             <LocaleProvider locale={runtime.configuration.locale}>
-              <ScenarioProvider scenario={runtime.scenario}>
-                <SimulationProvider>
-                  <App />
-                </SimulationProvider>
-              </ScenarioProvider>
+              <NotificationProvider>
+                <ScenarioProvider scenario={runtime.scenario}>
+                  <SimulationProvider>
+                    <App />
+                  </SimulationProvider>
+                </ScenarioProvider>
+              </NotificationProvider>
             </LocaleProvider>
           </ConfigurationProvider>
         </StrictMode>,

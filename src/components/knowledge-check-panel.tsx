@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   KnowledgeCheckType,
   type KnowledgeCheckDefinition,
@@ -47,7 +47,12 @@ export function KnowledgeCheckPanel({
 }): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
-  const { state, answerCheck, isCompleted } = useSimulation();
+  const {
+    state,
+    answerCheck,
+    answerProfessionalCheck,
+    isCompleted,
+  } = useSimulation();
   const packageConfiguration = useOptionalConfiguration();
   const previousAttempts = state.decisions[check.knowledgeCheckId]?.attemptCount ?? 0;
   const previousDecision = state.decisions[check.knowledgeCheckId];
@@ -64,6 +69,8 @@ export function KnowledgeCheckPanel({
       ? null
       : isAnswerCorrect(check, restoredLockedAnswer),
   );
+  const [isSubmitting, setSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
   const hasAnswered = outcome !== null;
   const canSubmit = isAnswerComplete(check, answer);
   const stageId = scenario.stages.find((stage) =>
@@ -81,7 +88,22 @@ export function KnowledgeCheckPanel({
   });
 
   const submit = (): void => {
-    if (!canSubmit) return;
+    if (!canSubmit || submissionInFlight.current) return;
+    if (presentation === "professional") {
+      submissionInFlight.current = true;
+      setSubmitting(true);
+      void answerProfessionalCheck(check, answer)
+        .then((isCorrect) => {
+          setOutcome(isCorrect);
+          onAnswered?.(isCorrect);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          submissionInFlight.current = false;
+          setSubmitting(false);
+        });
+      return;
+    }
     const isCorrect = answerCheck(check, answer);
     setOutcome(isCorrect);
     onAnswered?.(isCorrect);
@@ -133,17 +155,28 @@ export function KnowledgeCheckPanel({
             !canSubmit ||
             isLocked ||
             attemptLimitReached ||
-            state.isReadOnly
+            state.isReadOnly ||
+            isSubmitting
           }
         >
-          {t(submitLabelKey)}
+          {t(
+            isSubmitting
+              ? "action.processing"
+              : submitLabelKey,
+          )}
         </button>
       ) : !revealDetailedFeedback ? (
-        <div className="feedback" role="status">
+        <div
+          className="feedback"
+          role={presentation === "academic" ? "status" : undefined}
+        >
           <StatusPill tone="neutral">{t("check.recorded")}</StatusPill>
         </div>
       ) : (
-        <div className={`feedback${outcome ? "" : " feedback--incorrect"}`} role="status">
+        <div
+          className={`feedback${outcome ? "" : " feedback--incorrect"}`}
+          role={presentation === "academic" ? "status" : undefined}
+        >
           <p>
             <StatusPill tone={outcome ? "pass" : "fail"}>
               {t(outcome ? "check.correct" : "check.incorrect")}

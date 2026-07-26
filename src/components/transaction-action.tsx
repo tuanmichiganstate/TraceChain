@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { TransactionStatus } from "../domain/types/enums";
 import type { CommandContext, SupplyChainCommand } from "../domain/commands/commands";
 import type { LedgerTransaction } from "../domain/types/models";
@@ -102,18 +102,26 @@ export function TransactionAction({
     },
   );
   const [isSubmitting, setSubmitting] = useState(false);
+  const [isSealing, setSealing] = useState(false);
+  const submissionInFlight = useRef(false);
+  const sealInFlight = useRef(false);
   const [submissionFailed, setSubmissionFailed] = useState(false);
   const [isDetailOpen, setDetailOpen] = useState(isFirstOfType);
 
   const transaction =
+    (transactionId === null
+      ? undefined
+      : state.domain.transactionsById[transactionId]) ??
     validationReceipt ??
-    (transactionId === null ? undefined : state.domain.transactionsById[transactionId]);
+    undefined;
   const isRejected = transaction?.transactionStatus === TransactionStatus.REJECTED;
   const rejected = isRejected || auditReceipt !== null;
   const isOrdered = transaction?.transactionStatus === TransactionStatus.ORDERED;
   const isCommitted = transaction?.transactionStatus === TransactionStatus.COMMITTED;
 
   const submit = async (): Promise<void> => {
+    if (submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionFailed(false);
     try {
@@ -130,14 +138,25 @@ export function TransactionAction({
     } catch {
       setSubmissionFailed(true);
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
 
   const seal = async (): Promise<void> => {
-    if (transaction === undefined) return;
-    await sealPendingBlock();
-    onCommitted?.();
+    if (transaction === undefined || sealInFlight.current) return;
+    sealInFlight.current = true;
+    setSealing(true);
+    setSubmissionFailed(false);
+    try {
+      await sealPendingBlock();
+      onCommitted?.();
+    } catch {
+      setSubmissionFailed(true);
+    } finally {
+      sealInFlight.current = false;
+      setSealing(false);
+    }
   };
 
   return (
@@ -180,7 +199,11 @@ export function TransactionAction({
           onClick={() => void submit()}
           disabled={state.isReadOnly || isSubmitting}
         >
-          {t("transaction.submit")}
+          {t(
+            isSubmitting
+              ? "action.processing"
+              : "transaction.submit",
+          )}
         </button>
       ) : null}
 
@@ -197,7 +220,7 @@ export function TransactionAction({
       ) : null}
 
       {auditReceipt !== null && transaction === undefined ? (
-        <section className="validation-results" aria-live="polite">
+        <section className="validation-results">
           <h4>{t("validation.heading")}</h4>
           <ul>
             {auditReceipt.validationFailures.map((failure) => (
@@ -244,9 +267,13 @@ export function TransactionAction({
               type="button"
               className="button button--primary"
               onClick={() => void seal()}
-              disabled={state.isReadOnly}
+              disabled={state.isReadOnly || isSealing}
             >
-              {t("stage.createBatch.sealBlock")}
+              {t(
+                isSealing
+                  ? "action.processing"
+                  : "stage.createBatch.sealBlock",
+              )}
             </button>
           ) : null}
 

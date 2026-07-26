@@ -24,13 +24,11 @@ function stepIndex(status: TransactionStatus): number {
  * and for `aria-live` on transaction status. Doing both naively announces seven
  * times per transaction, roughly fifteen times across the activity -- unusable
  * with a screen reader. So the animated indicator is `aria-hidden`, the steps
- * are exposed as a plain ordered list, and exactly one announcement is made,
- * for the terminal state.
+ * are exposed as a plain ordered list. The centralized action notification is
+ * the single live announcement for the terminal result.
  */
 export function TransactionPipeline({
   status,
-  blockId,
-  failureCount,
 }: {
   status: TransactionStatus | null;
   blockId?: string | undefined;
@@ -42,13 +40,6 @@ export function TransactionPipeline({
   const headingId = useId();
   const isRejected = status === TransactionStatus.REJECTED;
   const currentIndex = status === null ? -1 : stepIndex(status);
-
-  const announcement =
-    status === TransactionStatus.COMMITTED
-      ? t("pipeline.announceCommitted", { blockId: blockId ?? "" })
-      : isRejected
-        ? t("pipeline.announceRejected", { count: failureCount ?? 0 })
-        : "";
 
   return (
     <section className="pipeline" aria-labelledby={headingId}>
@@ -80,10 +71,6 @@ export function TransactionPipeline({
         </p>
       ) : null}
 
-      {/* One announcement, on the terminal state only. */}
-      <p aria-live="polite" className="visually-hidden">
-        {announcement}
-      </p>
     </section>
   );
 }

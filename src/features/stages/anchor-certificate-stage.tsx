@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ScenarioStageId } from "../../domain/types/enums";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
@@ -76,6 +76,8 @@ export function AnchorCertificateStage(): ReactNode {
   );
   const [form, setForm] = useState<CertificateFormState>(EMPTY_FORM);
   const [isSubmitting, setSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
+  const mitigationInFlightRef = useRef(false);
   const [mitigationInFlight, setMitigationInFlight] = useState<string | null>(
     null,
   );
@@ -137,7 +139,8 @@ export function AnchorCertificateStage(): ReactNode {
       : "neutral";
 
   const submit = async (): Promise<void> => {
-    if (!complete) return;
+    if (!complete || submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     try {
       await submitCertificateDecision({
@@ -147,17 +150,25 @@ export function AnchorCertificateStage(): ReactNode {
         storageChoice: form.storageChoice as CertificateStorageChoice,
         lotDisposition: form.lotDisposition as LotDisposition,
       });
+    } catch {
+      return;
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
   const mitigate = async (
     commandType: "REVIEW_ISSUER" | "REMEDIATE_STORAGE" | "SUSPEND_LOT",
   ): Promise<void> => {
+    if (mitigationInFlightRef.current) return;
+    mitigationInFlightRef.current = true;
     setMitigationInFlight(commandType);
     try {
       await recordMitigation({ commandType });
+    } catch {
+      return;
     } finally {
+      mitigationInFlightRef.current = false;
       setMitigationInFlight(null);
     }
   };
@@ -222,6 +233,7 @@ export function AnchorCertificateStage(): ReactNode {
             onChange={setForm}
             onSubmit={() => void submit()}
             disabled={state.isReadOnly || isSubmitting}
+            processing={isSubmitting}
           />
         ) : (
           <CertificateDecisionFeedback
@@ -244,7 +256,11 @@ export function AnchorCertificateStage(): ReactNode {
                 disabled={state.isReadOnly || mitigationInFlight !== null}
                 onClick={() => void mitigate("REVIEW_ISSUER")}
               >
-                {t("stage.anchorCertificate.reviewIssuer")}
+                {t(
+                  mitigationInFlight === "REVIEW_ISSUER"
+                    ? "action.processing"
+                    : "stage.anchorCertificate.reviewIssuer",
+                )}
               </button>
             ) : null}
             {!storageResolved ? (
@@ -254,7 +270,11 @@ export function AnchorCertificateStage(): ReactNode {
                 disabled={state.isReadOnly || mitigationInFlight !== null}
                 onClick={() => void mitigate("REMEDIATE_STORAGE")}
               >
-                {t("stage.anchorCertificate.remediateStorage")}
+                {t(
+                  mitigationInFlight === "REMEDIATE_STORAGE"
+                    ? "action.processing"
+                    : "stage.anchorCertificate.remediateStorage",
+                )}
               </button>
             ) : null}
             {!dispositionResolved ? (
@@ -264,7 +284,11 @@ export function AnchorCertificateStage(): ReactNode {
                 disabled={state.isReadOnly || mitigationInFlight !== null}
                 onClick={() => void mitigate("SUSPEND_LOT")}
               >
-                {t("stage.anchorCertificate.suspendLot")}
+                {t(
+                  mitigationInFlight === "SUSPEND_LOT"
+                    ? "action.processing"
+                    : "stage.anchorCertificate.suspendLot",
+                )}
               </button>
             ) : null}
           </div>
@@ -439,11 +463,13 @@ function CertificateDecisionForm({
   onChange,
   onSubmit,
   disabled,
+  processing,
 }: {
   readonly value: CertificateFormState;
   readonly onChange: (value: CertificateFormState) => void;
   readonly onSubmit: () => void;
   readonly disabled: boolean;
+  readonly processing: boolean;
 }): ReactNode {
   const t = useTranslator();
   const select = <TKey extends keyof CertificateFormState>(
@@ -518,7 +544,11 @@ function CertificateDecisionForm({
         }
         onClick={onSubmit}
       >
-        {t("stage.anchorCertificate.commitDecision")}
+        {t(
+          processing
+            ? "action.processing"
+            : "stage.anchorCertificate.commitDecision",
+        )}
       </button>
     </section>
   );

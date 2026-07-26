@@ -21,6 +21,7 @@ import {
 import {
   SCENARIO_STAGE_ORDER,
   ScenarioStageId,
+  TransactionType,
   type TransactionStatus,
 } from "../../domain/types/enums";
 import { SimulatedLedger, type TransactionResult } from "../../domain/ledger/ledger-engine";
@@ -129,6 +130,12 @@ import {
   declinePendingProposal as declinePendingProposalCore,
   endorsePendingProposal as endorsePendingProposalCore,
 } from "../../domain/simulation/endorsement-workflow";
+import { useTranslator } from "./locale-provider";
+import { useOptionalNotifications } from "./notification-provider";
+import {
+  notificationForPersistedAction,
+  type PersistedActionNotification,
+} from "../notifications/action-notifications";
 
 const DEVELOPMENT_FALLBACK_CONFIGURATION = {
   ...GUIDED_PRESET,
@@ -168,6 +175,10 @@ interface SimulationContextValue {
   resume(): void;
   restart(): void;
   answerCheck(check: KnowledgeCheckDefinition, answer: Answer): boolean;
+  answerProfessionalCheck(
+    check: KnowledgeCheckDefinition,
+    answer: Answer,
+  ): Promise<boolean>;
   revealHint(hintId: string): void;
   submitCommand(
     actionId: string,
@@ -244,6 +255,13 @@ function commandSequenceFromId(value: string): number {
   return Number.parseInt(match[1], 10);
 }
 
+function rejectionMessageKey(
+  outcome: SimulationCommandOutcome | EndorsementWorkflowOutcome,
+): string | undefined {
+  if (outcome.isAccepted) return undefined;
+  return outcome.auditEvent.validationFailures[0]?.messageKey;
+}
+
 function trustedPayload(
   command: SupplyChainCommand,
   context: TrustedExecutionContext,
@@ -266,8 +284,10 @@ function deriveProgress(state: SessionState, scenario: ReturnType<typeof useScen
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }): ReactNode {
+  const t = useTranslator();
   const { scenario } = useScenario();
   const configuredPackage = useOptionalConfiguration();
+  const notificationChannel = useOptionalNotifications();
   if (configuredPackage === null && import.meta.env.PROD) {
     throw new Error("SimulationProvider requires an embedded package configuration");
   }
@@ -328,6 +348,30 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     diagnosticsRef.current = [...diagnosticsRef.current, entry];
     setDiagnostics(diagnosticsRef.current);
   }, []);
+
+  const publishNotification = useCallback(
+    (result: PersistedActionNotification): void => {
+      const notification = notificationForPersistedAction(result);
+      if (notification !== null) {
+        notificationChannel?.notify(notification);
+      }
+    },
+    [notificationChannel],
+  );
+
+  const organizationName = useCallback(
+    (organizationId: string | undefined): string | undefined => {
+      if (organizationId === undefined) return undefined;
+      const organization = scenario.organizations.find(
+        (candidate) =>
+          candidate.organizationId === organizationId,
+      );
+      return organization === undefined
+        ? organizationId
+        : t(organization.displayNameKey);
+    },
+    [scenario.organizations, t],
+  );
 
   const scoreFor = useCallback(
     (candidate: SessionState): ScoreBreakdown =>
@@ -445,7 +489,14 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
               error instanceof Error ? error.message : String(error)
             }`,
           );
-          dispatch({ type: "SAVE_STATUS", status: "FAILED" });
+          const recovery = recoveryDetails(
+            error,
+            base.platformMode,
+          );
+          dispatch({
+            type: "RECOVERY_FAILED",
+            ...recovery,
+          });
           throw error;
         }
       };
@@ -603,14 +654,70 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     };
   }, [state.phase, save]);
 
+  const answerProfessionalCheck = useCallback(
+    async (
+      check: KnowledgeCheckDefinition,
+      answer: Answer,
+    ): Promise<boolean> => {
+      const correct = isAnswerCorrect(check, answer);
+      const persisted = await commitMutation((base) => {
+        const encodedValue = encodeAnswer(check, answer);
+        const attemptNumber =
+          (base.decisions[check.knowledgeCheckId]?.attemptCount ??
+            0) + 1;
+        const scenarioTimestamp = scenario.timeline[
+          "batchCreated"
+        ] as string;
+        const prospective = sessionReducer(base, {
+          type: "RECORD_DECISION",
+          decisionId: check.knowledgeCheckId,
+          encodedValue,
+          interaction: {
+            interactionId: `INT_${String(base.interactions.length + 1).padStart(4, "0")}`,
+            stageId: base.viewedStageId,
+            interactionType:
+              LearnerInteractionType.KNOWLEDGE_CHECK_ANSWERED,
+            targetId: check.knowledgeCheckId,
+            selectedValue: String(encodedValue),
+            isCorrect: correct,
+            attemptNumber,
+            scenarioTimestamp,
+          },
+        });
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: {
+            operationId: `${base.sessionId}:${check.knowledgeCheckId}:${attemptNumber}`,
+            encodedValue,
+            scenarioTimestamp,
+          },
+        };
+      });
+      await adapterRef.current?.recordInteraction({
+        interactionId: check.knowledgeCheckId,
+        type: scormInteractionType(check.checkType),
+        learnerResponse: describeResponse(check, answer),
+        isCorrect: correct,
+        scenarioTimestamp: persisted.scenarioTimestamp,
+      });
+      publishNotification({
+        kind: "DECISION_RECORDED",
+        operationId: persisted.operationId,
+        outcome: "RECORDED",
+      });
+      return correct;
+    },
+    [commitMutation, publishNotification, scenario],
+  );
+
   const submitCommand = useCallback(
-    (
+    async (
       actionId: string,
       decisionId: string,
       authoredCommand: SupplyChainCommand,
       submissionOptions?: { readonly recordDecision?: boolean },
-    ): Promise<SimulationCommandOutcome> =>
-      commitMutation(async (base) => {
+    ): Promise<SimulationCommandOutcome> => {
+      const outcome = await commitMutation(async (base) => {
         if (
           configuration.technicalFeatures.endorsementPolicies &&
           (actionId === "TRANSFER_CUSTODY" ||
@@ -767,7 +874,17 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           state: deriveProgress(prospective, scenario),
           result: outcome,
         };
-      }),
+      });
+      publishNotification({
+        kind: "TRANSACTION_RESULT",
+        operationId: outcome.commandId,
+        accepted: outcome.isAccepted,
+        ...(rejectionMessageKey(outcome) === undefined
+          ? {}
+          : { reasonKey: rejectionMessageKey(outcome) as string }),
+      });
+      return outcome;
+    },
     [
       commitMutation,
       configuration.scenarioSeed,
@@ -776,6 +893,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       configurationHash,
       configuredPackage,
       ledger,
+      publishNotification,
       registries,
       scenario,
       signatureProvider,
@@ -783,13 +901,13 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   );
 
   const createEndorsedProposal = useCallback(
-    (
+    async (
       actionId: string,
       decisionId: string,
       authoredCommand: SupplyChainCommand,
       submissionOptions?: { readonly recordDecision?: boolean },
-    ): Promise<EndorsementWorkflowOutcome> =>
-      commitMutation(async (base) => {
+    ): Promise<EndorsementWorkflowOutcome> => {
+      const outcome = await commitMutation(async (base) => {
         const cryptographicRuntime =
           configuredPackage?.cryptographicRuntime;
         if (cryptographicRuntime === null || cryptographicRuntime === undefined) {
@@ -901,13 +1019,36 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           state: deriveProgress(prospective, scenario),
           result: workflow,
         };
-      }),
+      });
+      publishNotification({
+        kind: "PROPOSAL_CREATED",
+        operationId: outcome.commandId,
+        accepted: outcome.isAccepted,
+        ...(organizationName(
+          outcome.pendingProposal?.evaluation
+            .missingOrganizationIds[0],
+        ) === undefined
+          ? {}
+          : {
+              missingOrganization: organizationName(
+                outcome.pendingProposal?.evaluation
+                  .missingOrganizationIds[0],
+              ) as string,
+            }),
+        ...(rejectionMessageKey(outcome) === undefined
+          ? {}
+          : { reasonKey: rejectionMessageKey(outcome) as string }),
+      });
+      return outcome;
+    },
     [
       commitMutation,
       configuration.scenarioSeed,
       configurationHash,
       configuredPackage,
       ledger,
+      organizationName,
+      publishNotification,
       registries,
       scenario,
       signatureProvider,
@@ -915,8 +1056,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   );
 
   const endorsePendingProposal = useCallback(
-    (proposalId: string): Promise<EndorsementWorkflowOutcome> =>
-      commitMutation(async (base) => {
+    async (proposalId: string): Promise<EndorsementWorkflowOutcome> => {
+      const outcome = await commitMutation(async (base) => {
         const cryptographicRuntime =
           configuredPackage?.cryptographicRuntime;
         if (cryptographicRuntime === null || cryptographicRuntime === undefined) {
@@ -988,19 +1129,44 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           state: deriveProgress(prospective, scenario),
           result: workflow,
         };
-      }),
+      });
+      publishNotification({
+        kind: "ENDORSEMENT_RECORDED",
+        operationId: outcome.commandId,
+        accepted: outcome.isAccepted,
+        satisfied:
+          outcome.pendingProposal?.evaluation.satisfied === true,
+        ...(organizationName(
+          outcome.pendingProposal?.evaluation
+            .missingOrganizationIds[0],
+        ) === undefined
+          ? {}
+          : {
+              missingOrganization: organizationName(
+                outcome.pendingProposal?.evaluation
+                  .missingOrganizationIds[0],
+              ) as string,
+            }),
+        ...(rejectionMessageKey(outcome) === undefined
+          ? {}
+          : { reasonKey: rejectionMessageKey(outcome) as string }),
+      });
+      return outcome;
+    },
     [
       commitMutation,
       configuration.scenarioSeed,
       configuredPackage,
+      organizationName,
+      publishNotification,
       scenario,
       signatureProvider,
     ],
   );
 
   const declinePendingProposal = useCallback(
-    (proposalId: string): Promise<EndorsementWorkflowOutcome> =>
-      commitMutation((base) => {
+    async (proposalId: string): Promise<EndorsementWorkflowOutcome> => {
+      const outcome = await commitMutation((base) => {
         const pending =
           base.simulation.pendingProposalsById[proposalId];
         if (pending === undefined) {
@@ -1063,20 +1229,31 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           state: deriveProgress(prospective, scenario),
           result: workflow,
         };
-      }),
-    [commitMutation, configuration.scenarioSeed, scenario],
+      });
+      publishNotification({
+        kind: "ENDORSEMENT_DECLINED",
+        operationId: outcome.commandId,
+      });
+      return outcome;
+    },
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      publishNotification,
+      scenario,
+    ],
   );
 
   const commitEndorsedProposal = useCallback(
-    (
+    async (
       proposalId: string,
       decisionId: string,
       submissionOptions?: { readonly recordDecision?: boolean },
     ): Promise<{
       readonly workflow: EndorsementWorkflowOutcome;
       readonly transactionOutcome: SimulationCommandOutcome | null;
-    }> =>
-      commitMutation((base) => {
+    }> => {
+      const outcome = await commitMutation((base) => {
         const pending =
           base.simulation.pendingProposalsById[proposalId];
         if (pending === undefined) {
@@ -1180,24 +1357,47 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           state: deriveProgress(prospective, scenario),
           result,
         };
-      }),
+      });
+      const transactionOutcome = outcome.transactionOutcome;
+      publishNotification({
+        kind: "TRANSACTION_RESULT",
+        operationId: outcome.workflow.commandId,
+        accepted: transactionOutcome?.isAccepted === true,
+        ...(transactionOutcome === null
+          ? {
+              reasonKey:
+                "notification.transactionRejected.message",
+            }
+          : rejectionMessageKey(transactionOutcome) ===
+              undefined
+            ? {}
+            : {
+                reasonKey: rejectionMessageKey(
+                  transactionOutcome,
+                ) as string,
+              }),
+      });
+      return outcome;
+    },
     [
       commitMutation,
       configuration.scenarioSeed,
       ledger,
+      publishNotification,
       registries,
       scenario,
     ],
   );
 
   const sealPendingBlock = useCallback(
-    (): Promise<void> =>
-      commitMutation((base) => {
+    async (): Promise<void> => {
+      const committed = await commitMutation((base) => {
         const pendingId = base.domain.pendingTransactionIds[0];
+        if (pendingId === undefined) {
+          throw new Error("No ordered transaction is pending");
+        }
         const timestamp =
-          pendingId === undefined
-            ? undefined
-            : base.domain.transactionsById[pendingId]?.createdAt;
+          base.domain.transactionsById[pendingId]?.createdAt;
         if (timestamp === undefined) throw new Error("No ordered transaction is pending");
         const sealed = ledger.sealPendingTransactions(base.domain, timestamp);
         const scripted = applyEligibleScriptedTransactions(
@@ -1219,20 +1419,54 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           values: [],
         };
         const simulation = { ...base.simulation, domain: scripted };
+        const committedTransaction =
+          simulation.domain.transactionsById[pendingId];
+        if (
+          committedTransaction?.blockId === undefined
+        ) {
+          throw new Error(
+            "Sealed transaction has no committed block identifier",
+          );
+        }
         const prospective = sessionReducer(base, {
           type: "SIMULATION_UPDATED",
           simulation,
           commandJournal: [...base.commandJournal, entry],
           transactionId: base.lastTransactionId,
         });
-        return { state: deriveProgress(prospective, scenario), result: undefined };
-      }),
-    [commitMutation, ledger, registries, scenario],
+        return {
+          state: deriveProgress(prospective, scenario),
+          result: {
+            operationId: commandId(sequence),
+            blockNumber: committedTransaction.blockId,
+            transactionKind:
+              committedTransaction.transactionType ===
+              TransactionType.RECORD_CORRECTION
+                ? ("CORRECTION" as const)
+                : committedTransaction.transactionType ===
+                    TransactionType.RECALL_BATCH
+                  ? ("RECALL" as const)
+                  : ("TRANSACTION" as const),
+          },
+        };
+      });
+      publishNotification({
+        kind: "BLOCK_COMMITTED",
+        ...committed,
+      });
+    },
+    [
+      commitMutation,
+      ledger,
+      publishNotification,
+      registries,
+      scenario,
+    ],
   );
 
   const requestRoleHandoff = useCallback(
-    (handoffId: string): Promise<void> =>
-      commitMutation((base) => {
+    async (handoffId: string): Promise<void> => {
+      const handoff = await commitMutation((base) => {
         const applied = validateAndApplyHandoff({
           scenario,
           stageId: base.viewedStageId,
@@ -1246,22 +1480,41 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
           contextIndex: contextIndex(scenario, applied.toContextId),
           values: [applied.handoffIndex],
         };
+        const target = contextAt(
+          scenario,
+          contextIndex(scenario, applied.toContextId),
+        );
+        const actor = scenario.actors.find(
+          (candidate) =>
+            candidate.actorId === target.actorId,
+        );
         return {
           state: {
             ...base,
             commandJournal: [...base.commandJournal, entry],
           },
-          result: undefined,
+          result: {
+            operationId: commandId(sequence),
+            role:
+              actor === undefined
+                ? target.roleId
+                : t(actor.displayNameKey),
+          },
         };
-      }),
-    [commitMutation, scenario],
+      });
+      publishNotification({
+        kind: "ROLE_HANDOFF",
+        ...handoff,
+      });
+    },
+    [commitMutation, publishNotification, scenario, t],
   );
 
   const submitCertificateDecision = useCallback(
-    (
+    async (
       payload: SubmitCertificateDecisionCommand,
-    ): Promise<CertificateDecisionEvaluation> =>
-      commitMutation((base) => {
+    ): Promise<CertificateDecisionEvaluation> => {
+      const persisted = await commitMutation((base) => {
         if (
           base.commandJournal.some(
             (entry) => entry.opcode === JournalOpcode.SUBMIT_CERTIFICATE_DECISION,
@@ -1379,17 +1632,35 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         }
         return {
           state: deriveProgress(prospective, scenario),
-          result: evaluation,
+          result: {
+            evaluation,
+            operationId: commandId(sequence),
+          },
         };
-      }),
-    [commitMutation, configuration.scenarioSeed, scenario],
+      });
+      publishNotification({
+        kind: "DECISION_RECORDED",
+        operationId: persisted.operationId,
+        outcome:
+          persisted.evaluation.mitigationActions.length === 0
+            ? "RECORDED"
+            : "RISK_REMAINS",
+      });
+      return persisted.evaluation;
+    },
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      publishNotification,
+      scenario,
+    ],
   );
 
   const submitDiscrepancyDecision = useCallback(
-    (
+    async (
       payload: SubmitDiscrepancyDecisionCommand,
-    ): Promise<DiscrepancyDecisionEvaluation> =>
-      commitMutation((base) => {
+    ): Promise<DiscrepancyDecisionEvaluation> => {
+      const persisted = await commitMutation((base) => {
         if (
           base.commandJournal.some(
             (entry) => entry.opcode === JournalOpcode.SUBMIT_DISCREPANCY_DECISION,
@@ -1485,15 +1756,34 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         }
         return {
           state: deriveProgress(prospective, scenario),
-          result: evaluation,
+          result: {
+            evaluation,
+            operationId: commandId(sequence),
+          },
         };
-      }),
-    [commitMutation, configuration.scenarioSeed, scenario],
+      });
+      publishNotification({
+        kind: "DECISION_RECORDED",
+        operationId: persisted.operationId,
+        outcome: persisted.evaluation.isRejectedAttempt
+          ? "REJECTED"
+          : persisted.evaluation.requiresMitigation
+            ? "RISK_REMAINS"
+            : "RECORDED",
+      });
+      return persisted.evaluation;
+    },
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      publishNotification,
+      scenario,
+    ],
   );
 
   const recordMitigation = useCallback(
-    (payload: MitigationDecisionCommand): Promise<void> =>
-      commitMutation((base) => {
+    async (payload: MitigationDecisionCommand): Promise<void> => {
+      const operationId = await commitMutation((base) => {
         const opcode = {
           REVIEW_ISSUER: JournalOpcode.REVIEW_ISSUER,
           REMEDIATE_STORAGE: JournalOpcode.REMEDIATE_STORAGE,
@@ -1666,10 +1956,20 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         }
         return {
           state: deriveProgress(prospective, scenario),
-          result: undefined,
+          result: commandId(sequence),
         };
-      }),
-    [commitMutation, configuration.scenarioSeed, scenario],
+      });
+      publishNotification({
+        kind: "MITIGATION_RECORDED",
+        operationId,
+      });
+    },
+    [
+      commitMutation,
+      configuration.scenarioSeed,
+      publishNotification,
+      scenario,
+    ],
   );
 
   const runSignatureTamperDemonstration = useCallback(
@@ -1799,6 +2099,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
         return correct;
       },
 
+      answerProfessionalCheck,
+
       revealHint: (hintId) => {
         dispatch({ type: "USE_HINT", hintId });
         void saveRef.current();
@@ -1839,6 +2141,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
       activeTrustedContext,
       activeScoringConfiguration,
       addDiagnostic,
+      answerProfessionalCheck,
       codecSchema,
       configuration,
       configurationHash,

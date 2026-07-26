@@ -23,6 +23,7 @@ import {
 } from "../config/presets";
 import { hashConfiguration } from "../config/hash";
 import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
+import { NotificationProvider } from "./providers/notification-provider";
 
 /**
  * THE MILESTONE 5 EXIT CONDITION.
@@ -41,11 +42,13 @@ function AppUnderTest(): React.ReactElement {
       cryptographicRuntime={coffeeCryptographicRuntime}
     >
       <LocaleProvider>
-        <ScenarioProvider scenario={coffeeScenario}>
-          <SimulationProvider>
-            <App />
-          </SimulationProvider>
-        </ScenarioProvider>
+        <NotificationProvider>
+          <ScenarioProvider scenario={coffeeScenario}>
+            <SimulationProvider>
+              <App />
+            </SimulationProvider>
+          </ScenarioProvider>
+        </NotificationProvider>
       </LocaleProvider>
     </ConfigurationProvider>
   );
@@ -59,11 +62,13 @@ function ChallengeAppUnderTest(): React.ReactElement {
       cryptographicRuntime={coffeeCryptographicRuntime}
     >
       <LocaleProvider locale="vi">
-        <ScenarioProvider scenario={challengeAScenario}>
-          <SimulationProvider>
-            <App />
-          </SimulationProvider>
-        </ScenarioProvider>
+        <NotificationProvider>
+          <ScenarioProvider scenario={challengeAScenario}>
+            <SimulationProvider>
+              <App />
+            </SimulationProvider>
+          </ScenarioProvider>
+        </NotificationProvider>
       </LocaleProvider>
     </ConfigurationProvider>
   );
@@ -77,11 +82,13 @@ function AssessmentAppUnderTest(): React.ReactElement {
       cryptographicRuntime={coffeeCryptographicRuntime}
     >
       <LocaleProvider locale="vi">
-        <ScenarioProvider scenario={coffeeScenario}>
-          <SimulationProvider>
-            <App />
-          </SimulationProvider>
-        </ScenarioProvider>
+        <NotificationProvider>
+          <ScenarioProvider scenario={coffeeScenario}>
+            <SimulationProvider>
+              <App />
+            </SimulationProvider>
+          </ScenarioProvider>
+        </NotificationProvider>
       </LocaleProvider>
     </ConfigurationProvider>
   );
@@ -95,11 +102,13 @@ function GuidedSignatureAppUnderTest(): React.ReactElement {
       cryptographicRuntime={coffeeCryptographicRuntime}
     >
       <LocaleProvider locale="vi">
-        <ScenarioProvider scenario={coffeeScenario}>
-          <SimulationProvider>
-            <App />
-          </SimulationProvider>
-        </ScenarioProvider>
+        <NotificationProvider>
+          <ScenarioProvider scenario={coffeeScenario}>
+            <SimulationProvider>
+              <App />
+            </SimulationProvider>
+          </ScenarioProvider>
+        </NotificationProvider>
       </LocaleProvider>
     </ConfigurationProvider>
   );
@@ -150,6 +159,7 @@ async function submitEndorsedAndSeal(
       name: "Gửi giao dịch lên mạng",
     }),
   );
+  await screen.findByText("Đề xuất đã được ký");
   await within(panel).findByRole("heading", {
     name: "Phê duyệt bắt buộc",
   });
@@ -163,6 +173,7 @@ async function submitEndorsedAndSeal(
       name: "Ký và phê duyệt đề xuất",
     }),
   );
+  await screen.findByText("Đã đáp ứng yêu cầu xác nhận");
   await within(panel).findByText("Đã đáp ứng yêu cầu");
   await user.click(
     within(panel).getByRole("button", {
@@ -208,6 +219,7 @@ async function submitSoundCertificateDecision(user: User): Promise<void> {
   await user.click(
     screen.getByRole("button", { name: "Gửi quyết định về chứng nhận" }),
   );
+  await screen.findByText("Quyết định đã được ghi nhận");
   await screen.findByRole("heading", { name: "Đã ghi nhận quyết định ban đầu" });
 }
 
@@ -462,10 +474,59 @@ describe("the whole activity in the browser", () => {
 
     // The rejection is a teaching message, not an error code.
     expect(
-      await screen.findByText(/Đơn vị vận chuyển giữ hộ hàng chứ không mua lô hàng/),
+      await within(panel).findByText(
+        /Đơn vị vận chuyển giữ hộ hàng chứ không mua lô hàng/,
+      ),
     ).toBeInTheDocument();
     expect(within(panel).getByText("Giao dịch chưa được chấp nhận. Vui lòng xem các quy tắc chưa thỏa mãn bên dưới.")).toBeInTheDocument();
   }, 60_000);
+
+  it("does not announce success when durable persistence fails", async () => {
+    uninstall();
+    api = new MockScorm12Api({ failCommit: true });
+    uninstall = installMockScormApi(api);
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Bắt đầu mô phỏng",
+      }),
+    );
+    await answer(user, /Không\. Blockchain giúp xác định/);
+    await advance(user);
+
+    const panel = (
+      await screen.findByRole("heading", {
+        name: "Thông tin lô hàng",
+        level: 3,
+      })
+    ).closest("section") as HTMLElement;
+    await user.click(
+      within(panel).getByRole("button", {
+        name: "Gửi giao dịch lên mạng",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Không khôi phục được tiến độ",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Hãy thoát khỏi hoạt động này và dùng LMS để bắt đầu một lượt học mới/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Giao dịch đã được kiểm tra"),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "Ghi giao dịch vào khối",
+      }),
+    ).toBeNull();
+  });
 
   it("distinguishes a valid transporter signature from certificate authority", async () => {
     const user = userEvent.setup();
@@ -492,6 +553,14 @@ describe("the whole activity in the browser", () => {
       }),
     );
 
+    const notificationRegion = await screen.findByRole("status", {
+      name: "Thông báo về thao tác",
+    });
+    const rejectedNotification = (
+      await within(notificationRegion).findByText(
+        "Giao dịch bị từ chối",
+      )
+    ).closest("li") as HTMLElement;
     expect(
       await within(inspection).findByText("Công ty Vận tải Liên Việt"),
     ).toBeInTheDocument();
@@ -510,6 +579,19 @@ describe("the whole activity in the browser", () => {
     expect(
       within(inspection).queryByRole("button", { name: "Chỉnh sửa" }),
     ).toBeNull();
+    await user.click(
+      within(rejectedNotification).getByRole("button", {
+        name: "Đóng thông báo",
+      }),
+    );
+    expect(
+      within(notificationRegion).queryByText("Giao dịch bị từ chối"),
+    ).toBeNull();
+    expect(
+      within(inspection).getByText(
+        "Không được phép thực hiện hành động này",
+      ),
+    ).toBeInTheDocument();
 
     await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");

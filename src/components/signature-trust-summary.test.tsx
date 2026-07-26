@@ -79,9 +79,9 @@ describe("signature trust summary", () => {
     expect(
       screen.getByText(/không chứng minh tuyên bố ban đầu là đúng/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /Chữ ký hợp lệ.*không có quyền/,
-    );
+    // The persistent evidence remains readable, but the centralized action
+    // notification owns the one live announcement after a submitted command.
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("keeps private material out of the UI and exposes one named evidence-copy control", () => {

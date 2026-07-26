@@ -11,6 +11,9 @@ import { formatScenarioTime } from "../infrastructure/time/scenario-clock";
 import { useTranslator } from "../app/providers/locale-provider";
 import { useScenario } from "../app/providers/scenario-provider";
 import { StatusPill, type StatusTone } from "./status-pill";
+import { useOptionalNotifications } from "../app/providers/notification-provider";
+import { notificationForPersistedAction } from "../app/notifications/action-notifications";
+import { copyText } from "./copy-text";
 
 const TONE_BY_STATUS: Readonly<Record<string, StatusTone>> = {
   [TransactionStatus.COMMITTED]: "pass",
@@ -121,8 +124,10 @@ function TransactionDetail({
   transactionId: string;
 }): ReactNode {
   const t = useTranslator();
+  const notificationChannel = useOptionalNotifications();
   const transaction = state.transactionsById[transactionId];
   if (transaction === undefined) return null;
+  const transactionHash = transaction.transactionHash;
   const anchor =
     transaction.transactionType === TransactionType.ANCHOR_DOCUMENT
       ? (transaction.commandPayload as AnchorDocumentCommand)
@@ -201,7 +206,42 @@ function TransactionDetail({
         <div className="asset-card__row">
           <dt>{t("transaction.hashLabel")}</dt>
           <dd>
-            <span className="hash">{transaction.transactionHash ?? "-"}</span>
+            <span className="hash">{transactionHash ?? "-"}</span>
+            {transactionHash === undefined ? null : (
+              <button
+                type="button"
+                className="button button--quiet"
+                onClick={() => {
+                  const result = {
+                    operationId: `copy:${transaction.transactionId}`,
+                  } as const;
+                  void copyText(transactionHash).then(
+                    () => {
+                      const notification =
+                        notificationForPersistedAction({
+                          kind: "HASH_COPIED",
+                          ...result,
+                        });
+                      if (notification !== null) {
+                        notificationChannel?.notify(notification);
+                      }
+                    },
+                    () => {
+                      const notification =
+                        notificationForPersistedAction({
+                          kind: "HASH_COPY_FAILED",
+                          ...result,
+                        });
+                      if (notification !== null) {
+                        notificationChannel?.notify(notification);
+                      }
+                    },
+                  );
+                }}
+              >
+                {t("transaction.copyHash")}
+              </button>
+            )}
           </dd>
         </div>
         <div className="asset-card__row">

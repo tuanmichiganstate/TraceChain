@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   CommandContext,
   SupplyChainCommand,
@@ -75,6 +75,10 @@ export function EndorsedTransactionAction({
   } = useSimulation();
   const [isSubmitting, setSubmitting] = useState(false);
   const [isHandoffPending, setHandoffPending] = useState(false);
+  const [isSealing, setSealing] = useState(false);
+  const submissionInFlight = useRef(false);
+  const handoffInFlight = useRef(false);
+  const sealInFlight = useRef(false);
   const [dismissedAuditIds, setDismissedAuditIds] = useState<
     readonly string[]
   >([]);
@@ -180,6 +184,8 @@ export function EndorsedTransactionAction({
         }) ?? null;
 
   const submitProposal = async (): Promise<void> => {
+    if (submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionFailed(false);
     try {
@@ -192,12 +198,14 @@ export function EndorsedTransactionAction({
     } catch {
       setSubmissionFailed(true);
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
 
   const endorse = async (): Promise<void> => {
-    if (pending === null) return;
+    if (pending === null || submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionFailed(false);
     try {
@@ -205,12 +213,14 @@ export function EndorsedTransactionAction({
     } catch {
       setSubmissionFailed(true);
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
 
   const decline = async (): Promise<void> => {
-    if (pending === null) return;
+    if (pending === null || submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionFailed(false);
     try {
@@ -218,12 +228,14 @@ export function EndorsedTransactionAction({
     } catch {
       setSubmissionFailed(true);
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
 
   const commit = async (): Promise<void> => {
-    if (pending === null) return;
+    if (pending === null || submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionFailed(false);
     try {
@@ -235,7 +247,24 @@ export function EndorsedTransactionAction({
     } catch {
       setSubmissionFailed(true);
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
+    }
+  };
+
+  const seal = async (): Promise<void> => {
+    if (sealInFlight.current) return;
+    sealInFlight.current = true;
+    setSealing(true);
+    setSubmissionFailed(false);
+    try {
+      await sealPendingBlock();
+      onCommitted?.();
+    } catch {
+      setSubmissionFailed(true);
+    } finally {
+      sealInFlight.current = false;
+      setSealing(false);
     }
   };
 
@@ -265,7 +294,11 @@ export function EndorsedTransactionAction({
           onClick={() => void submitProposal()}
           disabled={state.isReadOnly || isSubmitting}
         >
-          {t("transaction.submit")}
+          {t(
+            isSubmitting
+              ? "action.processing"
+              : "transaction.submit",
+          )}
         </button>
       ) : null}
 
@@ -291,10 +324,7 @@ export function EndorsedTransactionAction({
       ) : null}
 
       {latestAudit !== null ? (
-        <section
-          className="validation-results"
-          aria-live="polite"
-        >
+        <section className="validation-results">
           <h4>{t("validation.heading")}</h4>
           <p>{t("validation.someFailed")}</p>
           <ul>
@@ -492,17 +522,25 @@ export function EndorsedTransactionAction({
               state.isReadOnly || isHandoffPending
             }
             onClick={() => {
+              if (handoffInFlight.current) return;
+              handoffInFlight.current = true;
               setHandoffPending(true);
-              void requestRoleHandoff(
-                availableHandoff.handoffId,
-              ).finally(() => setHandoffPending(false));
+              setSubmissionFailed(false);
+              void requestRoleHandoff(availableHandoff.handoffId)
+                .catch(() => setSubmissionFailed(true))
+                .finally(() => {
+                  handoffInFlight.current = false;
+                  setHandoffPending(false);
+                });
             }}
           >
             {t(
-              configuration?.configuration.mode ===
-                "challenge"
-                ? "endorsement.handoffChallenge"
-                : availableHandoff.labelKey,
+              isHandoffPending
+                ? "action.processing"
+                : configuration?.configuration.mode ===
+                    "challenge"
+                  ? "endorsement.handoffChallenge"
+                  : availableHandoff.labelKey,
             )}
           </button>
         </section>
@@ -519,7 +557,11 @@ export function EndorsedTransactionAction({
             disabled={state.isReadOnly || isSubmitting}
             onClick={() => void endorse()}
           >
-            {t("endorsement.endorse")}
+            {t(
+              isSubmitting
+                ? "action.processing"
+                : "endorsement.endorse",
+            )}
           </button>
           {pending.declineCommandIds.length === 0 ? (
             <button
@@ -528,7 +570,11 @@ export function EndorsedTransactionAction({
               disabled={state.isReadOnly || isSubmitting}
               onClick={() => void decline()}
             >
-              {t("endorsement.decline")}
+              {t(
+                isSubmitting
+                  ? "action.processing"
+                  : "endorsement.decline",
+              )}
             </button>
           ) : null}
         </section>
@@ -542,7 +588,11 @@ export function EndorsedTransactionAction({
           disabled={state.isReadOnly || isSubmitting}
           onClick={() => void commit()}
         >
-          {t("endorsement.commit")}
+          {t(
+            isSubmitting
+              ? "action.processing"
+              : "endorsement.commit",
+          )}
         </button>
       ) : null}
 
@@ -565,14 +615,14 @@ export function EndorsedTransactionAction({
             <button
               type="button"
               className="button button--primary"
-              onClick={() => {
-                void sealPendingBlock().then(() =>
-                  onCommitted?.(),
-                );
-              }}
-              disabled={state.isReadOnly}
+              onClick={() => void seal()}
+              disabled={state.isReadOnly || isSealing}
             >
-              {t("stage.createBatch.sealBlock")}
+              {t(
+                isSealing
+                  ? "action.processing"
+                  : "stage.createBatch.sealBlock",
+              )}
             </button>
           ) : null}
           {isCommitted ? (

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ScenarioStageId,
   TransactionStatus,
@@ -79,6 +79,8 @@ export function ReceiveAndCorrectStage(): ReactNode {
     useState<DiscrepancyFormState>(EMPTY_DISCREPANCY_FORM);
   const [isSubmittingDecision, setSubmittingDecision] = useState(false);
   const [isMitigating, setMitigating] = useState(false);
+  const decisionInFlight = useRef(false);
+  const mitigationInFlight = useRef(false);
   const sourceBatchId = scenario.runtime.assetRoles.sourceBatchId;
   const manifestAnchorId = scenario.runtime.documentRoles.shippingManifestAnchorId;
   const receipt = runtimeCommand<ReceiveBatchCommand>(scenario, "RECEIVE_BATCH");
@@ -292,19 +294,27 @@ export function ReceiveAndCorrectStage(): ReactNode {
                         value={discrepancyForm}
                         onChange={setDiscrepancyForm}
                         disabled={state.isReadOnly || isSubmittingDecision}
+                        processing={isSubmittingDecision}
                         onSubmit={() => {
                           if (
+                            decisionInFlight.current ||
                             discrepancyForm.action === "" ||
                             discrepancyForm.causeCode === ""
                           ) {
                             return;
                           }
+                          decisionInFlight.current = true;
                           setSubmittingDecision(true);
                           void submitDiscrepancyDecision({
                             commandType: "SUBMIT_DISCREPANCY_DECISION",
                             action: discrepancyForm.action,
                             causeCode: discrepancyForm.causeCode,
-                          }).finally(() => setSubmittingDecision(false));
+                          })
+                            .catch(() => undefined)
+                            .finally(() => {
+                              decisionInFlight.current = false;
+                              setSubmittingDecision(false);
+                            });
                         }}
                       />
                     ) : (
@@ -337,13 +347,24 @@ export function ReceiveAndCorrectStage(): ReactNode {
                           className="button button--secondary"
                           disabled={state.isReadOnly || isMitigating}
                           onClick={() => {
+                            if (mitigationInFlight.current) return;
+                            mitigationInFlight.current = true;
                             setMitigating(true);
                             void recordMitigation({
                               commandType: "INVESTIGATE_DISCREPANCY",
-                            }).finally(() => setMitigating(false));
+                            })
+                              .catch(() => undefined)
+                              .finally(() => {
+                                mitigationInFlight.current = false;
+                                setMitigating(false);
+                              });
                           }}
                         >
-                          {t("stage.receiveAndCorrect.investigate")}
+                          {t(
+                            isMitigating
+                              ? "action.processing"
+                              : "stage.receiveAndCorrect.investigate",
+                          )}
                         </button>
                       </section>
                     ) : null}
@@ -425,11 +446,13 @@ function DiscrepancyDecisionForm({
   onChange,
   onSubmit,
   disabled,
+  processing,
 }: {
   readonly value: DiscrepancyFormState;
   readonly onChange: (value: DiscrepancyFormState) => void;
   readonly onSubmit: () => void;
   readonly disabled: boolean;
+  readonly processing: boolean;
 }): ReactNode {
   const t = useTranslator();
   const actionOptions = [
@@ -508,7 +531,11 @@ function DiscrepancyDecisionForm({
         }
         onClick={onSubmit}
       >
-        {t("stage.receiveAndCorrect.commitDecision")}
+        {t(
+          processing
+            ? "action.processing"
+            : "stage.receiveAndCorrect.commitDecision",
+        )}
       </button>
     </section>
   );

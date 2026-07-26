@@ -11,8 +11,9 @@
  *      at initialization, and every write is suppressed in review or no-credit
  *      mode.
  *
- *   2. NO FATAL ERRORS. Every LMS call is wrapped. A failing LMS degrades the
- *      attempt to unsaved rather than destroying the learner's session.
+ *   2. GUARDED LMS CALLS. Every LMS call is wrapped. Initialization can
+ *      continue with diagnostics, while a failed authoritative commit rejects
+ *      so the application never publishes state that the LMS did not store.
  */
 
 import {
@@ -32,6 +33,7 @@ import {
   type Scorm12Api,
   ScormErrorCode,
 } from "./scorm12-api";
+import { ScormCommunicationError } from "../../domain/errors";
 
 const ELEMENT = {
   STUDENT_ID: "cmi.core.student_id",
@@ -108,7 +110,13 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
       this.setValue(ELEMENT.LESSON_STATUS, CompletionStatus.INCOMPLETE);
       this.setValue(ELEMENT.SCORE_MIN, String(SCORE_MINIMUM));
       this.setValue(ELEMENT.SCORE_MAX, String(SCORE_MAXIMUM));
-      await this.commit();
+      try {
+        await this.commit();
+      } catch {
+        // Initialization remains inspectable. Any later state-changing action
+        // will retry the commit and enter the blocking recovery path if the
+        // LMS is still unavailable.
+      }
     }
 
     if (isReadOnlyAttempt(this.context)) {
@@ -177,6 +185,11 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     if (this.api === null) return;
     if (this.call("LMSCommit", () => this.api?.LMSCommit("")) !== "true") {
       this.diagnostics.push("LMSCommit failed; progress may not be stored.");
+      throw new ScormCommunicationError(
+        "LMSCommit failed; authoritative state was not stored",
+        null,
+        "LMSCommit",
+      );
     }
   }
 
