@@ -335,7 +335,7 @@ test("serves the application shell for browser navigation routes", async () => {
 
     assert.equal(response.status, 200);
     assert.equal(await response.text(), appShell);
-    assert.deepEqual(requestedPaths, [pathname, "/index.html"]);
+    assert.deepEqual(requestedPaths, ["/index.html"]);
   }
 });
 

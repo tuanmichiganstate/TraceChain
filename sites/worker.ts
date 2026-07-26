@@ -190,6 +190,8 @@ const securityHeaders = {
 };
 
 const API_PREFIX = "/api/v1/";
+const HOSTED_APP_ROUTE =
+  /^\/(?:platform|instructor|author|learner|admin)\/?$/u;
 const MAXIMUM_COMMAND_BYTES = 64 * 1024;
 const MAXIMUM_PACK_BYTES = 2 * 1024 * 1024;
 const MAXIMUM_SCORM_ARTIFACT_BYTES = 25 * 1024 * 1024;
@@ -281,6 +283,13 @@ function shouldServeAppShell(request: Request): boolean {
   if (request.method !== "GET") return false;
   const pathname = new URL(request.url).pathname;
   return pathname === "/" || acceptsHtml(request);
+}
+
+function isHostedAppRoute(request: Request): boolean {
+  return (
+    request.method === "GET" &&
+    HOSTED_APP_ROUTE.test(new URL(request.url).pathname)
+  );
 }
 
 function isAppShellFallbackResponse(response: Response): boolean {
@@ -3863,6 +3872,15 @@ const worker = {
       } catch (error) {
         return errorResponse(error);
       }
+    }
+
+    if (isHostedAppRoute(request)) {
+      const indexUrl = new URL("/index.html", request.url);
+      return withSecurityHeaders(
+        await environment.ASSETS.fetch(
+          new Request(indexUrl, request),
+        ),
+      );
     }
 
     const assetResponse = await environment.ASSETS.fetch(request);
