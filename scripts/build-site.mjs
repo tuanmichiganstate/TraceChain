@@ -38,6 +38,22 @@ for (const entry of clientEntries) {
   );
 }
 
+const hostedAppShell = await readFile(
+  join(clientDirectory, "index.html"),
+);
+for (const route of [
+  "platform",
+  "learner",
+  "instructor",
+  "author",
+  "admin",
+]) {
+  await writeFile(
+    join(clientDirectory, `${route}.html`),
+    hostedAppShell,
+  );
+}
+
 const packageCatalog = JSON.parse(
   await readFile(packageCatalogPath, "utf8"),
 );
