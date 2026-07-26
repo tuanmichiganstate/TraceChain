@@ -272,6 +272,35 @@ function asObject(
     : undefined;
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function HostedEvidenceFacts({
+  facts,
+  interpretation,
+}: {
+  readonly facts: readonly {
+    readonly label: string;
+    readonly value: ReactNode;
+  }[];
+  readonly interpretation: string;
+}): ReactNode {
+  return (
+    <div>
+      <dl className="instructor-review__facts">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p>{interpretation}</p>
+    </div>
+  );
+}
+
 export function HostedEvidenceValue({
   recordId,
   value,
@@ -282,10 +311,210 @@ export function HostedEvidenceValue({
   const t = useTranslator();
   const record = asObject(value);
   const content = asObject(record?.content);
+  if (content === undefined) {
+    return <code>{JSON.stringify(value)}</code>;
+  }
   if (
-    recordId !== "EVID_CERTIFICATE_RECORD" ||
-    content === undefined
+    recordId === "EVID_PHARMA_SENSOR_SUMMARY" ||
+    recordId === "EVID_PHARMA_TRANSFER_SENSOR"
   ) {
+    const minimum = content.minimumTemperatureC;
+    const maximum = content.maximumTemperatureC;
+    const permittedMaximum = content.permittedMaximumTemperatureC;
+    const excursionMinutes = content.excursionMinutes;
+    if (
+      !isFiniteNumber(minimum) ||
+      !isFiniteNumber(maximum) ||
+      !isFiniteNumber(permittedMaximum) ||
+      !isFiniteNumber(excursionMinutes)
+    ) {
+      return <code>{JSON.stringify(value)}</code>;
+    }
+    return (
+      <HostedEvidenceFacts
+        facts={[
+          {
+            label: t("hostedLearner.pharma.sensor.recordedRange"),
+            value: t("hostedLearner.pharma.temperatureRange", {
+              minimum,
+              maximum,
+            }),
+          },
+          {
+            label: t("hostedLearner.pharma.sensor.permittedMaximum"),
+            value: t("hostedLearner.pharma.temperature", {
+              temperature: permittedMaximum,
+            }),
+          },
+          {
+            label: t("hostedLearner.pharma.sensor.excursionDuration"),
+            value: t("hostedLearner.pharma.minutes", {
+              minutes: excursionMinutes,
+            }),
+          },
+        ]}
+        interpretation={t(
+          "hostedLearner.pharma.sensor.interpretation",
+        )}
+      />
+    );
+  }
+  if (recordId === "EVID_PHARMA_TRANSFER_CUSTODY") {
+    const signatureValid = content.signatureValid;
+    const signerRecognized = content.signerRecognized;
+    const custodyHistoryIntact = content.custodyHistoryIntact;
+    const productConditionAttested = content.productConditionAttested;
+    if (
+      typeof signatureValid !== "boolean" ||
+      typeof signerRecognized !== "boolean" ||
+      typeof custodyHistoryIntact !== "boolean" ||
+      typeof productConditionAttested !== "boolean"
+    ) {
+      return <code>{JSON.stringify(value)}</code>;
+    }
+    return (
+      <HostedEvidenceFacts
+        facts={[
+          {
+            label: t("hostedLearner.pharma.custody.signature"),
+            value: t(
+              signatureValid
+                ? "hostedLearner.pharma.custody.signatureValid"
+                : "hostedLearner.pharma.custody.signatureInvalid",
+            ),
+          },
+          {
+            label: t("hostedLearner.pharma.custody.signer"),
+            value: t(
+              signerRecognized
+                ? "hostedLearner.pharma.custody.signerRecognized"
+                : "hostedLearner.pharma.custody.signerUnknown",
+            ),
+          },
+          {
+            label: t("hostedLearner.pharma.custody.history"),
+            value: t(
+              custodyHistoryIntact
+                ? "hostedLearner.pharma.custody.historyIntact"
+                : "hostedLearner.pharma.custody.historyIncomplete",
+            ),
+          },
+          {
+            label: t("hostedLearner.pharma.custody.productCondition"),
+            value: t(
+              productConditionAttested
+                ? "hostedLearner.pharma.custody.conditionAttested"
+                : "hostedLearner.pharma.custody.conditionNotAttested",
+            ),
+          },
+        ]}
+        interpretation={t(
+          productConditionAttested
+            ? "hostedLearner.pharma.custody.interpretationAttested"
+            : "hostedLearner.pharma.custody.interpretationNotAttested",
+        )}
+      />
+    );
+  }
+  if (recordId === "EVID_PHARMA_TRANSFER_CALIBRATION") {
+    const status = content.calibrationStatus;
+    const expiredDays = content.expiredDaysBeforeShipment;
+    const failureConfirmed = content.deviceFailureConfirmed;
+    if (
+      (status !== "ACTIVE" && status !== "EXPIRED") ||
+      !isFiniteNumber(expiredDays) ||
+      typeof failureConfirmed !== "boolean"
+    ) {
+      return <code>{JSON.stringify(value)}</code>;
+    }
+    return (
+      <HostedEvidenceFacts
+        facts={[
+          {
+            label: t("hostedLearner.pharma.calibration.status"),
+            value: t(
+              status === "EXPIRED"
+                ? "hostedLearner.pharma.calibration.expired"
+                : "hostedLearner.pharma.calibration.active",
+            ),
+          },
+          {
+            label: t("hostedLearner.pharma.calibration.shipmentTiming"),
+            value: t(
+              status === "EXPIRED"
+                ? "hostedLearner.pharma.calibration.expiredBeforeShipment"
+                : "hostedLearner.pharma.calibration.activeAtShipment",
+              { days: expiredDays },
+            ),
+          },
+          {
+            label: t("hostedLearner.pharma.calibration.deviceFailure"),
+            value: t(
+              failureConfirmed
+                ? "hostedLearner.pharma.confirmed"
+                : "hostedLearner.pharma.notConfirmed",
+            ),
+          },
+        ]}
+        interpretation={t(
+          failureConfirmed
+            ? "hostedLearner.pharma.calibration.interpretationFailure"
+            : "hostedLearner.pharma.calibration.interpretationUncertain",
+        )}
+      />
+    );
+  }
+  if (recordId === "EVID_PHARMA_TRANSFER_STABILITY") {
+    const approvedMaximum = content.approvedMaximumTemperatureC;
+    const approvedMinutes = content.approvedMaximumExcursionMinutes;
+    const observedMaximum = content.observedMaximumTemperatureC;
+    const supportsRelease = content.supportsRelease;
+    if (
+      !isFiniteNumber(approvedMaximum) ||
+      !isFiniteNumber(approvedMinutes) ||
+      !isFiniteNumber(observedMaximum) ||
+      typeof supportsRelease !== "boolean"
+    ) {
+      return <code>{JSON.stringify(value)}</code>;
+    }
+    return (
+      <HostedEvidenceFacts
+        facts={[
+          {
+            label: t("hostedLearner.pharma.stability.approvedEnvelope"),
+            value: t("hostedLearner.pharma.stability.envelope", {
+              temperature: approvedMaximum,
+              minutes: approvedMinutes,
+            }),
+          },
+          {
+            label: t("hostedLearner.pharma.stability.observedMaximum"),
+            value: t("hostedLearner.pharma.temperature", {
+              temperature: observedMaximum,
+            }),
+          },
+          {
+            label: t("hostedLearner.pharma.stability.releaseConclusion"),
+            value: t(
+              supportsRelease
+                ? "hostedLearner.pharma.stability.releaseSupported"
+                : "hostedLearner.pharma.stability.releaseNotSupported",
+            ),
+          },
+        ]}
+        interpretation={t(
+          supportsRelease
+            ? "hostedLearner.pharma.stability.interpretationSupported"
+            : "hostedLearner.pharma.stability.interpretationNotSupported",
+          {
+            observed: observedMaximum,
+            approved: approvedMaximum,
+          },
+        )}
+      />
+    );
+  }
+  if (recordId !== "EVID_CERTIFICATE_RECORD") {
     return <code>{JSON.stringify(value)}</code>;
   }
   const actions = Array.isArray(content.issuerPermittedActions)

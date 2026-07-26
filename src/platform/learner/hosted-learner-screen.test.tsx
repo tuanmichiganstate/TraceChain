@@ -101,6 +101,95 @@ describe("hosted learner workspace", () => {
     ).toBeInTheDocument();
   });
 
+  it("presents pharmaceutical evidence as professional records rather than raw data", () => {
+    const { rerender } = render(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_PHARMA_TRANSFER_SENSOR"
+          value={{
+            content: {
+              minimumTemperatureC: 2,
+              maximumTemperatureC: 12.4,
+              permittedMaximumTemperatureC: 8,
+              excursionMinutes: 47,
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByText("2–12.4°C")).toBeInTheDocument();
+    expect(screen.getByText("47 minutes")).toBeInTheDocument();
+    expect(
+      screen.getByText(/requires review before release/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/maximumTemperatureC/),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_PHARMA_TRANSFER_CUSTODY"
+          value={{
+            content: {
+              signatureValid: true,
+              signerRecognized: true,
+              custodyHistoryIntact: true,
+              productConditionAttested: false,
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+    expect(screen.getByText("Signature valid")).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not attest that the medicine remained/),
+    ).toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_PHARMA_TRANSFER_CALIBRATION"
+          value={{
+            content: {
+              calibrationStatus: "EXPIRED",
+              expiredDaysBeforeShipment: 11,
+              deviceFailureConfirmed: false,
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+    expect(
+      screen.getByText("Expired 11 days before shipment"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not prove that the excursion did not occur/),
+    ).toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_PHARMA_TRANSFER_STABILITY"
+          value={{
+            content: {
+              approvedMaximumTemperatureC: 10,
+              approvedMaximumExcursionMinutes: 60,
+              observedMaximumTemperatureC: 12.4,
+              supportsRelease: false,
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+    expect(screen.getByText("Up to 10°C for 60 minutes")).toBeInTheDocument();
+    expect(screen.getByText("Release not supported")).toBeInTheDocument();
+    expect(
+      screen.getByText(/exceeds the approved 10°C limit/),
+    ).toBeInTheDocument();
+  });
+
   it("opens one stable assignment link without starting an attempt", async () => {
     const startRun = vi.fn();
     const assignment = (assignmentId: string, title: string) => ({

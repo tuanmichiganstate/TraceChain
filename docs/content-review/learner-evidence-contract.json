@@ -861,9 +861,9 @@
     {
       "findingId": "EVID-004",
       "severity": "MEDIUM",
-      "status": "OPEN",
+      "status": "CLOSED",
       "summary": "Generic hosted pharmaceutical evidence is accurate but still displayed as compact structured data rather than domain-specific prose.",
-      "disposition": "Retain for a later presentation-only improvement; released evidence contains every required value and role visibility is enforced."
+      "disposition": "Added localized professional summaries for sensor, custody, calibration, and stability evidence while preserving the authored values and role visibility."
     },
     {
       "findingId": "EVID-005",
