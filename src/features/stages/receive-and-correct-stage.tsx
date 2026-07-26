@@ -290,6 +290,20 @@ export function ReceiveAndCorrectStage(): ReactNode {
                 receiptTransaction !== undefined &&
                 manifestTransaction !== undefined ? (
                   <>
+                    <section
+                      className="card card--reference"
+                      aria-labelledby="discrepancy-cause-evidence-heading"
+                    >
+                      <h3 id="discrepancy-cause-evidence-heading">
+                        {t("stage.receiveAndCorrect.causeEvidenceHeading")}
+                      </h3>
+                      <p>
+                        {t(
+                          scenario.runtime.consequentialCases.discrepancy
+                            .causeEvidenceKey,
+                        )}
+                      </p>
+                    </section>
                     {initialDecision === null ? (
                       <DiscrepancyDecisionForm
                         value={discrepancyForm}

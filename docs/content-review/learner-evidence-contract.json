@@ -1,0 +1,883 @@
+{
+  "schemaVersion": "1.0.0",
+  "purpose": "Prove that every consequential or scored learner response can be derived from role-visible evidence available before submission.",
+  "exclusions": [
+    "Instructor, administrator, scenario-author, and rater workspaces are not learner decisions.",
+    "Navigation, opening disclosures, and mechanical seal or commit buttons are excluded unless the learner must make a business or governance judgment.",
+    "Post-submission feedback is audited for timing but never counted as evidence for the original answer.",
+    "The official score contract, hint ceilings, and mitigation ceilings are unchanged."
+  ],
+  "evidenceSources": [
+    {
+      "sourceId": "SRC_ORIENTATION_TRUTH_BOUNDARY",
+      "label": "Pre-task statement distinguishing integrity from truth",
+      "sourceType": "BRIEFING",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "ALL_LEARNERS",
+      "locations": [
+        "src/features/stages/orientation-stage.tsx",
+        "src/locales/en.json",
+        "src/locales/vi.json"
+      ],
+      "localeKeys": [
+        "message.inputTruth",
+        "stage.orientation.checkQuestion"
+      ]
+    },
+    {
+      "sourceId": "SRC_CERTIFICATE_DOCUMENT",
+      "label": "Certificate scope, batch, issue date, expiry date, and decision date",
+      "sourceType": "DOCUMENT",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/anchor-certificate-stage.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "stage.anchorCertificate.documentHeading",
+        "stage.anchorCertificate.reviewDate",
+        "stage.anchorCertificate.contentEvidence.standard",
+        "stage.anchorCertificate.contentEvidence.challenge"
+      ]
+    },
+    {
+      "sourceId": "SRC_CERTIFICATE_REGISTRY",
+      "label": "Scenario-controlled issuer registry entry and permitted action",
+      "sourceType": "POLICY",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/anchor-certificate-stage.tsx",
+        "src/scenarios/coffee-traceability/organizations.ts",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "stage.anchorCertificate.registry.heading",
+        "stage.anchorCertificate.registry.recognition",
+        "stage.anchorCertificate.registry.authority",
+        "stage.anchorCertificate.registry.boundary"
+      ]
+    },
+    {
+      "sourceId": "SRC_DOCUMENT_STORAGE_POLICY",
+      "label": "Off-chain document and on-chain SHA-256 integrity explanation",
+      "sourceType": "POLICY",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/anchor-certificate-stage.tsx",
+        "src/platform/learner/hosted-learner-screen.tsx"
+      ],
+      "localeKeys": [
+        "stage.anchorCertificate.hashNotice",
+        "check.certificateStorage.optionHash"
+      ]
+    },
+    {
+      "sourceId": "SRC_CUSTODY_TERMS",
+      "label": "Role briefing and asset owner/custodian state",
+      "sourceType": "BUSINESS_STATE",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/ship-and-monitor-stage.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "check.custodyScope.question",
+        "stage.shipAndMonitor.workspace.description"
+      ]
+    },
+    {
+      "sourceId": "SRC_TRANSPORT_SENSOR",
+      "label": "Observed humidity, permitted threshold, oracle boundary, and source dataset treatment",
+      "sourceType": "MEASUREMENT",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/ship-and-monitor-stage.tsx"
+      ],
+      "localeKeys": [
+        "stage.shipAndMonitor.sensorHeading",
+        "stage.shipAndMonitor.oracleNotice",
+        "check.transportCondition.question"
+      ]
+    },
+    {
+      "sourceId": "SRC_RECEIPT_AND_OWNERSHIP_TERMS",
+      "label": "Processing-plant receipt and purchase briefing",
+      "sourceType": "BRIEFING",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "src/platform/learner/hosted-learner-screen.tsx"
+      ],
+      "localeKeys": [
+        "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.nodes.NODE_STAGE5_BRIEFING.body"
+      ]
+    },
+    {
+      "sourceId": "SRC_DISCREPANCY_RECORDS",
+      "label": "Committed manifest, plant weight, and append-only correction rule",
+      "sourceType": "BUSINESS_STATE",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/receive-and-correct-stage.tsx",
+        "src/platform/learner/hosted-learner-screen.tsx"
+      ],
+      "localeKeys": [
+        "stage.receiveAndCorrect.mismatchDetected",
+        "stage.receiveAndCorrect.discrepancyBody",
+        "message.correction"
+      ]
+    },
+    {
+      "sourceId": "SRC_DISCREPANCY_CAUSE",
+      "label": "Scenario-specific source-sheet and investigation evidence",
+      "sourceType": "INVESTIGATION",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/receive-and-correct-stage.tsx",
+        "src/platform/learner/hosted-learner-screen.tsx"
+      ],
+      "localeKeys": [
+        "stage.receiveAndCorrect.causeEvidenceHeading",
+        "stage.receiveAndCorrect.causeEvidence.standard",
+        "stage.receiveAndCorrect.causeEvidence.challenge"
+      ]
+    },
+    {
+      "sourceId": "SRC_TRANSFORMATION_STATE",
+      "label": "Corrected input state and transformation task briefing",
+      "sourceType": "BUSINESS_STATE",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/transform-batch-stage.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "check.transformationProvenance.question"
+      ]
+    },
+    {
+      "sourceId": "SRC_PROVENANCE_GRAPH",
+      "label": "Role-visible oldest-to-newest provenance graph",
+      "sourceType": "LEDGER_PROJECTION",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/components/provenance-viewer.tsx",
+        "src/features/stages/transform-batch-stage.tsx",
+        "src/features/stages/recall-and-debrief-stage.tsx"
+      ],
+      "localeKeys": [
+        "check.transformationProvenance.question",
+        "check.recallScope.question"
+      ]
+    },
+    {
+      "sourceId": "SRC_TAMPER_TASK",
+      "label": "Explicit copy-only tamper experiment instructions",
+      "sourceType": "BRIEFING",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "ALL_LEARNERS",
+      "locations": [
+        "src/features/stages/verify-and-tamper-stage.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "stage.verifyAndTamper.tamperIntro"
+      ]
+    },
+    {
+      "sourceId": "SRC_TAMPER_RESULTS",
+      "label": "Observed transaction, block, and chain verification results",
+      "sourceType": "EXPERIMENT_RESULT",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "ALL_LEARNERS",
+      "locations": [
+        "src/features/stages/verify-and-tamper-stage.tsx",
+        "src/domain/ledger/integrity.ts"
+      ],
+      "localeKeys": [
+        "check.tamperIntegrity.question",
+        "check.tamperIntegrity.connection"
+      ]
+    },
+    {
+      "sourceId": "SRC_DATA_GOVERNANCE_POLICY",
+      "label": "Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria",
+      "sourceType": "POLICY",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/verify-and-tamper-stage.tsx",
+        "src/platform/learner/hosted-learner-screen.tsx"
+      ],
+      "localeKeys": [
+        "stage.verifyAndTamper.dataGovernancePolicyHeading",
+        "stage.verifyAndTamper.dataGovernanceSharedFact",
+        "stage.verifyAndTamper.dataGovernanceLargeFile",
+        "stage.verifyAndTamper.dataGovernanceSensitive",
+        "stage.verifyAndTamper.dataGovernancePersonal"
+      ]
+    },
+    {
+      "sourceId": "SRC_RECALL_INCIDENT",
+      "label": "Laboratory incident, source lot, descendant graph, custody, and location evidence",
+      "sourceType": "INCIDENT",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/recall-and-debrief-stage.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "stage.recallAndDebrief.instruction",
+        "check.recallScope.question"
+      ]
+    },
+    {
+      "sourceId": "SRC_RECALL_AUTHORITY",
+      "label": "Active trusted organization, permitted handoffs, and regulator authorization rule",
+      "sourceType": "POLICY",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/recall-and-debrief-stage.tsx",
+        "src/scenarios/coffee-traceability/runtime.ts",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "stage.recallAndDebrief.activeOrganizationLabel",
+        "stage.recallAndDebrief.precommitHandoffPrompt"
+      ]
+    },
+    {
+      "sourceId": "SRC_BLOCKCHAIN_SUITABILITY",
+      "label": "Multi-organization shared-record context and explicit blockchain limitations",
+      "sourceType": "BRIEFING",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "ALL_LEARNERS",
+      "locations": [
+        "src/features/start/start-screen.tsx",
+        "src/features/stages/recall-and-debrief-stage.tsx"
+      ],
+      "localeKeys": [
+        "message.blockchainNecessity",
+        "check.blockchainNecessity.question"
+      ]
+    },
+    {
+      "sourceId": "SRC_PHARMA_SENSOR",
+      "label": "Released role-visible cold-chain sensor and custody evidence",
+      "sourceType": "MEASUREMENT",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "src/platform/hosted/generic-run-service.ts"
+      ],
+      "localeKeys": [
+        "platformPack.pharmaColdChain.node.briefing.body",
+        "platformPack.pharmaColdChain.transfer.node.triage.prompt"
+      ],
+      "localizedInPack": true
+    },
+    {
+      "sourceId": "SRC_PHARMA_INVESTIGATION",
+      "label": "Released calibration and stability evidence",
+      "sourceType": "INVESTIGATION",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "src/platform/hosted/generic-run-service.ts"
+      ],
+      "localeKeys": [
+        "platformPack.pharmaColdChain.transfer.node.disposition.prompt"
+      ],
+      "localizedInPack": true
+    },
+    {
+      "sourceId": "SRC_ENDORSEMENT_REVIEW",
+      "label": "Exact proposal digest, required organizations, signed state versions, and policy progress",
+      "sourceType": "POLICY",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/components/endorsed-transaction-action.tsx",
+        "src/platform/learner/hosted-learner-screen.tsx",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "localeKeys": [
+        "endorsement.policyHeading",
+        "endorsement.reviewExactProposal",
+        "endorsement.policyStatus"
+      ]
+    },
+    {
+      "sourceId": "SRC_MITIGATION_FEEDBACK",
+      "label": "Locked initial decision, validation outcome, and authored corrective action",
+      "sourceType": "FEEDBACK",
+      "timing": "AFTER_OUTCOME",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/features/stages/anchor-certificate-stage.tsx",
+        "src/features/stages/receive-and-correct-stage.tsx",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "localeKeys": [
+        "stage.anchorCertificate.mitigationNotice",
+        "stage.receiveAndCorrect.mitigationNotice"
+      ]
+    },
+    {
+      "sourceId": "SRC_COUNTERFACTUAL_COMPARISON",
+      "label": "Completed original-versus-alternative evidence, event, and outcome comparison",
+      "sourceType": "COMPARISON",
+      "timing": "AFTER_OUTCOME",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "src/platform/hosted/counterfactual-comparison.ts",
+        "src/platform/counterfactual/counterfactual-explorer.tsx"
+      ],
+      "localeKeys": [
+        "counterfactual.reflection.evidenceThatMattered"
+      ]
+    }
+  ],
+  "coverageRules": [
+    {
+      "ruleId": "COVER_ORIENTATION_TRUTH",
+      "match": {
+        "decisionIds": [
+          "INT_ORIENTATION_TRUTH_CHECK"
+        ],
+        "fieldIds": [
+          "response"
+        ]
+      },
+      "sourceIds": [
+        "SRC_ORIENTATION_TRUTH_BOUNDARY"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_CERTIFICATE_CONTENT",
+      "match": {
+        "decisionIds": [
+          "INT_CERTIFICATE_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "certificateAssessment"
+        ]
+      },
+      "sourceIds": [
+        "SRC_CERTIFICATE_DOCUMENT"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_CERTIFICATE_ISSUER",
+      "match": {
+        "decisionIds": [
+          "INT_CERTIFICATE_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "issuerAssessment"
+        ]
+      },
+      "sourceIds": [
+        "SRC_CERTIFICATE_REGISTRY"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts",
+        "src/scenarios/coffee-traceability/organizations.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_CERTIFICATE_STORAGE",
+      "match": {
+        "decisionIds": [
+          "INT_CERTIFICATE_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "storageChoice"
+        ]
+      },
+      "sourceIds": [
+        "SRC_DOCUMENT_STORAGE_POLICY"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_CERTIFICATE_DISPOSITION",
+      "match": {
+        "decisionIds": [
+          "INT_CERTIFICATE_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "lotDisposition"
+        ]
+      },
+      "sourceIds": [
+        "SRC_CERTIFICATE_DOCUMENT",
+        "SRC_CERTIFICATE_REGISTRY"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_CUSTODY_SCOPE",
+      "match": {
+        "decisionIds": [
+          "INT_CUSTODY_TRANSFER_SCOPE",
+          "DECISION_CUSTODY_SCOPE"
+        ],
+        "fieldIds": [
+          "response",
+          "transferScope"
+        ]
+      },
+      "sourceIds": [
+        "SRC_CUSTODY_TERMS"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_TRANSPORT_SENSOR",
+      "match": {
+        "decisionIds": [
+          "INT_TRANSPORT_CONDITION"
+        ],
+        "fieldIds": [
+          "response"
+        ]
+      },
+      "sourceIds": [
+        "SRC_TRANSPORT_SENSOR"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_RECEIPT_AND_PURCHASE",
+      "match": {
+        "decisionIds": [
+          "DECISION_RECEIPT_AND_PURCHASE"
+        ],
+        "fieldIds": [
+          "receiptAction",
+          "ownershipAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_RECEIPT_AND_OWNERSHIP_TERMS"
+      ],
+      "answerAuthority": [
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_DISCREPANCY_ACTION",
+      "match": {
+        "decisionIds": [
+          "INT_DISCREPANCY_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "action"
+        ]
+      },
+      "sourceIds": [
+        "SRC_DISCREPANCY_RECORDS"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_DISCREPANCY_CAUSE",
+      "match": {
+        "decisionIds": [
+          "INT_DISCREPANCY_INITIAL_SUBMITTED"
+        ],
+        "fieldIds": [
+          "causeCode"
+        ]
+      },
+      "sourceIds": [
+        "SRC_DISCREPANCY_CAUSE"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts",
+        "src/scenarios/coffee-traceability/runtime.ts",
+        "src/scenarios/challenge-a/scenario.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_TRANSFORMATION_ACTION",
+      "match": {
+        "decisionIds": [
+          "DECISION_TRANSFORMATION_ACTION"
+        ],
+        "fieldIds": [
+          "transformationAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_TRANSFORMATION_STATE"
+      ],
+      "answerAuthority": [
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_TRANSFORMATION_PROVENANCE",
+      "match": {
+        "decisionIds": [
+          "INT_TRANSFORMATION_PROVENANCE"
+        ],
+        "fieldIds": [
+          "response",
+          "provenanceRelationship"
+        ]
+      },
+      "sourceIds": [
+        "SRC_TRANSFORMATION_STATE",
+        "SRC_PROVENANCE_GRAPH"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_TAMPER_ACTION",
+      "match": {
+        "decisionIds": [
+          "DECISION_RUN_TAMPER_DEMONSTRATION"
+        ],
+        "fieldIds": [
+          "tamperAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_TAMPER_TASK"
+      ],
+      "answerAuthority": [
+        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_TAMPER_INTERPRETATION",
+      "match": {
+        "decisionIds": [
+          "INT_TAMPER_DEMONSTRATION"
+        ],
+        "fieldIds": [
+          "response",
+          "integrityInterpretation"
+        ]
+      },
+      "sourceIds": [
+        "SRC_TAMPER_RESULTS"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "src/domain/ledger/integrity.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_DATA_GOVERNANCE",
+      "match": {
+        "decisionIds": [
+          "INT_DATA_GOVERNANCE_CLASSIFICATION"
+        ],
+        "fieldIds": [
+          "ITEM_BATCH_ID",
+          "ITEM_RECALL_STATUS",
+          "ITEM_CERTIFICATE_PDF",
+          "ITEM_SENSOR_DATASET",
+          "ITEM_WHOLESALE_PRICE",
+          "ITEM_CUSTOMER_ADDRESS"
+        ]
+      },
+      "sourceIds": [
+        "SRC_DATA_GOVERNANCE_POLICY"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_RECALL_SCOPE",
+      "match": {
+        "decisionIds": [
+          "INT_RECALL_SCOPE"
+        ],
+        "fieldIds": [
+          "response",
+          "selectedAssetIds"
+        ]
+      },
+      "sourceIds": [
+        "SRC_RECALL_INCIDENT",
+        "SRC_PROVENANCE_GRAPH"
+      ],
+      "answerAuthority": [
+        "src/domain/provenance/recall-scope.ts",
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_RECALL_AUTHORITY",
+      "match": {
+        "decisionIds": [
+          "INT_RECALL_COMMITTED",
+          "DECISION_RECALL_ROLE_HANDOFF"
+        ],
+        "fieldIds": [
+          "authorizationPath",
+          "recallAuthorityAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_RECALL_AUTHORITY"
+      ],
+      "answerAuthority": [
+        "src/features/stages/recall-and-debrief-stage.tsx",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_BLOCKCHAIN_NECESSITY",
+      "match": {
+        "decisionIds": [
+          "INT_BLOCKCHAIN_NECESSITY"
+        ],
+        "fieldIds": [
+          "response",
+          "blockchainSuitability"
+        ]
+      },
+      "sourceIds": [
+        "SRC_BLOCKCHAIN_SUITABILITY"
+      ],
+      "answerAuthority": [
+        "src/scenarios/coffee-traceability/knowledge-checks.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_PHARMA_RELEASE",
+      "match": {
+        "decisionIds": [
+          "DECISION_PHARMA_RELEASE"
+        ],
+        "fieldIds": [
+          "shipmentAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_PHARMA_SENSOR"
+      ],
+      "answerAuthority": [
+        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "src/platform/hosted/generic-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_PHARMA_TRIAGE",
+      "match": {
+        "decisionIds": [
+          "DECISION_PHARMA_TRANSFER_TRIAGE"
+        ],
+        "fieldIds": [
+          "triageAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_PHARMA_SENSOR"
+      ],
+      "answerAuthority": [
+        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "src/platform/hosted/generic-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_PHARMA_DISPOSITION",
+      "match": {
+        "decisionIds": [
+          "DECISION_PHARMA_TRANSFER_DISPOSITION"
+        ],
+        "fieldIds": [
+          "dispositionAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_PHARMA_INVESTIGATION"
+      ],
+      "answerAuthority": [
+        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "src/platform/hosted/generic-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_ENDORSEMENT_JUDGMENT",
+      "match": {
+        "decisionIds": [
+          "INT_CUSTODY_TRANSFERRED_TRANSACTION",
+          "INT_CORRECTION_RECORDED",
+          "NODE_CUSTODY_ENDORSEMENT",
+          "NODE_CORRECTION_ENDORSEMENT"
+        ],
+        "fieldIds": [
+          "endorsementAction"
+        ]
+      },
+      "sourceIds": [
+        "SRC_ENDORSEMENT_REVIEW"
+      ],
+      "answerAuthority": [
+        "src/components/endorsed-transaction-action.tsx",
+        "src/crypto/endorsements/policy-evaluator.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_MITIGATION",
+      "match": {
+        "decisionIds": [
+          "MITIGATION_CERTIFICATE",
+          "MITIGATION_DISCREPANCY"
+        ],
+        "fieldIds": [
+          "REVIEW_ISSUER",
+          "REMEDIATE_STORAGE",
+          "SUSPEND_LOT",
+          "INVESTIGATE_DISCREPANCY"
+        ]
+      },
+      "sourceIds": [
+        "SRC_MITIGATION_FEEDBACK"
+      ],
+      "answerAuthority": [
+        "src/domain/simulation/consequential-decisions.ts",
+        "src/domain/simulation/replay-journal.ts",
+        "src/platform/hosted/stage3-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_COUNTERFACTUAL_REFLECTION",
+      "match": {
+        "surfaces": [
+          "HOSTED_COUNTERFACTUAL"
+        ],
+        "decisionIds": [
+          "COUNTERFACTUAL_REFLECTION"
+        ],
+        "fieldIds": [
+          "response"
+        ]
+      },
+      "sourceIds": [
+        "SRC_COUNTERFACTUAL_COMPARISON"
+      ],
+      "answerAuthority": [
+        "src/platform/hosted/counterfactual-comparison.ts",
+        "src/platform/counterfactual/counterfactual-explorer.tsx"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "EVID-001",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "summary": "Stage 3 asked for issuer recognition and authority without exposing the consortium registry before commitment.",
+      "disposition": "Added a neutral, scenario-derived registry entry with organization ID, recognition status, permitted certificate action, and scenario policy version; removed the answer from the organization display name."
+    },
+    {
+      "findingId": "EVID-002",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "summary": "Stage 5 asked for the most likely cause when only the numerical mismatch was visible.",
+      "disposition": "Added scenario-specific pre-decision investigation evidence: the standard case supports a typing error; Challenge explicitly leaves the cause unknown."
+    },
+    {
+      "findingId": "EVID-003",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "summary": "Stage 8 required six governance classifications without stating the consortium's handling criteria.",
+      "disposition": "Added the four scenario-specific criteria immediately before the classification in SCORM and hosted runs."
+    },
+    {
+      "findingId": "EVID-004",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "summary": "Generic hosted pharmaceutical evidence is accurate but still displayed as compact structured data rather than domain-specific prose.",
+      "disposition": "Retain for a later presentation-only improvement; released evidence contains every required value and role visibility is enforced."
+    },
+    {
+      "findingId": "EVID-005",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "summary": "Automated accessibility checks do not replace a real screen-reader evidence-discovery review.",
+      "disposition": "Follow docs/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot."
+    },
+    {
+      "findingId": "EVID-006",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "summary": "Vietnamese evidence wording has not been reviewed by a Vietnamese supply-chain subject expert.",
+      "disposition": "Use the regenerated bilingual content-review pack for subject-expert sign-off."
+    }
+  ]
+}

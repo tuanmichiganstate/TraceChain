@@ -1,5 +1,8 @@
 import { useRef, useState, type ReactNode } from "react";
-import { ScenarioStageId } from "../../domain/types/enums";
+import {
+  ScenarioStageId,
+  TransactionType,
+} from "../../domain/types/enums";
 import { useTranslator } from "../../app/providers/locale-provider";
 import { useScenario } from "../../app/providers/scenario-provider";
 import { useSimulation } from "../../app/providers/simulation-provider";
@@ -74,6 +77,12 @@ export function AnchorCertificateStage(): ReactNode {
     (organization) =>
       organization.organizationId === anchor.issuerOrganizationId,
   );
+  const issuerRecognized = anchorIssuer?.isActive === true;
+  const issuerMayIssueCertificates =
+    issuerRecognized &&
+    anchorIssuer.authorizedActions.includes(
+      TransactionType.ISSUE_CERTIFICATE,
+    );
   const [form, setForm] = useState<CertificateFormState>(EMPTY_FORM);
   const [isSubmitting, setSubmitting] = useState(false);
   const submissionInFlight = useRef(false);
@@ -192,6 +201,10 @@ export function AnchorCertificateStage(): ReactNode {
             <h3>{t("stage.anchorCertificate.documentHeading")}</h3>
             <dl className="asset-card__grid">
               <div className="asset-card__row">
+                <dt>{t("field.assetId")}</dt>
+                <dd><code>{anchor.assetId}</code></dd>
+              </div>
+              <div className="asset-card__row">
                 <dt>{t("field.fileName")}</dt>
                 <dd>{anchor.fileName}</dd>
               </div>
@@ -215,8 +228,64 @@ export function AnchorCertificateStage(): ReactNode {
                 <dt>{t("field.expiresAt")}</dt>
                 <dd>{anchor.expiresAt ?? t("common.notAvailable")}</dd>
               </div>
+              <div className="asset-card__row">
+                <dt>{t("stage.anchorCertificate.reviewDate")}</dt>
+                <dd>{anchor.scenarioTimestamp}</dd>
+              </div>
             </dl>
+            <p>
+              {t(
+                scenario.runtime.consequentialCases.certificate
+                  .contentEvidenceKey,
+              )}
+            </p>
             <p className="muted">{t("stage.anchorCertificate.hashNotice")}</p>
+          </section>
+
+          <section
+            className="card card--reference certificate-console__registry"
+            aria-labelledby="certificate-registry-heading"
+          >
+            <p className="eyebrow">
+              {t("stage.anchorCertificate.registry.layerLabel")}
+            </p>
+            <h3 id="certificate-registry-heading">
+              {t("stage.anchorCertificate.registry.heading")}
+            </h3>
+            <p>{t("stage.anchorCertificate.registry.description")}</p>
+            <dl className="asset-card__grid">
+              <div className="asset-card__row">
+                <dt>{t("stage.anchorCertificate.registry.organizationId")}</dt>
+                <dd><code>{anchor.issuerOrganizationId}</code></dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("stage.anchorCertificate.registry.recognition")}</dt>
+                <dd>
+                  {t(
+                    issuerRecognized
+                      ? "stage.anchorCertificate.registry.recognized"
+                      : "stage.anchorCertificate.registry.notRecognized",
+                  )}
+                </dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("stage.anchorCertificate.registry.authority")}</dt>
+                <dd>
+                  {t(
+                    issuerMayIssueCertificates
+                      ? "stage.anchorCertificate.registry.mayIssue"
+                      : "stage.anchorCertificate.registry.mayNotIssue",
+                  )}
+                </dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("stage.anchorCertificate.registry.policyVersion")}</dt>
+                <dd>{scenario.scenarioVersion}</dd>
+              </div>
+            </dl>
+            <p className="muted">
+              {t("stage.anchorCertificate.registry.boundary")}
+            </p>
           </section>
 
           <CertificateVerificationConsole

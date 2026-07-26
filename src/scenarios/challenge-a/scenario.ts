@@ -235,10 +235,14 @@ export const challengeAScenario: ScenarioDefinition = {
         certificateAssessment: "VALID",
         issuerAssessment: "UNRECOGNIZED",
         requiredStorageChoice: "HASH_OFF_CHAIN",
+        contentEvidenceKey:
+          "stage.anchorCertificate.contentEvidence.challenge",
       },
       discrepancy: {
         reasonSuggestionKey:
           "stage.challenge.receiveAndCorrect.reasonSuggestion",
+        causeEvidenceKey:
+          "stage.receiveAndCorrect.causeEvidence.challenge",
         authoredCauseCode: "UNKNOWN",
       },
     },

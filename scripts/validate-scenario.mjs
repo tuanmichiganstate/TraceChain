@@ -110,6 +110,9 @@ try {
     ...scenario.organizations.map((o) => o.displayNameKey),
     ...scenario.actors.map((a) => a.displayNameKey),
     ...scenario.locations.map((l) => l.displayNameKey),
+    scenario.runtime.consequentialCases.certificate.contentEvidenceKey,
+    scenario.runtime.consequentialCases.discrepancy.causeEvidenceKey,
+    scenario.runtime.consequentialCases.discrepancy.reasonSuggestionKey,
     ...scenario.stages.flatMap((stage) => [
       stage.titleKey,
       stage.instructionKey,

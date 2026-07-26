@@ -133,9 +133,13 @@ export interface ScenarioRuntimeDefinition {
         | "RECOGNIZED_UNAUTHORIZED"
         | "UNRECOGNIZED";
       readonly requiredStorageChoice: "HASH_OFF_CHAIN";
+      /** Neutral document-review evidence shown before the learner commits. */
+      readonly contentEvidenceKey: string;
     };
     readonly discrepancy: {
       readonly reasonSuggestionKey: string;
+      /** Neutral investigation evidence shown before the learner selects a cause. */
+      readonly causeEvidenceKey: string;
       readonly authoredCauseCode:
         | "TYPING_ERROR"
         | "UNIT_MISMATCH"

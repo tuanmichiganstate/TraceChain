@@ -21,6 +21,7 @@ import {
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const committedDirectory = join(projectRoot, "docs", "content-review");
 const committedManifestPath = join(committedDirectory, MANIFEST_FILENAME);
+const sourceOnlyFiles = new Set(["learner-evidence-contract.json"]);
 const problems = [];
 
 if (!existsSync(committedManifestPath)) {
@@ -45,7 +46,9 @@ try {
     sourceCommit: sourceCommitMatch[1],
   });
 
-  const committedFiles = readdirSync(committedDirectory).sort();
+  const committedFiles = readdirSync(committedDirectory)
+    .filter((fileName) => !sourceOnlyFiles.has(fileName))
+    .sort();
   const expectedFiles = readdirSync(temporaryRoot).sort();
   if (JSON.stringify(committedFiles) !== JSON.stringify(expectedFiles)) {
     problems.push(

@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import type { LearnerRunProjectionV1 } from "../contracts/run-events";
 import {
+  HostedDecisionEvidenceGuide,
+  HostedEvidenceValue,
   HostedLearnerApiError,
   HostedLearnerScreen,
   type HostedLearnerApi,
@@ -48,6 +50,57 @@ function projection(
 }
 
 describe("hosted learner workspace", () => {
+  it("renders certificate registry facts and decision guides as learner-readable evidence", () => {
+    const { rerender } = render(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_CERTIFICATE_RECORD"
+          value={{
+            content: {
+              assetId: "BAT_GREEN_COFFEE_001",
+              certificateContentStatus: "VALID",
+              issuedAt: "2026-01-15T03:00:00.000Z",
+              expiresAt: "2027-01-15T03:00:00.000Z",
+              decisionReviewAt: "2026-01-15T03:00:00.000Z",
+              issuerOrganizationId: "ORG_CERTIFICATION_BODY",
+              issuerRegistryStatus: "RECOGNIZED_ACTIVE",
+              issuerPermittedActions: ["ISSUE_CERTIFICATE"],
+              documentStoragePolicy: "OFF_CHAIN_WITH_SHA256_ANCHOR",
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByText("Listed as an active consortium organization"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("May issue quality certificates"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The scope names this batch and records no quality exception",
+      ),
+    ).toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedDecisionEvidenceGuide
+          workflowNodeId="data-governance-decision"
+        />
+      </LocaleProvider>,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Data-handling criteria for this consortium",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Personal data that is unnecessary/),
+    ).toBeInTheDocument();
+  });
+
   it("opens one stable assignment link without starting an attempt", async () => {
     const startRun = vi.fn();
     const assignment = (assignmentId: string, title: string) => ({

@@ -191,7 +191,7 @@ test("loads Challenge A and preserves mitigation history through its causal repo
     .click();
   await expect(
     signatureInspection.getByText(
-      "Công ty Tư vấn Chất lượng Toàn Cầu (chưa được công nhận)",
+      "Công ty Tư vấn Chất lượng Toàn Cầu",
       { exact: true },
     ),
   ).toBeVisible();

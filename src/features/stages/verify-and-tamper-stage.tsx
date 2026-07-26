@@ -298,7 +298,25 @@ export function VerifyAndTamperStage(): ReactNode {
         <KnowledgeCheckPanel check={tamperIntegrityCheck} />
       ) : null}
       {dataGovernanceCheck !== undefined ? (
-        <KnowledgeCheckPanel check={dataGovernanceCheck} />
+        <>
+          <section
+            className="card card--reference"
+            aria-labelledby="data-governance-policy-heading"
+          >
+            <p className="eyebrow">{t("evidenceDocument.layerLabel")}</p>
+            <h3 id="data-governance-policy-heading">
+              {t("stage.verifyAndTamper.dataGovernancePolicyHeading")}
+            </h3>
+            <p>{t("stage.verifyAndTamper.dataGovernancePolicyIntro")}</p>
+            <ul>
+              <li>{t("stage.verifyAndTamper.dataGovernanceSharedFact")}</li>
+              <li>{t("stage.verifyAndTamper.dataGovernanceLargeFile")}</li>
+              <li>{t("stage.verifyAndTamper.dataGovernanceSensitive")}</li>
+              <li>{t("stage.verifyAndTamper.dataGovernancePersonal")}</li>
+            </ul>
+          </section>
+          <KnowledgeCheckPanel check={dataGovernanceCheck} />
+        </>
       ) : null}
     </StageShell>
   );

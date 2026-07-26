@@ -396,6 +396,12 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     "Must use an authored issuer assessment code",
   );
   check(
+    scenario.runtime.consequentialCases.certificate.contentEvidenceKey
+      .length > 0,
+    "runtime.consequentialCases.certificate.contentEvidenceKey",
+    "Must name localized pre-decision certificate evidence",
+  );
+  check(
     [
       "TYPING_ERROR",
       "UNIT_MISMATCH",
@@ -405,6 +411,12 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     ].includes(scenario.runtime.consequentialCases.discrepancy.authoredCauseCode),
     "runtime.consequentialCases.discrepancy.authoredCauseCode",
     "Must use an authored discrepancy cause code",
+  );
+  check(
+    scenario.runtime.consequentialCases.discrepancy.causeEvidenceKey
+      .length > 0,
+    "runtime.consequentialCases.discrepancy.causeEvidenceKey",
+    "Must name localized pre-decision cause evidence",
   );
   check(
     scenario.runtime.consequentialCases.discrepancy.reasonSuggestionKey

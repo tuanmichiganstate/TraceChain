@@ -301,6 +301,22 @@ describe("the whole activity in the browser", () => {
 
     // ---- Stage 3: one atomic certificate decision --------------------
     await screen.findByRole("heading", { name: /Bước 3/ });
+    expect(
+      screen.getByRole("heading", {
+        name: "Sự công nhận và hành động được phép của đơn vị cấp",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Được ghi là tổ chức đang hoạt động trong liên minh",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Được phép cấp chứng nhận chất lượng"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Phạm vi của tài liệu ghi đúng lô cà phê nhân/),
+    ).toBeInTheDocument();
     await submitSoundCertificateDecision(user);
     await submitAndSeal(user, "Ghi nhận tài liệu lên chuỗi");
     await submitAndSeal(user, "Cấp chứng nhận cho lô hàng");
@@ -366,6 +382,14 @@ describe("the whole activity in the browser", () => {
       screen.getByRole("region", {
         name: "Sổ cái và hồ sơ kỹ thuật",
       }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Tiêu chí xử lý dữ liệu của liên minh này",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Dữ liệu cá nhân không cần thiết/),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }));
 
@@ -620,6 +644,17 @@ describe("the whole activity in the browser", () => {
     await submitAndSeal(user, "Thông tin lô hàng");
     await advance(user);
 
+    expect(
+      screen.getByText(
+        "Không được ghi là tổ chức đang hoạt động trong liên minh",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Không được phép cấp chứng nhận chất lượng"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/chưa được công nhận\)/i),
+    ).toBeNull();
     await user.selectOptions(
       await screen.findByRole("combobox", {
         name: "Nội dung và thời hạn chứng nhận",
@@ -667,7 +702,7 @@ describe("the whole activity in the browser", () => {
     );
     expect(
       await within(inspection).findByText(
-        "Công ty Tư vấn Chất lượng Toàn Cầu (chưa được công nhận)",
+        "Công ty Tư vấn Chất lượng Toàn Cầu",
       ),
     ).toBeInTheDocument();
     expect(
@@ -689,6 +724,9 @@ describe("the whole activity in the browser", () => {
 
     await submitAndSeal(user, "Tiếp nhận lô hàng");
     await submitAndSeal(user, "Ghi nhận việc mua lô hàng");
+    expect(
+      screen.getByText(/Các hồ sơ hiện có chưa chứng minh được nguyên nhân/),
+    ).toBeInTheDocument();
     await user.selectOptions(
       await screen.findByRole("combobox", {
         name: "Hành động đề xuất đối với bản ghi",

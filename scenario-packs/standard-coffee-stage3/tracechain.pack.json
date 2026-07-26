@@ -1243,7 +1243,18 @@
           ],
           "content": {
             "runtimeId": "tracechain-coffee-v2",
-            "domainDocumentRole": "qualityCertificateAnchorId"
+            "domainDocumentRole": "qualityCertificateAnchorId",
+            "assetId": "BAT_GREEN_COFFEE_001",
+            "certificateContentStatus": "VALID",
+            "issuedAt": "2026-01-15T03:00:00.000Z",
+            "expiresAt": "2027-01-15T03:00:00.000Z",
+            "decisionReviewAt": "2026-01-15T03:00:00.000Z",
+            "issuerOrganizationId": "ORG_CERTIFICATION_BODY",
+            "issuerRegistryStatus": "RECOGNIZED_ACTIVE",
+            "issuerPermittedActions": [
+              "ISSUE_CERTIFICATE"
+            ],
+            "documentStoragePolicy": "OFF_CHAIN_WITH_SHA256_ANCHOR"
           }
         }
       ],

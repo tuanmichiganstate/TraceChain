@@ -1,0 +1,138 @@
+# TraceChain learner evidence sufficiency audit
+
+This report is generated from the compiled SCORM scenarios, all hosted scenario packs, and `docs/content-review/learner-evidence-contract.json`.
+
+## Contract
+
+- Every consequential or scored field has evidence available before submission.
+- Evidence is visible to the role making the decision and exists in Vietnamese and English where it is learner-facing.
+- Feedback shown after submission is never counted as evidence for the original answer.
+- Counterfactual branches reuse the source-run information state at the fork; reflections use the completed comparison.
+- Answer keys remain aligned with deterministic scenario and scoring code.
+
+## Coverage summary
+
+- Audited fields: **94**
+- HOSTED: **28**
+- HOSTED_COUNTERFACTUAL: **14**
+- SCORM: **52**
+- Open blocker/high findings: **0**
+
+## Field-level inventory
+
+| Surface | Scenario | Mode | Stage/node | Decision | Field/item | Class | Evidence available before answer | Result |
+|---|---|---|---|---|---|---|---|---|
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | COUNTERFACTUAL_REFLECTION | response | REFLECTION | Completed original-versus-alternative evidence, event, and outcome comparison | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | certificateAssessment | COUNTERFACTUAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | issuerAssessment | COUNTERFACTUAL_DECISION | Scenario-controlled issuer registry entry and permitted action | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | lotDisposition | COUNTERFACTUAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date; Scenario-controlled issuer registry entry and permitted action | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | storageChoice | COUNTERFACTUAL_DECISION | Off-chain document and on-chain SHA-256 integrity explanation | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_DECISION | COUNTERFACTUAL_REFLECTION | response | REFLECTION | Completed original-versus-alternative evidence, event, and outcome comparison | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_DECISION | INT_DISCREPANCY_INITIAL_SUBMITTED | action | COUNTERFACTUAL_DECISION | Committed manifest, plant weight, and append-only correction rule | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_DECISION | INT_DISCREPANCY_INITIAL_SUBMITTED | causeCode | COUNTERFACTUAL_DECISION | Scenario-specific source-sheet and investigation evidence | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECALL_SCOPE_DECISION | COUNTERFACTUAL_REFLECTION | response | REFLECTION | Completed original-versus-alternative evidence, event, and outcome comparison | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECALL_SCOPE_DECISION | INT_RECALL_SCOPE | selectedAssetIds | COUNTERFACTUAL_DECISION | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_DISPOSITION | COUNTERFACTUAL_REFLECTION | response | REFLECTION | Completed original-versus-alternative evidence, event, and outcome comparison | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_DISPOSITION | DECISION_PHARMA_TRANSFER_DISPOSITION | dispositionAction | COUNTERFACTUAL_DECISION | Released calibration and stability evidence | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_TRIAGE | COUNTERFACTUAL_REFLECTION | response | REFLECTION | Completed original-versus-alternative evidence, event, and outcome comparison | PASS |
+| HOSTED_COUNTERFACTUAL | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_TRIAGE | DECISION_PHARMA_TRANSFER_TRIAGE | triageAction | COUNTERFACTUAL_DECISION | Released role-visible cold-chain sensor and custody evidence | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_BLOCKCHAIN_NECESSITY_DECISION | INT_BLOCKCHAIN_NECESSITY | blockchainSuitability | HOSTED_DECISION | Multi-organization shared-record context and explicit blockchain limitations | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | certificateAssessment | HOSTED_DECISION | Certificate scope, batch, issue date, expiry date, and decision date | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | issuerAssessment | HOSTED_DECISION | Scenario-controlled issuer registry entry and permitted action | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | lotDisposition | HOSTED_DECISION | Certificate scope, batch, issue date, expiry date, and decision date; Scenario-controlled issuer registry entry and permitted action | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CERTIFICATE_DECISION | INT_CERTIFICATE_INITIAL_SUBMITTED | storageChoice | HOSTED_DECISION | Off-chain document and on-chain SHA-256 integrity explanation | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CORRECTION_ENDORSEMENT | NODE_CORRECTION_ENDORSEMENT | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CUSTODY_DECISION | DECISION_CUSTODY_SCOPE | transferScope | HOSTED_DECISION | Role briefing and asset owner/custodian state | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_CUSTODY_ENDORSEMENT | NODE_CUSTODY_ENDORSEMENT | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_BATCH_ID | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CERTIFICATE_PDF | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CUSTOMER_ADDRESS | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_RECALL_STATUS | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_SENSOR_DATASET | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DATA_GOVERNANCE_DECISION | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_WHOLESALE_PRICE | HOSTED_DECISION | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_DECISION | INT_DISCREPANCY_INITIAL_SUBMITTED | action | HOSTED_DECISION | Committed manifest, plant weight, and append-only correction rule | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_DECISION | INT_DISCREPANCY_INITIAL_SUBMITTED | causeCode | HOSTED_DECISION | Scenario-specific source-sheet and investigation evidence | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_DISCREPANCY_MITIGATION | MITIGATION_DISCREPANCY | INVESTIGATE_DISCREPANCY | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECALL_ROLE_DECISION | DECISION_RECALL_ROLE_HANDOFF | recallAuthorityAction | HOSTED_DECISION | Active trusted organization, permitted handoffs, and regulator authorization rule | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECALL_SCOPE_DECISION | INT_RECALL_SCOPE | selectedAssetIds | HOSTED_DECISION | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECEIPT_DECISION | DECISION_RECEIPT_AND_PURCHASE | ownershipAction | HOSTED_DECISION | Processing-plant receipt and purchase briefing | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_RECEIPT_DECISION | DECISION_RECEIPT_AND_PURCHASE | receiptAction | HOSTED_DECISION | Processing-plant receipt and purchase briefing | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TAMPER_DEMONSTRATION | DECISION_RUN_TAMPER_DEMONSTRATION | tamperAction | HOSTED_DECISION | Explicit copy-only tamper experiment instructions | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TAMPER_KNOWLEDGE | INT_TAMPER_DEMONSTRATION | integrityInterpretation | HOSTED_DECISION | Observed transaction, block, and chain verification results | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TRANSFORMATION_DECISION | DECISION_TRANSFORMATION_ACTION | transformationAction | HOSTED_DECISION | Corrected input state and transformation task briefing | PASS |
+| HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TRANSFORMATION_PROVENANCE_DECISION | INT_TRANSFORMATION_PROVENANCE | provenanceRelationship | HOSTED_DECISION | Corrected input state and transformation task briefing; Role-visible oldest-to-newest provenance graph | PASS |
+| HOSTED | SCN_PHARMA_COLD_CHAIN_STARTER@1.2.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_DECISION | DECISION_PHARMA_RELEASE | shipmentAction | HOSTED_DECISION | Released role-visible cold-chain sensor and custody evidence | PASS |
+| HOSTED | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_DISPOSITION | DECISION_PHARMA_TRANSFER_DISPOSITION | dispositionAction | HOSTED_DECISION | Released calibration and stability evidence | PASS |
+| HOSTED | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_TRIAGE | DECISION_PHARMA_TRANSFER_TRIAGE | triageAction | HOSTED_DECISION | Released role-visible cold-chain sensor and custody evidence | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_01_ORIENTATION | INT_ORIENTATION_TRUTH_CHECK | response | DIAGNOSTIC | Pre-task statement distinguishing integrity from truth | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | certificateAssessment | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | issuerAssessment | CONSEQUENTIAL_DECISION | Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | lotDisposition | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date; Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | storageChoice | CONSEQUENTIAL_DECISION | Off-chain document and on-chain SHA-256 integrity explanation | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REMEDIATE_STORAGE | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REVIEW_ISSUER | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | SUSPEND_LOT | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFER_SCOPE | response | KNOWLEDGE | Role briefing and asset owner/custodian state | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFERRED_TRANSACTION | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_04_SHIP_AND_MONITOR | INT_TRANSPORT_CONDITION | response | KNOWLEDGE | Observed humidity, permitted threshold, oracle boundary, and source dataset treatment | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_05_RECEIVE_AND_CORRECT | INT_CORRECTION_RECORDED | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | action | CONSEQUENTIAL_DECISION | Committed manifest, plant weight, and append-only correction rule | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | causeCode | CONSEQUENTIAL_DECISION | Scenario-specific source-sheet and investigation evidence | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_05_RECEIVE_AND_CORRECT | MITIGATION_DISCREPANCY | INVESTIGATE_DISCREPANCY | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_06_TRANSFORM_BATCH | INT_TRANSFORMATION_PROVENANCE | response | KNOWLEDGE | Corrected input state and transformation task briefing; Role-visible oldest-to-newest provenance graph | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_BATCH_ID | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CERTIFICATE_PDF | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CUSTOMER_ADDRESS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_RECALL_STATUS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_SENSOR_DATASET | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_WHOLESALE_PRICE | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_08_VERIFY_AND_TAMPER | INT_TAMPER_DEMONSTRATION | response | KNOWLEDGE | Observed transaction, block, and chain verification results | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_09_RECALL_AND_DEBRIEF | INT_BLOCKCHAIN_NECESSITY | response | KNOWLEDGE | Multi-organization shared-record context and explicit blockchain limitations | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_COMMITTED | authorizationPath | CONSEQUENTIAL_DECISION | Active trusted organization, permitted handoffs, and regulator authorization rule | PASS |
+| SCORM | SCN_COFFEE_001@2.3.0 | guided, assessment | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_SCOPE | response | KNOWLEDGE | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_01_ORIENTATION | INT_ORIENTATION_TRUTH_CHECK | response | DIAGNOSTIC | Pre-task statement distinguishing integrity from truth | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | certificateAssessment | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | issuerAssessment | CONSEQUENTIAL_DECISION | Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | lotDisposition | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date; Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | storageChoice | CONSEQUENTIAL_DECISION | Off-chain document and on-chain SHA-256 integrity explanation | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REMEDIATE_STORAGE | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REVIEW_ISSUER | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | SUSPEND_LOT | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFER_SCOPE | response | KNOWLEDGE | Role briefing and asset owner/custodian state | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFERRED_TRANSACTION | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_04_SHIP_AND_MONITOR | INT_TRANSPORT_CONDITION | response | KNOWLEDGE | Observed humidity, permitted threshold, oracle boundary, and source dataset treatment | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_05_RECEIVE_AND_CORRECT | INT_CORRECTION_RECORDED | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | action | CONSEQUENTIAL_DECISION | Committed manifest, plant weight, and append-only correction rule | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | causeCode | CONSEQUENTIAL_DECISION | Scenario-specific source-sheet and investigation evidence | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_05_RECEIVE_AND_CORRECT | MITIGATION_DISCREPANCY | INVESTIGATE_DISCREPANCY | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_06_TRANSFORM_BATCH | INT_TRANSFORMATION_PROVENANCE | response | KNOWLEDGE | Corrected input state and transformation task briefing; Role-visible oldest-to-newest provenance graph | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_BATCH_ID | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CERTIFICATE_PDF | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CUSTOMER_ADDRESS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_RECALL_STATUS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_SENSOR_DATASET | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_WHOLESALE_PRICE | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_08_VERIFY_AND_TAMPER | INT_TAMPER_DEMONSTRATION | response | KNOWLEDGE | Observed transaction, block, and chain verification results | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_BLOCKCHAIN_NECESSITY | response | KNOWLEDGE | Multi-organization shared-record context and explicit blockchain limitations | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_COMMITTED | authorizationPath | CONSEQUENTIAL_DECISION | Active trusted organization, permitted handoffs, and regulator authorization rule | PASS |
+| SCORM | SCN_COFFEE_CHALLENGE_A@1.2.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_SCOPE | response | KNOWLEDGE | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
+
+## Findings and remediation
+
+| ID | Severity | Status | Finding | Remediation or disposition |
+|---|---|---|---|---|
+| EVID-001 | HIGH | CLOSED | Stage 3 asked for issuer recognition and authority without exposing the consortium registry before commitment. | Added a neutral, scenario-derived registry entry with organization ID, recognition status, permitted certificate action, and scenario policy version; removed the answer from the organization display name. |
+| EVID-002 | HIGH | CLOSED | Stage 5 asked for the most likely cause when only the numerical mismatch was visible. | Added scenario-specific pre-decision investigation evidence: the standard case supports a typing error; Challenge explicitly leaves the cause unknown. |
+| EVID-003 | HIGH | CLOSED | Stage 8 required six governance classifications without stating the consortium's handling criteria. | Added the four scenario-specific criteria immediately before the classification in SCORM and hosted runs. |
+| EVID-004 | MEDIUM | OPEN | Generic hosted pharmaceutical evidence is accurate but still displayed as compact structured data rather than domain-specific prose. | Retain for a later presentation-only improvement; released evidence contains every required value and role visibility is enforced. |
+| EVID-005 | MEDIUM | OPEN | Automated accessibility checks do not replace a real screen-reader evidence-discovery review. | Follow docs/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot. |
+| EVID-006 | MEDIUM | OPEN | Vietnamese evidence wording has not been reviewed by a Vietnamese supply-chain subject expert. | Use the regenerated bilingual content-review pack for subject-expert sign-off. |
+
+## Exclusions
+
+- Instructor, administrator, scenario-author, and rater workspaces are not learner decisions.
+- Navigation, opening disclosures, and mechanical seal or commit buttons are excluded unless the learner must make a business or governance judgment.
+- Post-submission feedback is audited for timing but never counted as evidence for the original answer.
+- The official score contract, hint ceilings, and mitigation ceilings are unchanged.
+
+Generated by `npm run generate:evidence-audit`; verified by `npm run verify:evidence-audit`.

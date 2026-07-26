@@ -262,6 +262,126 @@ function runText(
   );
 }
 
+function asObject(
+  value: unknown,
+): Readonly<Record<string, unknown>> | undefined {
+  return typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+    ? (value as Readonly<Record<string, unknown>>)
+    : undefined;
+}
+
+export function HostedEvidenceValue({
+  recordId,
+  value,
+}: {
+  readonly recordId: string;
+  readonly value: unknown;
+}): ReactNode {
+  const t = useTranslator();
+  const record = asObject(value);
+  const content = asObject(record?.content);
+  if (
+    recordId !== "EVID_CERTIFICATE_RECORD" ||
+    content === undefined
+  ) {
+    return <code>{JSON.stringify(value)}</code>;
+  }
+  const actions = Array.isArray(content.issuerPermittedActions)
+    ? content.issuerPermittedActions.map(String)
+    : [];
+  return (
+    <dl className="instructor-review__facts">
+      <div>
+        <dt>{t("field.assetId")}</dt>
+        <dd><code>{String(content.assetId ?? "")}</code></dd>
+      </div>
+      <div>
+        <dt>{t("hostedLearner.certificate.contentStatus")}</dt>
+        <dd>{t("hostedLearner.certificate.contentValid")}</dd>
+      </div>
+      <div>
+        <dt>{t("field.issuedAt")}</dt>
+        <dd>{String(content.issuedAt ?? "")}</dd>
+      </div>
+      <div>
+        <dt>{t("field.expiresAt")}</dt>
+        <dd>{String(content.expiresAt ?? "")}</dd>
+      </div>
+      <div>
+        <dt>{t("stage.anchorCertificate.reviewDate")}</dt>
+        <dd>{String(content.decisionReviewAt ?? "")}</dd>
+      </div>
+      <div>
+        <dt>{t("stage.anchorCertificate.registry.organizationId")}</dt>
+        <dd><code>{String(content.issuerOrganizationId ?? "")}</code></dd>
+      </div>
+      <div>
+        <dt>{t("stage.anchorCertificate.registry.recognition")}</dt>
+        <dd>
+          {t(
+            content.issuerRegistryStatus === "RECOGNIZED_ACTIVE"
+              ? "stage.anchorCertificate.registry.recognized"
+              : "stage.anchorCertificate.registry.notRecognized",
+          )}
+        </dd>
+      </div>
+      <div>
+        <dt>{t("stage.anchorCertificate.registry.authority")}</dt>
+        <dd>
+          {t(
+            actions.includes("ISSUE_CERTIFICATE")
+              ? "stage.anchorCertificate.registry.mayIssue"
+              : "stage.anchorCertificate.registry.mayNotIssue",
+          )}
+        </dd>
+      </div>
+      <div>
+        <dt>{t("stage.anchorCertificate.field.storageChoice")}</dt>
+        <dd>{t("check.certificateStorage.optionHash")}</dd>
+      </div>
+    </dl>
+  );
+}
+
+export function HostedDecisionEvidenceGuide({
+  workflowNodeId,
+}: {
+  readonly workflowNodeId: string;
+}): ReactNode {
+  const t = useTranslator();
+  if (
+    workflowNodeId === "discrepancy-decision" ||
+    workflowNodeId === "NODE_DISCREPANCY_DECISION"
+  ) {
+    return (
+      <section className="card card--reference">
+        <h3>{t("stage.receiveAndCorrect.causeEvidenceHeading")}</h3>
+        <p>{t("stage.receiveAndCorrect.causeEvidence.standard")}</p>
+      </section>
+    );
+  }
+  if (
+    workflowNodeId === "data-governance-decision" ||
+    workflowNodeId === "NODE_DATA_GOVERNANCE_DECISION"
+  ) {
+    return (
+      <section className="card card--reference">
+        <h3>{t("stage.verifyAndTamper.dataGovernancePolicyHeading")}</h3>
+        <p>{t("stage.verifyAndTamper.dataGovernancePolicyIntro")}</p>
+        <ul>
+          <li>{t("stage.verifyAndTamper.dataGovernanceSharedFact")}</li>
+          <li>{t("stage.verifyAndTamper.dataGovernanceLargeFile")}</li>
+          <li>{t("stage.verifyAndTamper.dataGovernanceSensitive")}</li>
+          <li>{t("stage.verifyAndTamper.dataGovernancePersonal")}</li>
+        </ul>
+      </section>
+    );
+  }
+  return null;
+}
+
 export function HostedLearnerScreen({
   api = browserApi,
   initialAssignmentId = assignmentIdFromLocation(),
@@ -828,9 +948,12 @@ function RunWorkspace({
                   ) : (
                     <details>
                       <summary>{title}</summary>
-                      <p>
-                        <code>{JSON.stringify(record.value)}</code>
-                      </p>
+                      <div>
+                        <HostedEvidenceValue
+                          recordId={record.recordId}
+                          value={record.value}
+                        />
+                      </div>
                     </details>
                   )}
                 </li>
@@ -895,6 +1018,9 @@ function RunWorkspace({
           <LedgerTransactions ledgerState={projection.ledgerState} />
         </details>
       </section>
+      <HostedDecisionEvidenceGuide
+        workflowNodeId={projection.workflowState.currentNodeId}
+      />
       <section className="card card--work">
         <h2>{t("hostedLearner.currentAction")}</h2>
         {currentNode?.prompt === undefined ? null : (

@@ -167,9 +167,13 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
       certificateAssessment: "VALID",
       issuerAssessment: "RECOGNIZED_AUTHORIZED",
       requiredStorageChoice: "HASH_OFF_CHAIN",
+      contentEvidenceKey:
+        "stage.anchorCertificate.contentEvidence.standard",
     },
     discrepancy: {
       reasonSuggestionKey: "stage.receiveAndCorrect.reasonSuggestion",
+      causeEvidenceKey:
+        "stage.receiveAndCorrect.causeEvidence.standard",
       authoredCauseCode: "TYPING_ERROR",
     },
   },

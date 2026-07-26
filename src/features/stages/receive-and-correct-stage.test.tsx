@@ -141,6 +141,41 @@ describe("the stage 5 discrepancy panel", () => {
     expect(mismatch.textContent).toMatch(/vẫn nằm trên sổ cái/);
   });
 
+  it("shows authored cause evidence before the cause field can be submitted", async () => {
+    const user = userEvent.setup();
+    render(<AppUnderTest />);
+    await playToStageFive(user);
+
+    for (const name of ["Tiếp nhận lô hàng", "Ghi nhận việc mua lô hàng"]) {
+      const panel = (
+        await screen.findByRole("heading", { name, level: 3 })
+      ).closest("section") as HTMLElement;
+      await user.click(
+        within(panel).getByRole("button", {
+          name: "Gửi giao dịch lên mạng",
+        }),
+      );
+      await user.click(
+        within(panel).getByRole("button", {
+          name: "Ghi giao dịch vào khối",
+        }),
+      );
+    }
+    const evidence = screen.getByRole("heading", {
+      name: "Bằng chứng điều tra hiện có",
+    });
+    const causeField = screen.getByRole("combobox", {
+      name: "Nguyên nhân có khả năng nhất",
+    });
+    expect(evidence).toBeInTheDocument();
+    expect(
+      screen.getByText(/Phiếu nguồn của nhân viên ghi 100 kg/),
+    ).toBeInTheDocument();
+    expect(evidence.compareDocumentPosition(causeField)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it("keeps both figures readable and spelled the way the rest of the screen spells them", async () => {
     const user = userEvent.setup();
     render(<AppUnderTest />);
