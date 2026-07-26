@@ -26,6 +26,10 @@ import type {
 } from "../contracts/run-events";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
+  InstructorIncidentStatusV1,
+  ReleaseInstructorIncidentCommandV1,
+} from "../contracts/simulation-director";
+import type {
   DecisionNodeV1,
   ScenarioDefinitionV1,
   ScenarioNodeV1,
@@ -117,7 +121,9 @@ function requestDigest(value: unknown): string {
 }
 
 function submittedCommandIntent(
-  command: GenericHostedCommand,
+  command:
+    | GenericHostedCommand
+    | ReleaseInstructorIncidentCommandV1,
 ): JsonObject {
   const {
     commandId: _commandId,
@@ -130,7 +136,9 @@ function submittedCommandIntent(
 
 function eventsWithSubmittedCommand(
   events: readonly BuiltEvent[],
-  command: GenericHostedCommand,
+  command:
+    | GenericHostedCommand
+    | ReleaseInstructorIncidentCommandV1,
 ): readonly UnsequencedRunEventV1[] {
   const submittedCommand = submittedCommandIntent(command);
   return events.map((event, index) =>
@@ -443,6 +451,149 @@ export class GenericHostedRunService {
     command: GenericHostedCommand,
   ): Promise<GenericHostedRunResult> {
     return this.submitCommand(principal, command, true);
+  }
+
+  async instructorIncidents(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly InstructorIncidentStatusV1[]> {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const { state } = await this.loadRun(runId);
+    return this.scenario.instructorIncidents.map((incident) => {
+      const released = state.releasedInstructorIncidents.find(
+        (candidate) => candidate.incidentId === incident.incidentId,
+      );
+      const available =
+        state.status === "active" &&
+        incident.releaseAtNodeIds.includes(
+          state.workflowState.currentNodeId,
+        ) &&
+        incident.visibleToRoleIds.includes(
+          state.activeTrustedContext.roleId,
+        );
+      return {
+        schemaVersion: "1.0.0",
+        incidentId: incident.incidentId,
+        version: incident.version,
+        title: this.localizedText(incident.title.localizationKey),
+        message: this.localizedText(incident.message.localizationKey),
+        status:
+          released !== undefined
+            ? "released"
+            : available
+              ? "available"
+              : "unavailable",
+        ...(released === undefined
+          ? {}
+          : {
+              releasedAt: released.releasedAt,
+              releasedByUserId: released.releasedByUserId,
+            }),
+      };
+    });
+  }
+
+  async releaseInstructorIncident(
+    principal: ApplicationPrincipal | null,
+    command: ReleaseInstructorIncidentCommandV1,
+  ): Promise<GenericHostedRunResult> {
+    const instructor = requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    requiredString(command.commandId, "commandId");
+    requiredString(command.runId, "runId");
+    requiredString(command.incidentId, "incidentId");
+    rejectSelfAssertedIdentity(command);
+    const loaded = await this.loadRun(command.runId);
+    if (loaded.isCounterfactual) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "Instructor incidents may be released only into original runs.",
+      );
+    }
+    const digest = requestDigest(command);
+    const existing = loaded.commandEvents.filter(
+      (event) => event.causationId === command.commandId,
+    );
+    if (existing.length > 0) {
+      if (existing[0]?.payload.requestDigest !== digest) {
+        throw new HostedRunCommandError(
+          "COMMAND_ID_REUSED",
+          `Command ID ${command.commandId} was already used with different content.`,
+        );
+      }
+      return {
+        state: loaded.state,
+        appendedEventIds: existing.map((event) => event.eventId),
+        wasIdempotentReplay: true,
+      };
+    }
+    const state = loaded.state;
+    if (
+      !Number.isInteger(command.expectedRunVersion) ||
+      command.expectedRunVersion !== state.version
+    ) {
+      throw new HostedRunCommandError(
+        "RUN_VERSION_CONFLICT",
+        `Run ${command.runId} is at version ${String(state.version)}.`,
+      );
+    }
+    if (state.status !== "active") {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "A completed run cannot receive an instructor incident.",
+      );
+    }
+    const incident = this.scenario.instructorIncidents.find(
+      (candidate) => candidate.incidentId === command.incidentId,
+    );
+    if (
+      incident === undefined ||
+      !incident.releaseAtNodeIds.includes(
+        state.workflowState.currentNodeId,
+      ) ||
+      !incident.visibleToRoleIds.includes(
+        state.activeTrustedContext.roleId,
+      ) ||
+      state.releasedInstructorIncidents.some(
+        (candidate) =>
+          candidate.incidentId === command.incidentId,
+      )
+    ) {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "The authored incident is not available at the current workflow node.",
+      );
+    }
+    const released = this.buildEvent({
+      runId: command.runId,
+      state,
+      principal: instructor,
+      context: state.activeTrustedContext,
+      commandId: command.commandId,
+      commandDigest: digest,
+      batchIndex: 0,
+      eventType: "INSTRUCTOR_INCIDENT_RELEASED",
+      payload: {
+        incidentId: incident.incidentId,
+        incidentVersion: incident.version,
+        evidenceIds: incident.evidenceIds,
+      },
+    });
+    const appended = await this.eventStore.append({
+      runId: command.runId,
+      expectedNextSequenceNumber: loaded.commandEvents.length + 1,
+      events: eventsWithSubmittedCommand([released], command),
+    });
+    return {
+      state: released.nextState,
+      appendedEventIds: appended.events.map((event) => event.eventId),
+      wasIdempotentReplay: appended.wasIdempotentReplay,
+    };
   }
 
   private async submitCommand(
@@ -842,10 +993,16 @@ export class GenericHostedRunService {
       principal,
       loaded.state.learnerUserId,
     );
+    return this.professionalMetrics(loaded.state);
+  }
+
+  private professionalMetrics(
+    state: GenericHostedRunState,
+  ): Readonly<Record<string, number>> {
     const metrics: Record<string, number> = {};
     for (const node of this.scenario.nodes) {
       if (node.nodeType !== "DECISION") continue;
-      const submission = loaded.state.decisions[node.decisionId];
+      const submission = state.decisions[node.decisionId];
       if (submission === undefined) continue;
       for (const field of node.fields) {
         const selected = submission.responses[field.fieldId] ?? [];
@@ -860,11 +1017,27 @@ export class GenericHostedRunService {
             );
           }
           for (const [metricId, effect] of Object.entries(
-            option.counterfactualMetricEffects ?? {},
+            option.professionalConsequenceEffects ?? {},
           )) {
             metrics[metricId] = (metrics[metricId] ?? 0) + effect;
           }
         }
+      }
+    }
+    for (const release of state.releasedInstructorIncidents) {
+      const incident = this.scenario.instructorIncidents.find(
+        (candidate) => candidate.incidentId === release.incidentId,
+      );
+      if (incident === undefined) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "A released instructor incident is absent from the exact scenario.",
+        );
+      }
+      for (const [metricId, effect] of Object.entries(
+        incident.professionalConsequenceEffects,
+      )) {
+        metrics[metricId] = (metrics[metricId] ?? 0) + effect;
       }
     }
     return metrics;
@@ -1407,6 +1580,7 @@ export class GenericHostedRunService {
           ),
           releasedEvidenceIds: [],
           inspectedEvidenceIds: [],
+          releasedInstructorIncidents: [],
           decisions: {},
           competencyEvidence: [],
           workflowState: {
@@ -1463,6 +1637,56 @@ export class GenericHostedRunService {
           );
         }
         return this.updateState(state, event, {});
+      }
+      case "INSTRUCTOR_INCIDENT_RELEASED": {
+        const state = this.stateOrThrow(current);
+        const incidentId = requiredString(
+          event.payload.incidentId,
+          "incidentId",
+        );
+        const incident = this.scenario.instructorIncidents.find(
+          (candidate) => candidate.incidentId === incidentId,
+        );
+        const evidenceIds = stringArray(
+          event.payload.evidenceIds,
+          "evidenceIds",
+        );
+        if (
+          incident === undefined ||
+          event.payload.incidentVersion !== incident.version ||
+          !incident.releaseAtNodeIds.includes(
+            state.workflowState.currentNodeId,
+          ) ||
+          !incident.visibleToRoleIds.includes(
+            state.activeTrustedContext.roleId,
+          ) ||
+          canonicalize(evidenceIds) !==
+            canonicalize(incident.evidenceIds) ||
+          state.releasedInstructorIncidents.some(
+            (candidate) => candidate.incidentId === incidentId,
+          )
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Instructor incident evidence does not match the exact scenario and workflow state.",
+          );
+        }
+        return this.updateState(state, event, {
+          releasedEvidenceIds: [
+            ...new Set([
+              ...state.releasedEvidenceIds,
+              ...incident.evidenceIds,
+            ]),
+          ],
+          releasedInstructorIncidents: [
+            ...state.releasedInstructorIncidents,
+            {
+              incidentId,
+              releasedAt: event.serverTimestampUtc,
+              releasedByUserId: event.authenticatedUserId,
+            },
+          ],
+        });
       }
       case "WORKFLOW_ADVANCED": {
         const state = this.stateOrThrow(current);
@@ -2521,6 +2745,59 @@ export class GenericHostedRunService {
           this.localizedText(policy.title.localizationKey),
         ]),
       ),
+      instructorIncidents: state.releasedInstructorIncidents.flatMap(
+        (release) => {
+          const incident = this.scenario.instructorIncidents.find(
+            (candidate) =>
+              candidate.incidentId === release.incidentId &&
+              candidate.visibleToRoleIds.includes(
+                state.activeTrustedContext.roleId,
+              ),
+          );
+          return incident === undefined
+            ? []
+            : [
+                {
+                  incidentId: incident.incidentId,
+                  title: this.localizedText(
+                    incident.title.localizationKey,
+                  ),
+                  message: this.localizedText(
+                    incident.message.localizationKey,
+                  ),
+                  releasedAt: release.releasedAt,
+                },
+              ];
+        },
+      ),
+      professionalConsequences:
+        this.scenario.counterfactualComparisonDimensions.flatMap(
+          (dimension) => {
+            const value =
+              this.professionalMetrics(state)[
+                dimension.evaluation.metricId
+              ];
+            return value === undefined
+              ? []
+              : [
+                  {
+                    dimensionId: dimension.dimensionId,
+                    title: this.localizedText(
+                      dimension.title.localizationKey,
+                    ),
+                    description: this.localizedText(
+                      dimension.description.localizationKey,
+                    ),
+                    value,
+                    ...(dimension.unit === undefined
+                      ? {}
+                      : { unit: dimension.unit }),
+                    direction: dimension.direction,
+                    diagnosticOnly: true as const,
+                  },
+                ];
+          },
+        ),
       modeConfiguration: state.modeConfiguration,
     };
   }

@@ -31,7 +31,13 @@ import type {
 import type {
   HostedAssignmentDecisionOutcomeReportV1,
 } from "../contracts/decision-outcome-report";
+import type {
+  AssignmentProcessAnalyticsV1,
+} from "../contracts/process-analytics";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
+import type {
+  InstructorIncidentControlV1,
+} from "../contracts/simulation-director";
 import type {
   ScormPackageJobV1,
   ScormPackagePresetId,
@@ -63,6 +69,7 @@ export interface InstructorRunReview {
   readonly ratings: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
     readonly RubricModerationResolutionV1[];
+  readonly instructorIncidents: InstructorIncidentControlV1;
 }
 
 export type CreateInstructorAssignmentInput = Omit<
@@ -101,6 +108,11 @@ export interface InstructorReviewApi {
     runId: string,
     throughSequenceNumber: number,
   ): Promise<InstructorRunReplayV1>;
+  releaseInstructorIncident?(
+    runId: string,
+    expectedRunVersion: number,
+    incidentId: string,
+  ): Promise<void>;
   createAssignment(
     input: CreateInstructorAssignmentInput,
   ): Promise<HostedAssignmentV1>;
@@ -119,6 +131,9 @@ export interface InstructorReviewApi {
   loadAssignmentDecisionOutcomes(
     assignmentId: string,
   ): Promise<HostedAssignmentDecisionOutcomeReportV1>;
+  loadAssignmentProcessAnalytics?(
+    assignmentId: string,
+  ): Promise<AssignmentProcessAnalyticsV1>;
   saveRating(
     runId: string,
     input: SaveInstructorRatingInput,
@@ -196,6 +211,18 @@ function newCommandId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
+function runLocalizedText(
+  value: InstructorIncidentControlV1["incidents"][number]["title"],
+  t: Translator,
+): string {
+  return (
+    value.valuesByLocale[t.locale] ??
+    value.valuesByLocale.en ??
+    Object.values(value.valuesByLocale)[0] ??
+    t(value.localizationKey)
+  );
+}
+
 export function createInstructorReviewApi(
   fetcher: FetchLike = globalThis.fetch.bind(globalThis),
 ): InstructorReviewApi {
@@ -221,7 +248,13 @@ export function createInstructorReviewApi(
     },
     async loadRunReview(runId) {
       const encodedRunId = encodeURIComponent(runId);
-      const [timeline, competencies, rubricEvidence, assessment] =
+      const [
+        timeline,
+        competencies,
+        rubricEvidence,
+        assessment,
+        instructorIncidents,
+      ] =
         await Promise.all([
         responseJson<{ readonly timeline: readonly InstructorTimelineItem[] }>(
           fetcher,
@@ -248,6 +281,12 @@ export function createInstructorReviewApi(
           fetcher,
           `/api/v1/runs/${encodedRunId}/ratings`,
         ),
+        responseJson<{
+          readonly director: InstructorIncidentControlV1;
+        }>(
+          fetcher,
+          `/api/v1/runs/${encodedRunId}/instructor-incidents`,
+        ),
       ]);
       return {
         assignment: assessment.assignment,
@@ -257,7 +296,24 @@ export function createInstructorReviewApi(
         ratings: assessment.ratings,
         moderationResolutions:
           assessment.moderationResolutions ?? [],
+        instructorIncidents: instructorIncidents.director,
       };
+    },
+    async releaseInstructorIncident(
+      runId,
+      expectedRunVersion,
+      incidentId,
+    ) {
+      await mutationJson(
+        fetcher,
+        `/api/v1/runs/${encodeURIComponent(runId)}/instructor-incidents`,
+        {
+          commandId: newCommandId("COMMAND_INSTRUCTOR_INCIDENT"),
+          runId,
+          expectedRunVersion,
+          incidentId,
+        },
+      );
     },
     async loadRunReplay(runId, throughSequenceNumber) {
       const result = await responseJson<{
@@ -323,6 +379,15 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/decision-outcomes`,
       );
       return result.decisionOutcomes;
+    },
+    async loadAssignmentProcessAnalytics(assignmentId) {
+      const result = await responseJson<{
+        readonly analytics: AssignmentProcessAnalyticsV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/process-analytics`,
+      );
+      return result.analytics;
     },
     async saveRating(runId, input) {
       const result = await mutationJson<{
@@ -1021,6 +1086,21 @@ function AssignmentCreation({
     counterfactualReflectionRequired,
     setCounterfactualReflectionRequired,
   ] = useState(false);
+  const [researchEnabled, setResearchEnabled] = useState(false);
+  const [experimentalConditionId, setExperimentalConditionId] =
+    useState("");
+  const [randomAssignmentRecordId, setRandomAssignmentRecordId] =
+    useState("");
+  const [fixedScenarioSeed, setFixedScenarioSeed] = useState("");
+  const [consentStatusReference, setConsentStatusReference] =
+    useState("");
+  const [preTestLinkageId, setPreTestLinkageId] = useState("");
+  const [postTestLinkageId, setPostTestLinkageId] = useState("");
+  const [blindedRaters, setBlindedRaters] = useState(false);
+  const [interventionVersion, setInterventionVersion] =
+    useState("1.0.0");
+  const [retentionPolicyReference, setRetentionPolicyReference] =
+    useState("");
   const [availableFromLocal, setAvailableFromLocal] =
     useState("");
   const [availableUntilLocal, setAvailableUntilLocal] =
@@ -1152,6 +1232,33 @@ function AssignmentCreation({
                 learnerAvailability: "DISABLED",
                 requireReflection: false,
               },
+          research: researchEnabled
+            ? {
+                enabled: true,
+                experimentalConditionId:
+                  experimentalConditionId.trim(),
+                randomAssignmentRecordId:
+                  randomAssignmentRecordId.trim(),
+                fixedScenarioSeed: fixedScenarioSeed.trim(),
+                consentStatusReference:
+                  consentStatusReference.trim(),
+                ...(preTestLinkageId.trim().length === 0
+                  ? {}
+                  : {
+                      preTestLinkageId: preTestLinkageId.trim(),
+                    }),
+                ...(postTestLinkageId.trim().length === 0
+                  ? {}
+                  : {
+                      postTestLinkageId: postTestLinkageId.trim(),
+                    }),
+                blindedRaters,
+                interventionVersion:
+                  interventionVersion.trim(),
+                retentionPolicyReference:
+                  retentionPolicyReference.trim(),
+              }
+            : { enabled: false },
           learnerUserIds: selectedLearnerIds,
           ...(availableFrom === undefined
             ? {}
@@ -1218,6 +1325,7 @@ function AssignmentCreation({
               setCounterfactualDecisionNodeIds([]);
               setCounterfactualLearnerAvailability("DISABLED");
               setCounterfactualReflectionRequired(false);
+              setResearchEnabled(false);
             }}
           >
             {isLibraryLoading ? (
@@ -1258,6 +1366,7 @@ function AssignmentCreation({
                     "DISABLED",
                   );
                 }
+                setResearchEnabled(false);
               }
             }
           >
@@ -1435,6 +1544,91 @@ function AssignmentCreation({
             ) : null}
           </fieldset>
         )}
+        <fieldset className="instructor-review__mode-settings">
+          <legend>{t("instructorReview.research.heading")}</legend>
+          <label>
+            <input
+              type="checkbox"
+              checked={researchEnabled}
+              disabled={
+                selectedModeConfiguration?.seedPolicy !== "supplied"
+              }
+              onChange={(event) =>
+                setResearchEnabled(event.target.checked)
+              }
+            />{" "}
+            {t("instructorReview.research.enable")}
+          </label>
+          <p>{t("instructorReview.research.help")}</p>
+          {researchEnabled ? (
+            <div className="instructor-review__form-grid">
+              <TextField
+                id="research-condition-id"
+                label={t("instructorReview.research.condition")}
+                value={experimentalConditionId}
+                onChange={setExperimentalConditionId}
+              />
+              <TextField
+                id="research-random-assignment-id"
+                label={t(
+                  "instructorReview.research.randomAssignment",
+                )}
+                value={randomAssignmentRecordId}
+                onChange={setRandomAssignmentRecordId}
+              />
+              <TextField
+                id="research-scenario-seed"
+                label={t("instructorReview.research.seed")}
+                value={fixedScenarioSeed}
+                onChange={setFixedScenarioSeed}
+              />
+              <TextField
+                id="research-consent-reference"
+                label={t("instructorReview.research.consent")}
+                value={consentStatusReference}
+                onChange={setConsentStatusReference}
+              />
+              <TextField
+                id="research-pre-test-link"
+                label={t("instructorReview.research.preTest")}
+                value={preTestLinkageId}
+                onChange={setPreTestLinkageId}
+                required={false}
+              />
+              <TextField
+                id="research-post-test-link"
+                label={t("instructorReview.research.postTest")}
+                value={postTestLinkageId}
+                onChange={setPostTestLinkageId}
+                required={false}
+              />
+              <TextField
+                id="research-intervention-version"
+                label={t(
+                  "instructorReview.research.interventionVersion",
+                )}
+                value={interventionVersion}
+                onChange={setInterventionVersion}
+              />
+              <TextField
+                id="research-retention-reference"
+                label={t("instructorReview.research.retention")}
+                value={retentionPolicyReference}
+                onChange={setRetentionPolicyReference}
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={blindedRaters}
+                  onChange={(event) =>
+                    setBlindedRaters(event.target.checked)
+                  }
+                />{" "}
+                {t("instructorReview.research.blindedRaters")}
+              </label>
+            </div>
+          ) : null}
+        </fieldset>
         <TextField
           id="assignment-available-from"
           label={t("instructorReview.availableFrom")}
@@ -1513,7 +1707,14 @@ function AssignmentCreation({
               (counterfactualEnabled &&
                 (counterfactualDecisionNodeIds.length === 0 ||
                   maximumCounterfactualBranches < 1 ||
-                  maximumCounterfactualBranches > 20))
+                  maximumCounterfactualBranches > 20)) ||
+              (researchEnabled &&
+                (experimentalConditionId.trim().length === 0 ||
+                  randomAssignmentRecordId.trim().length === 0 ||
+                  fixedScenarioSeed.trim().length === 0 ||
+                  consentStatusReference.trim().length === 0 ||
+                  interventionVersion.trim().length === 0 ||
+                  retentionPolicyReference.trim().length === 0))
             }
           >
             {isSaving
@@ -1647,6 +1848,8 @@ function AssignmentReport({
     useState<AssignmentCurriculumOverlayReportV2 | null>(null);
   const [decisionOutcomes, setDecisionOutcomes] =
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
+  const [processAnalytics, setProcessAnalytics] =
+    useState<AssignmentProcessAnalyticsV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isMonitorLoading, setMonitorLoading] = useState(false);
   const [isClosing, setClosing] = useState(false);
@@ -1660,6 +1863,7 @@ function AssignmentReport({
     setCompetencies(null);
     setCurriculumCrosswalks(null);
     setDecisionOutcomes(null);
+    setProcessAnalytics(null);
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
@@ -1669,6 +1873,7 @@ function AssignmentReport({
         loadedCompetencies,
         loadedCurriculumCrosswalks,
         loadedDecisionOutcomes,
+        loadedProcessAnalytics,
       ] =
         await Promise.all([
           api.loadAssignmentReport(requestedAssignmentId),
@@ -1680,12 +1885,16 @@ function AssignmentReport({
           api.loadAssignmentDecisionOutcomes(
             requestedAssignmentId,
           ),
+          api.loadAssignmentProcessAnalytics?.(
+            requestedAssignmentId,
+          ) ?? Promise.resolve(null),
         ]);
       setReport(loadedReport);
       setMonitor(loadedMonitor);
       setCompetencies(loadedCompetencies);
       setCurriculumCrosswalks(loadedCurriculumCrosswalks);
       setDecisionOutcomes(loadedDecisionOutcomes);
+      setProcessAnalytics(loadedProcessAnalytics);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -1806,6 +2015,13 @@ function AssignmentReport({
                 `instructorReview.assignmentStatus.${report.assignment.status}`,
               )}
             </p>
+            <p>{t("instructorReview.institutionalLaunchHelp")}</p>
+            <a
+              className="button button--secondary"
+              href={`/learner?assignmentId=${encodeURIComponent(report.assignment.assignmentId)}`}
+            >
+              {t("instructorReview.institutionalLaunch")}
+            </a>
             {report.assignment.status === "closed" ? (
               <p>
                 {t(
@@ -2071,6 +2287,12 @@ function AssignmentReport({
           </section>
           {decisionOutcomes === null ? null : (
             <ClassDecisionOutcomeReport report={decisionOutcomes} />
+          )}
+          {processAnalytics === null ? null : (
+            <ClassProcessAnalyticsReport
+              report={processAnalytics}
+              onReviewEvent={onReviewEvent}
+            />
           )}
           {competencies === null ? null : (
             <ClassCompetencyReport
@@ -2375,6 +2597,202 @@ function ClassDecisionOutcomeReport({
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+function ProcessAnalyticsCounts({
+  counts,
+  emptyLabel,
+}: {
+  readonly counts: Readonly<Record<string, number>>;
+  readonly emptyLabel: string;
+}): ReactNode {
+  const entries = Object.entries(counts).sort(([left], [right]) =>
+    left < right ? -1 : left > right ? 1 : 0,
+  );
+  return entries.length === 0 ? (
+    <span>{emptyLabel}</span>
+  ) : (
+    <ul>
+      {entries.map(([itemId, count]) => (
+        <li key={itemId}>
+          <code>{itemId}</code>: {count}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ClassProcessAnalyticsReport({
+  report,
+  onReviewEvent,
+}: {
+  readonly report: AssignmentProcessAnalyticsV1;
+  readonly onReviewEvent: (
+    runId: string,
+    eventId: string,
+  ) => Promise<void>;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section>
+      <h3>{t("instructorReview.processAnalytics.heading")}</h3>
+      <p>{t("instructorReview.processAnalytics.help")}</p>
+      <p className="muted">
+        {t("instructorReview.processAnalytics.rule", {
+          ruleVersion: report.ruleVersion,
+        })}
+      </p>
+      <dl className="instructor-review__facts">
+        <div>
+          <dt>{t("instructorReview.processAnalytics.runs")}</dt>
+          <dd>{report.summary.runCount}</dd>
+        </div>
+        <div>
+          <dt>
+            {t("instructorReview.processAnalytics.rejections")}
+          </dt>
+          <dd>{report.summary.rejectedAttemptCount}</dd>
+        </div>
+        <div>
+          <dt>
+            {t("instructorReview.processAnalytics.mitigations")}
+          </dt>
+          <dd>{report.summary.mitigationCount}</dd>
+        </div>
+      </dl>
+      <details>
+        <summary>
+          {t("instructorReview.processAnalytics.classCounts")}
+        </summary>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">
+                  {t("instructorReview.processAnalytics.measure")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.processAnalytics.observations")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">
+                  {t(
+                    "instructorReview.processAnalytics.evidenceInspections",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.evidenceInspectionCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  {t(
+                    "instructorReview.processAnalytics.evidenceCitations",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.evidenceCitationCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  {t(
+                    "instructorReview.processAnalytics.policyConsultations",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.policyConsultationCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  {t(
+                    "instructorReview.processAnalytics.decisionSubmissions",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.decisionSubmissionCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+      {report.runs.map((run) => {
+        const sourceEvents = [
+          ...run.evidenceInspectionOrder,
+          ...run.policyConsultationOrder,
+          ...run.decisions,
+        ].sort(
+          (left, right) =>
+            left.sequenceNumber - right.sequenceNumber,
+        );
+        return (
+          <details key={run.runId}>
+            <summary>
+              {t("instructorReview.processAnalytics.run", {
+                runId: run.runId,
+                learnerId: run.learnerUserId,
+              })}
+            </summary>
+            {sourceEvents.length === 0 ? (
+              <p>{t("instructorReview.processAnalytics.noEvents")}</p>
+            ) : (
+              <ol>
+                {sourceEvents.map((source) => (
+                  <li key={source.eventId}>
+                    <button
+                      className="button button--text"
+                      type="button"
+                      onClick={() =>
+                        void onReviewEvent(
+                          run.runId,
+                          source.eventId,
+                        )
+                      }
+                    >
+                      {t("instructorReview.processAnalytics.reviewEvent", {
+                        sequence: source.sequenceNumber,
+                      })}
+                    </button>
+                    {"itemId" in source ? (
+                      <>
+                        {" "}
+                        <code>{source.itemId}</code>
+                      </>
+                    ) : (
+                      <>
+                        {" "}
+                        <code>{source.decisionId}</code>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </details>
+        );
+      })}
+      <p className="notice notice--standalone">
+        {t("instructorReview.processAnalytics.limitations")}
+      </p>
     </section>
   );
 }
@@ -2774,6 +3192,9 @@ function RunReview({
     useState<number | null>(null);
   const [replayErrorKey, setReplayErrorKey] =
     useState<string | null>(null);
+  const [incidentBusyId, setIncidentBusyId] =
+    useState<string | null>(null);
+  const [incidentError, setIncidentError] = useState(false);
 
   useEffect(() => {
     if (targetEventId !== null) {
@@ -2803,6 +3224,29 @@ function RunReview({
       setReplayErrorKey(errorMessageKey(error));
     } finally {
       setReplayLoadingSequence(null);
+    }
+  }
+
+  async function releaseIncident(incidentId: string) {
+    if (
+      api.releaseInstructorIncident === undefined ||
+      review.instructorIncidents === undefined
+    ) {
+      return;
+    }
+    setIncidentBusyId(incidentId);
+    setIncidentError(false);
+    try {
+      await api.releaseInstructorIncident(
+        runId,
+        review.instructorIncidents.runVersion,
+        incidentId,
+      );
+      await onRefresh();
+    } catch {
+      setIncidentError(true);
+    } finally {
+      setIncidentBusyId(null);
     }
   }
 
@@ -2853,6 +3297,54 @@ function RunReview({
           </p>
         )}
       </section>
+
+      {!mayReleaseFeedback ||
+      review.instructorIncidents === undefined ||
+      review.instructorIncidents.incidents.length === 0 ? null : (
+        <section className="card card--work">
+          <h2>{t("instructorReview.director.heading")}</h2>
+          <p>{t("instructorReview.director.help")}</p>
+          <ul className="instructor-review__evidence-list">
+            {review.instructorIncidents.incidents.map((incident) => (
+              <li key={incident.incidentId}>
+                <span>
+                  <strong>{runLocalizedText(incident.title, t)}</strong>
+                  <br />
+                  {runLocalizedText(incident.message, t)}
+                </span>
+                {incident.status === "released" ? (
+                  <StatusPill tone="pass">
+                    {t("instructorReview.director.released")}
+                  </StatusPill>
+                ) : (
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={
+                      incident.status !== "available" ||
+                      incidentBusyId !== null
+                    }
+                    onClick={() =>
+                      void releaseIncident(incident.incidentId)
+                    }
+                  >
+                    {incidentBusyId === incident.incidentId
+                      ? t("instructorReview.director.releasing")
+                      : incident.status === "available"
+                        ? t("instructorReview.director.release")
+                        : t("instructorReview.director.unavailable")}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {incidentError ? (
+            <p className="notice notice--standalone" role="alert">
+              {t("instructorReview.director.error")}
+            </p>
+          ) : null}
+        </section>
+      )}
 
       {review.timeline.some(
         (event) => event.eventType === "RUN_COMPLETED",

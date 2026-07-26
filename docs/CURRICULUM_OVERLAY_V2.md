@@ -13,7 +13,7 @@ effective date.
 
 ## Ownership and version boundary
 
-Scenario-pack schema `1.4.0` contains no `curriculumCrosswalks` property.
+Scenario-pack schema `1.5.0` contains no `curriculumCrosswalks` property.
 Curriculum overlays use their own schema:
 
 ```text
@@ -40,7 +40,7 @@ overlay must match the exact TraceChain framework versions supplied by the
 assignment's immutable scenario pack. A newer overlay or scenario pack is not
 substituted for historical evidence.
 
-The repository uses direct upgrades. Scenario-pack schema `1.3.0` and embedded
+The repository uses direct upgrades. Older scenario-pack schemas and embedded
 curriculum mappings are rejected; there is no migration adapter.
 
 ## Validation

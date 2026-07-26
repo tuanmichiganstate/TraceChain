@@ -15,6 +15,7 @@ export type PlatformRunEventType =
   | "RUN_CREATED"
   | "RANDOM_DRAW_MADE"
   | "OUTCOME_REALIZED"
+  | "INSTRUCTOR_INCIDENT_RELEASED"
   | "EVIDENCE_RELEASED"
   | "EVIDENCE_INSPECTED"
   | "POLICY_CONSULTED"
@@ -190,5 +191,23 @@ export interface LearnerRunPresentationV1 {
   readonly policyTitles: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;
+  readonly instructorIncidents: readonly {
+    readonly incidentId: string;
+    readonly title: LearnerRunLocalizedTextV1;
+    readonly message: LearnerRunLocalizedTextV1;
+    readonly releasedAt: string;
+  }[];
+  readonly professionalConsequences: readonly {
+    readonly dimensionId: string;
+    readonly title: LearnerRunLocalizedTextV1;
+    readonly description: LearnerRunLocalizedTextV1;
+    readonly value: number;
+    readonly unit?: string;
+    readonly direction:
+      | "HIGHER_IS_BETTER"
+      | "LOWER_IS_BETTER"
+      | "CONTEXT_DEPENDENT";
+    readonly diagnosticOnly: true;
+  }[];
   readonly modeConfiguration: HostedRunModeConfigurationV1;
 }

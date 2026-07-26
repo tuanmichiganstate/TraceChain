@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.4.0",
+  "schemaVersion": "1.5.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -87,6 +87,8 @@
       "platformPack.pharmaColdChain.transfer.counterfactual.compliance.description": "Authored compliance consequence of the selected responses.",
       "platformPack.pharmaColdChain.transfer.counterfactual.evidenceQuality.title": "Evidence quality",
       "platformPack.pharmaColdChain.transfer.counterfactual.evidenceQuality.description": "Authored effect of the selected responses on the quality of the decision evidence.",
+      "platformPack.pharmaColdChain.transfer.incident.calibrationReview.title": "Regulatory calibration review",
+      "platformPack.pharmaColdChain.transfer.incident.calibrationReview.message": "The regulator has requested an immediate review of the temperature logger's calibration status. The calibration record is now available before the initial disposition decision.",
       "platformPack.pharmaColdChain.node.briefing.title": "Review the shipment",
       "platformPack.pharmaColdChain.node.briefing.body": "A signed custody record is intact, but the off-chain sensor summary reports a temperature excursion. Decide whether the shipment may be released.",
       "platformPack.pharmaColdChain.node.evidence.title": "Inspect the available evidence",
@@ -181,6 +183,8 @@
       "platformPack.pharmaColdChain.transfer.counterfactual.compliance.description": "Hệ quả tuân thủ được biên soạn của các lựa chọn đã thực hiện.",
       "platformPack.pharmaColdChain.transfer.counterfactual.evidenceQuality.title": "Chất lượng bằng chứng",
       "platformPack.pharmaColdChain.transfer.counterfactual.evidenceQuality.description": "Ảnh hưởng được biên soạn của các lựa chọn đối với chất lượng bằng chứng cho quyết định.",
+      "platformPack.pharmaColdChain.transfer.incident.calibrationReview.title": "Rà soát hiệu chuẩn theo yêu cầu quản lý",
+      "platformPack.pharmaColdChain.transfer.incident.calibrationReview.message": "Cơ quan quản lý yêu cầu rà soát ngay tình trạng hiệu chuẩn của thiết bị ghi nhiệt độ. Hồ sơ hiệu chuẩn hiện được cung cấp trước quyết định xử lý ban đầu.",
       "platformPack.pharmaColdChain.node.briefing.title": "Xem xét lô hàng",
       "platformPack.pharmaColdChain.node.briefing.body": "Hồ sơ chuyển giao đã ký còn nguyên vẹn, nhưng bản tóm tắt cảm biến ngoài chuỗi ghi nhận sai lệch nhiệt độ. Hãy quyết định có thể xuất lô hàng hay không.",
       "platformPack.pharmaColdChain.node.evidence.title": "Kiểm tra bằng chứng có sẵn",
@@ -582,6 +586,7 @@
           }
         }
       ],
+      "instructorIncidents": [],
       "counterfactualComparisonDimensions": [],
       "counterfactualConditions": [],
       "entryNodeId": "NODE_PHARMA_BRIEFING",
@@ -1012,6 +1017,32 @@
           }
         }
       ],
+      "instructorIncidents": [
+        {
+          "incidentId": "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+          "version": "1.0.0",
+          "title": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.incident.calibrationReview.title"
+          },
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.incident.calibrationReview.message"
+          },
+          "visibleToRoleIds": [
+            "QUALITY_MANAGER"
+          ],
+          "releaseAtNodeIds": [
+            "NODE_PHARMA_TRANSFER_TRIAGE"
+          ],
+          "evidenceIds": [
+            "EVID_PHARMA_TRANSFER_CALIBRATION"
+          ],
+          "professionalConsequenceEffects": {
+            "PHARMA_BUSINESS_COST_INDEX": 1,
+            "PHARMA_OPERATIONAL_DELAY_INDEX": 1,
+            "PHARMA_EVIDENCE_QUALITY_INDEX": 1
+          }
+        }
+      ],
       "counterfactualComparisonDimensions": [
         {
           "dimensionId": "DIM_PHARMA_PATIENT_SAFETY",
@@ -1165,7 +1196,7 @@
                     "localizationKey": "platformPack.pharmaColdChain.transfer.option.hold"
                   },
                   "authoredValue": "HOLD_AND_INVESTIGATE",
-                  "counterfactualMetricEffects": {
+                  "professionalConsequenceEffects": {
                     "PHARMA_PATIENT_SAFETY_INDEX": 1,
                     "PHARMA_BUSINESS_COST_INDEX": 1,
                     "PHARMA_OPERATIONAL_DELAY_INDEX": 1,
@@ -1179,7 +1210,7 @@
                     "localizationKey": "platformPack.pharmaColdChain.transfer.option.release"
                   },
                   "authoredValue": "RELEASE_ON_CUSTODY_INTEGRITY",
-                  "counterfactualMetricEffects": {
+                  "professionalConsequenceEffects": {
                     "PHARMA_PATIENT_SAFETY_INDEX": -2,
                     "PHARMA_BUSINESS_COST_INDEX": 0,
                     "PHARMA_OPERATIONAL_DELAY_INDEX": 0,
@@ -1344,7 +1375,7 @@
                     "localizationKey": "platformPack.pharmaColdChain.transfer.option.quarantine"
                   },
                   "authoredValue": "QUARANTINE_AFFECTED_SHIPMENT",
-                  "counterfactualMetricEffects": {
+                  "professionalConsequenceEffects": {
                     "PHARMA_PATIENT_SAFETY_INDEX": 2,
                     "PHARMA_BUSINESS_COST_INDEX": 2,
                     "PHARMA_OPERATIONAL_DELAY_INDEX": 1,
@@ -1358,7 +1389,7 @@
                     "localizationKey": "platformPack.pharmaColdChain.transfer.option.recallAll"
                   },
                   "authoredValue": "RECALL_ALL_PRODUCT",
-                  "counterfactualMetricEffects": {
+                  "professionalConsequenceEffects": {
                     "PHARMA_PATIENT_SAFETY_INDEX": 2,
                     "PHARMA_BUSINESS_COST_INDEX": 5,
                     "PHARMA_OPERATIONAL_DELAY_INDEX": 2,
@@ -1372,7 +1403,7 @@
                     "localizationKey": "platformPack.pharmaColdChain.transfer.option.close"
                   },
                   "authoredValue": "CLOSE_WITHOUT_ACTION",
-                  "counterfactualMetricEffects": {
+                  "professionalConsequenceEffects": {
                     "PHARMA_PATIENT_SAFETY_INDEX": -3,
                     "PHARMA_BUSINESS_COST_INDEX": 0,
                     "PHARMA_OPERATIONAL_DELAY_INDEX": 0,

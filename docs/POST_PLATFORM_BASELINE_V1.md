@@ -13,10 +13,10 @@ disciplinary validity, or real assistive-technology usability.
 | Field | Recorded value | Status |
 |---|---|---|
 | Platform release | `2.0.0` development line | Candidate |
-| Source commit | `6c31e5c3a6bf7990e15727931ae2387f81b0dd29` plus the uncommitted Priority 1–3 candidate diff | Not immutable |
+| Source commit | `088576970ae5648447d5baff20d906941b944d46` plus the uncommitted priorities 5, 6, 7, 8, and 11 candidate diff | Not immutable |
 | Deployment revision | No deployment was requested or performed for this candidate | Not accepted |
 | Database schema version | The current D1 foundation is created directly by `ensureD1FoundationSchema`; it has no separately recorded release version | Open baseline limitation |
-| Scenario-pack schema | `1.4.0` | Implemented in candidate |
+| Scenario-pack schema | `1.5.0` | Implemented in candidate |
 | Counterfactual contract | `1.0.0` | Implemented |
 | Curriculum-overlay schema | `2.0.0` | Implemented in candidate |
 | Accepted package versions | Prior evidence records Guided `2.2.0`, Challenge A `1.1.0`, and Assessment `2.2.0`; these are not acceptance evidence for the current working tree | Prior release only |
@@ -36,6 +36,12 @@ The repository contains automated coverage for:
 - competency evidence linked to source events;
 - independently owned curriculum overlays and exact framework references;
 - no curriculum attainment inference;
+- bounded scenario-authored instructor incident release and exact replay;
+- stable authenticated assignment deep linking without automatic attempt
+  creation;
+- event-linked descriptive process analytics with no-trait-inference limits;
+- fixed-seed controlled-study metadata and pseudonymous participant exports;
+- scenario-authored diagnostic professional consequences;
 - SCORM package generation and verification for the supported coffee presets;
 - localization parity and automated accessibility rules; and
 - browser flows covered by the configured Playwright projects.
@@ -47,10 +53,10 @@ commit.
 The uncommitted candidate passed `npm run quality` on 2026-07-26:
 
 ```text
-Vitest: 75 files, 650 tests passed
+Vitest: 77 files, 661 tests passed
 Hosted site tests: 13 passed
-Scenario contract: 434 checks passed
-Platform packs: 2 packs, 11,433 checks passed
+Scenario contract: 441 checks passed
+Platform packs: 2 packs, 11,508 checks passed
 Curriculum overlays: 2 overlays, 332 checks passed
 SCORM verification: 3 packages, 213 checks passed
 ```

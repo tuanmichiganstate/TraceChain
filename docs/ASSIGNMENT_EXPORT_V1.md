@@ -48,12 +48,13 @@ Learners cannot call these routes.
 The JSON document has:
 
 ```text
-schemaVersion       1.4.0
+schemaVersion       1.5.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
 identityMode        identified or pseudonymous
+researchMetadata    null or bounded controlled-study metadata
 generatedAt         UTC export timestamp
 assignment          exact HostedAssignmentV1
-participants        assignment and learner identifiers
+participants        assignment, learner, and optional research-participant identifiers
 runs                learner, status, event count, timing, and activity
 events              complete RunEventV1 envelopes
 ratingRevisions     complete ManualRubricRatingV1 history
@@ -126,6 +127,7 @@ export_schema_version
 record_type
 assignment_id
 learner_user_id
+research_participant_id
 run_id
 sequence_number
 event_id
@@ -181,6 +183,13 @@ the event-derived `activity` object.
 - Instructor, rater, moderator, simulation actor, organization, role, run,
   event, evidence, and rating identifiers remain unchanged.
 - No identity mapping is included in the pseudonymous file.
+- A research-enabled assignment gives every participant a deterministic,
+  assignment-scoped research participant ID. Controlled-study metadata records
+  the authored condition, random-assignment record reference, fixed seed,
+  consent-status reference, optional pre/post-test linkage references,
+  blinded-rater flag, intervention version, and retention-policy reference.
+- Those references are identifiers only. TraceChain does not manage consent,
+  ethics review, recruitment, retention enforcement, or statistical analysis.
 - Pseudonymization is not anonymization. Run content, timestamps, decisions,
   and other evidence may still permit re-identification and must be handled as
   assessment records.

@@ -198,7 +198,7 @@ describe("instructor review screen", () => {
     const availableFrom = new Date(availableFromLocal).toISOString();
     const availableUntil = new Date(availableUntilLocal).toISOString();
     const assignment = {
-      schemaVersion: "1.1.0" as const,
+      schemaVersion: "1.2.0" as const,
       assignmentId: "ASSIGNMENT_001",
       title: "Coffee cohort",
       packId: publishedCoffeeOption.packId,
@@ -216,6 +216,18 @@ describe("instructor review screen", () => {
         maximumBranchesPerLearner: 3,
         learnerAvailability: "AFTER_FEEDBACK_RELEASE",
         requireReflection: true,
+      } as const,
+      research: {
+        enabled: true,
+        experimentalConditionId: "CONDITION_SANDBOX",
+        randomAssignmentRecordId: "RANDOMIZATION_001",
+        fixedScenarioSeed: "SEED_RESEARCH_001",
+        consentStatusReference: "CONSENT_RECORD_001",
+        preTestLinkageId: "PRETEST_001",
+        postTestLinkageId: "POSTTEST_001",
+        blindedRaters: true,
+        interventionVersion: "1.0.0",
+        retentionPolicyReference: "RETENTION_POLICY_001",
       } as const,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
@@ -342,6 +354,44 @@ describe("instructor review screen", () => {
     await user.type(maximumBranches, "3");
     await user.click(
       form.getByRole("checkbox", {
+        name: "Record this assignment as a controlled research condition",
+      }),
+    );
+    await user.type(
+      form.getByLabelText("Experimental condition ID"),
+      assignment.research.experimentalConditionId,
+    );
+    await user.type(
+      form.getByLabelText("Random-assignment record ID"),
+      assignment.research.randomAssignmentRecordId,
+    );
+    await user.type(
+      form.getByLabelText("Fixed scenario seed"),
+      assignment.research.fixedScenarioSeed,
+    );
+    await user.type(
+      form.getByLabelText("Consent-status reference"),
+      assignment.research.consentStatusReference,
+    );
+    await user.type(
+      form.getByLabelText("Pre-test linkage ID (optional)"),
+      assignment.research.preTestLinkageId,
+    );
+    await user.type(
+      form.getByLabelText("Post-test linkage ID (optional)"),
+      assignment.research.postTestLinkageId,
+    );
+    await user.type(
+      form.getByLabelText("Retention-policy reference"),
+      assignment.research.retentionPolicyReference,
+    );
+    await user.click(
+      form.getByRole("checkbox", {
+        name: "Mark exported ratings for blinded-rater handling",
+      }),
+    );
+    await user.click(
+      form.getByRole("checkbox", {
         name: "learner@example.edu (USER_LEARNER_001)",
       }),
     );
@@ -359,6 +409,7 @@ describe("instructor review screen", () => {
       mode: "sandbox",
       counterfactualReplay:
         assignment.counterfactualReplay,
+      research: assignment.research,
       learnerUserIds: assignment.learnerUserIds,
       availableFrom,
       availableUntil,
@@ -373,7 +424,7 @@ describe("instructor review screen", () => {
 
   it("manages access and offers stable downloads after loading an assignment report", async () => {
     const assignment = {
-      schemaVersion: "1.1.0" as const,
+      schemaVersion: "1.2.0" as const,
       assignmentId: "ASSIGNMENT_EXPORT_001",
       title: "Coffee export cohort",
       packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -390,6 +441,7 @@ describe("instructor review screen", () => {
         learnerAvailability: "DISABLED",
         requireReflection: true,
       } as const,
+      research: { enabled: false } as const,
       learnerUserIds: ["USER_LEARNER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
@@ -639,6 +691,57 @@ describe("instructor review screen", () => {
           },
         ],
       }),
+      loadAssignmentProcessAnalytics: vi.fn().mockResolvedValue({
+        schemaVersion: "1.0.0",
+        reportType:
+          "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+        interpretation:
+          "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
+        ruleVersion:
+          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        packId: "PACK_STANDARD_COFFEE_STAGE3",
+        packVersion: "1.4.0",
+        scenarioId: "SCN_COFFEE_001",
+        scenarioVersion: "2.2.0",
+        generatedAt: "2026-07-24T08:05:00.000Z",
+        runs: [
+          {
+            runId: "RUN_EXPORT_001",
+            learnerUserId: "USER_LEARNER_001",
+            evidenceInspectionOrder: [
+              {
+                eventId: "HEVT_EXPORT_002",
+                sequenceNumber: 2,
+                recordedAt: "2026-07-24T08:04:00.000Z",
+                itemId: "EVID_CERTIFICATE_RECORD",
+              },
+            ],
+            policyConsultationOrder: [],
+            decisions: [],
+            rejectedAttemptEventIds: [],
+            mitigationEventIds: [],
+            reflectionEventIds: [],
+            professionalConsequences: {},
+          },
+        ],
+        summary: {
+          runCount: 1,
+          evidenceInspectionCounts: {
+            EVID_CERTIFICATE_RECORD: 1,
+          },
+          evidenceCitationCounts: {},
+          policyConsultationCounts: {},
+          decisionSubmissionCounts: {},
+          rejectedAttemptCount: 1,
+          mitigationCount: 1,
+        },
+        limitations: [
+          "ELAPSED_INTERVAL_IS_NOT_ATTENTION",
+          "NO_MOTIVATION_OR_ABILITY_INFERENCE",
+          "NO_AUTOMATED_HIGH_STAKES_DECISION",
+        ],
+      }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.3.0",
         assignment,
@@ -748,6 +851,14 @@ describe("instructor review screen", () => {
         "Active — new attempts follow the assignment availability window.",
       ),
     ).toBeInTheDocument();
+    expect(
+      report.getByRole("link", {
+        name: "Open stable learner link",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/learner?assignmentId=ASSIGNMENT_EXPORT_001",
+    );
     await user.click(
       report.getByRole("button", { name: "Close new attempts" }),
     );
@@ -770,8 +881,12 @@ describe("instructor review screen", () => {
     await user.click(
       report.getByText("View activity", { selector: "summary" }),
     );
-    expect(report.getByText("Evidence inspections")).toBeVisible();
-    expect(report.getByText("Rejected attempts")).toBeVisible();
+    expect(
+      report.getAllByText("Evidence inspections")[0],
+    ).toBeVisible();
+    expect(
+      report.getAllByText("Rejected attempts")[0],
+    ).toBeVisible();
     expect(
       report.getByRole("heading", {
         name: "Common rejection findings",
@@ -784,6 +899,22 @@ describe("instructor review screen", () => {
       report.getByRole("heading", {
         name: "Decision and outcome evidence",
       }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Decision-process observations",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Elapsed intervals show time between recorded submissions, not attention. Do not infer motivation or ability, and do not use this report for automated high-stakes decisions.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(
+      report.getByText(/Run RUN_EXPORT_001, learner USER_LEARNER_001/),
+    );
+    expect(
+      report.getByRole("button", { name: "Review event 2" }),
     ).toBeInTheDocument();
     expect(
       report.getAllByText("Available after run completion"),
@@ -1400,6 +1531,15 @@ describe("instructor review screen", () => {
                     overlays: [],
                   },
                 }
+            : path.endsWith("/process-analytics")
+              ? {
+                  analytics: {
+                    schemaVersion: "1.0.0",
+                    reportType:
+                      "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+                    runs: [],
+                  },
+                }
             : path.includes("/replay?sequence=")
               ? { replay: { throughSequenceNumber: 2 } }
             : path.endsWith("/competencies")
@@ -1452,6 +1592,9 @@ describe("instructor review screen", () => {
     await api.loadAssignmentCurriculumCrosswalks(
       "ASSIGNMENT / 001",
     );
+    await api.loadAssignmentProcessAnalytics?.(
+      "ASSIGNMENT / 001",
+    );
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
@@ -1462,9 +1605,11 @@ describe("instructor review screen", () => {
       "/api/v1/runs/RUN%20%2F%20001/competencies",
       "/api/v1/runs/RUN%20%2F%20001/rubric-evidence",
       "/api/v1/runs/RUN%20%2F%20001/ratings",
+      "/api/v1/runs/RUN%20%2F%20001/instructor-incidents",
       "/api/v1/runs/RUN%20%2F%20001/replay?sequence=2",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/monitor",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/curriculum-crosswalks",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/process-analytics",
     ]);
   });
 });

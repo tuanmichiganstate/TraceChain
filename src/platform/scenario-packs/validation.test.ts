@@ -357,7 +357,7 @@ describe("scenario-pack validation", () => {
           nodeType: string;
           fields?: {
             options: {
-              counterfactualMetricEffects?: Record<string, number>;
+              professionalConsequenceEffects?: Record<string, number>;
             }[];
           }[];
         }[];
@@ -374,7 +374,7 @@ describe("scenario-pack validation", () => {
     if (option === undefined) {
       throw new Error("Expected a transfer decision option.");
     }
-    option.counterfactualMetricEffects = {
+    option.professionalConsequenceEffects = {
       PHARMA_UNDECLARED_METRIC: 1,
     };
 
@@ -384,8 +384,55 @@ describe("scenario-pack validation", () => {
     if (!result.isValid) {
       expect(result.issues).toContainEqual(
         expect.objectContaining({
-          code: "UNKNOWN_COUNTERFACTUAL_RUNTIME_METRIC",
+          code: "UNKNOWN_PROFESSIONAL_CONSEQUENCE_METRIC",
         }),
+      );
+    }
+  });
+
+  it("rejects instructor incidents outside authored scenario boundaries", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: {
+        scenarioId: string;
+        instructorIncidents: {
+          evidenceIds: string[];
+          releaseAtNodeIds: string[];
+          professionalConsequenceEffects: Record<string, number>;
+        }[];
+      }[];
+    };
+    const incident = invalid.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId ===
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+    )?.instructorIncidents[0];
+    if (incident === undefined) {
+      throw new Error("Expected an authored instructor incident.");
+    }
+    incident.evidenceIds = ["EVIDENCE_NOT_AUTHORED"];
+    incident.releaseAtNodeIds = ["NODE_NOT_AUTHORED"];
+    incident.professionalConsequenceEffects = {
+      METRIC_NOT_AUTHORED: 1,
+    };
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "UNKNOWN_EVIDENCE_REFERENCE",
+          }),
+          expect.objectContaining({
+            code: "UNKNOWN_NODE_REFERENCE",
+          }),
+          expect.objectContaining({
+            code: "UNKNOWN_PROFESSIONAL_CONSEQUENCE_METRIC",
+          }),
+        ]),
       );
     }
   });

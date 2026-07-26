@@ -15,6 +15,10 @@ import type {
 } from "../contracts/run-events";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
+  InstructorIncidentStatusV1,
+  ReleaseInstructorIncidentCommandV1,
+} from "../contracts/simulation-director";
+import type {
   HostedRunMode,
   HostedRunModeConfigurationV1,
   ScenarioPackV1,
@@ -87,6 +91,14 @@ export interface HostedRuntimeService {
   submit(
     principal: ApplicationPrincipal | null,
     command: HostedRuntimeCommand,
+  ): Promise<HostedRuntimeRunResult>;
+  instructorIncidents(
+    principal: ApplicationPrincipal | null,
+    runId: string,
+  ): Promise<readonly InstructorIncidentStatusV1[]>;
+  releaseInstructorIncident(
+    principal: ApplicationPrincipal | null,
+    command: ReleaseInstructorIncidentCommandV1,
   ): Promise<HostedRuntimeRunResult>;
   createCounterfactualBranch(
     principal: ApplicationPrincipal | null,
@@ -208,6 +220,10 @@ export function createHostedRuntimeService(options: {
         ),
       submit: (principal, command) =>
         service.submit(principal, command as GenericHostedCommand),
+      instructorIncidents: (principal, runId) =>
+        service.instructorIncidents(principal, runId),
+      releaseInstructorIncident: (principal, command) =>
+        service.releaseInstructorIncident(principal, command),
       createCounterfactualBranch: (principal, request) =>
         service.createCounterfactualBranch(principal, request),
       submitCounterfactual: (principal, command) =>
@@ -292,6 +308,13 @@ export function createHostedRuntimeService(options: {
     },
     submit: (principal, command) =>
       service.submit(principal, command as HostedStage3Command),
+    instructorIncidents: async () => [],
+    releaseInstructorIncident: async () => {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "The selected scenario has no authored instructor incidents.",
+      );
+    },
     createCounterfactualBranch: (principal, request) =>
       service.createCounterfactualBranch(principal, request),
     submitCounterfactual: (principal, command) =>

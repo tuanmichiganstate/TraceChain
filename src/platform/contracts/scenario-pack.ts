@@ -103,6 +103,19 @@ export interface ScenarioEvidenceItemV1 {
   readonly content: JsonObject;
 }
 
+export interface ScenarioInstructorIncidentV1 {
+  readonly incidentId: string;
+  readonly version: string;
+  readonly title: LocalizedText;
+  readonly message: LocalizedText;
+  readonly visibleToRoleIds: readonly string[];
+  readonly releaseAtNodeIds: readonly string[];
+  readonly evidenceIds: readonly string[];
+  readonly professionalConsequenceEffects: Readonly<
+    Record<string, number>
+  >;
+}
+
 export interface ScenarioPolicyV1 {
   readonly policyId: string;
   readonly policyType:
@@ -156,7 +169,7 @@ export interface DecisionOptionV1 {
   readonly optionId: string;
   readonly label: LocalizedText;
   readonly authoredValue: JsonValue;
-  readonly counterfactualMetricEffects?: Readonly<
+  readonly professionalConsequenceEffects?: Readonly<
     Record<string, number>
   >;
 }
@@ -408,6 +421,8 @@ export interface ScenarioDefinitionV1 {
   };
   readonly policies: readonly ScenarioPolicyV1[];
   readonly evidenceItems: readonly ScenarioEvidenceItemV1[];
+  readonly instructorIncidents:
+    readonly ScenarioInstructorIncidentV1[];
   readonly counterfactualComparisonDimensions:
     readonly CounterfactualComparisonDimensionV1[];
   readonly counterfactualConditions:
@@ -421,7 +436,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.4.0";
+  readonly schemaVersion: "1.5.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

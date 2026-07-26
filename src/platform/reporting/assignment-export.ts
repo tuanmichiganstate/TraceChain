@@ -28,7 +28,7 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.4.0",
+  schemaVersion: "1.5.0",
   csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
   datasets: [
     {
@@ -84,6 +84,13 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           required: true,
           description:
             "Server-provisioned learner identifier or assignment-scoped pseudonym, according to identityMode.",
+        },
+        {
+          name: "researchParticipantId",
+          type: "string",
+          required: false,
+          description:
+            "Deterministic assignment-scoped participant ID supplied only for research-enabled assignments.",
         },
       ],
     },
@@ -444,15 +451,54 @@ export function createAssignmentEvidenceExport(
   };
 
   return {
-    schemaVersion: "1.4.0",
+    schemaVersion: "1.5.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     identityMode,
+    researchMetadata:
+      assignment.research.enabled
+        ? {
+            experimentalConditionId:
+              assignment.research.experimentalConditionId,
+            randomAssignmentRecordId:
+              assignment.research.randomAssignmentRecordId,
+            fixedScenarioSeed:
+              assignment.research.fixedScenarioSeed,
+            consentStatusReference:
+              assignment.research.consentStatusReference,
+            ...(assignment.research.preTestLinkageId === undefined
+              ? {}
+              : {
+                  preTestLinkageId:
+                    assignment.research.preTestLinkageId,
+                }),
+            ...(assignment.research.postTestLinkageId === undefined
+              ? {}
+              : {
+                  postTestLinkageId:
+                    assignment.research.postTestLinkageId,
+                }),
+            blindedRaters: assignment.research.blindedRaters,
+            interventionVersion:
+              assignment.research.interventionVersion,
+            retentionPolicyReference:
+              assignment.research.retentionPolicyReference,
+            deidentified: identityMode === "pseudonymous",
+          }
+        : null,
     generatedAt: input.generatedAt,
     assignment: protectedAssignment,
     participants: assignment.learnerUserIds.map((learnerUserId) => ({
       assignmentId: assignment.assignmentId,
       learnerUserId:
         pseudonyms.get(learnerUserId) ?? learnerUserId,
+      ...(assignment.research.enabled
+        ? {
+            researchParticipantId: learnerPseudonym(
+              assignment.assignmentId,
+              learnerUserId,
+            ),
+          }
+        : {}),
     })),
     runs: runs.map((run) => ({
       ...run,
@@ -486,6 +532,7 @@ const CSV_COLUMNS = [
   "record_type",
   "assignment_id",
   "learner_user_id",
+  "research_participant_id",
   "run_id",
   "sequence_number",
   "event_id",
@@ -563,6 +610,8 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
         record_type: "participant",
         assignment_id: participant.assignmentId,
         learner_user_id: participant.learnerUserId,
+        research_participant_id:
+          participant.researchParticipantId,
       }),
     ),
     ...exported.runs.map(

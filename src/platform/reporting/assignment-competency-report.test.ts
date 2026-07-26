@@ -18,7 +18,7 @@ if (scenario === undefined) {
 const assignmentReport: HostedAssignmentReportV1 = {
   schemaVersion: "1.3.0",
   assignment: {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     assignmentId: "ASSIGNMENT_COMPETENCY_001",
     title: "Coffee competency cohort",
     packId: pack.packId,
@@ -40,6 +40,7 @@ const assignmentReport: HostedAssignmentReportV1 = {
       learnerAvailability: "DISABLED",
       requireReflection: false,
     },
+    research: { enabled: false },
     learnerUserIds: ["USER_LEARNER_001"],
     status: "active",
     feedbackReleaseStatus: "withheld",

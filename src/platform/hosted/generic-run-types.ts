@@ -43,6 +43,11 @@ export interface GenericHostedRunState {
   readonly ledgerState: JsonObject;
   readonly releasedEvidenceIds: readonly string[];
   readonly inspectedEvidenceIds: readonly string[];
+  readonly releasedInstructorIncidents: readonly {
+    readonly incidentId: string;
+    readonly releasedAt: string;
+    readonly releasedByUserId: string;
+  }[];
   readonly decisions: Readonly<
     Record<string, GenericDecisionSubmission>
   >;

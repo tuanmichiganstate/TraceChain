@@ -263,8 +263,10 @@ function runText(
 
 export function HostedLearnerScreen({
   api = browserApi,
+  initialAssignmentId = assignmentIdFromLocation(),
 }: {
   readonly api?: HostedLearnerApi;
+  readonly initialAssignmentId?: string | null;
 }): ReactNode {
   const t = useTranslator();
   const [session, setSession] = useState<LearnerSession | null>(null);
@@ -377,6 +379,13 @@ export function HostedLearnerScreen({
   }
 
   const isLearner = session?.roles.includes("learner") ?? false;
+  const focusedAssignments =
+    initialAssignmentId === null
+      ? assignments
+      : assignments.filter(
+          ({ assignment }) =>
+            assignment.assignmentId === initialAssignmentId,
+        );
   const counterfactualAssignment = assignments.find(
     ({ assignment, runs }) =>
       assignment.mode === "sandbox" &&
@@ -418,8 +427,19 @@ export function HostedLearnerScreen({
         {isLearner ? (
           <section className="card card--reference">
             <h2>{t("hostedLearner.assignments")}</h2>
-            {assignments.length === 0 ? (
-              <p>{t("hostedLearner.noAssignments")}</p>
+            {initialAssignmentId === null ? null : (
+              <p>
+                {t("hostedLearner.deepLink", {
+                  assignmentId: initialAssignmentId,
+                })}
+              </p>
+            )}
+            {focusedAssignments.length === 0 ? (
+              <p>
+                {initialAssignmentId === null
+                  ? t("hostedLearner.noAssignments")
+                  : t("hostedLearner.deepLinkUnavailable")}
+              </p>
             ) : (
               <div className="table-scroll">
                 <table className="data-table">
@@ -432,7 +452,7 @@ export function HostedLearnerScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {assignments.map(({ assignment, startAvailability, runs }) => {
+                    {focusedAssignments.map(({ assignment, startAvailability, runs }) => {
                       const latest = runs[0];
                       return (
                         <tr key={assignment.assignmentId}>
@@ -533,6 +553,16 @@ export function HostedLearnerScreen({
       </div>
     </main>
   );
+}
+
+function assignmentIdFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get(
+    "assignmentId",
+  );
+  return value === null || value.trim().length === 0
+    ? null
+    : value.trim();
 }
 
 function LearnerFeedback({
@@ -752,6 +782,24 @@ function RunWorkspace({
           })}
         </p>
       ) : null}
+      {(presentation?.instructorIncidents.length ?? 0) === 0 ? null : (
+        <section className="card card--brief" aria-live="polite">
+          <h2>{t("hostedLearner.instructorIncidents")}</h2>
+          {presentation?.instructorIncidents.map((incident) => (
+            <article key={incident.incidentId}>
+              <h3>{runText(incident.title, t)}</h3>
+              <p>{runText(incident.message, t)}</p>
+              <p>
+                <small>
+                  {t("hostedLearner.instructorIncidentReleasedAt", {
+                    releasedAt: incident.releasedAt,
+                  })}
+                </small>
+              </p>
+            </article>
+          ))}
+        </section>
+      )}
       <section className="card card--reference">
         <h2>{t("hostedLearner.evidence")}</h2>
         {projection.informationState.length === 0 ? (
@@ -787,6 +835,32 @@ function RunWorkspace({
           </ul>
         )}
       </section>
+      {(presentation?.professionalConsequences.length ?? 0) === 0 ? null : (
+        <section className="card card--reference">
+          <h2>{t("hostedLearner.professionalConsequences")}</h2>
+          <p>{t("hostedLearner.professionalConsequencesHelp")}</p>
+          <dl className="instructor-review__facts">
+            {presentation?.professionalConsequences.map((dimension) => (
+              <div key={dimension.dimensionId}>
+                <dt>{runText(dimension.title, t)}</dt>
+                <dd>
+                  {dimension.value}
+                  {dimension.unit === undefined
+                    ? ""
+                    : ` ${dimension.unit}`}
+                  <br />
+                  <small>
+                    {runText(dimension.description, t)}{" "}
+                    {t(
+                      `hostedLearner.professionalConsequenceDirection.${dimension.direction}`,
+                    )}
+                  </small>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       <section className="card card--reference">
         <h2>{t("hostedLearner.traceability")}</h2>
         <details>

@@ -1217,7 +1217,7 @@ function validateNodeContent(
                     "optionId",
                     "label",
                     "authoredValue",
-                    "counterfactualMetricEffects",
+                    "professionalConsequenceEffects",
                   ],
                   optionPath,
                 );
@@ -1247,17 +1247,17 @@ function validateNodeContent(
                   option.authoredValue,
                   `${optionPath}.authoredValue`,
                 );
-                if (option.counterfactualMetricEffects !== undefined) {
+                if (option.professionalConsequenceEffects !== undefined) {
                   const effects = context.object(
-                    option.counterfactualMetricEffects,
-                    `${optionPath}.counterfactualMetricEffects`,
+                    option.professionalConsequenceEffects,
+                    `${optionPath}.professionalConsequenceEffects`,
                   );
                   if (effects !== null) {
                     context.check(
                       Object.keys(effects).length > 0,
-                      "EMPTY_COUNTERFACTUAL_METRIC_EFFECTS",
-                      `${optionPath}.counterfactualMetricEffects`,
-                      "must contain at least one metric effect",
+                      "EMPTY_PROFESSIONAL_CONSEQUENCE_EFFECTS",
+                      `${optionPath}.professionalConsequenceEffects`,
+                      "must contain at least one professional consequence effect",
                     );
                     for (const [metricId, metricValue] of Object.entries(
                       effects,
@@ -1265,17 +1265,17 @@ function validateNodeContent(
                       context.check(
                         IDENTIFIER.test(metricId),
                         "INVALID_IDENTIFIER",
-                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                        `${optionPath}.professionalConsequenceEffects.${metricId}`,
                         "metric ID must be a valid identifier",
                       );
                       context.number(
                         metricValue,
-                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                        `${optionPath}.professionalConsequenceEffects.${metricId}`,
                       );
                       context.check(
                         counterfactualMetricIds.has(metricId),
-                        "UNKNOWN_COUNTERFACTUAL_RUNTIME_METRIC",
-                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                        "UNKNOWN_PROFESSIONAL_CONSEQUENCE_METRIC",
+                        `${optionPath}.professionalConsequenceEffects.${metricId}`,
                         "must reference a runtime metric declared by a scenario comparison dimension",
                       );
                     }
@@ -1981,6 +1981,131 @@ function validateCounterfactualComparisonDimensions(
   return dimensionIds;
 }
 
+function validateInstructorIncidents(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  supportedLocales: readonly string[],
+  roleIds: ReadonlySet<string>,
+  evidenceIds: ReadonlySet<string>,
+  nodeIds: ReadonlySet<string>,
+  professionalMetricIds: ReadonlySet<string>,
+): void {
+  const incidents = context.array(value, path);
+  if (incidents === null) return;
+  const incidentIds = new Set<string>();
+  incidents.forEach((incidentValue, incidentIndex) => {
+    const incidentPath = `${path}[${String(incidentIndex)}]`;
+    const incident = context.object(incidentValue, incidentPath);
+    if (incident === null) return;
+    context.allowedKeys(
+      incident,
+      [
+        "incidentId",
+        "version",
+        "title",
+        "message",
+        "visibleToRoleIds",
+        "releaseAtNodeIds",
+        "evidenceIds",
+        "professionalConsequenceEffects",
+      ],
+      incidentPath,
+    );
+    const incidentId = context.string(
+      incident.incidentId,
+      `${incidentPath}.incidentId`,
+      { identifier: true },
+    );
+    if (incidentId !== null) {
+      context.check(
+        !incidentIds.has(incidentId),
+        "DUPLICATE_INSTRUCTOR_INCIDENT",
+        `${incidentPath}.incidentId`,
+        "must be unique within the scenario",
+      );
+      incidentIds.add(incidentId);
+    }
+    context.string(incident.version, `${incidentPath}.version`, {
+      semanticVersion: true,
+    });
+    validateLocalizedText(
+      context,
+      incident.title,
+      `${incidentPath}.title`,
+      supportedLocales,
+    );
+    validateLocalizedText(
+      context,
+      incident.message,
+      `${incidentPath}.message`,
+      supportedLocales,
+    );
+    validateUniqueStrings(
+      context,
+      incident.visibleToRoleIds,
+      `${incidentPath}.visibleToRoleIds`,
+      { minimumItems: 1, identifiers: true },
+    ).forEach((roleId, index) => {
+      context.check(
+        roleIds.has(roleId),
+        "UNKNOWN_ROLE_REFERENCE",
+        `${incidentPath}.visibleToRoleIds[${String(index)}]`,
+        "must reference a role in this scenario",
+      );
+    });
+    validateUniqueStrings(
+      context,
+      incident.releaseAtNodeIds,
+      `${incidentPath}.releaseAtNodeIds`,
+      { minimumItems: 1, identifiers: true },
+    ).forEach((nodeId, index) => {
+      context.check(
+        nodeIds.has(nodeId),
+        "UNKNOWN_NODE_REFERENCE",
+        `${incidentPath}.releaseAtNodeIds[${String(index)}]`,
+        "must reference a node in this scenario",
+      );
+    });
+    validateUniqueStrings(
+      context,
+      incident.evidenceIds,
+      `${incidentPath}.evidenceIds`,
+      { minimumItems: 1, identifiers: true },
+    ).forEach((evidenceId, index) => {
+      context.check(
+        evidenceIds.has(evidenceId),
+        "UNKNOWN_EVIDENCE_REFERENCE",
+        `${incidentPath}.evidenceIds[${String(index)}]`,
+        "must reference evidence in this scenario",
+      );
+    });
+    const effects = context.object(
+      incident.professionalConsequenceEffects,
+      `${incidentPath}.professionalConsequenceEffects`,
+    );
+    if (effects === null) return;
+    for (const [metricId, metricValue] of Object.entries(effects)) {
+      context.check(
+        IDENTIFIER.test(metricId),
+        "INVALID_IDENTIFIER",
+        `${incidentPath}.professionalConsequenceEffects.${metricId}`,
+        "metric ID must be a valid identifier",
+      );
+      context.number(
+        metricValue,
+        `${incidentPath}.professionalConsequenceEffects.${metricId}`,
+      );
+      context.check(
+        professionalMetricIds.has(metricId),
+        "UNKNOWN_PROFESSIONAL_CONSEQUENCE_METRIC",
+        `${incidentPath}.professionalConsequenceEffects.${metricId}`,
+        "must reference a runtime metric declared by a scenario comparison dimension",
+      );
+    }
+  });
+}
+
 function validateCounterfactualConditions(
   context: ValidationContext,
   scenario: Readonly<Record<string, unknown>>,
@@ -2369,6 +2494,7 @@ function validateScenario(
       "initialState",
       "policies",
       "evidenceItems",
+      "instructorIncidents",
       "counterfactualComparisonDimensions",
       "counterfactualConditions",
       "entryNodeId",
@@ -3107,6 +3233,23 @@ function validateScenario(
         : [];
     }),
   );
+  validateInstructorIncidents(
+    context,
+    scenario.instructorIncidents,
+    `${path}.instructorIncidents`,
+    supportedLocales,
+    roleIds,
+    evidenceIds,
+    new Set(
+      (Array.isArray(scenario.nodes) ? scenario.nodes : []).flatMap(
+        (node) =>
+          isJsonObject(node) && typeof node.nodeId === "string"
+            ? [node.nodeId]
+            : [],
+      ),
+    ),
+    counterfactualMetricIds,
+  );
   validateCounterfactualConditions(
     context,
     scenario,
@@ -3136,10 +3279,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.4.0",
+    schemaVersion === "1.5.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.4.0",
+    "requires scenario-pack schema version 1.5.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -3320,10 +3463,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.4.0",
+      pack.schemaVersion === "1.5.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.4.0",
+      "must equal 1.5.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

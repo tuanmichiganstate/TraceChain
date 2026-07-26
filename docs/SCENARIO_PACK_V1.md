@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.4
+# TraceChain scenario-pack V1.5
 
-The V1.4 scenario-pack format is the active contract for the hosted
+The V1.5 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -61,10 +61,10 @@ organization, role, policy, evidence, decision, node, transition, and native
 runtime references are validated.
 
 Every scenario must provide `modeConfigurations`, `outcomeModels`,
-`counterfactualComparisonDimensions`, and `counterfactualConditions`; no
-application default or older pack shape is accepted. Empty comparison and
-condition arrays are valid for scenarios that do not support those
-counterfactual capabilities.
+`instructorIncidents`, `counterfactualComparisonDimensions`, and
+`counterfactualConditions`; no application default or older pack shape is
+accepted. Empty incident, comparison, and condition arrays are valid for
+scenarios that do not support those capabilities.
 
 ## Workflow nodes
 
@@ -126,6 +126,26 @@ executable expression. The coffee runtime currently supports one key,
 `COFFEE_CASE_VARIANT`, at the certificate decision. The server keeps the
 original decision unchanged and applies only an author-approved value.
 
+## Instructor incidents and professional consequences
+
+V1.5 adds bounded `instructorIncidents`. Each incident has an immutable ID and
+version, localized title and message, exact release nodes, permitted visible
+roles, existing evidence references, and optional effects on declared
+professional consequence dimensions.
+
+The instructor may release an incident only while an original active run is at
+an authored release node under an authored visible role. Release creates one
+attributed `INSTRUCTOR_INCIDENT_RELEASED` event. It does not edit hidden state,
+rewrite an earlier decision, or create free-form scenario content. Exact replay
+regenerates the evidence and diagnostic consequences from the incident version
+stored in the published pack.
+
+Decision options use `professionalConsequenceEffects` to describe bounded
+safety, cost, delay, compliance, and evidence-quality effects. These values
+also support counterfactual comparison, but their schema name reflects their
+general business-learning purpose. They are diagnostic unless a separate,
+versioned scoring rule explicitly says otherwise.
+
 ## Competencies and rubrics
 
 The coffee pack seeds BC1–BC8 and PC1–PC10 as data. The pharmaceutical starter
@@ -151,7 +171,7 @@ the 39/61 operational/knowledge split.
 
 ## Curriculum ownership boundary
 
-V1.4 removes institution-, program-, and course-owned curriculum mappings from
+V1.5 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 

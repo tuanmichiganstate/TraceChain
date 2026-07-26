@@ -572,6 +572,94 @@ describe("GenericHostedRunService", () => {
     ]);
   });
 
+  it("releases one authored instructor incident without rewriting workflow or hidden state", async () => {
+    const { service, store } = createTransferService();
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_DIRECTOR_CASE",
+      runId: "RUN_DIRECTOR_CASE",
+      assignmentId: "ASSIGNMENT_DIRECTOR_CASE",
+      learnerUserId: learner.userId,
+      mode: "tutorial",
+    });
+    const triage = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_DIRECTOR_CASE",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    expect(
+      await service.instructorIncidents(
+        instructor,
+        triage.state.runId,
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+        status: "available",
+      }),
+    ]);
+
+    await expect(
+      service.releaseInstructorIncident(learner, {
+        commandId: "COMMAND_RELEASE_DIRECTOR_AS_LEARNER",
+        runId: triage.state.runId,
+        expectedRunVersion: triage.state.version,
+        incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+      }),
+    ).rejects.toMatchObject({ code: "APPLICATION_ROLE_REQUIRED" });
+
+    const command = {
+      commandId: "COMMAND_RELEASE_DIRECTOR_CASE",
+      runId: triage.state.runId,
+      expectedRunVersion: triage.state.version,
+      incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+    } as const;
+    const released = await service.releaseInstructorIncident(
+      instructor,
+      command,
+    );
+    const replayed = await service.releaseInstructorIncident(
+      instructor,
+      command,
+    );
+    expect(replayed.wasIdempotentReplay).toBe(true);
+    expect(replayed.state).toEqual(released.state);
+    expect(released.state.workflowState.currentNodeId).toBe(
+      "NODE_PHARMA_TRANSFER_TRIAGE",
+    );
+    expect(released.state.releasedEvidenceIds).toEqual([
+      "EVID_PHARMA_TRANSFER_SENSOR",
+      "EVID_PHARMA_TRANSFER_CUSTODY",
+      "EVID_PHARMA_TRANSFER_CALIBRATION",
+    ]);
+    expect(
+      (await store.load(released.state.runId)).filter(
+        (event) =>
+          event.eventType === "INSTRUCTOR_INCIDENT_RELEASED",
+      ),
+    ).toHaveLength(1);
+
+    const projection = await service.learnerProjection(
+      learner,
+      released.state.runId,
+    );
+    expect(projection.presentation?.instructorIncidents).toEqual([
+      expect.objectContaining({
+        incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+        releasedAt: NOW,
+      }),
+    ]);
+    expect(
+      projection.presentation?.professionalConsequences.map(
+        (dimension) => [dimension.dimensionId, dimension.value],
+      ),
+    ).toEqual([
+      ["DIM_PHARMA_BUSINESS_COST", 1],
+      ["DIM_PHARMA_OPERATIONAL_DELAY", 1],
+      ["DIM_PHARMA_EVIDENCE_QUALITY", 1],
+    ]);
+  });
+
   it("replays idempotently and rejects learner-entered identity", async () => {
     const { service } = createService();
     const request = {

@@ -107,6 +107,10 @@ import {
   validateAssignmentCounterfactualConfiguration,
 } from "../src/platform/runs/counterfactual-assignment";
 import {
+  AssignmentResearchConfigurationError,
+  validateAssignmentResearchConfiguration,
+} from "../src/platform/runs/research-configuration";
+import {
   RunEventStoreConflictError,
 } from "../src/platform/runs/event-store";
 import {
@@ -135,6 +139,7 @@ import {
   CurriculumCrosswalkReportError,
   serializeAssignmentCurriculumCrosswalkReportJson,
 } from "../src/platform/reporting/curriculum-crosswalk-report";
+import { createAssignmentProcessAnalytics } from "../src/platform/reporting/process-analytics";
 import {
   repositoryCurriculumOverlays,
 } from "../src/platform/curriculum-overlays/repository-overlays";
@@ -1725,16 +1730,22 @@ async function apiResponse(
       "mode",
     ) as CreateHostedAssignmentRequest["mode"];
     let counterfactualReplay;
+    let research;
     try {
       counterfactualReplay =
         validateAssignmentCounterfactualConfiguration(
           body.counterfactualReplay,
           mode,
         );
+      research = validateAssignmentResearchConfiguration(
+        body.research,
+        modeConfigurationFor(scenario, mode),
+      );
     } catch (error) {
       if (
         error instanceof
-        AssignmentCounterfactualConfigurationError
+          AssignmentCounterfactualConfigurationError ||
+        error instanceof AssignmentResearchConfigurationError
       ) {
         throw new AssignmentRepositoryError(
           "INVALID_ASSIGNMENT",
@@ -1772,6 +1783,7 @@ async function apiResponse(
         mode,
         runConfiguration: modeConfigurationFor(scenario, mode),
         counterfactualReplay,
+        research,
       },
       principal,
     );
@@ -1931,7 +1943,11 @@ async function apiResponse(
       learnerUserId,
       mode: assignment.mode,
       modeConfiguration: assignment.runConfiguration,
-      ...(assignment.runConfiguration.seedPolicy === "generated"
+      ...(assignment.research.enabled
+        ? {
+            scenarioSeed: assignment.research.fixedScenarioSeed,
+          }
+        : assignment.runConfiguration.seedPolicy === "generated"
         ? {}
         : {
             scenarioSeed: runCreator.roles.includes("learner")
@@ -2047,6 +2063,78 @@ async function apiResponse(
     url.pathname,
     "monitor",
   );
+  const processAnalyticsAssignmentId = pathAssignmentId(
+    url.pathname,
+    "process-analytics",
+  );
+  if (
+    request.method === "GET" &&
+    processAnalyticsAssignmentId !== null
+  ) {
+    const analyticsActor = requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(
+      processAnalyticsAssignmentId,
+    );
+    if (
+      !analyticsActor.roles.includes("administrator") &&
+      report.assignment.createdByUserId !== analyticsActor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The assignment is outside the instructor's scope.",
+      );
+    }
+    const eventStore = new D1RunEventStore(environment.DB);
+    const allRuns = report.learners.flatMap((learner) =>
+      learner.runs.map((run) => run.runId),
+    );
+    const events = (
+      await Promise.all(
+        allRuns.map((runId) => eventStore.load(runId)),
+      )
+    ).flat();
+    const service =
+      allRuns.length === 0
+        ? null
+        : (
+            await hostedServiceForRun(
+              environment,
+              principal.userId,
+              allRuns[0]!,
+            )
+          ).service;
+    const professionalConsequencesByRun =
+      service === null
+        ? {}
+        : Object.fromEntries(
+            await Promise.all(
+              allRuns.map(async (runId) => [
+                runId,
+                await service.counterfactualMetrics(
+                  principal,
+                  runId,
+                ),
+              ]),
+            ),
+          );
+    return jsonResponse(200, {
+      analytics: createAssignmentProcessAnalytics({
+        report,
+        events,
+        professionalConsequencesByRun,
+        generatedAt: clock.now(),
+      }),
+    });
+  }
+
   if (request.method === "GET" && monitorAssignmentId !== null) {
     requireApplicationRole(principal, [
       "instructor",
@@ -3551,6 +3639,75 @@ async function apiResponse(
         officialGradeChanged: false,
       },
     );
+  }
+
+  const instructorIncidentRunId = pathRunId(
+    url.pathname,
+    "instructor-incidents",
+  );
+  if (
+    instructorIncidentRunId !== null &&
+    (request.method === "GET" || request.method === "POST")
+  ) {
+    const actor = requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    const assignment =
+      await new D1AssignmentRepository(
+        environment.DB,
+        new SystemUtcClock(),
+      ).findForRun(instructorIncidentRunId);
+    if (
+      assignment === null ||
+      (!actor.roles.includes("administrator") &&
+        assignment.createdByUserId !== actor.userId)
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The run is outside the instructor's assignment scope.",
+      );
+    }
+    const { service } = await hostedServiceForRun(
+      environment,
+      actor.userId,
+      instructorIncidentRunId,
+    );
+    if (request.method === "GET") {
+      const state = await service.loadState(instructorIncidentRunId);
+      return jsonResponse(200, {
+        director: {
+          schemaVersion: "1.0.0",
+          runId: instructorIncidentRunId,
+          runVersion: state.version,
+          incidents: await service.instructorIncidents(
+            actor,
+            instructorIncidentRunId,
+          ),
+        },
+      });
+    }
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (
+      !isRecord(body) ||
+      requiredText(body.runId, "runId") !==
+        instructorIncidentRunId
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "Instructor incident run ID must match the API route.",
+      );
+    }
+    const result = await service.releaseInstructorIncident(actor, {
+      commandId: requiredText(body.commandId, "commandId"),
+      runId: instructorIncidentRunId,
+      expectedRunVersion: Number(body.expectedRunVersion),
+      incidentId: requiredText(body.incidentId, "incidentId"),
+    });
+    return jsonResponse(200, {
+      appendedEventIds: result.appendedEventIds,
+      wasIdempotentReplay: result.wasIdempotentReplay,
+    });
   }
 
   const commandRunId = pathRunId(url.pathname, "commands");

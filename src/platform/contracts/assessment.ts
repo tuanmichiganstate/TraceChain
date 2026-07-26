@@ -29,8 +29,25 @@ export interface AssignmentCounterfactualConfigurationV1 {
   readonly requireReflection: boolean;
 }
 
+export type AssignmentResearchConfigurationV1 =
+  | {
+      readonly enabled: false;
+    }
+  | {
+      readonly enabled: true;
+      readonly experimentalConditionId: string;
+      readonly randomAssignmentRecordId: string;
+      readonly fixedScenarioSeed: string;
+      readonly consentStatusReference: string;
+      readonly preTestLinkageId?: string;
+      readonly postTestLinkageId?: string;
+      readonly blindedRaters: boolean;
+      readonly interventionVersion: string;
+      readonly retentionPolicyReference: string;
+    };
+
 export interface HostedAssignmentV1 {
-  readonly schemaVersion: "1.1.0";
+  readonly schemaVersion: "1.2.0";
   readonly assignmentId: string;
   readonly title: string;
   readonly packId: string;
@@ -41,6 +58,7 @@ export interface HostedAssignmentV1 {
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
+  readonly research: AssignmentResearchConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly availableFrom?: string;
@@ -66,6 +84,7 @@ export interface CreateHostedAssignmentRequest {
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
+  readonly research: AssignmentResearchConfigurationV1;
   readonly learnerUserIds: readonly string[];
   readonly availableFrom?: string;
   readonly availableUntil?: string;

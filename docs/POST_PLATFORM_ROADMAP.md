@@ -114,6 +114,25 @@ evidence-based deferral rather than inventing a new order. See:
 - `CURRICULUM_OVERLAY_V2.md`; and
 - `ROADMAP_RERANKING_REVIEW_V1.md`.
 
+## 2026-07-26 priorities 5, 6, 7, 8, and 11 technical checkpoint
+
+A later authorized implementation increment added bounded technical candidates
+for:
+
+- a scenario-authored, append-only Simulation Director incident release;
+- one stable authenticated assignment deep link;
+- event-linked descriptive process observations;
+- fixed-seed controlled-study assignment metadata and pseudonymous research
+  participant exports; and
+- scenario-authored diagnostic professional consequences.
+
+This implementation does not override the roadmap's evidence gates. In
+particular, process analytics are available for transparent inspection but must
+not be used to infer learner traits or make high-stakes decisions before pilot
+validation. Institutional authentication, roster synchronization, and grade
+return remain outside the bounded deep-link integration. See
+`POST_PLATFORM_PRIORITIES_5_6_7_8_11_V1.md`.
+
 ## Ranked investments
 
 | Rank | Initiative | Classroom value | MOOC value | Relative effort | Decision |

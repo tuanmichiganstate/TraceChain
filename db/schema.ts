@@ -82,6 +82,8 @@ export const schemaStatements = [
       CHECK (json_valid(mode_configuration_json)),
     counterfactual_configuration_json TEXT NOT NULL
       CHECK (json_valid(counterfactual_configuration_json)),
+    research_configuration_json TEXT NOT NULL
+      CHECK (json_valid(research_configuration_json)),
     lifecycle_status TEXT NOT NULL DEFAULT 'active'
       CHECK (lifecycle_status IN ('active', 'closed')),
     available_from_utc TEXT,

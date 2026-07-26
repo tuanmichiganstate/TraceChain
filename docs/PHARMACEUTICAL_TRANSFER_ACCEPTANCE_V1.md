@@ -2,7 +2,7 @@
 
 **Case:** `SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0`
 
-**Pack:** `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.4.0`
+**Pack:** `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.5.0`
 
 **Status:** Technical candidate; external acceptance incomplete.
 
@@ -22,7 +22,8 @@ coffee labels:
 The generic hosted runtime executes the case. No pharmaceutical-specific
 service, reducer, persistence adapter, or UI transaction system was added.
 Authored option effects feed the existing generic counterfactual metric
-interface.
+interface and the learner-facing diagnostic professional-consequence
+projection.
 
 ## Technical acceptance evidence
 
@@ -37,6 +38,9 @@ Implemented and covered by automated tests:
 - two authored counterfactual decision points;
 - five scenario-authored comparison dimensions;
 - validation that option effects reference declared runtime metrics;
+- one versioned calibration-review incident that can be released only at its
+  authored transfer-triage boundary;
+- append-only instructor attribution and replay of the incident;
 - original-run immutability through the existing branch engine; and
 - English and Vietnamese locale completeness.
 

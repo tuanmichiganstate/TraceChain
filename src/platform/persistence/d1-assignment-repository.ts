@@ -24,6 +24,10 @@ import {
   AssignmentCounterfactualConfigurationError,
   validateAssignmentCounterfactualConfiguration,
 } from "../runs/counterfactual-assignment";
+import {
+  AssignmentResearchConfigurationError,
+  validateAssignmentResearchConfiguration,
+} from "../runs/research-configuration";
 import { assignmentStartAvailability } from "../runs/assignment-availability";
 import type { D1DatabaseLike } from "./d1-types";
 
@@ -38,6 +42,7 @@ interface AssignmentRow {
   readonly run_mode: string;
   readonly mode_configuration_json: string;
   readonly counterfactual_configuration_json: string;
+  readonly research_configuration_json: string;
   readonly lifecycle_status: string;
   readonly available_from_utc: string | null;
   readonly available_until_utc: string | null;
@@ -118,6 +123,7 @@ const FIND_ASSIGNMENT = `SELECT
   run_mode,
   mode_configuration_json,
   counterfactual_configuration_json,
+  research_configuration_json,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
@@ -152,6 +158,7 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.run_mode,
   assignments.mode_configuration_json,
   assignments.counterfactual_configuration_json,
+  assignments.research_configuration_json,
   assignments.lifecycle_status,
   assignments.available_from_utc,
   assignments.available_until_utc,
@@ -194,13 +201,14 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   run_mode,
   mode_configuration_json,
   counterfactual_configuration_json,
+  research_configuration_json,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -702,6 +710,7 @@ function normalizeRequest(
   }
   let runConfiguration;
   let counterfactualReplay;
+  let research;
   try {
     runConfiguration = validateHostedModeConfiguration(
       request.runConfiguration,
@@ -712,10 +721,15 @@ function normalizeRequest(
         request.counterfactualReplay,
         runConfiguration.mode,
       );
+    research = validateAssignmentResearchConfiguration(
+      request.research,
+      runConfiguration,
+    );
   } catch (error) {
     if (
       error instanceof HostedModeConfigurationError ||
-      error instanceof AssignmentCounterfactualConfigurationError
+      error instanceof AssignmentCounterfactualConfigurationError ||
+      error instanceof AssignmentResearchConfigurationError
     ) {
       throw new AssignmentRepositoryError(
         "INVALID_ASSIGNMENT",
@@ -757,6 +771,7 @@ function normalizeRequest(
     mode: runConfiguration.mode,
     runConfiguration,
     counterfactualReplay,
+    research,
     learnerUserIds,
     ...(availableFrom === undefined ? {} : { availableFrom }),
     ...(availableUntil === undefined ? {} : { availableUntil }),
@@ -1030,6 +1045,8 @@ function isSameAssignment(
       JSON.stringify(request.runConfiguration) &&
     JSON.stringify(existing.counterfactualReplay) ===
       JSON.stringify(request.counterfactualReplay) &&
+    JSON.stringify(existing.research) ===
+      JSON.stringify(request.research) &&
     existing.availableFrom === request.availableFrom &&
     existing.availableUntil === request.availableUntil &&
     existing.createdByUserId === principal.userId &&
@@ -1097,6 +1114,7 @@ function assignmentFrom(
   }
   let runConfiguration;
   let counterfactualReplay;
+  let research;
   try {
     runConfiguration = validateHostedModeConfiguration(
       JSON.parse(row.mode_configuration_json) as unknown,
@@ -1109,6 +1127,10 @@ function assignmentFrom(
         ) as unknown,
         row.run_mode as AssignmentRunMode,
       );
+    research = validateAssignmentResearchConfiguration(
+      JSON.parse(row.research_configuration_json) as unknown,
+      runConfiguration,
+    );
   } catch (error) {
     throw new AssignmentRepositoryError(
       "ASSIGNMENT_STORAGE_FAILED",
@@ -1118,7 +1140,7 @@ function assignmentFrom(
     );
   }
   return {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     assignmentId: row.assignment_id,
     title: row.title,
     packId: row.pack_id,
@@ -1128,6 +1150,7 @@ function assignmentFrom(
     mode: row.run_mode as AssignmentRunMode,
     runConfiguration,
     counterfactualReplay,
+    research,
     learnerUserIds,
     status: row.lifecycle_status,
     ...(availableFrom === undefined ? {} : { availableFrom }),
@@ -1218,6 +1241,7 @@ export class D1AssignmentRepository {
           normalized.mode,
           JSON.stringify(normalized.runConfiguration),
           JSON.stringify(normalized.counterfactualReplay),
+          JSON.stringify(normalized.research),
           normalized.availableFrom ?? null,
           normalized.availableUntil ?? null,
           now,

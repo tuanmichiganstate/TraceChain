@@ -100,6 +100,15 @@ comparison metrics, reuses valid downstream commands, pauses on divergence,
 captures reflection, and provides role-filtered branch and assignment
 analytics exports. The
 hosted work does not alter the current SCORM activity.
+The pharmaceutical transfer case also supports one scenario-authored,
+versioned instructor incident; its release is permission-controlled,
+append-only, replayable, and cannot edit hidden state or prior decisions.
+Assignments may expose a stable authenticated learner deep link and optionally
+record bounded controlled-study metadata with a fixed seed. Assignment reports
+include event-linked descriptive process observations with explicit
+no-trait-inference limits. Scenario-authored safety, cost, delay, compliance,
+and evidence effects remain diagnostic professional consequences rather than a
+second score or a generic game currency.
 
 | | |
 |---|---|
@@ -253,7 +262,7 @@ schemas/               published versioned JSON Schemas
   point B roadmap for the hosted instructor-ready platform
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.4 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.5 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
@@ -283,6 +292,10 @@ schemas/               published versioned JSON Schemas
   and ecosystem priorities after the instructor-ready boundary
 - `docs/POST_PLATFORM_BASELINE_V1.md` — candidate release identity and the
   boundary between automated readiness and human acceptance
+- `docs/POST_PLATFORM_PRIORITIES_5_6_7_8_11_V1.md` — the bounded
+  implementation and remaining external gates for Simulation Director,
+  assignment deep linking, process analytics, controlled-study metadata, and
+  professional consequences
 - `docs/PILOT_VALIDATION_PROTOCOL_V1.md` — operational pilot measures,
   accessibility and content review, reliability, calibration, and exit gates
 - `docs/PILOT_EXECUTION_RECORD_V1.md` — immutable pilot baseline, approvals,

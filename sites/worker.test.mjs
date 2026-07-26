@@ -817,6 +817,12 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       "pharma-learner@example.edu",
       ["learner"],
     );
+    seedUser(
+      database,
+      "USER_INSTRUCTOR_OUTSIDE_PHARMA",
+      "pharma-outside-instructor@example.edu",
+      ["instructor"],
+    );
     const pack = await pharmaceuticalColdChainPack();
     const imported = await worker.fetch(
       apiRequest("/api/v1/scenario-packs/import", {
@@ -882,6 +888,203 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       ],
     );
 
+    const transferScenario = pack.scenarios.find(
+      ({ scenarioId }) =>
+        scenarioId === "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+    );
+    assert.notEqual(transferScenario, undefined);
+    const directorAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "pharma-author@example.edu",
+        body: {
+          commandId: "CMD_ASSIGN_PHARMA_DIRECTOR_001",
+          assignmentId: "ASSIGNMENT_PHARMA_DIRECTOR_001",
+          title: "Pharmaceutical incident review",
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenarioId: transferScenario.scenarioId,
+          scenarioVersion: transferScenario.version,
+          mode: "tutorial",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
+          research: { enabled: false },
+          learnerUserIds: ["USER_LEARNER_PHARMA"],
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      directorAssignment.status,
+      201,
+      await directorAssignment.clone().text(),
+    );
+    const directorRunId = "RUN_PHARMA_DIRECTOR_001";
+    const directorStart = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_DIRECTOR_001/start-run",
+        {
+          method: "POST",
+          email: "pharma-learner@example.edu",
+          body: {
+            commandId: "CMD_START_PHARMA_DIRECTOR_001",
+            runId: directorRunId,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      directorStart.status,
+      201,
+      await directorStart.clone().text(),
+    );
+    const directorAdvance = await worker.fetch(
+      apiRequest(`/api/v1/runs/${directorRunId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "ADVANCE_WORKFLOW",
+          commandId: "CMD_ADVANCE_PHARMA_DIRECTOR_001",
+          runId: directorRunId,
+          expectedRunVersion: 1,
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      directorAdvance.status,
+      200,
+      await directorAdvance.clone().text(),
+    );
+    const directorTriage = await directorAdvance.json();
+
+    const learnerDirectorDenied = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${directorRunId}/instructor-incidents`,
+        { email: "pharma-learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerDirectorDenied.status, 403);
+
+    const directorStatus = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${directorRunId}/instructor-incidents`,
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      directorStatus.status,
+      200,
+      await directorStatus.clone().text(),
+    );
+    const directorControl = (await directorStatus.json()).director;
+    assert.equal(
+      directorControl.runVersion,
+      directorTriage.projection.version,
+    );
+    assert.deepEqual(
+      directorControl.incidents.map(({ incidentId, status }) => ({
+        incidentId,
+        status,
+      })),
+      [
+        {
+          incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+          status: "available",
+        },
+      ],
+    );
+    const outsideDirectorDenied = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${directorRunId}/instructor-incidents`,
+        { email: "pharma-outside-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outsideDirectorDenied.status, 403);
+
+    const releaseBody = {
+      commandId: "CMD_RELEASE_PHARMA_DIRECTOR_001",
+      runId: directorRunId,
+      expectedRunVersion: directorControl.runVersion,
+      incidentId: "INCIDENT_PHARMA_CALIBRATION_REVIEW",
+    };
+    const releasedIncident = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${directorRunId}/instructor-incidents`,
+        {
+          method: "POST",
+          email: "pharma-author@example.edu",
+          body: releaseBody,
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      releasedIncident.status,
+      200,
+      await releasedIncident.clone().text(),
+    );
+    assert.equal(
+      (await releasedIncident.json()).wasIdempotentReplay,
+      false,
+    );
+    const repeatedIncident = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${directorRunId}/instructor-incidents`,
+        {
+          method: "POST",
+          email: "pharma-author@example.edu",
+          body: releaseBody,
+        },
+      ),
+      env,
+    );
+    assert.equal(repeatedIncident.status, 200);
+    assert.equal(
+      (await repeatedIncident.json()).wasIdempotentReplay,
+      true,
+    );
+    const releasedProjectionResponse = await worker.fetch(
+      apiRequest(`/api/v1/runs/${directorRunId}`, {
+        email: "pharma-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(releasedProjectionResponse.status, 200);
+    const releasedProjection = (
+      await releasedProjectionResponse.json()
+    ).projection;
+    assert.deepEqual(
+      releasedProjection.presentation.instructorIncidents.map(
+        ({ incidentId }) => incidentId,
+      ),
+      ["INCIDENT_PHARMA_CALIBRATION_REVIEW"],
+    );
+    assert.equal(
+      releasedProjection.informationState.some(
+        ({ recordId }) =>
+          recordId === "EVID_PHARMA_TRANSFER_CALIBRATION",
+      ),
+      true,
+    );
+    assert.deepEqual(
+      releasedProjection.presentation.professionalConsequences.map(
+        ({ dimensionId, value }) => ({ dimensionId, value }),
+      ),
+      [
+        { dimensionId: "DIM_PHARMA_BUSINESS_COST", value: 1 },
+        {
+          dimensionId: "DIM_PHARMA_OPERATIONAL_DELAY",
+          value: 1,
+        },
+        { dimensionId: "DIM_PHARMA_EVIDENCE_QUALITY", value: 1 },
+      ],
+    );
+
     const assignment = await worker.fetch(
       apiRequest("/api/v1/assignments", {
         method: "POST",
@@ -897,6 +1100,7 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           mode: "tutorial",
           counterfactualReplay:
             disabledCounterfactualReplay,
+          research: { enabled: false },
           learnerUserIds: ["USER_LEARNER_PHARMA"],
         },
       }),
@@ -1258,6 +1462,56 @@ test("imports and previews a self-localized disciplinary pack", async () => {
         },
       ],
     );
+
+    const analyticsResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/process-analytics",
+        { email: "pharma-author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      analyticsResponse.status,
+      200,
+      await analyticsResponse.clone().text(),
+    );
+    const analytics = (await analyticsResponse.json()).analytics;
+    assert.equal(
+      analytics.interpretation,
+      "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
+    );
+    assert.equal(analytics.summary.runCount, 1);
+    assert.deepEqual(analytics.summary.evidenceInspectionCounts, {
+      EVID_PHARMA_SENSOR_SUMMARY: 1,
+    });
+    assert.deepEqual(analytics.summary.decisionSubmissionCounts, {
+      DECISION_PHARMA_RELEASE: 1,
+    });
+    assert.equal(
+      typeof analytics.runs[0].evidenceInspectionOrder[0].eventId,
+      "string",
+    );
+    assert.deepEqual(analytics.limitations, [
+      "ELAPSED_INTERVAL_IS_NOT_ATTENTION",
+      "NO_MOTIVATION_OR_ABILITY_INFERENCE",
+      "NO_AUTOMATED_HIGH_STAKES_DECISION",
+    ]);
+    const learnerAnalyticsDenied = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/process-analytics",
+        { email: "pharma-learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(learnerAnalyticsDenied.status, 403);
+    const outsideAnalyticsDenied = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_PHARMA_001/process-analytics",
+        { email: "pharma-outside-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outsideAnalyticsDenied.status, 403);
   } finally {
     database.close();
   }
@@ -1533,6 +1787,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
       counterfactualReplay: disabledCounterfactualReplay,
+      research: { enabled: false },
       runConfiguration: pack.scenarios[0].modeConfigurations.find(
         (configuration) => configuration.mode === "standard",
       ),
@@ -1576,7 +1831,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
     assert.equal(create.status, 201, await create.clone().text());
     const created = await create.json();
     assert.deepEqual(created.assignment, {
-      schemaVersion: "1.1.0",
+      schemaVersion: "1.2.0",
       assignmentId: "ASSIGNMENT_COFFEE_001",
       title: "Coffee governance cohort",
       packId: pack.packId,
@@ -1586,6 +1841,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       mode: "standard",
       runConfiguration: assignmentBody.runConfiguration,
       counterfactualReplay: disabledCounterfactualReplay,
+      research: { enabled: false },
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
       status: "active",
       availableFrom: assignmentBody.availableFrom,
@@ -1918,6 +2174,138 @@ test("creates an exact published assignment for a provisioned learner", async ()
       (await futureStart.json()).error.code,
       "ASSIGNMENT_NOT_YET_AVAILABLE",
     );
+
+    const invalidResearchAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: {
+          ...assignmentBody,
+          commandId: "COMMAND_ASSIGNMENT_RESEARCH_INVALID_001",
+          assignmentId: "ASSIGNMENT_RESEARCH_INVALID_001",
+          mode: "tutorial",
+          research: {
+            enabled: true,
+            experimentalConditionId: "CONDITION_GUIDED",
+            randomAssignmentRecordId: "RANDOMIZATION_001",
+            fixedScenarioSeed: "SEED_RESEARCH_001",
+            consentStatusReference: "CONSENT_RECORD_001",
+            blindedRaters: true,
+            interventionVersion: "1.0.0",
+            retentionPolicyReference: "RETENTION_POLICY_001",
+          },
+          availableFrom: undefined,
+          availableUntil: undefined,
+        },
+      }),
+      env,
+    );
+    assert.equal(invalidResearchAssignment.status, 400);
+    assert.equal(
+      (await invalidResearchAssignment.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
+
+    const researchConfiguration = {
+      enabled: true,
+      experimentalConditionId: "CONDITION_STANDARD",
+      randomAssignmentRecordId: "RANDOMIZATION_002",
+      fixedScenarioSeed: "SEED_RESEARCH_002",
+      consentStatusReference: "CONSENT_RECORD_002",
+      preTestLinkageId: "PRETEST_002",
+      postTestLinkageId: "POSTTEST_002",
+      blindedRaters: true,
+      interventionVersion: "1.0.0",
+      retentionPolicyReference: "RETENTION_POLICY_001",
+    };
+    const researchAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: {
+          ...assignmentBody,
+          commandId: "COMMAND_ASSIGNMENT_RESEARCH_001",
+          assignmentId: "ASSIGNMENT_RESEARCH_001",
+          title: "Controlled coffee condition",
+          research: researchConfiguration,
+          availableFrom: undefined,
+          availableUntil: undefined,
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      researchAssignment.status,
+      201,
+      await researchAssignment.clone().text(),
+    );
+    assert.deepEqual(
+      (await researchAssignment.json()).assignment.research,
+      researchConfiguration,
+    );
+    const researchRunId = "RUN_RESEARCH_COFFEE_001";
+    const researchStart = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_RESEARCH_001/start-run",
+        {
+          method: "POST",
+          email: "assignment-learner@example.edu",
+          body: {
+            commandId: "COMMAND_RESEARCH_RUN_001",
+            runId: researchRunId,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      researchStart.status,
+      201,
+      await researchStart.clone().text(),
+    );
+    const researchTimelineResponse = await worker.fetch(
+      apiRequest(`/api/v1/runs/${researchRunId}/timeline`, {
+        email: "assignment-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(researchTimelineResponse.status, 200);
+    const researchTimeline = (
+      await researchTimelineResponse.json()
+    ).timeline;
+    assert.equal(
+      researchTimeline[0].payload.scenarioSeed,
+      "SEED_RESEARCH_002",
+    );
+    const researchExportResponse = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_RESEARCH_001/export.json?identity=pseudonymous",
+        { email: "assignment-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      researchExportResponse.status,
+      200,
+      await researchExportResponse.clone().text(),
+    );
+    const researchExport = await researchExportResponse.json();
+    assert.equal(researchExport.schemaVersion, "1.5.0");
+    assert.equal(
+      researchExport.researchMetadata.experimentalConditionId,
+      "CONDITION_STANDARD",
+    );
+    assert.equal(researchExport.researchMetadata.deidentified, true);
+    assert.match(
+      researchExport.participants[0].researchParticipantId,
+      /^LEARNER_[A-F0-9]{24}$/u,
+    );
+    assert.equal(
+      JSON.stringify(researchExport).includes(
+        "USER_LEARNER_ASSIGNMENT",
+      ),
+      false,
+    );
   } finally {
     database.close();
   }
@@ -1981,6 +2369,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           mode: "standard",
           counterfactualReplay:
             instructorCounterfactualReplay,
+          research: { enabled: false },
           learnerUserIds: ["USER_LEARNER_001"],
         },
       }),
@@ -3834,8 +4223,8 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.4.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.4.0");
+    assert.equal(exportedEvidence.schemaVersion, "1.5.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.5.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",

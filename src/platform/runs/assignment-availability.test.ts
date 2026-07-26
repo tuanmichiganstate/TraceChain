@@ -3,7 +3,7 @@ import type { HostedAssignmentV1 } from "../contracts/assessment";
 import { assignmentStartAvailability } from "./assignment-availability";
 
 const assignment: HostedAssignmentV1 = {
-  schemaVersion: "1.1.0",
+  schemaVersion: "1.2.0",
   assignmentId: "ASSIGNMENT_AVAILABILITY_001",
   title: "Availability cohort",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -30,6 +30,7 @@ const assignment: HostedAssignmentV1 = {
     learnerAvailability: "DISABLED",
     requireReflection: false,
   },
+  research: { enabled: false },
   learnerUserIds: ["USER_LEARNER_001"],
   status: "active",
   availableFrom: "2026-08-01T00:00:00.000Z",

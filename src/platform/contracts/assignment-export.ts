@@ -13,6 +13,7 @@ export type AssignmentExportIdentityMode =
 export interface AssignmentExportParticipantV1 {
   readonly assignmentId: string;
   readonly learnerUserId: string;
+  readonly researchParticipantId?: string;
 }
 
 export interface AssignmentExportRunV1 {
@@ -48,15 +49,29 @@ export interface ExportDatasetDefinitionV1 {
 }
 
 export interface AssignmentExportDataDictionaryV1 {
-  readonly schemaVersion: "1.4.0";
+  readonly schemaVersion: "1.5.0";
   readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1";
   readonly datasets: readonly ExportDatasetDefinitionV1[];
 }
 
 export interface AssignmentEvidenceExportV1 {
-  readonly schemaVersion: "1.4.0";
+  readonly schemaVersion: "1.5.0";
   readonly exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE";
   readonly identityMode: AssignmentExportIdentityMode;
+  readonly researchMetadata:
+    | null
+    | {
+        readonly experimentalConditionId: string;
+        readonly randomAssignmentRecordId: string;
+        readonly fixedScenarioSeed: string;
+        readonly consentStatusReference: string;
+        readonly preTestLinkageId?: string;
+        readonly postTestLinkageId?: string;
+        readonly blindedRaters: boolean;
+        readonly interventionVersion: string;
+        readonly retentionPolicyReference: string;
+        readonly deidentified: boolean;
+      };
   readonly generatedAt: string;
   readonly assignment: HostedAssignmentV1;
   readonly participants: readonly AssignmentExportParticipantV1[];

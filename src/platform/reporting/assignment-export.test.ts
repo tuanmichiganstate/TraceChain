@@ -13,7 +13,7 @@ import {
 const assignmentReport: HostedAssignmentReportV1 = {
   schemaVersion: "1.3.0",
   assignment: {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
     title: "Coffee export cohort",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -42,6 +42,7 @@ const assignmentReport: HostedAssignmentReportV1 = {
       learnerAvailability: "DISABLED",
       requireReflection: false,
     },
+    research: { enabled: false },
     learnerUserIds: ["USER_LEARNER_001"],
     status: "active",
     feedbackReleaseStatus: "released",
@@ -140,7 +141,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.4.0",
+      schemaVersion: "1.5.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       identityMode: "identified",
       generatedAt: "2026-07-24T09:00:00.000Z",
@@ -196,7 +197,7 @@ describe("assignment evidence export", () => {
         "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("1.4.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("1.5.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -219,7 +220,7 @@ describe("assignment evidence export", () => {
       /^export_schema_version,record_type,assignment_id,/u,
     );
     expect(csv).toContain(
-      "event,ASSIGNMENT_EXPORT_001,USER_LEARNER_001,RUN_EXPORT_001,1,EVENT_EXPORT_001,RUN_CREATED",
+      "event,ASSIGNMENT_EXPORT_001,USER_LEARNER_001,,RUN_EXPORT_001,1,EVENT_EXPORT_001,RUN_CREATED",
     );
     expect(csv).toContain('"elapsedSeconds"":0');
     expect(csv).toContain('"rejectedAttemptCount"":1');
@@ -273,5 +274,53 @@ describe("assignment evidence export", () => {
     );
     expect(json).toContain("USER_INSTRUCTOR_001");
     expect(csv).toContain("USER_INSTRUCTOR_001");
+  });
+
+  it("adds bounded research metadata and stable participant IDs to the de-identified export", () => {
+    const researchReport: HostedAssignmentReportV1 = {
+      ...assignmentReport,
+      assignment: {
+        ...assignmentReport.assignment,
+        research: {
+          enabled: true,
+          experimentalConditionId: "CONDITION_A",
+          randomAssignmentRecordId: "RANDOMIZATION_001",
+          fixedScenarioSeed: "SEED_RESEARCH_001",
+          consentStatusReference: "CONSENT_RECORD_001",
+          preTestLinkageId: "PRETEST_001",
+          postTestLinkageId: "POSTTEST_001",
+          blindedRaters: true,
+          interventionVersion: "1.0.0",
+          retentionPolicyReference: "RETENTION_POLICY_001",
+        },
+      },
+    };
+    const exported = createAssignmentEvidenceExport({
+      report: researchReport,
+      events: [runEvent],
+      ratingRevisions: [ratingRevision],
+      moderationResolutions: [],
+      generatedAt: "2026-07-24T09:00:00.000Z",
+      identityMode: "pseudonymous",
+    });
+
+    expect(exported.researchMetadata).toEqual({
+      experimentalConditionId: "CONDITION_A",
+      randomAssignmentRecordId: "RANDOMIZATION_001",
+      fixedScenarioSeed: "SEED_RESEARCH_001",
+      consentStatusReference: "CONSENT_RECORD_001",
+      preTestLinkageId: "PRETEST_001",
+      postTestLinkageId: "POSTTEST_001",
+      blindedRaters: true,
+      interventionVersion: "1.0.0",
+      retentionPolicyReference: "RETENTION_POLICY_001",
+      deidentified: true,
+    });
+    expect(exported.participants[0]?.researchParticipantId).toMatch(
+      /^LEARNER_[A-F0-9]{24}$/u,
+    );
+    expect(exported.participants[0]?.researchParticipantId).toBe(
+      exported.participants[0]?.learnerUserId,
+    );
   });
 });

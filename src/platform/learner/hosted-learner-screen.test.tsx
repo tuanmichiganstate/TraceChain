@@ -48,6 +48,75 @@ function projection(
 }
 
 describe("hosted learner workspace", () => {
+  it("opens one stable assignment link without starting an attempt", async () => {
+    const startRun = vi.fn();
+    const assignment = (assignmentId: string, title: string) => ({
+      assignment: {
+        schemaVersion: "1.2.0" as const,
+        assignmentId,
+        title,
+        packId: "PACK_COFFEE",
+        packVersion: "1.5.0",
+        scenarioId: "SCN_COFFEE",
+        scenarioVersion: "1.5.0",
+        mode: "standard" as const,
+        runConfiguration: {
+          mode: "standard" as const,
+          allowHints: false,
+          allowRetry: false,
+          allowBacktracking: false,
+          feedbackTiming: "final" as const,
+          showScores: false,
+          outcomeStrategy: "forced" as const,
+          seedPolicy: "generated" as const,
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+        counterfactualReplay: disabledCounterfactualReplay,
+        research: { enabled: false } as const,
+        learnerUserIds: ["USER_LEARNER_001"],
+        status: "active" as const,
+        feedbackReleaseStatus: "withheld" as const,
+        createdAt: "2026-07-26T08:00:00.000Z",
+        createdByUserId: "USER_INSTRUCTOR_001",
+      },
+      startAvailability: availableStart,
+      runs: [],
+    });
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments: vi.fn().mockResolvedValue([
+        assignment("ASSIGNMENT_TARGET", "Target assignment"),
+        assignment("ASSIGNMENT_OTHER", "Other assignment"),
+      ]),
+      startRun,
+      loadRun: vi.fn(),
+      loadFeedback: vi.fn(),
+      submit: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen
+          api={api}
+          initialAssignmentId="ASSIGNMENT_TARGET"
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText("Target assignment"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Other assignment"),
+    ).not.toBeInTheDocument();
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
   it("starts an assigned run and submits its server-authorized action", async () => {
     const loadAssignments = vi.fn()
       .mockResolvedValueOnce([
@@ -342,6 +411,8 @@ describe("hosted learner workspace", () => {
           },
         },
         policyTitles: {},
+        instructorIncidents: [],
+        professionalConsequences: [],
         modeConfiguration: {
           mode: "tutorial",
           allowHints: true,
