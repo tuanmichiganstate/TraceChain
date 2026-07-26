@@ -12,6 +12,8 @@ import { loadRuntimePackage, type RuntimeFetch } from "./runtime-loader";
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
+import { challengeAScenario } from "../scenarios/challenge-a/scenario";
+import { challengeVariantBank } from "../scenarios/challenge-a/variant-bank";
 
 function portraitMediaFiles(): Readonly<Record<string, unknown>> {
   const mediaManifest = {
@@ -181,6 +183,60 @@ describe("TraceChain configuration", () => {
     expect(runtime.cryptographicRuntime).toEqual(
       coffeeCryptographicRuntime,
     );
+  });
+
+  it("loads and verifies the complete curated Challenge variant bank", async () => {
+    const mediaManifest = {
+      schemaVersion: "1",
+      scenarioId: challengeAScenario.scenarioId,
+      scenarioVersion: challengeAScenario.scenarioVersion,
+      assets: challengeAScenario.portraitAssets,
+    };
+    const variantBankSource = `${JSON.stringify(
+      challengeVariantBank,
+      null,
+      2,
+    )}\n`;
+    const files: Readonly<Record<string, unknown>> = {
+      "./tracechain.config.json":
+        embedConfiguration(CHALLENGE_PRESET),
+      "./scenario.json": challengeAScenario,
+      "./scenario-variant-bank.json": challengeVariantBank,
+      "./media-manifest.json": mediaManifest,
+      ...cryptographicFiles(),
+      "./build-info.json": {
+        ...(cryptographicFiles()["./build-info.json"] as object),
+        scenarioHash: sha256Hex(
+          `${JSON.stringify(challengeAScenario, null, 2)}\n`,
+        ),
+        portraitMediaManifestHash: sha256Hex(
+          `${JSON.stringify(mediaManifest, null, 2)}\n`,
+        ),
+        variantBankId: challengeVariantBank.bankId,
+        variantBankVersion:
+          challengeVariantBank.bankVersion,
+        variantBankHash: sha256Hex(variantBankSource),
+        variantContentHashes: Object.fromEntries(
+          challengeVariantBank.variants.map((variant) => [
+            variant.metadata.variantId,
+            variant.metadata.contentHash,
+          ]),
+        ),
+      },
+    };
+    const requested: string[] = [];
+    const runtime = await loadRuntimePackage(async (path) => {
+      requested.push(path);
+      return {
+        ok: path in files,
+        status: path in files ? 200 : 404,
+        json: async () => files[path],
+      };
+    });
+
+    expect(runtime.variantBank).toEqual(challengeVariantBank);
+    expect(runtime.scenario).toEqual(challengeAScenario);
+    expect(requested).toContain("./scenario-variant-bank.json");
   });
 
   it("lets the resolved package pass score override the scenario baseline", async () => {

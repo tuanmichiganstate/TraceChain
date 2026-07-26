@@ -220,6 +220,14 @@ export function FinalReport(): ReactNode {
               <code>{causalReport.configurationIdentifier}</code>
             </dd>
           </div>
+          {state.variantAssignment === undefined ? null : (
+            <div className="asset-card__row">
+              <dt>{t("report.caseReference")}</dt>
+              <dd>
+                <code>{state.variantAssignment.caseReference}</code>
+              </dd>
+            </div>
+          )}
         </dl>
       </section>
 

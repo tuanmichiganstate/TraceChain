@@ -11,12 +11,15 @@ import type { CryptographicRuntime } from "../crypto/signatures/types";
 import { NobleEd25519Provider } from "../crypto/signatures/noble-ed25519-provider";
 import { assertValidCryptographicRuntime } from "../crypto/signatures/validation";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
+import type { ScenarioVariantBank } from "../domain/scenario/variant-bank";
+import { validateVariantBank } from "../domain/scenario/variant-bank";
 
 export interface RuntimePackage {
   readonly configuration: TraceChainConfiguration;
   readonly configurationHash: string;
   readonly scenario: ScenarioDefinition;
   readonly cryptographicRuntime: CryptographicRuntime | null;
+  readonly variantBank: ScenarioVariantBank | null;
 }
 
 interface PortraitMediaManifest {
@@ -76,6 +79,11 @@ export async function loadRuntimePackage(
       loadJson(fetcher, "./media-manifest.json"),
       loadJson(fetcher, "./build-info.json"),
     ]);
+  const variantBankFile =
+    configurationFile.configuration.scenarioVariation.strategy ===
+    "SEEDED_VARIANT_BANK"
+      ? await loadJson(fetcher, "./scenario-variant-bank.json")
+      : null;
   const cryptographicFiles =
     configurationFile.configuration.technicalFeatures.digitalSignatures
       ? await Promise.all([
@@ -116,6 +124,24 @@ export async function loadRuntimePackage(
   if (scenario.scoringConfiguration.maxScore !== configurationFile.configuration.scoring.maximumScore) {
     throw new IncompatibleAttemptError("Scenario maximum score does not match package configuration");
   }
+  const variantBank =
+    variantBankFile === null
+      ? null
+      : (variantBankFile as ScenarioVariantBank);
+  if (variantBank !== null) {
+    const bankValidation = validateVariantBank({
+      bank: variantBank,
+      configuration: configurationFile.configuration,
+    });
+    if (!bankValidation.isValid) {
+      throw new ScenarioConfigurationError(
+        `scenario-variant-bank.json failed validation: ${bankValidation.issues
+          .filter((issue) => issue.severity === "ERROR")
+          .map((issue) => `${issue.path}: ${issue.message}`)
+          .join("; ")}`,
+      );
+    }
+  }
   const mediaManifest = mediaManifestFile as Partial<PortraitMediaManifest>;
   const buildInformation = buildInformationFile as {
     readonly scenarioHash?: unknown;
@@ -124,6 +150,10 @@ export async function loadRuntimePackage(
     readonly portraitMediaSchemaVersion?: unknown;
     readonly portraitMediaManifestHash?: unknown;
     readonly portraitMediaHashes?: unknown;
+    readonly variantBankId?: unknown;
+    readonly variantBankVersion?: unknown;
+    readonly variantBankHash?: unknown;
+    readonly variantContentHashes?: unknown;
   };
   const mediaManifestSource = `${JSON.stringify(mediaManifestFile, null, 2)}\n`;
   const recordedPortraitHashes =
@@ -146,6 +176,32 @@ export async function loadRuntimePackage(
     throw new IncompatibleAttemptError(
       "Portrait media manifest does not match the embedded scenario",
     );
+  }
+  if (variantBank !== null) {
+    const bankSource = `${JSON.stringify(variantBank, null, 2)}\n`;
+    const recordedVariantHashes =
+      typeof buildInformation.variantContentHashes === "object" &&
+      buildInformation.variantContentHashes !== null
+        ? (buildInformation.variantContentHashes as Readonly<
+            Record<string, unknown>
+          >)
+        : null;
+    if (
+      buildInformation.variantBankId !== variantBank.bankId ||
+      buildInformation.variantBankVersion !==
+        variantBank.bankVersion ||
+      buildInformation.variantBankHash !== sha256Hex(bankSource) ||
+      recordedVariantHashes === null ||
+      variantBank.variants.some(
+        (variant) =>
+          recordedVariantHashes[variant.metadata.variantId] !==
+          variant.metadata.contentHash,
+      )
+    ) {
+      throw new IncompatibleAttemptError(
+        "Build metadata does not match the embedded scenario variant bank",
+      );
+    }
   }
   const cryptographicRuntime =
     cryptographicFiles === null
@@ -196,11 +252,19 @@ export async function loadRuntimePackage(
       }
     }
     try {
-      await assertValidCryptographicRuntime({
-        runtime: cryptographicRuntime,
-        scenario,
-        provider: new NobleEd25519Provider(),
-      });
+      const cryptographicScenarios =
+        variantBank === null
+          ? [scenario]
+          : variantBank.variants.map(
+              (variant) => variant.scenario,
+            );
+      for (const cryptographicScenario of cryptographicScenarios) {
+        await assertValidCryptographicRuntime({
+          runtime: cryptographicRuntime,
+          scenario: cryptographicScenario,
+          provider: new NobleEd25519Provider(),
+        });
+      }
     } catch (error) {
       throw new ScenarioConfigurationError(
         error instanceof Error ? error.message : String(error),
@@ -212,5 +276,6 @@ export async function loadRuntimePackage(
     configurationHash: configurationFile.configurationHash,
     scenario,
     cryptographicRuntime,
+    variantBank,
   };
 }

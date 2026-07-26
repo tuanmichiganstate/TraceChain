@@ -23,10 +23,14 @@ import {
 import { allScorableItems } from "../types/scenario";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../../scenarios/challenge-a/scenario";
+import { challengeBScenario } from "../../scenarios/challenge-a/challenge-b";
+import { challengeCScenario } from "../../scenarios/challenge-a/challenge-c";
 
 const scenarios = [
   ["guided", coffeeScenario],
   ["challenge-a", challengeAScenario],
+  ["challenge-b", challengeBScenario],
+  ["challenge-c", challengeCScenario],
 ] as const;
 
 function registries(scenario: ScenarioDefinition) {
@@ -180,5 +184,51 @@ describe("Challenge A curation", () => {
     expect(challengeAScenario.runtime.assetRoles.recallSourceAssetId).toBe(
       challengeAScenario.runtime.assetRoles.primaryPackagedLotId,
     );
+  });
+});
+
+describe("Challenge bank curation", () => {
+  it("changes certificate, discrepancy, and recall conclusions across complete cases", () => {
+    expect(
+      [
+        challengeAScenario,
+        challengeBScenario,
+        challengeCScenario,
+      ].map(
+        (scenario) =>
+          scenario.runtime.consequentialCases.certificate
+            .issuerAssessment,
+      ),
+    ).toEqual([
+      "UNRECOGNIZED",
+      "RECOGNIZED_AUTHORIZED",
+      "RECOGNIZED_AUTHORIZED",
+    ]);
+    expect(
+      [
+        challengeAScenario,
+        challengeBScenario,
+        challengeCScenario,
+      ].map(
+        (scenario) =>
+          scenario.runtime.consequentialCases.discrepancy
+            .authoredCauseCode,
+      ),
+    ).toEqual(["UNKNOWN", "FRAUD", "TYPING_ERROR"]);
+    expect(
+      [
+        challengeAScenario,
+        challengeBScenario,
+        challengeCScenario,
+      ].map((scenario) => {
+        const check = scenario.stages
+          .flatMap((stage) => stage.knowledgeChecks)
+          .find(
+            (candidate) =>
+              candidate.knowledgeCheckId === "INT_RECALL_SCOPE",
+          );
+        return check?.correctOptionIds.length;
+      }),
+    ).toEqual([1, 2, 3]);
   });
 });

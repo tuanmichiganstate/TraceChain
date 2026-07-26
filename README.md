@@ -9,7 +9,7 @@ transferring custody and ownership separately, anchoring documents off-chain,
 correcting a committed error without deleting it, transforming and packaging,
 and tracing provenance forwards and backwards.
 
-The shipped guided and Challenge A presets use **Vietnamese**; the same
+The shipped Guided and curated Challenge-bank presets use **Vietnamese**; the same
 localization system also contains English. All code, identifiers, comments,
 tests and documentation are **English**.
 
@@ -20,8 +20,8 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Version 2 implements the complete nine-stage activity as configurable guided
-and curated Challenge A packages, including atomic consequential decisions,
+Version 2 implements the complete nine-stage activity as configurable Guided
+and curated Challenge-bank packages, including atomic consequential decisions,
 trusted role handoff, append-only correction, deterministic TC3 replay, and a
 causal final report. Genuine Ed25519 proposal and endorsement signatures,
 scenario-authored authorization, and constrained endorsement-policy evaluation
@@ -118,7 +118,7 @@ second score or a generic game currency.
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
-| Scenario | complete — one shared engine, standard coffee and curated Challenge A |
+| Scenario | complete — one shared engine, fixed Standard Coffee and three curated Challenge cases |
 | Cryptographic evidence | real Ed25519 proposal and endorsement signatures; simulated educational identities and key custody |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
@@ -128,8 +128,8 @@ second score or a generic game currency.
 
 Stage order, trusted contexts, role handoffs, completion conditions, knowledge
 checks, hints, scripted history, seeds, and scoring live in a
-`ScenarioDefinition`. Package configuration and scenario JSON are external to
-the shared application bundle.
+`ScenarioDefinition`. Package configuration, scenario JSON, and the optional
+Challenge variant bank are external to the shared application bundle.
 
 ---
 
@@ -162,7 +162,7 @@ npm run verify:scorm
 
 Strict release generation produces
 `TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip` and
-`TraceChain_Challenge_ChallengeA_vi_v1.2.0.zip`, plus
+`TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
 `TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`. The local command appends
 `_NON_RELEASE` to every archive name. The Docker demo selects the current Guided
 and Challenge archives by their embedded build metadata, deploys them into
@@ -260,6 +260,8 @@ schemas/               published versioned JSON Schemas
 - `AGENTS.md` — how to verify a change here, and the conventions one follows
 - `docs/CANONICAL_CONFIGURABLE_SCORM_PLAN.md` — the approved configurable
   simulation boundary, exact scoring allocation, TC3 budget, and delivery gates
+- `docs/CONTROLLED_SEEDED_SCENARIO_VARIATION.md` — the implemented Challenge
+  bank, deterministic assignment, TC3, packaging, and honest SCORM limits
 - `docs/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md` — the approved,
   two-increment follow-on plan for genuine Ed25519 signatures, authorization,
   and endorsement policies

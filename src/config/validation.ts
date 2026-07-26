@@ -27,6 +27,7 @@ const TOP_LEVEL_FIELDS = new Set([
   "feedbackTiming",
   "hints",
   "referenceWorkspace",
+  "scenarioVariation",
   "technicalFeatures",
   "scoring",
   "locale",
@@ -43,6 +44,18 @@ const SCORING_FIELDS = new Set([
   "maximumScore",
   "passScore",
   "reportDiagnosticDimensions",
+]);
+const FIXED_VARIATION_FIELDS = new Set([
+  "strategy",
+  "optionOrdering",
+  "attemptPolicy",
+  "displayCaseReferenceToLearner",
+]);
+const BANK_VARIATION_FIELDS = new Set([
+  ...FIXED_VARIATION_FIELDS,
+  "bankId",
+  "bankVersion",
+  "selectionAlgorithmVersion",
 ]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -80,10 +93,10 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
       issue(field, "must be a bounded portable identifier");
     }
   }
-  if (value.configurationVersion !== "1") {
+  if (value.configurationVersion !== "2") {
     issue("configurationVersion", "is not supported by this generator");
   }
-  if (value.applicationCompatibilityVersion !== "tc3-v1") {
+  if (value.applicationCompatibilityVersion !== "tc3-v2") {
     issue(
       "applicationCompatibilityVersion",
       "is not compatible with this player",
@@ -99,6 +112,87 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
     issue("referenceWorkspace", "must be enabled or disabled");
   }
   if (!LOCALES.has(String(value.locale))) issue("locale", "must be vi or en");
+
+  if (!isObject(value.scenarioVariation)) {
+    issue("scenarioVariation", "must be an object");
+  } else {
+    const strategy = value.scenarioVariation.strategy;
+    const allowedFields =
+      strategy === "FIXED"
+        ? FIXED_VARIATION_FIELDS
+        : BANK_VARIATION_FIELDS;
+    for (const field of Object.keys(value.scenarioVariation)) {
+      if (!allowedFields.has(field)) {
+        issue(
+          `scenarioVariation.${field}`,
+          "is not a documented variation field for this strategy",
+        );
+      }
+    }
+    if (
+      strategy !== "FIXED" &&
+      strategy !== "SEEDED_VARIANT_BANK"
+    ) {
+      issue(
+        "scenarioVariation.strategy",
+        "must be FIXED or SEEDED_VARIANT_BANK",
+      );
+    }
+    if (value.scenarioVariation.optionOrdering !== "FIXED") {
+      issue(
+        "scenarioVariation.optionOrdering",
+        "only fixed option ordering is available in this release",
+      );
+    }
+    if (
+      value.scenarioVariation.attemptPolicy !==
+      "STABLE_WITHIN_ATTEMPT"
+    ) {
+      issue(
+        "scenarioVariation.attemptPolicy",
+        "SCORM variation must remain stable within one attempt",
+      );
+    }
+    if (
+      typeof value.scenarioVariation.displayCaseReferenceToLearner !==
+      "boolean"
+    ) {
+      issue(
+        "scenarioVariation.displayCaseReferenceToLearner",
+        "must be boolean",
+      );
+    }
+    if (strategy === "FIXED") {
+      if (value.scenarioVariation.displayCaseReferenceToLearner !== false) {
+        issue(
+          "scenarioVariation.displayCaseReferenceToLearner",
+          "fixed scenarios do not expose a variant case reference",
+        );
+      }
+    } else if (strategy === "SEEDED_VARIANT_BANK") {
+      for (const field of [
+        "bankId",
+        "bankVersion",
+        "selectionAlgorithmVersion",
+      ] as const) {
+        if (
+          typeof value.scenarioVariation[field] !== "string" ||
+          !IDENTIFIER.test(value.scenarioVariation[field])
+        ) {
+          issue(
+            `scenarioVariation.${field}`,
+            "must be a bounded portable identifier",
+          );
+        }
+      }
+      if (value.scenarioVariation.selectionAlgorithmVersion !== "1") {
+        issue(
+          "scenarioVariation.selectionAlgorithmVersion",
+          "is not supported by this player",
+        );
+      }
+    }
+  }
 
   if (!isObject(value.technicalFeatures)) {
     issue("technicalFeatures", "must be an object");
@@ -190,6 +284,15 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
         "assessment mode requires the reviewed standard coffee scenario",
       );
     }
+    if (
+      isObject(value.scenarioVariation) &&
+      value.scenarioVariation.strategy !== "FIXED"
+    ) {
+      issue(
+        "scenarioVariation.strategy",
+        "the formal Assessment variant bank is not available in this release",
+      );
+    }
   }
   if (value.feedbackTiming === "final" && value.mode === "guided") {
     issue("feedbackTiming", "guided mode requires feedback before the final report");
@@ -204,10 +307,33 @@ export function validateConfiguration(value: unknown): ConfigurationValidationRe
     issue("scenarioId", "guided mode requires the standard coffee scenario");
   }
   if (
-    value.mode === "challenge" &&
-    value.scenarioId !== "SCN_COFFEE_CHALLENGE_A"
+    value.mode === "guided" &&
+    isObject(value.scenarioVariation) &&
+    value.scenarioVariation.strategy !== "FIXED"
   ) {
-    issue("scenarioId", "challenge mode requires curated Challenge A");
+    issue(
+      "scenarioVariation.strategy",
+      "guided mode must remain fixed",
+    );
+  }
+  if (
+    value.mode === "challenge" &&
+    value.scenarioId !== "SCN_COFFEE_CHALLENGE"
+  ) {
+    issue(
+      "scenarioId",
+      "challenge mode requires the curated Challenge variant bank",
+    );
+  }
+  if (
+    value.mode === "challenge" &&
+    isObject(value.scenarioVariation) &&
+    value.scenarioVariation.strategy !== "SEEDED_VARIANT_BANK"
+  ) {
+    issue(
+      "scenarioVariation.strategy",
+      "challenge mode requires the seeded curated variant bank",
+    );
   }
 
   return { isValid: issues.length === 0, issues };

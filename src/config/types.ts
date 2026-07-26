@@ -6,6 +6,23 @@ export type FeedbackTiming = "immediate" | "stage-end" | "final";
 export type HintMode = "enabled" | "limited" | "disabled";
 export type FeatureState = "enabled" | "disabled";
 
+export type ScenarioVariationConfiguration =
+  | {
+      readonly strategy: "FIXED";
+      readonly optionOrdering: "FIXED";
+      readonly attemptPolicy: "STABLE_WITHIN_ATTEMPT";
+      readonly displayCaseReferenceToLearner: false;
+    }
+  | {
+      readonly strategy: "SEEDED_VARIANT_BANK";
+      readonly bankId: string;
+      readonly bankVersion: string;
+      readonly selectionAlgorithmVersion: "1";
+      readonly optionOrdering: "FIXED";
+      readonly attemptPolicy: "STABLE_WITHIN_ATTEMPT";
+      readonly displayCaseReferenceToLearner: boolean;
+    };
+
 export interface TraceChainConfiguration {
   readonly configurationVersion: string;
   readonly applicationCompatibilityVersion: string;
@@ -17,6 +34,7 @@ export interface TraceChainConfiguration {
   readonly feedbackTiming: FeedbackTiming;
   readonly hints: HintMode;
   readonly referenceWorkspace: FeatureState;
+  readonly scenarioVariation: ScenarioVariationConfiguration;
   readonly technicalFeatures: {
     readonly hashInspection: boolean;
     readonly digitalSignatures: boolean;

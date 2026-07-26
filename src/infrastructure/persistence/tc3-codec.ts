@@ -18,13 +18,21 @@ import {
   MAX_DECISION_VALUE,
   type DecisionRecord,
 } from "./attempt-state";
+import type {
+  ScenarioVariantAssignment,
+  ScenarioVariantBank,
+} from "../../domain/scenario/variant-bank";
+import {
+  assignmentForVariant,
+  selectVariantIndex,
+} from "../../domain/scenario/variant-bank";
 
 export const TC3_MAGIC = "TC3";
 export const TC3_INTERNAL_CHARACTER_LIMIT = 3_800;
 export const TC3_AUTHORED_PAYLOAD_LIMIT = 3_000;
 
 export const TC3_SECTION_BUDGET = {
-  metadata: 220,
+  metadata: 280,
   progress: 420,
   context: 160,
   baseline: 1_600,
@@ -65,6 +73,7 @@ export interface Tc3CodecSchema {
   readonly decisionIds: readonly string[];
   readonly hintIds: readonly string[];
   readonly opcodes: readonly JournalOpcodeDefinition[];
+  readonly variantBank?: ScenarioVariantBank;
 }
 
 export interface Tc3AttemptSnapshot {
@@ -76,6 +85,7 @@ export interface Tc3AttemptSnapshot {
   readonly journal: readonly CompactCommandJournalEntry[];
   readonly isCompleted: boolean;
   readonly isPassed: boolean;
+  readonly variantAssignment?: ScenarioVariantAssignment;
 }
 
 export interface Tc3SizeBreakdown {
@@ -98,6 +108,12 @@ type WireJournalEntry = readonly [
   values: readonly CompactJournalValue[],
 ];
 
+type WireVariantAssignment = readonly [
+  variantIndex: number,
+  attemptSeed: string,
+  assignmentSourceIndex: number,
+];
+
 type Tc3Wire = readonly [
   configurationHash: string,
   scenarioId: string,
@@ -110,6 +126,7 @@ type Tc3Wire = readonly [
   hintBitmapBase36: string,
   journal: readonly WireJournalEntry[],
   flags: number,
+  variantAssignment: WireVariantAssignment | null,
 ];
 
 const BASE64URL_ALPHABET =
@@ -285,6 +302,128 @@ function validateSchema(schema: Tc3CodecSchema): void {
     }
     seen.add(definition.opcode);
   }
+  if (
+    schema.variantBank !== undefined &&
+    (schema.variantBank.bankId.length === 0 ||
+      schema.variantBank.bankVersion.length === 0 ||
+      schema.variantBank.variants.length === 0)
+  ) {
+    throw new PersistenceError(
+      "TC3 variant-bank schema must identify at least one variant",
+    );
+  }
+}
+
+const ASSIGNMENT_SOURCES = [
+  "SCORM_ATTEMPT",
+  "STANDALONE_ATTEMPT",
+  "HOSTED_ASSIGNMENT",
+] as const satisfies readonly ScenarioVariantAssignment["assignmentSource"][];
+
+function wireVariantAssignment(
+  assignment: ScenarioVariantAssignment | undefined,
+  schema: Tc3CodecSchema,
+): WireVariantAssignment | null {
+  if (schema.variantBank === undefined) {
+    if (assignment !== undefined) {
+      throw new PersistenceError(
+        "Fixed TC3 scenarios cannot store a variant assignment",
+      );
+    }
+    return null;
+  }
+  if (assignment === undefined) {
+    throw new PersistenceError(
+      "Variant-bank TC3 state requires an assignment",
+    );
+  }
+  const expected = assignmentForVariant({
+    bank: schema.variantBank,
+    variantIndex: assignment.variantIndex,
+    attemptSeed: assignment.attemptSeed,
+    assignmentSource: assignment.assignmentSource,
+  });
+  const selectedIndex = selectVariantIndex({
+    bank: schema.variantBank,
+    attemptSeed: assignment.attemptSeed,
+    selectionAlgorithmVersion: "1",
+  });
+  if (
+    selectedIndex !== assignment.variantIndex ||
+    expected.bankId !== assignment.bankId ||
+    expected.bankVersion !== assignment.bankVersion ||
+    expected.variantId !== assignment.variantId ||
+    expected.variantVersion !== assignment.variantVersion ||
+    expected.variantContentHash !== assignment.variantContentHash ||
+    expected.caseReference !== assignment.caseReference ||
+    assignment.selectionAlgorithmVersion !== "1"
+  ) {
+    throw new IncompatibleAttemptError(
+      "TC3 variant assignment does not match the configured immutable bank",
+    );
+  }
+  const assignmentSourceIndex = ASSIGNMENT_SOURCES.indexOf(
+    assignment.assignmentSource,
+  );
+  if (assignmentSourceIndex < 0) {
+    throw new PersistenceError(
+      "TC3 variant assignment has an unknown source",
+    );
+  }
+  return [
+    assignment.variantIndex,
+    assignment.attemptSeed,
+    assignmentSourceIndex,
+  ];
+}
+
+function assignmentFromWire(
+  value: WireVariantAssignment | null,
+  schema: Tc3CodecSchema,
+): ScenarioVariantAssignment | undefined {
+  if (schema.variantBank === undefined) {
+    if (value !== null) {
+      throw new IncompatibleAttemptError(
+        "Stored progress belongs to a variant-bank package",
+      );
+    }
+    return undefined;
+  }
+  if (
+    !Array.isArray(value) ||
+    value.length !== 3 ||
+    !Number.isInteger(value[0]) ||
+    typeof value[1] !== "string" ||
+    !Number.isInteger(value[2])
+  ) {
+    throw new PersistenceError(
+      "TC3 variant assignment is malformed",
+    );
+  }
+  const assignmentSource = ASSIGNMENT_SOURCES[value[2]];
+  if (assignmentSource === undefined) {
+    throw new PersistenceError(
+      "TC3 variant assignment source is out of range",
+    );
+  }
+  const assignment = assignmentForVariant({
+    bank: schema.variantBank,
+    variantIndex: value[0],
+    attemptSeed: value[1],
+    assignmentSource,
+  });
+  if (
+    selectVariantIndex({
+      bank: schema.variantBank,
+      attemptSeed: value[1],
+      selectionAlgorithmVersion: "1",
+    }) !== value[0]
+  ) {
+    throw new IncompatibleAttemptError(
+      "Stored variant assignment does not match its deterministic seed",
+    );
+  }
+  return assignment;
 }
 
 function validateJournal(
@@ -371,6 +510,7 @@ function wireFromSnapshot(snapshot: Tc3AttemptSnapshot, schema: Tc3CodecSchema):
       ],
     ),
     (snapshot.isCompleted ? 1 : 0) | (snapshot.isPassed ? 2 : 0),
+    wireVariantAssignment(snapshot.variantAssignment, schema),
   ];
 }
 
@@ -389,7 +529,9 @@ export function measureTc3Attempt(
     bySection.set(section, [...(bySection.get(section) ?? []), entry]);
   }
 
-  const metadata = encodedJsonCharacters(wire.slice(0, 5));
+  const metadata =
+    encodedJsonCharacters(wire.slice(0, 5)) +
+    encodedJsonCharacters([wire[11]]);
   const progress = encodedJsonCharacters(wire.slice(5, 9));
   const context = encodedJsonCharacters(bySection.get("context") ?? []);
   const baseline = encodedJsonCharacters(bySection.get("baseline") ?? []);
@@ -479,13 +621,55 @@ function parseWire(encoded: string): Tc3Wire {
   }
 }
 
+export interface CompactVariantAssignment {
+  readonly variantIndex: number;
+  readonly attemptSeed: string;
+  readonly assignmentSource:
+    ScenarioVariantAssignment["assignmentSource"];
+}
+
+export function peekTc3VariantAssignment(
+  encoded: string,
+): CompactVariantAssignment | null {
+  const wire = parseWire(encoded);
+  if (!Array.isArray(wire) || wire.length !== 12) {
+    throw new PersistenceError(
+      "TC3 payload has an invalid field count",
+    );
+  }
+  const value = wire[11];
+  if (value === null) return null;
+  if (
+    !Array.isArray(value) ||
+    value.length !== 3 ||
+    !Number.isInteger(value[0]) ||
+    typeof value[1] !== "string" ||
+    !Number.isInteger(value[2])
+  ) {
+    throw new PersistenceError(
+      "TC3 variant assignment is malformed",
+    );
+  }
+  const assignmentSource = ASSIGNMENT_SOURCES[value[2]];
+  if (assignmentSource === undefined) {
+    throw new PersistenceError(
+      "TC3 variant assignment source is out of range",
+    );
+  }
+  return {
+    variantIndex: value[0],
+    attemptSeed: value[1],
+    assignmentSource,
+  };
+}
+
 export function decodeTc3Attempt(
   encoded: string,
   schema: Tc3CodecSchema,
 ): Tc3AttemptSnapshot {
   validateSchema(schema);
   const wire = parseWire(encoded);
-  if (!Array.isArray(wire) || wire.length !== 11) {
+  if (!Array.isArray(wire) || wire.length !== 12) {
     throw new PersistenceError("TC3 payload has an invalid field count");
   }
   if (
@@ -508,6 +692,7 @@ export function decodeTc3Attempt(
       values: entry[3],
     }),
   );
+  const variantAssignment = assignmentFromWire(wire[11], schema);
   const snapshot: Tc3AttemptSnapshot = {
     sessionId: wire[4],
     currentStageId: stage,
@@ -517,6 +702,11 @@ export function decodeTc3Attempt(
     journal,
     isCompleted: (wire[10] & 1) !== 0,
     isPassed: (wire[10] & 2) !== 0,
+    ...(variantAssignment === undefined
+      ? {}
+      : {
+          variantAssignment,
+        }),
   };
   assertBudget(measureTc3Attempt(snapshot, schema));
   return snapshot;

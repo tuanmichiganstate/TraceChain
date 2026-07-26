@@ -20,6 +20,7 @@ export function StartScreen(): ReactNode {
   const t = useTranslator();
   const { state, startNew, resume, restart } = useSimulation();
   const { scenario } = useScenario();
+  const packageConfiguration = useOptionalConfiguration();
   const [isConfirmingRestart, setConfirmingRestart] = useState(false);
   const restartButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -67,6 +68,18 @@ export function StartScreen(): ReactNode {
           {state.platformMode === PlatformMode.STANDALONE ? (
             <div className="notice notice--standalone" role="note">
               <p>{t("status.standalone")}</p>
+            </div>
+          ) : null}
+
+          {packageConfiguration?.configuration.scenarioVariation
+            .displayCaseReferenceToLearner === true &&
+          state.variantAssignment !== undefined ? (
+            <div className="notice" role="note">
+              <p>
+                <strong>{t("start.challengeCaseLabel")}</strong>{" "}
+                <code>{state.variantAssignment.caseReference}</code>
+              </p>
+              <p>{t("start.challengeCaseNotice")}</p>
             </div>
           ) : null}
         </div>

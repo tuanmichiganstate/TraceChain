@@ -7,8 +7,13 @@ import {
   CHALLENGE_PRESET,
 } from "../src/config/presets";
 import { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
+import { challengeVariantBank } from "../src/scenarios/challenge-a/variant-bank";
 import { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 import { sha256Hex } from "../src/infrastructure/hashing/sha256";
+import { ScenarioStageId } from "../src/domain/types/enums";
+import { selectVariantAssignment } from "../src/domain/scenario/variant-bank";
+import { tc3CodecSchema } from "../src/domain/simulation/command-journal";
+import { encodeTc3Attempt } from "../src/infrastructure/persistence/tc3-codec";
 
 async function installChallengeRuntime(page: Page): Promise<void> {
   const mediaManifest = {
@@ -17,6 +22,38 @@ async function installChallengeRuntime(page: Page): Promise<void> {
     scenarioVersion: challengeAScenario.scenarioVersion,
     assets: challengeAScenario.portraitAssets,
   };
+  await page.addInitScript(() => {
+    const target = globalThis as typeof globalThis & {
+      __variantSeedDraws?: number;
+    };
+    const drawCountStorageKey =
+      "__tracechain_variant_seed_draw_count__";
+    target.__variantSeedDraws = Number.parseInt(
+      globalThis.sessionStorage.getItem(drawCountStorageKey) ?? "0",
+      10,
+    );
+    const nativeGetRandomValues =
+      globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+    globalThis.crypto.getRandomValues = (<T extends ArrayBufferView>(
+      values: T,
+    ): T => {
+      if (values.byteLength === 16 && "fill" in values) {
+        target.__variantSeedDraws =
+          (target.__variantSeedDraws ?? 0) + 1;
+        globalThis.sessionStorage.setItem(
+          drawCountStorageKey,
+          String(target.__variantSeedDraws),
+        );
+        (
+          values as unknown as {
+            fill(value: number): unknown;
+          }
+        ).fill(0);
+        return values;
+      }
+      return nativeGetRandomValues(values);
+    }) as Crypto["getRandomValues"];
+  });
   await page.route("**/tracechain.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -27,6 +64,12 @@ async function installChallengeRuntime(page: Page): Promise<void> {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(challengeAScenario),
+    });
+  });
+  await page.route("**/scenario-variant-bank.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(challengeVariantBank),
     });
   });
   await page.route("**/media-manifest.json", async (route) => {
@@ -55,6 +98,18 @@ async function installChallengeRuntime(page: Page): Promise<void> {
           challengeAScenario.portraitAssets.map((asset) => [
             asset.filePath,
             asset.sha256,
+          ]),
+        ),
+        variantBankId: challengeVariantBank.bankId,
+        variantBankVersion:
+          challengeVariantBank.bankVersion,
+        variantBankHash: sha256Hex(
+          `${JSON.stringify(challengeVariantBank, null, 2)}\n`,
+        ),
+        variantContentHashes: Object.fromEntries(
+          challengeVariantBank.variants.map((variant) => [
+            variant.metadata.variantId,
+            variant.metadata.contentHash,
           ]),
         ),
       }),
@@ -130,7 +185,7 @@ test("loads Assessment with no hints and final-only feedback", async ({
   ).toHaveCount(0);
 });
 
-test("loads Challenge A and preserves mitigation history through its causal report", async ({
+test("loads an assigned Challenge case and preserves mitigation history through its causal report", async ({
   page,
   browserName,
 }) => {
@@ -142,7 +197,23 @@ test("loads Challenge A and preserves mitigation history through its causal repo
 
   await expect(
     page.getByRole("heading", { name: "TraceChain Thử thách A" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "TraceChain Thử thách" }),
   ).toBeVisible();
+  await expect(page.getByText("CH-01", { exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            globalThis as typeof globalThis & {
+              __variantSeedDraws?: number;
+            }
+          ).__variantSeedDraws ?? 0,
+      ),
+    )
+    .toBe(1);
   await activity.start();
   await activity.answer(/Không\. Blockchain giúp xác định/);
   await activity.continue();
@@ -294,7 +365,9 @@ test("loads Challenge A and preserves mitigation history through its causal repo
       .locator('[data-staff-profile-id="STAFF_REGULATORY_AUDITOR"]')
       .first(),
   ).toHaveCount(0);
-  await activity.selectLots(/BAT_PACKAGED_COFFEE_CA01/);
+  await activity.selectLots(
+    /Lô thành phẩm được tạo trong tình huống này/,
+  );
   await expect(page.getByText(/Phạm vi thu hồi chính xác/)).toHaveCount(0);
   await page
     .getByRole("button", { name: "Gửi giao dịch lên mạng" })
@@ -335,8 +408,9 @@ test("loads Challenge A and preserves mitigation history through its causal repo
     report.getByText(/Lần gửi lệnh thu hồi đầu tiên dùng vai trò không có thẩm quyền/),
   ).toBeVisible();
   await expect(
-    report.getByText("SCN_COFFEE_CHALLENGE_A@1.2.0"),
+    report.getByText("SCN_COFFEE_CHALLENGE@2.0.0"),
   ).toBeVisible();
+  await expect(report.getByText("CH-01", { exact: true })).toBeVisible();
   await expect(
     report.getByText(hashConfiguration(CHALLENGE_PRESET)),
   ).toBeVisible();
@@ -346,4 +420,63 @@ test("loads Challenge A and preserves mitigation history through its causal repo
     .click();
   await expect(report.getByText(/Đã gửi kết quả/)).toBeVisible();
   expect(await peek(page, "cmi.core.lesson_status")).toBe("passed");
+});
+
+test("restores a persisted Challenge assignment without drawing another case", async ({
+  page,
+}) => {
+  const assignment = selectVariantAssignment({
+    bank: challengeVariantBank,
+    attemptSeed: "AAAAAAAAAAAAAAAAAAAAAA",
+    assignmentSource: "SCORM_ATTEMPT",
+  });
+  const selectedScenario =
+    challengeVariantBank.variants[assignment.variantIndex]?.scenario;
+  if (selectedScenario === undefined) {
+    throw new Error("The test assignment must resolve to a scenario");
+  }
+  const encoded = encodeTc3Attempt(
+    {
+      sessionId: "SES_000001",
+      currentStageId: ScenarioStageId.ORIENTATION,
+      completedStageIds: [],
+      decisions: {},
+      hintsUsed: [],
+      journal: [],
+      isCompleted: false,
+      isPassed: false,
+      variantAssignment: assignment,
+    },
+    tc3CodecSchema({
+      configuration: CHALLENGE_PRESET,
+      configurationHash: hashConfiguration(CHALLENGE_PRESET),
+      scenario: selectedScenario,
+      variantBank: challengeVariantBank,
+    }),
+  );
+  await installScormApi(page, {
+    initialValues: {
+      "cmi.core.entry": "resume",
+      "cmi.suspend_data": encoded,
+    },
+  });
+  await installChallengeRuntime(page);
+  await page.goto("/");
+
+  await expect(
+    page.getByText(assignment.caseReference, { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          globalThis as typeof globalThis & {
+            __variantSeedDraws?: number;
+          }
+        ).__variantSeedDraws ?? 0,
+    ),
+  ).toBe(0);
+  await expect(
+    page.getByRole("button", { name: "Bắt đầu mô phỏng" }),
+  ).toBeVisible();
 });

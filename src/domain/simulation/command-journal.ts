@@ -27,6 +27,7 @@ import type {
 } from "../../infrastructure/persistence/tc3-codec";
 import { runtimeCommand, trustedContext } from "../scenario/runtime";
 import { MAX_ATTEMPT_COUNT } from "../../infrastructure/persistence/attempt-state";
+import type { ScenarioVariantBank } from "../scenario/variant-bank";
 
 export const JournalOpcode = {
   CREATE_BATCH: 1,
@@ -192,6 +193,7 @@ export function tc3CodecSchema(options: {
   readonly configuration: TraceChainConfiguration;
   readonly configurationHash: string;
   readonly scenario: ScenarioDefinition;
+  readonly variantBank?: ScenarioVariantBank;
 }): Tc3CodecSchema {
   return {
     configurationHash: options.configurationHash,
@@ -205,6 +207,9 @@ export function tc3CodecSchema(options: {
       options.configuration.technicalFeatures
         .endorsementPolicies,
     ),
+    ...(options.variantBank === undefined
+      ? {}
+      : { variantBank: options.variantBank }),
   };
 }
 

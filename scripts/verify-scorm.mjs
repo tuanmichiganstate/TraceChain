@@ -37,6 +37,7 @@ const packageSpecificFiles = new Set([
   ...packagingFiles,
   "tracechain.config.json",
   "scenario.json",
+  "scenario-variant-bank.json",
   "media-manifest.json",
   "identity-registry.json",
   "educational-signing-keys.json",
@@ -86,8 +87,8 @@ function packageFileName(configuration, releaseBuild) {
   const scenarioLabel =
     configuration.scenarioId === "SCN_COFFEE_001"
       ? "StandardCoffee"
-      : configuration.scenarioId === "SCN_COFFEE_CHALLENGE_A"
-        ? "ChallengeA"
+      : configuration.scenarioId === "SCN_COFFEE_CHALLENGE"
+        ? "ChallengeBank"
         : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
     "TraceChain",
@@ -838,6 +839,7 @@ function verifyPackage(zipPath) {
 
   let envelope = null;
   let scenario = null;
+  let variantBank = null;
   let buildInformation = null;
   let versionMetadata = null;
   try {
@@ -849,6 +851,15 @@ function verifyPackage(zipPath) {
     scenario = JSON.parse(zip.readAsText("scenario.json"));
   } catch {
     // Reported below.
+  }
+  if (entryNames.includes("scenario-variant-bank.json")) {
+    try {
+      variantBank = JSON.parse(
+        zip.readAsText("scenario-variant-bank.json"),
+      );
+    } catch {
+      // Reported below.
+    }
   }
   try {
     buildInformation = JSON.parse(zip.readAsText("build-info.json"));
@@ -866,6 +877,93 @@ function verifyPackage(zipPath) {
   check("version.json is valid JSON", versionMetadata !== null);
 
   const configuration = envelope?.configuration;
+  const usesVariantBank =
+    configuration?.scenarioVariation?.strategy ===
+    "SEEDED_VARIANT_BANK";
+  check(
+    "Variant-bank runtime presence matches configuration",
+    usesVariantBank
+      ? entryNames.includes("scenario-variant-bank.json") &&
+          variantBank !== null
+      : !entryNames.includes("scenario-variant-bank.json"),
+  );
+  if (usesVariantBank && variantBank !== null) {
+    const variantIds = variantBank.variants?.map(
+      (variant) => variant?.metadata?.variantId,
+    ) ?? [];
+    const caseReferences = variantBank.variants?.map(
+      (variant) => variant?.metadata?.caseReference,
+    ) ?? [];
+    check(
+      "Variant bank identity matches configuration",
+      variantBank.bankId ===
+        configuration.scenarioVariation.bankId &&
+        variantBank.bankVersion ===
+          configuration.scenarioVariation.bankVersion,
+    );
+    check(
+      "Variant bank contains at least three unique curated cases",
+      variantIds.length >= 3 &&
+        new Set(variantIds).size === variantIds.length &&
+        new Set(caseReferences).size === caseReferences.length,
+    );
+    check(
+      "Every variant matches the configured scenario family",
+      variantBank.variants.every(
+        (variant) =>
+          variant?.scenario?.scenarioId ===
+            configuration.scenarioId &&
+          variant?.scenario?.scenarioVersion ===
+            configuration.scenarioVersion,
+      ),
+    );
+    check(
+      "Every canonical variant hash matches its scenario",
+      variantBank.variants.every(
+        (variant) =>
+          variant?.metadata?.contentHash ===
+          createHash("sha256")
+            .update(
+              canonicalize({
+                domain: "TRACECHAIN_SCENARIO_VARIANT_V1",
+                scenario: variant.scenario,
+              }),
+            )
+            .digest("hex"),
+      ),
+    );
+    check(
+      "Variant bank bytes match recorded build metadata",
+      buildInformation?.variantBankId === variantBank.bankId &&
+        buildInformation?.variantBankVersion ===
+          variantBank.bankVersion &&
+        buildInformation?.variantBankHash ===
+          createHash("sha256")
+            .update(
+              zip.getEntry("scenario-variant-bank.json").getData(),
+            )
+            .digest("hex"),
+    );
+    check(
+      "Recorded variant hashes match bank metadata",
+      variantBank.variants.every(
+        (variant) =>
+          buildInformation?.variantContentHashes?.[
+            variant.metadata.variantId
+          ] === variant.metadata.contentHash,
+      ),
+    );
+  } else {
+    check(
+      "Fixed package records no variant-bank metadata",
+      buildInformation?.variantBankId === null &&
+        buildInformation?.variantBankVersion === null &&
+        buildInformation?.variantBankHash === null &&
+        Object.keys(
+          buildInformation?.variantContentHashes ?? {},
+        ).length === 0,
+    );
+  }
   const calculatedConfigurationHash =
     configuration === undefined
       ? null

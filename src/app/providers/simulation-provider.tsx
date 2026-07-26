@@ -136,6 +136,7 @@ import {
   notificationForPersistedAction,
   type PersistedActionNotification,
 } from "../notifications/action-notifications";
+import type { RuntimePlatformBootstrap } from "../../config/runtime-bootstrap";
 
 const DEVELOPMENT_FALLBACK_CONFIGURATION = {
   ...GUIDED_PRESET,
@@ -283,7 +284,13 @@ function deriveProgress(state: SessionState, scenario: ReturnType<typeof useScen
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
-export function SimulationProvider({ children }: { children: ReactNode }): ReactNode {
+export function SimulationProvider({
+  children,
+  platformBootstrap,
+}: {
+  readonly children: ReactNode;
+  readonly platformBootstrap?: RuntimePlatformBootstrap;
+}): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
   const configuredPackage = useOptionalConfiguration();
@@ -296,6 +303,8 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
   const configurationHash =
     configuredPackage?.configurationHash ??
     hashConfiguration(DEVELOPMENT_FALLBACK_CONFIGURATION);
+  const variantBank =
+    configuredPackage?.variantBank ?? null;
   const [state, reactDispatch] = useReducer(
     sessionReducer,
     undefined,
@@ -316,8 +325,19 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     [],
   );
   const codecSchema = useMemo(
-    () => tc3CodecSchema({ configuration, configurationHash, scenario }),
-    [configuration, configurationHash, scenario],
+    () =>
+      tc3CodecSchema({
+        configuration,
+        configurationHash,
+        scenario,
+        ...(variantBank === null ? {} : { variantBank }),
+      }),
+    [
+      configuration,
+      configurationHash,
+      scenario,
+      variantBank,
+    ],
   );
   const registries = useMemo(
     () => ({
@@ -516,34 +536,52 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     let cancelled = false;
 
     void (async () => {
-      const scormAdapter = new Scorm12Adapter();
-      const scormResult = await scormAdapter.initialize();
+      let adapter: LearningPlatformAdapter;
+      let persistence: SimulationPersistence;
+      let mode: PlatformMode;
+      let isReadOnly: boolean;
+      let collected: string[];
+      let stored: string | null;
+      let isAssignmentOnly = false;
 
-      let adapter: LearningPlatformAdapter = scormAdapter;
-      let mode = PlatformMode.SCORM_1_2;
-      let isReadOnly = scormResult.isReadOnly;
-      const collected = [...scormResult.diagnostics];
+      if (platformBootstrap !== undefined) {
+        adapter = platformBootstrap.adapter;
+        persistence = platformBootstrap.persistence;
+        mode = platformBootstrap.mode;
+        isReadOnly = platformBootstrap.isReadOnly;
+        collected = [...platformBootstrap.diagnostics];
+        stored = platformBootstrap.storedAttempt;
+        isAssignmentOnly = platformBootstrap.assignmentOnly;
+      } else {
+        const scormAdapter = new Scorm12Adapter();
+        const scormResult = await scormAdapter.initialize();
 
-      if (!scormResult.isConnected) {
-        const standalone = new StandalonePersistenceAdapter({
-          appVersion: APP_VERSION,
-          scenarioId: scenario.scenarioId,
-        });
-        const standaloneResult = await standalone.initialize();
-        adapter = standalone;
-        mode = PlatformMode.STANDALONE;
-        isReadOnly = standaloneResult.isReadOnly;
-        collected.push(...standaloneResult.diagnostics);
+        adapter = scormAdapter;
+        mode = PlatformMode.SCORM_1_2;
+        isReadOnly = scormResult.isReadOnly;
+        collected = [...scormResult.diagnostics];
+
+        if (!scormResult.isConnected) {
+          const standalone = new StandalonePersistenceAdapter({
+            appVersion: APP_VERSION,
+            scenarioId: scenario.scenarioId,
+          });
+          const standaloneResult = await standalone.initialize();
+          adapter = standalone;
+          mode = PlatformMode.STANDALONE;
+          isReadOnly = standaloneResult.isReadOnly;
+          collected.push(...standaloneResult.diagnostics);
+        }
+        persistence = new LearningPlatformPersistenceBridge(adapter);
+        stored = await persistence.load();
       }
 
       if (cancelled) return;
       adapterRef.current = adapter;
-      const persistence = new LearningPlatformPersistenceBridge(adapter);
       persistenceRef.current = persistence;
       diagnosticsRef.current = collected;
       setDiagnostics(collected);
 
-      const stored = await persistence.load();
       if (stored === null || stored.trim().length === 0) {
         dispatch({
           type: "INITIALIZED",
@@ -556,6 +594,21 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
 
       try {
         const snapshot = decodeTc3Attempt(stored, codecSchema);
+        if (snapshot.variantAssignment !== undefined) {
+          dispatch({
+            type: "VARIANT_ASSIGNED",
+            assignment: snapshot.variantAssignment,
+          });
+        }
+        if (isAssignmentOnly && !isReadOnly) {
+          dispatch({
+            type: "INITIALIZED",
+            platformMode: mode,
+            isReadOnly,
+            hasSavedAttempt: false,
+          });
+          return;
+        }
         const replay = await replayCommandJournal({
           snapshot,
           initialDomain: seededDomain,
@@ -609,6 +662,7 @@ export function SimulationProvider({ children }: { children: ReactNode }): React
     scenario,
     seededDomain,
     signatureProvider,
+    platformBootstrap,
   ]);
 
   // ---- Save lifecycle --------------------------------------------------

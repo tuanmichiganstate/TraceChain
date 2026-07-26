@@ -7,6 +7,7 @@ import { SimulationProvider } from "./app/providers/simulation-provider";
 import { ConfigurationProvider } from "./app/providers/configuration-provider";
 import { NotificationProvider } from "./app/providers/notification-provider";
 import { loadRuntimePackage } from "./config/runtime-loader";
+import { initializeRuntimeAttempt } from "./config/runtime-bootstrap";
 import {
   createTranslator,
   type LocaleCode,
@@ -60,44 +61,49 @@ if (
     </StrictMode>,
   );
 } else {
-  void loadRuntimePackage((path) => fetch(path)).then(
-    (runtime) => {
-      document.documentElement.lang = runtime.configuration.locale;
-      root.render(
-        <StrictMode>
-          <ConfigurationProvider
-            configuration={runtime.configuration}
-            configurationHash={runtime.configurationHash}
-            cryptographicRuntime={runtime.cryptographicRuntime}
-          >
-            <LocaleProvider locale={runtime.configuration.locale}>
-              <NotificationProvider>
-                <ScenarioProvider scenario={runtime.scenario}>
-                  <SimulationProvider>
-                    <App />
-                  </SimulationProvider>
-                </ScenarioProvider>
-              </NotificationProvider>
-            </LocaleProvider>
-          </ConfigurationProvider>
-        </StrictMode>,
-      );
-    },
-    (error: unknown) => {
-      const t = createTranslator("vi");
-      console.error(error);
-      root.render(
-        <StrictMode>
-          <main className="start" id="main-content">
-            <div className="start__inner">
-              <section className="card">
-                <h1>{t("errors.packageConfigurationHeading")}</h1>
-                <p>{t("errors.packageConfiguration")}</p>
-              </section>
-            </div>
-          </main>
-        </StrictMode>,
-      );
-    },
-  );
+  void loadRuntimePackage((path) => fetch(path))
+    .then((runtime) => initializeRuntimeAttempt(runtime))
+    .then(
+      (runtime) => {
+        document.documentElement.lang = runtime.configuration.locale;
+        root.render(
+          <StrictMode>
+            <ConfigurationProvider
+              configuration={runtime.configuration}
+              configurationHash={runtime.configurationHash}
+              cryptographicRuntime={runtime.cryptographicRuntime}
+              variantBank={runtime.variantBank}
+            >
+              <LocaleProvider locale={runtime.configuration.locale}>
+                <NotificationProvider>
+                  <ScenarioProvider scenario={runtime.scenario}>
+                    <SimulationProvider
+                      platformBootstrap={runtime.platformBootstrap}
+                    >
+                      <App />
+                    </SimulationProvider>
+                  </ScenarioProvider>
+                </NotificationProvider>
+              </LocaleProvider>
+            </ConfigurationProvider>
+          </StrictMode>,
+        );
+      },
+      (error: unknown) => {
+        const t = createTranslator("vi");
+        console.error(error);
+        root.render(
+          <StrictMode>
+            <main className="start" id="main-content">
+              <div className="start__inner">
+                <section className="card">
+                  <h1>{t("errors.packageConfigurationHeading")}</h1>
+                  <p>{t("errors.packageConfiguration")}</p>
+                </section>
+              </div>
+            </main>
+          </StrictMode>,
+        );
+      },
+    );
 }

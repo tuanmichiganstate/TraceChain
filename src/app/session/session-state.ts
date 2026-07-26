@@ -26,6 +26,7 @@ import {
   createSimulationRuntimeState,
 } from "../../domain/simulation/command-handler";
 import type { SimulationRuntimeState } from "../../domain/simulation/types";
+import type { ScenarioVariantAssignment } from "../../domain/scenario/variant-bank";
 
 export type SessionPhase = "LOADING" | "START" | "RUNNING" | "RECOVERY";
 
@@ -76,6 +77,8 @@ export interface SessionState {
   readonly lastTransactionId: string | null;
   /** Free-text command input needed to deterministically replay Stage 5. */
   readonly correctionReason: string | null;
+  /** Immutable case assignment for a curated variant-bank attempt. */
+  readonly variantAssignment?: ScenarioVariantAssignment;
 }
 
 export function createInitialSessionState(): SessionState {
@@ -115,6 +118,10 @@ export type SessionAction =
       type: "RECOVERY_FAILED";
       messageKey: string;
       requiresNewLmsAttempt: boolean;
+    }
+  | {
+      type: "VARIANT_ASSIGNED";
+      assignment: ScenarioVariantAssignment;
     }
   | {
       type: "START_NEW";
@@ -174,6 +181,12 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         recoveryRequiresNewLmsAttempt: action.requiresNewLmsAttempt,
       };
 
+    case "VARIANT_ASSIGNED":
+      return {
+        ...state,
+        variantAssignment: action.assignment,
+      };
+
     case "START_NEW":
       return {
         ...createInitialSessionState(),
@@ -183,6 +196,9 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         domain: action.simulation.domain,
         simulation: action.simulation,
         sessionId: action.sessionId,
+        ...(state.variantAssignment === undefined
+          ? {}
+          : { variantAssignment: state.variantAssignment }),
       };
 
     case "RESUME":
@@ -201,6 +217,12 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         correctionReason:
           (action.snapshot.journal.find((entry) => entry.opcode === 9)
             ?.values[0] as string | undefined) ?? null,
+        ...(action.snapshot.variantAssignment === undefined
+          ? {}
+          : {
+              variantAssignment:
+                action.snapshot.variantAssignment,
+            }),
         recoveryMessageKey: null,
         recoveryRequiresNewLmsAttempt: false,
         lastTransactionId: action.lastTransactionId,
@@ -292,5 +314,8 @@ export function toTc3AttemptSnapshot(
     journal: state.commandJournal,
     isCompleted: state.completedStageIds.length === SCENARIO_STAGE_ORDER.length,
     isPassed,
+    ...(state.variantAssignment === undefined
+      ? {}
+      : { variantAssignment: state.variantAssignment }),
   };
 }

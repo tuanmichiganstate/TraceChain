@@ -39,6 +39,7 @@ const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
   "tracechain.config.json",
   "scenario.json",
+  "scenario-variant-bank.json",
   "media-manifest.json",
   "identity-registry.json",
   "educational-signing-keys.json",
@@ -310,7 +311,30 @@ function scenarioMap(definitions) {
   ]);
 }
 
-function validatePackageInput(configuration, scenario, definitions) {
+function variantBankForConfiguration(configuration, definitions) {
+  if (configuration.scenarioVariation.strategy !== "SEEDED_VARIANT_BANK") {
+    return null;
+  }
+  const bank = definitions.challengeVariantBank;
+  if (
+    bank.bankId !== configuration.scenarioVariation.bankId ||
+    bank.bankVersion !== configuration.scenarioVariation.bankVersion
+  ) {
+    throw new Error(
+      `No authored variant bank is available for ` +
+        `${configuration.scenarioVariation.bankId} ` +
+        `v${configuration.scenarioVariation.bankVersion}`,
+    );
+  }
+  return bank;
+}
+
+function validatePackageInput(
+  configuration,
+  scenario,
+  variantBank,
+  definitions,
+) {
   const configurationValidation =
     definitions.validateConfiguration(configuration);
   if (!configurationValidation.isValid) {
@@ -347,6 +371,20 @@ function validatePackageInput(configuration, scenario, definitions) {
       "Scenario maximum score does not match the resolved package configuration",
     );
   }
+  if (variantBank !== null) {
+    const bankValidation = definitions.validateVariantBank({
+      bank: variantBank,
+      configuration,
+    });
+    if (!bankValidation.isValid) {
+      throw new Error(
+        `Variant bank ${variantBank.bankId} is invalid:\n${bankValidation.issues
+          .filter((issue) => issue.severity === "ERROR")
+          .map((issue) => `  ${issue.path}: ${issue.message}`)
+          .join("\n")}`,
+      );
+    }
+  }
 }
 
 function safeFileSegment(value) {
@@ -361,7 +399,7 @@ function safeFileSegment(value) {
 
 function defaultScenarioLabel(configuration) {
   if (configuration.scenarioId === "SCN_COFFEE_001") return "StandardCoffee";
-  if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE_A") return "ChallengeA";
+  if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE") return "ChallengeBank";
   return safeFileSegment(configuration.scenarioId);
 }
 
@@ -494,6 +532,7 @@ function packageOne({
   cryptographicRuntime,
   sourceLabel,
   scenario,
+  variantBank,
   definitions,
   provenance,
   staticBuild,
@@ -524,6 +563,23 @@ function packageOne({
   const scenarioHash = createHash("sha256")
     .update(scenarioContent, "utf8")
     .digest("hex");
+  let variantBankHash = null;
+  const variantContentHashes = {};
+  if (variantBank !== null) {
+    const variantBankContent = `${JSON.stringify(variantBank, null, 2)}\n`;
+    writeFileSync(
+      join(packageDirectory, "scenario-variant-bank.json"),
+      variantBankContent,
+      "utf8",
+    );
+    variantBankHash = createHash("sha256")
+      .update(variantBankContent, "utf8")
+      .digest("hex");
+    for (const variant of variantBank.variants) {
+      variantContentHashes[variant.metadata.variantId] =
+        variant.metadata.contentHash;
+    }
+  }
   const mediaManifest = {
     schemaVersion: "1",
     scenarioId: scenario.scenarioId,
@@ -599,6 +655,10 @@ function packageOne({
     scenarioId: scenario.scenarioId,
     scenarioVersion: scenario.scenarioVersion,
     scenarioHash,
+    variantBankId: variantBank?.bankId ?? null,
+    variantBankVersion: variantBank?.bankVersion ?? null,
+    variantBankHash,
+    variantContentHashes,
     generatedAt: provenance.generatedAt,
     applicationBuildHash: staticBuild.hash,
     dirty: provenance.dirty,
@@ -760,27 +820,52 @@ async function main() {
         `No authored scenario is available for ${configuration.scenarioId}`,
       );
     }
-    validatePackageInput(configuration, scenario, definitions);
+    const variantBank = variantBankForConfiguration(
+      configuration,
+      definitions,
+    );
+    validatePackageInput(
+      configuration,
+      scenario,
+      variantBank,
+      definitions,
+    );
     const cryptographicRuntime =
       configuration.technicalFeatures.digitalSignatures
         ? definitions.coffeeCryptographicRuntime
         : null;
     if (cryptographicRuntime !== null) {
-      const validation = await definitions.validateCryptographicRuntime({
-        runtime: cryptographicRuntime,
-        scenario,
-        provider: new definitions.NobleEd25519Provider(),
-      });
-      if (!validation.isValid) {
-        throw new Error(
-          `Cryptographic runtime is invalid:\n${validation.issues
-            .map((issue) => `  ${issue.path}: ${issue.message}`)
-            .join("\n")}`,
-        );
+      const cryptographicScenarios =
+        variantBank === null
+          ? [scenario]
+          : variantBank.variants.map((variant) => variant.scenario);
+      for (const cryptographicScenario of cryptographicScenarios) {
+        const validation = await definitions.validateCryptographicRuntime({
+          runtime: cryptographicRuntime,
+          scenario: cryptographicScenario,
+          provider: new definitions.NobleEd25519Provider(),
+        });
+        if (!validation.isValid) {
+          throw new Error(
+            `Cryptographic runtime is invalid for ` +
+              `${cryptographicScenario.scenarioId} ` +
+              `v${cryptographicScenario.scenarioVersion}:\n` +
+              validation.issues
+                .map((issue) => `  ${issue.path}: ${issue.message}`)
+                .join("\n"),
+          );
+        }
       }
     }
     const text = resolvePackageText(configuration, scenario, options.title);
-    return { configuration, sourceLabel, scenario, cryptographicRuntime, text };
+    return {
+      configuration,
+      sourceLabel,
+      scenario,
+      variantBank,
+      cryptographicRuntime,
+      text,
+    };
   }));
 
   for (const input of resolvedInputs) {
@@ -806,12 +891,20 @@ async function main() {
   const staticBuild = hashStaticApplication(distDirectory);
 
   const results = resolvedInputs.map(
-    ({ configuration, sourceLabel, scenario, cryptographicRuntime, text }) =>
+    ({
+      configuration,
+      sourceLabel,
+      scenario,
+      variantBank,
+      cryptographicRuntime,
+      text,
+    }) =>
       packageOne({
         configuration,
         cryptographicRuntime,
         sourceLabel,
         scenario,
+        variantBank,
         definitions,
         provenance,
         staticBuild,

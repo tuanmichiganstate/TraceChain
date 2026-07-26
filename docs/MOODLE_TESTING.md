@@ -14,7 +14,7 @@ Run the whole list for every release that changes learner-package inputs.
 npm run quality        # must pass end to end
 ```
 
-Produces guided and Challenge A ZIPs in the project root. The Docker demo uses
+Produces Guided and Challenge-bank ZIPs in the project root. The Docker demo uses
 the exact selected Guided or Challenge package.
 
 **Moodle activity settings to use:**
@@ -41,6 +41,7 @@ the browser keeps serving the previous build. See `docker-moodle/README.md`.
 
 - [ ] The package uploads without a manifest error.
 - [ ] The activity launches and the start screen appears.
+- [ ] Challenge shows one case reference and retains it after suspend/resume.
 - [ ] The interface is Vietnamese, with diacritics rendering correctly
       (check `Hợp tác xã Cà phê Cao nguyên` — stacked marks on `ợ` and `ê`).
 - [ ] The **standalone-mode warning does NOT appear**. If it does, SCORM API

@@ -1,7 +1,12 @@
 # TraceChain canonical configurable SCORM plan
 
 Status: approved implementation specification
-Current boundary: configurable Guided, Challenge A, and Assessment packages
+Current boundary note: the fixed Challenge A package described below has been
+upgraded to the controlled Challenge bank documented in
+`CONTROLLED_SEEDED_SCENARIO_VARIATION.md`. That document governs current
+Challenge selection, TC3 v2 assignment metadata, and package contents.
+
+Historical boundary: configurable Guided, Challenge A, and Assessment packages
 
 Pre-release policy: only the current schemas and TC3 state format are
 supported. When a load-bearing contract changes, reset development attempts and

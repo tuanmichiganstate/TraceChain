@@ -67,7 +67,12 @@ try {
   const {
     coffeeScenario,
     challengeAScenario,
+    challengeBScenario,
+    challengeCScenario,
+    challengeVariantBank,
+    CHALLENGE_PRESET,
     validateScenario,
+    validateVariantBank,
     ALL_SCENARIO_DATES,
     TIMELINE_ORDERING_CONSTRAINTS,
     STAGE_COMPONENTS,
@@ -77,7 +82,12 @@ try {
 
   // ---- The shared validator -------------------------------------------
 
-  const scenarios = [coffeeScenario, challengeAScenario];
+  const scenarios = [
+    coffeeScenario,
+    challengeAScenario,
+    challengeBScenario,
+    challengeCScenario,
+  ];
   for (const scenario of scenarios) {
     const result = validateScenario(scenario);
     checkedCount += result.checkedCount;
@@ -87,6 +97,20 @@ try {
       else warnings.push(line);
     }
   }
+  const bankResult = validateVariantBank({
+    bank: challengeVariantBank,
+    configuration: CHALLENGE_PRESET,
+  });
+  checkedCount += bankResult.issues.length + 1;
+  for (const issue of bankResult.issues) {
+    const line = `${challengeVariantBank.bankId}.${issue.path}: ${issue.message}`;
+    if (issue.severity === "ERROR") errors.push(line);
+    else warnings.push(line);
+  }
+  check(
+    "Challenge variant bank passes its shared replay and scoring contract",
+    bankResult.isValid,
+  );
 
   // ---- Timeline ordering ----------------------------------------------
 

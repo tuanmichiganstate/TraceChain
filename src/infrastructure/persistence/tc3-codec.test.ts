@@ -20,6 +20,8 @@ import {
 } from "../../domain/simulation/command-journal";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../../scenarios/challenge-a/scenario";
+import { challengeVariantBank } from "../../scenarios/challenge-a/variant-bank";
+import { selectVariantAssignment } from "../../domain/scenario/variant-bank";
 import {
   TC3_AUTHORED_PAYLOAD_LIMIT,
   TC3_INTERNAL_CHARACTER_LIMIT,
@@ -337,12 +339,18 @@ describe("TC3 attempt codec", () => {
         endorsementPolicies: false,
       },
     };
+    const variantAssignment = selectVariantAssignment({
+      bank: challengeVariantBank,
+      attemptSeed: "STAGE4RETRYSEED0001",
+      assignmentSource: "SCORM_ATTEMPT",
+    });
     const challengeSchema = tc3CodecSchema({
       configuration: signatureOnlyChallenge,
       configurationHash: hashConfiguration(
         signatureOnlyChallenge,
       ),
       scenario: challengeAScenario,
+      variantBank: challengeVariantBank,
     });
     const retryAttempt: Tc3AttemptSnapshot = {
       sessionId: "SES_STAGE4_RETRY",
@@ -382,6 +390,7 @@ describe("TC3 attempt codec", () => {
       ],
       isCompleted: false,
       isPassed: false,
+      variantAssignment,
     };
 
     expect(() =>
@@ -395,20 +404,41 @@ describe("TC3 attempt codec", () => {
   ] as const)(
     "keeps the actual %s authored worst case within every documented budget",
     (_name, configuration: TraceChainConfiguration, scenario: ScenarioDefinition) => {
+      const variantAssignment =
+        configuration.scenarioVariation.strategy ===
+        "SEEDED_VARIANT_BANK"
+          ? selectVariantAssignment({
+              bank: challengeVariantBank,
+              attemptSeed: "WORSTCASEATTEMPTSEED01",
+              assignmentSource: "SCORM_ATTEMPT",
+            })
+          : undefined;
+      const activeScenario =
+        variantAssignment === undefined
+          ? scenario
+          : (challengeVariantBank.variants[
+              variantAssignment.variantIndex
+            ]?.scenario ?? scenario);
       const actualSchema = tc3CodecSchema({
         configuration,
         configurationHash: hashConfiguration(configuration),
-        scenario,
+        scenario: activeScenario,
+        ...(variantAssignment === undefined
+          ? {}
+          : { variantBank: challengeVariantBank }),
       });
       const maximum: Tc3AttemptSnapshot = {
         sessionId: "SES_000001",
         currentStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
         completedStageIds: SCENARIO_STAGE_ORDER,
-        decisions: maximumEncodedDecisionValues(scenario),
-        hintsUsed: scenario.hintIds,
-        journal: maximumJournal(scenario, configuration),
+        decisions: maximumEncodedDecisionValues(activeScenario),
+        hintsUsed: activeScenario.hintIds,
+        journal: maximumJournal(activeScenario, configuration),
         isCompleted: true,
         isPassed: true,
+        ...(variantAssignment === undefined
+          ? {}
+          : { variantAssignment }),
       };
       const size = measureTc3Attempt(maximum, actualSchema);
 

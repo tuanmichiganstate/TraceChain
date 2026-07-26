@@ -636,12 +636,14 @@ describe("the whole activity in the browser", () => {
     ).toBeInTheDocument();
   }, 60_000);
 
-  it("runs curated Challenge A with delayed feedback and a two-step trusted handoff", async () => {
+  it("runs a curated Challenge case with delayed feedback and a two-step trusted handoff", async () => {
     const user = userEvent.setup();
     render(<ChallengeAppUnderTest />);
 
     expect(
-      await screen.findByRole("heading", { name: "TraceChain Thử thách A" }),
+      await screen.findByRole("heading", {
+        name: "TraceChain Thử thách",
+      }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Bắt đầu mô phỏng" }));
     await answer(user, /Không\. Blockchain giúp xác định/);
@@ -784,9 +786,14 @@ describe("the whole activity in the browser", () => {
     await answerClassification(user);
     await advance(user);
 
+    expect(
+      await screen.findByText(
+        "Kết quả phòng thí nghiệm xác nhận dư lượng thuốc bảo vệ thực vật vượt ngưỡng trong lô thành phẩm được tạo ở tình huống này. Hãy dùng quan hệ nguồn gốc trên sổ cái để xác định chính xác những tài sản trong danh sách thuộc phạm vi thu hồi.",
+      ),
+    ).toBeInTheDocument();
     await user.click(
       await screen.findByRole("checkbox", {
-        name: /BAT_PACKAGED_COFFEE_CA01/,
+        name: "Lô thành phẩm được tạo trong tình huống này",
       }),
     );
     await user.click(

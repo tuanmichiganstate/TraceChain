@@ -1,11 +1,13 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { TraceChainConfiguration } from "../../config/types";
 import type { CryptographicRuntime } from "../../crypto/signatures/types";
+import type { ScenarioVariantBank } from "../../domain/scenario/variant-bank";
 
 interface ConfigurationContextValue {
   readonly configuration: TraceChainConfiguration;
   readonly configurationHash: string;
   readonly cryptographicRuntime: CryptographicRuntime | null;
+  readonly variantBank: ScenarioVariantBank | null;
 }
 
 const ConfigurationContext = createContext<ConfigurationContextValue | null>(null);
@@ -14,14 +16,24 @@ export function ConfigurationProvider({
   configuration,
   configurationHash,
   cryptographicRuntime = null,
+  variantBank = null,
   children,
-}: Omit<ConfigurationContextValue, "cryptographicRuntime"> & {
+}: Omit<
+  ConfigurationContextValue,
+  "cryptographicRuntime" | "variantBank"
+> & {
   readonly cryptographicRuntime?: CryptographicRuntime | null;
+  readonly variantBank?: ScenarioVariantBank | null;
   readonly children: ReactNode;
 }): ReactNode {
   return (
     <ConfigurationContext.Provider
-      value={{ configuration, configurationHash, cryptographicRuntime }}
+      value={{
+        configuration,
+        configurationHash,
+        cryptographicRuntime,
+        variantBank,
+      }}
     >
       {children}
     </ConfigurationContext.Provider>

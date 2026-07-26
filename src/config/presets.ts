@@ -6,8 +6,8 @@ export type LecturerPresetId =
   | "assessment";
 
 const COMMON = {
-  configurationVersion: "1",
-  applicationCompatibilityVersion: "tc3-v1",
+  configurationVersion: "2",
+  applicationCompatibilityVersion: "tc3-v2",
   referenceWorkspace: "enabled",
   technicalFeatures: {
     hashInspection: true,
@@ -34,17 +34,32 @@ export const GUIDED_PRESET: TraceChainConfiguration = {
   difficulty: "introductory",
   feedbackTiming: "immediate",
   hints: "enabled",
+  scenarioVariation: {
+    strategy: "FIXED",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: false,
+  },
 };
 
 export const CHALLENGE_PRESET: TraceChainConfiguration = {
   ...COMMON,
   mode: "challenge",
-  scenarioId: "SCN_COFFEE_CHALLENGE_A",
-  scenarioVersion: "1.2.0",
-  scenarioSeed: "challenge-a-v1",
+  scenarioId: "SCN_COFFEE_CHALLENGE",
+  scenarioVersion: "2.0.0",
+  scenarioSeed: "challenge-bank-v1",
   difficulty: "intermediate",
   feedbackTiming: "stage-end",
   hints: "limited",
+  scenarioVariation: {
+    strategy: "SEEDED_VARIANT_BANK",
+    bankId: "BANK_COFFEE_CHALLENGE_V1",
+    bankVersion: "1.0.0",
+    selectionAlgorithmVersion: "1",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: true,
+  },
 };
 
 export const ASSESSMENT_PRESET: TraceChainConfiguration = {
@@ -56,6 +71,12 @@ export const ASSESSMENT_PRESET: TraceChainConfiguration = {
   difficulty: "intermediate",
   feedbackTiming: "final",
   hints: "disabled",
+  scenarioVariation: {
+    strategy: "FIXED",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: false,
+  },
 };
 
 export const LECTURER_PRESETS: Readonly<
