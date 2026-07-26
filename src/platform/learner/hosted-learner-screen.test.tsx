@@ -73,7 +73,7 @@ describe("hosted learner workspace", () => {
     );
 
     expect(
-      screen.getByText("Listed as an active consortium organization"),
+      screen.getByText("Recognized as an active network organization"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("May issue quality certificates"),
@@ -98,6 +98,9 @@ describe("hosted learner workspace", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Personal data that is unnecessary/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Apply the consortium's rules below/),
     ).toBeInTheDocument();
   });
 

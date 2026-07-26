@@ -303,13 +303,16 @@ describe("the whole activity in the browser", () => {
     await screen.findByRole("heading", { name: /Bước 3/ });
     expect(
       screen.getByRole("heading", {
-        name: "Sự công nhận và hành động được phép của đơn vị cấp",
+        name: "Sự công nhận và thẩm quyền của đơn vị cấp",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Được ghi là tổ chức đang hoạt động trong liên minh",
+        "Được công nhận là tổ chức đang hoạt động trong mạng lưới",
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Hãy đối chiếu sổ đăng ký tổ chức của mạng lưới/),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Được phép cấp chứng nhận chất lượng"),
@@ -390,6 +393,9 @@ describe("the whole activity in the browser", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Dữ liệu cá nhân không cần thiết/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Hãy áp dụng các quy tắc của liên minh dưới đây/),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }));
 
@@ -646,7 +652,7 @@ describe("the whole activity in the browser", () => {
 
     expect(
       screen.getByText(
-        "Không được ghi là tổ chức đang hoạt động trong liên minh",
+        "Không được công nhận là tổ chức đang hoạt động trong mạng lưới",
       ),
     ).toBeInTheDocument();
     expect(

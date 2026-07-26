@@ -595,7 +595,7 @@ describe("counterfactual explorer", () => {
 
     expect(
       screen.getByText(
-        "The original learner decision is kept unchanged. Select one author-approved scenario condition to change.",
+        "The original learner decision is kept unchanged. Select one of the conditions available for exploration.",
       ),
     ).toBeInTheDocument();
     expect(
