@@ -100,6 +100,7 @@ import type {
   RubricEvidenceProjection,
   Stage3CaseVariant,
 } from "./stage3-types";
+import { staffProfileProjection } from "./staff-profile-projection";
 
 const EVIDENCE_ID = "EVID_CERTIFICATE_RECORD";
 const MAXIMUM_JUSTIFICATION_LENGTH = 1_000;
@@ -916,6 +917,20 @@ export class HostedStage3RunService {
     private readonly counterfactualBranches?: CounterfactualBranchEngine,
   ) {
     this.domainRuntime = new CoffeeHostedDomainRuntime(pack);
+  }
+
+  private staffProfile(
+    state: HostedStage3RunState,
+    roleId = state.activeTrustedContext.roleId,
+  ): LearnerRunProjectionV1["staffProfile"] {
+    const scenario = this.pack.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId === state.scenarioId &&
+        candidate.version === state.scenarioVersion,
+    );
+    return scenario === undefined
+      ? undefined
+      : staffProfileProjection(this.pack, scenario, roleId);
   }
 
   async createCounterfactualBranch(
@@ -2527,6 +2542,7 @@ export class HostedStage3RunService {
         this.toProjectionState(state),
         state.activeTrustedContext.roleId,
       ),
+      staffProfile: this.staffProfile(state),
       timing: this.runTiming(
         state,
         loaded.startedAt,
@@ -2555,6 +2571,7 @@ export class HostedStage3RunService {
         this.toProjectionState(loaded.state),
         loaded.state.activeTrustedContext.roleId,
       ),
+      staffProfile: this.staffProfile(loaded.state),
       timing: this.runTiming(
         loaded.state,
         loaded.startedAt,
@@ -2583,6 +2600,7 @@ export class HostedStage3RunService {
         this.toProjectionState(loaded.state),
         loaded.state.activeTrustedContext.roleId,
       ),
+      staffProfile: this.staffProfile(loaded.state),
       timing: this.runTiming(
         loaded.state,
         loaded.startedAt,
@@ -2619,10 +2637,13 @@ export class HostedStage3RunService {
       principal,
       state.learnerUserId,
     );
-    return projectRunStateForRole(
-      this.toProjectionState(state),
-      roleId,
-    );
+    return {
+      ...projectRunStateForRole(
+        this.toProjectionState(state),
+        roleId,
+      ),
+      staffProfile: this.staffProfile(state, roleId),
+    };
   }
 
   async counterfactualMetrics(
@@ -2791,10 +2812,13 @@ export class HostedStage3RunService {
         causationId: selectedEvent.causationId,
         resultingStateHash: selectedEvent.resultingStateHash,
       },
-      projection: projectRunStateForRole(
-        this.toProjectionState(state),
-        state.activeTrustedContext.roleId,
-      ),
+      projection: {
+        ...projectRunStateForRole(
+          this.toProjectionState(state),
+          state.activeTrustedContext.roleId,
+        ),
+        staffProfile: this.staffProfile(state),
+      },
     };
   }
 

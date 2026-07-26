@@ -55,6 +55,51 @@ export interface ScenarioRoleHandoff {
   readonly labelKey: string;
 }
 
+export interface ScenarioPortraitAsset {
+  readonly assetId: string;
+  readonly sourceType:
+    | "AI_GENERATED"
+    | "LICENSED_STOCK"
+    | "ORIGINAL_WITH_RELEASE";
+  readonly licenseOrApprovalReference: string;
+  readonly fictionalSubject: true;
+  /** Package-relative path. Remote URLs and path traversal are invalid. */
+  readonly filePath: string;
+  readonly sha256: string;
+  readonly width: number;
+  readonly height: number;
+  readonly format: "webp";
+  readonly developmentPlaceholder: false;
+}
+
+/**
+ * A fictional professional presented by the scenario. This is deliberately
+ * separate from both the learner account and the cryptographic key identity.
+ */
+export interface ScenarioStaffProfile {
+  readonly staffProfileId: string;
+  readonly actorId: string;
+  readonly roleId: string;
+  readonly displayNameKey: string;
+  readonly roleTitleKey: string;
+  readonly organizationId: string;
+  readonly locationId?: string;
+  readonly departmentKey?: string;
+  readonly portraitAssetId: string;
+  readonly portraitAltKey: string;
+  readonly shortProfileKey?: string;
+  readonly professionalResponsibilityKey?: string;
+  readonly visibility: "LEARNER_VISIBLE" | "INSTRUCTOR_ONLY";
+  readonly fictional: true;
+}
+
+export interface ScenarioEvidenceStaffAttribution {
+  readonly evidenceId: string;
+  readonly staffProfileId: string;
+  readonly relationship: "AUTHORED" | "REVIEWED" | "MEASURED";
+  readonly occurredAt?: string;
+}
+
 /**
  * Serializable runtime vocabulary consumed by the shared stage components.
  * Package-specific identifiers and command facts live here rather than in the
@@ -334,6 +379,11 @@ export interface ScenarioStageDefinition {
    * learner starts the stage in, and is what the top bar shows.
    */
   readonly activeActorIds: readonly string[];
+  /**
+   * Human identities that add useful professional context in this stage.
+   * Omitted profiles remain scenario data but are not rendered here.
+   */
+  readonly staffProfileIds?: readonly string[];
   readonly requiredActions: readonly RequiredScenarioAction[];
   readonly completionConditions: readonly StageCompletionCondition[];
   readonly availableHints: readonly ScenarioHint[];
@@ -370,6 +420,9 @@ export interface ScenarioDefinition {
   readonly organizations: readonly Organization[];
   readonly actors: readonly Actor[];
   readonly locations: readonly Location[];
+  readonly portraitAssets: readonly ScenarioPortraitAsset[];
+  readonly staffProfiles: readonly ScenarioStaffProfile[];
+  readonly evidenceStaffAttributions: readonly ScenarioEvidenceStaffAttribution[];
   readonly timeline: ScenarioTimeline;
   readonly seedAssets: readonly SupplyChainAssetSeed[];
   readonly seedTransactions: readonly SeedTransactionDefinition[];

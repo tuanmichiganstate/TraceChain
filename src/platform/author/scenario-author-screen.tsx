@@ -904,11 +904,22 @@ interface MutableAuthoringPack {
   packId: string;
   version: string;
   manifest: { domain: string };
+  portraitAssets: {
+    assetId: string;
+    filePath: string;
+  }[];
   localizationCatalogs?: Record<string, Record<string, string>>;
   scenarios: {
     scenarioId: string;
     version: string;
     title: { localizationKey: string };
+    staffProfiles: {
+      staffProfileId: string;
+      roleId: string;
+      displayName: { localizationKey: string };
+      roleTitle: { localizationKey: string };
+      portraitAssetId: string;
+    }[];
     nodes: MutableAuthoringNode[];
   }[];
 }
@@ -970,6 +981,18 @@ function ScenarioDraftEditor({
       next.scenarios[0]?.nodes[nodeIndex]?.transitions[transitionIndex];
     if (transition === undefined) return;
     transition.toNodeId = toNodeId;
+    onChange(next as unknown as ScenarioPackV1);
+  }
+
+  function updateStaffPortrait(
+    staffProfileIndex: number,
+    portraitAssetId: string,
+  ) {
+    const next = mutablePack(pack);
+    const profile =
+      next.scenarios[0]?.staffProfiles[staffProfileIndex];
+    if (profile === undefined) return;
+    profile.portraitAssetId = portraitAssetId;
     onChange(next as unknown as ScenarioPackV1);
   }
 
@@ -1035,6 +1058,74 @@ function ScenarioDraftEditor({
             />
           ))}
         </div>
+      )}
+      {scenario.staffProfiles.length === 0 ? null : (
+        <>
+          <h4>{t("scenarioAuthor.editor.staffProfiles")}</h4>
+          <p>{t("scenarioAuthor.editor.staffProfilesHelp")}</p>
+          <div className="scenario-author__staff-grid">
+            {scenario.staffProfiles.map((profile, profileIndex) => {
+              const portrait = pack.portraitAssets.find(
+                (candidate) =>
+                  candidate.assetId === profile.portraitAssetId,
+              );
+              return (
+                <article
+                  className="staff-identity staff-identity--compact"
+                  key={profile.staffProfileId}
+                >
+                  {portrait === undefined ? (
+                    <span
+                      className="staff-portrait staff-portrait--compact staff-portrait--fallback"
+                      aria-hidden="true"
+                    >
+                      ?
+                    </span>
+                  ) : (
+                    <img
+                      className="staff-portrait staff-portrait--compact"
+                      src={`./${portrait.filePath}`}
+                      width={48}
+                      height={60}
+                      alt=""
+                    />
+                  )}
+                  <div className="staff-identity__body">
+                    <h5 className="staff-identity__name">
+                      {t(profile.displayName.localizationKey)}
+                    </h5>
+                    <p className="staff-identity__role">
+                      {t(profile.roleTitle.localizationKey)}
+                    </p>
+                    <label
+                      className="field__label"
+                      htmlFor={`staff-portrait-${profile.staffProfileId}`}
+                    >
+                      {t("scenarioAuthor.editor.approvedPortrait")}
+                    </label>
+                    <select
+                      className="field__control"
+                      id={`staff-portrait-${profile.staffProfileId}`}
+                      value={profile.portraitAssetId}
+                      onChange={(event) =>
+                        updateStaffPortrait(
+                          profileIndex,
+                          event.target.value,
+                        )
+                      }
+                    >
+                      {pack.portraitAssets.map((asset) => (
+                        <option key={asset.assetId} value={asset.assetId}>
+                          {asset.assetId}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
       <h4>{t("scenarioAuthor.editor.workflow")}</h4>
       <div className="table-scroll">

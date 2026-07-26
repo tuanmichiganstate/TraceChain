@@ -845,6 +845,165 @@
   align-content: start;
 }
 
+/* ---- Scenario staff presence ----------------------------------------- */
+
+.staff-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  min-width: 0;
+  padding: var(--space-4);
+  overflow: hidden;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-inline-start: 4px solid var(--colour-physical);
+  border-radius: var(--radius-large);
+}
+
+.staff-identity--briefing {
+  background: var(--colour-physical-soft);
+  border-color: var(--colour-border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.staff-identity--compact {
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-inline-start-width: 3px;
+  border-radius: var(--radius-medium);
+}
+
+.staff-identity--evidence {
+  margin-block: var(--space-3);
+  background: var(--colour-surface-sunken);
+  box-shadow: none;
+}
+
+.staff-portrait {
+  display: block;
+  flex: none;
+  width: 80px;
+  height: 100px;
+  object-fit: cover;
+  object-position: 50% 30%;
+  border: 1px solid var(--colour-border-strong);
+  border-radius: var(--radius-medium);
+  background: var(--colour-surface-sunken);
+}
+
+.staff-portrait--briefing {
+  width: 128px;
+  height: 160px;
+}
+
+.staff-portrait--compact {
+  width: 48px;
+  height: 60px;
+  border-radius: var(--radius-small);
+}
+
+.staff-portrait--fallback {
+  display: grid;
+  place-items: center;
+  color: var(--colour-text-muted);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.staff-identity__body {
+  min-width: 0;
+}
+
+.staff-identity__label,
+.staff-identity__name,
+.staff-identity__role,
+.staff-identity__organization,
+.staff-identity__location,
+.staff-identity__responsibility {
+  overflow-wrap: anywhere;
+}
+
+.staff-identity__label {
+  margin-bottom: var(--space-1);
+}
+
+.staff-identity__name {
+  margin-bottom: 0;
+  font-size: var(--size-heading-3);
+}
+
+.staff-identity--briefing .staff-identity__name {
+  font-size: var(--size-heading-2);
+}
+
+.staff-identity__role {
+  margin: 0;
+  font-weight: 650;
+  color: var(--colour-navy-strong);
+}
+
+.staff-identity__organization,
+.staff-identity__location {
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: var(--size-small);
+}
+
+.staff-identity__responsibility {
+  max-width: 64ch;
+  margin: var(--space-2) 0 0;
+  font-size: var(--size-small);
+}
+
+.role-handoff {
+  margin-block: var(--space-4);
+}
+
+.role-handoff__heading > :last-child {
+  margin-bottom: var(--space-4);
+}
+
+.role-handoff__people {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.role-handoff__people .staff-identity {
+  margin: 0;
+}
+
+.role-handoff__arrow {
+  display: block;
+  color: var(--colour-text-muted);
+  text-align: center;
+  font-size: var(--size-heading-2);
+  line-height: 1;
+}
+
+@media (max-width: 25rem) {
+  .staff-identity--briefing {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .staff-portrait--briefing {
+    width: 96px;
+    height: 120px;
+  }
+}
+
+@media (min-width: 48rem) {
+  .role-handoff__people {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .role-handoff__arrow {
+    transform: rotate(-90deg);
+  }
+}
+
 /* ---- Layered simulation workspace ---- */
 
 .role-application {
@@ -2630,4 +2789,16 @@
 .scenario-author__draft-editor .data-table input,
 .scenario-author__draft-editor .data-table select {
   min-width: 12rem;
+}
+
+.scenario-author__staff-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+@media (min-width: 48rem) {
+  .scenario-author__staff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

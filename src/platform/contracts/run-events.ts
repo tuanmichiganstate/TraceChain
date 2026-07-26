@@ -101,6 +101,7 @@ export interface LearnerRunProjectionV1 {
   readonly runId: string;
   readonly version: number;
   readonly roleId: string;
+  readonly staffProfile?: LearnerRunStaffProfileV1 | undefined;
   readonly businessState: readonly {
     readonly recordId: string;
     readonly value: JsonValue;
@@ -136,6 +137,18 @@ export interface LearnerRunProjectionV1 {
 export interface LearnerRunLocalizedTextV1 {
   readonly localizationKey: string;
   readonly valuesByLocale: Readonly<Record<string, string>>;
+}
+
+export interface LearnerRunStaffProfileV1 {
+  readonly staffProfileId: string;
+  readonly displayName: LearnerRunLocalizedTextV1;
+  readonly roleTitle: LearnerRunLocalizedTextV1;
+  readonly organizationName: LearnerRunLocalizedTextV1;
+  readonly portraitPath: string;
+  readonly portraitAlt: LearnerRunLocalizedTextV1;
+  readonly shortProfile?: LearnerRunLocalizedTextV1;
+  readonly professionalResponsibility?: LearnerRunLocalizedTextV1;
+  readonly fictional: true;
 }
 
 export interface LearnerRunDecisionOptionV1 {

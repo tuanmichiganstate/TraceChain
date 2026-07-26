@@ -41,6 +41,7 @@ import {
   transportConditionCheck,
 } from "./knowledge-checks";
 import { SHIPPING_MANIFEST_ANCHOR_ID, WEIGHED_QUANTITY_KG } from "./facts";
+import { StaffProfileId } from "./staff-profiles";
 
 export const GREEN_COFFEE_BATCH_ID = "BAT_GREEN_COFFEE_001";
 export const ROASTED_COFFEE_BATCH_ID = "BAT_ROASTED_COFFEE_001";
@@ -79,6 +80,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     titleKey: "stage.createBatch.title",
     instructionKey: "stage.createBatch.instruction",
     activeActorIds: [ActorId.PRODUCER_MANAGER],
+    staffProfileIds: [StaffProfileId.PRODUCER_MANAGER],
     requiredActions: [
       {
         actionId: "ACTION_CREATE_BATCH",
@@ -119,6 +121,7 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     titleKey: "stage.anchorCertificate.title",
     instructionKey: "stage.anchorCertificate.instruction",
     activeActorIds: [ActorId.CERTIFICATION_OFFICER],
+    staffProfileIds: [StaffProfileId.CERTIFICATION_OFFICER],
     requiredActions: [
       {
         actionId: "ACTION_CHOOSE_STORAGE",
@@ -172,6 +175,10 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     // The role switches mid-stage: the producer hands over custody, then the
     // carrier records transport conditions. That handoff is the lesson.
     activeActorIds: [ActorId.PRODUCER_MANAGER, ActorId.LOGISTICS_COORDINATOR],
+    staffProfileIds: [
+      StaffProfileId.PRODUCER_MANAGER,
+      StaffProfileId.LOGISTICS_COORDINATOR,
+    ],
     requiredActions: [
       {
         actionId: "ACTION_CHOOSE_TRANSFER_SCOPE",
@@ -215,6 +222,10 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     titleKey: "stage.receiveAndCorrect.title",
     instructionKey: "stage.receiveAndCorrect.instruction",
     activeActorIds: [ActorId.PROCESSING_MANAGER],
+    staffProfileIds: [
+      StaffProfileId.PROCESSING_MANAGER,
+      StaffProfileId.SHIPPING_CLERK,
+    ],
     requiredActions: [
       {
         actionId: "ACTION_RECEIVE",
@@ -458,6 +469,10 @@ export const coffeeStages: readonly ScenarioStageDefinition[] = [
     titleKey: "stage.recallAndDebrief.title",
     instructionKey: "stage.recallAndDebrief.instruction",
     activeActorIds: [ActorId.RETAIL_MANAGER, ActorId.REGULATORY_AUDITOR],
+    staffProfileIds: [
+      StaffProfileId.RETAIL_MANAGER,
+      StaffProfileId.REGULATORY_AUDITOR,
+    ],
     requiredActions: [
       {
         actionId: "ACTION_DETERMINE_SCOPE",

@@ -1,5 +1,36 @@
 import { expect, test } from "@playwright/test";
 
+const certificateStaffProfile = {
+  staffProfileId: "STAFF_CERTIFICATION_OFFICER",
+  displayName: {
+    localizationKey: "staff.certificationOfficer.name",
+    valuesByLocale: { en: "Trần Minh Anh", vi: "Trần Minh Anh" },
+  },
+  roleTitle: {
+    localizationKey: "staff.certificationOfficer.role",
+    valuesByLocale: {
+      en: "Certification Officer",
+      vi: "Chuyên viên chứng nhận",
+    },
+  },
+  organizationName: {
+    localizationKey: "organizations.certificationBody.name",
+    valuesByLocale: {
+      en: "Agricultural Certification Centre",
+      vi: "Trung tâm Chứng nhận Nông nghiệp",
+    },
+  },
+  portraitPath: "./media/staff/certification-officer.webp",
+  portraitAlt: {
+    localizationKey: "staff.certificationOfficer.alt",
+    valuesByLocale: {
+      en: "Fictional portrait of Trần Minh Anh",
+      vi: "Chân dung hư cấu của Trần Minh Anh",
+    },
+  },
+  fictional: true,
+};
+
 test("runs an assigned hosted learner action from role-filtered server state", async ({
   page,
 }) => {
@@ -35,7 +66,7 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     schemaVersion: "1.0.0",
     runId: "RUN_BROWSER_001",
     version: 2,
-    roleId: "LOGISTICS_COORDINATOR",
+    roleId: "CERTIFICATION_OFFICER",
     businessState: [
       {
         recordId: "DECISION_STATUS",
@@ -64,6 +95,7 @@ test("runs an assigned hosted learner action from role-filtered server state", a
       completedNodeIds: [],
       permittedActionIds: ["INSPECT_EVIDENCE"],
     },
+    staffProfile: certificateStaffProfile,
   };
   const decisionProjection = {
     ...initialProjection,
@@ -176,6 +208,11 @@ test("runs an assigned hosted learner action from role-filtered server state", a
   await expect(
     page.getByRole("heading", { name: "Traceability workspace" }),
   ).toBeVisible();
+  await expect(
+    page.locator(
+      '[data-staff-profile-id="STAFF_CERTIFICATION_OFFICER"]',
+    ),
+  ).toContainText("Trần Minh Anh");
   await page
     .getByText("View accepted ledger transactions")
     .click();
@@ -1507,6 +1544,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                   "SUBMIT_CERTIFICATE_DECISION",
                 ],
               },
+              staffProfile: certificateStaffProfile,
             },
           },
         },
@@ -1612,6 +1650,16 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   await expect(
     page.getByRole("heading", { name: "Selected event response" }),
   ).toBeVisible();
+  await expect(
+    page.locator(
+      '[data-staff-profile-id="STAFF_CERTIFICATION_OFFICER"]',
+    ),
+  ).toContainText("Active simulation role");
+  await expect(
+    page.locator(
+      '[data-staff-profile-id="STAFF_CERTIFICATION_OFFICER"]',
+    ),
+  ).toContainText("Trần Minh Anh");
   await expect(
     page.getByText(
       /The certificate and issuer evidence support continuation\./,

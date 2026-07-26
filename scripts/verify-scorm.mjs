@@ -37,6 +37,7 @@ const packageSpecificFiles = new Set([
   ...packagingFiles,
   "tracechain.config.json",
   "scenario.json",
+  "media-manifest.json",
   "identity-registry.json",
   "educational-signing-keys.json",
   "authorization-policies.json",
@@ -133,7 +134,9 @@ function hashStaticEntries(entries) {
   const staticEntries = entries
     .filter(
       (entry) =>
-        !entry.isDirectory && !packageSpecificFiles.has(entry.entryName),
+        !entry.isDirectory &&
+        !packageSpecificFiles.has(entry.entryName) &&
+        !entry.entryName.startsWith("media/"),
     )
     .sort((left, right) => left.entryName.localeCompare(right.entryName, "en"));
   for (const entry of staticEntries) {
@@ -151,6 +154,163 @@ function hashStaticEntries(entries) {
       ]),
     ),
   };
+}
+
+function webpDimensions(bytes) {
+  if (
+    bytes.length < 30 ||
+    bytes.toString("ascii", 0, 4) !== "RIFF" ||
+    bytes.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    return null;
+  }
+  const chunk = bytes.toString("ascii", 12, 16);
+  if (chunk === "VP8 ") {
+    return {
+      width: bytes.readUInt16LE(26) & 0x3fff,
+      height: bytes.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  if (chunk === "VP8L" && bytes.length >= 25) {
+    const bits = bytes.readUInt32LE(21);
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >> 14) & 0x3fff) + 1,
+    };
+  }
+  if (chunk === "VP8X" && bytes.length >= 30) {
+    return {
+      width: 1 + bytes.readUIntLE(24, 3),
+      height: 1 + bytes.readUIntLE(27, 3),
+    };
+  }
+  return null;
+}
+
+function verifyPortraitMedia({
+  zip,
+  entryNames,
+  scenario,
+  buildInformation,
+  check,
+}) {
+  let manifest = null;
+  try {
+    manifest = JSON.parse(zip.readAsText("media-manifest.json"));
+  } catch {
+    // The checks below report the malformed manifest.
+  }
+  check("media-manifest.json is valid JSON", manifest !== null);
+  if (manifest === null) return;
+
+  const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+  const scenarioAssets = Array.isArray(scenario?.portraitAssets)
+    ? scenario.portraitAssets
+    : [];
+  check(
+    "Portrait media manifest is bound to the exact scenario",
+    manifest.schemaVersion === "1" &&
+      manifest.scenarioId === scenario?.scenarioId &&
+      manifest.scenarioVersion === scenario?.scenarioVersion &&
+      JSON.stringify(assets) === JSON.stringify(scenarioAssets),
+  );
+  check(
+    "Portrait media manifest matches its recorded hash",
+    buildInformation?.portraitMediaSchemaVersion === "1" &&
+      buildInformation?.portraitMediaManifestHash ===
+        createHash("sha256")
+          .update(zip.getEntry("media-manifest.json").getData())
+          .digest("hex"),
+  );
+
+  const organizationIds = new Set(
+    (scenario?.organizations ?? []).map(
+      (organization) => organization.organizationId,
+    ),
+  );
+  const actorIds = new Set(
+    (scenario?.actors ?? []).map((actor) => actor.actorId),
+  );
+  const assetIds = assets.map((asset) => asset.assetId);
+  const profiles = Array.isArray(scenario?.staffProfiles)
+    ? scenario.staffProfiles
+    : [];
+  check(
+    "Portrait asset IDs are unique",
+    new Set(assetIds).size === assetIds.length,
+  );
+  check(
+    "Staff profiles reference known actors, organizations, and portrait assets",
+    profiles.every(
+      (profile) =>
+        profile.fictional === true &&
+        actorIds.has(profile.actorId) &&
+        organizationIds.has(profile.organizationId) &&
+        assetIds.includes(profile.portraitAssetId),
+    ),
+  );
+
+  const recordedHashes = buildInformation?.portraitMediaHashes;
+  for (const asset of assets) {
+    const safePath =
+      typeof asset.filePath === "string" &&
+      asset.filePath.startsWith("media/staff/") &&
+      !asset.filePath.includes("..") &&
+      !asset.filePath.includes("\\") &&
+      !/^[a-z][a-z0-9+.-]*:/iu.test(asset.filePath);
+    check(`${asset.assetId} uses a safe local path`, safePath);
+    check(
+      `${asset.assetId} is an approved fictional portrait`,
+      asset.fictionalSubject === true &&
+        asset.developmentPlaceholder === false &&
+        typeof asset.licenseOrApprovalReference === "string" &&
+        asset.licenseOrApprovalReference.length > 0,
+    );
+    check(`${asset.assetId} is present`, entryNames.includes(asset.filePath));
+    if (!safePath || !entryNames.includes(asset.filePath)) continue;
+    const bytes = zip.getEntry(asset.filePath).getData();
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    const dimensions = webpDimensions(bytes);
+    check(
+      `${asset.assetId} matches its authored and recorded hashes`,
+      digest === asset.sha256 &&
+        recordedHashes?.[asset.filePath] === digest,
+    );
+    check(
+      `${asset.assetId} is an adequate WebP portrait`,
+      asset.format === "webp" &&
+        dimensions !== null &&
+        dimensions.width === asset.width &&
+        dimensions.height === asset.height &&
+        dimensions.width >= 320 &&
+        dimensions.height >= 400,
+    );
+  }
+
+  const localeFiles = ["en", "vi"].map((locale) =>
+    JSON.parse(
+      readFileSync(
+        join(projectRoot, "src", "locales", `${locale}.json`),
+        "utf8",
+      ),
+    ),
+  );
+  const profileLocaleKeys = profiles.flatMap((profile) =>
+    [
+      profile.displayNameKey,
+      profile.roleTitleKey,
+      profile.departmentKey,
+      profile.portraitAltKey,
+      profile.shortProfileKey,
+      profile.professionalResponsibilityKey,
+    ].filter((key) => typeof key === "string"),
+  );
+  check(
+    "Every staff-profile locale key exists in Vietnamese and English",
+    profileLocaleKeys.every((key) =>
+      localeFiles.every((locale) => typeof locale[key] === "string"),
+    ),
+  );
 }
 
 function verifyCryptographicRuntime({
@@ -626,12 +786,22 @@ function verifyPackage(zipPath) {
     "index.html",
     "tracechain.config.json",
     "scenario.json",
+    "media-manifest.json",
     "build-info.json",
     "version.json",
     "README.txt",
   ];
   for (const file of required) {
     check(`${file} is present`, entryNames.includes(file));
+  }
+  if (entryNames.includes("README.txt")) {
+    const packageReadme = zip.readAsText("README.txt");
+    check(
+      "Package documentation discloses fictional staff portraits",
+      packageReadme.includes(
+        "The people and portrait images in this simulation are fictional.",
+      ),
+    );
   }
   check(
     "Archive entries are deterministically ordered",
@@ -878,6 +1048,13 @@ function verifyPackage(zipPath) {
     entries,
     entryNames,
     configuration,
+    scenario,
+    buildInformation,
+    check,
+  });
+  verifyPortraitMedia({
+    zip,
+    entryNames,
     scenario,
     buildInformation,
     check,

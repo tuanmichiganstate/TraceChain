@@ -88,6 +88,36 @@ export interface ScenarioRoleV1 {
   readonly displayName: LocalizedText;
 }
 
+export interface ScenarioPortraitAssetV1 {
+  readonly assetId: string;
+  readonly sourceType:
+    | "AI_GENERATED"
+    | "LICENSED_STOCK"
+    | "ORIGINAL_WITH_RELEASE";
+  readonly licenseOrApprovalReference: string;
+  readonly fictionalSubject: true;
+  readonly filePath: string;
+  readonly sha256: string;
+  readonly width: number;
+  readonly height: number;
+  readonly format: "webp";
+  readonly developmentPlaceholder: false;
+}
+
+export interface ScenarioStaffProfileV1 {
+  readonly staffProfileId: string;
+  readonly roleId: string;
+  readonly organizationId: string;
+  readonly displayName: LocalizedText;
+  readonly roleTitle: LocalizedText;
+  readonly portraitAssetId: string;
+  readonly portraitAlt: LocalizedText;
+  readonly shortProfile?: LocalizedText;
+  readonly professionalResponsibility?: LocalizedText;
+  readonly visibility: "LEARNER_VISIBLE" | "INSTRUCTOR_ONLY";
+  readonly fictional: true;
+}
+
 export interface ScenarioAssetTypeV1 {
   readonly assetTypeId: string;
   readonly displayName: LocalizedText;
@@ -99,6 +129,7 @@ export interface ScenarioEvidenceItemV1 {
   readonly evidenceType: string;
   readonly title: LocalizedText;
   readonly sourceOrganizationId: string;
+  readonly staffProfileId?: string;
   readonly visibleToRoleIds: readonly string[];
   readonly content: JsonObject;
 }
@@ -412,6 +443,7 @@ export interface ScenarioDefinitionV1 {
   readonly competencyTargets: readonly CompetencyTargetV1[];
   readonly organizations: readonly ScenarioOrganizationV1[];
   readonly roles: readonly ScenarioRoleV1[];
+  readonly staffProfiles: readonly ScenarioStaffProfileV1[];
   readonly assetTypes: readonly ScenarioAssetTypeV1[];
   readonly initialState: {
     readonly actualState: JsonObject;
@@ -436,7 +468,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.5.0";
+  readonly schemaVersion: "1.6.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
@@ -448,6 +480,7 @@ export interface ScenarioPackV1 {
   readonly competencyFrameworks: readonly CompetencyFrameworkV1[];
   readonly rubrics: readonly RubricDefinitionV1[];
   readonly evidenceRules: readonly AutomatedEvidenceRuleV1[];
+  readonly portraitAssets: readonly ScenarioPortraitAssetV1[];
   readonly scenarios: readonly ScenarioDefinitionV1[];
   readonly assetHashes: Readonly<Record<string, string>>;
   readonly publication?: ContentPublication;

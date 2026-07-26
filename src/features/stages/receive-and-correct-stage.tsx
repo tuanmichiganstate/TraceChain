@@ -38,6 +38,7 @@ import {
   CaseWorkspaceTabs,
   RoleApplicationShell,
 } from "../../components/simulation-workspace";
+import { EvidenceAuthorIdentity } from "../../components/staff-presence";
 
 const MINIMUM_REASON_LENGTH = 10;
 type DiscrepancyCauseCode =
@@ -652,6 +653,7 @@ function ManifestDiscrepancy({
 
       <div className="discrepancy__content">
         <h3>{t("stage.receiveAndCorrect.discrepancyHeading")}</h3>
+        <EvidenceAuthorIdentity evidenceId={manifestAnchorId} />
         {/*
           Two values, neither of them a verdict. The manifest passed every rule
           when the clerk filed it and is committed for good -- it is inaccurate,

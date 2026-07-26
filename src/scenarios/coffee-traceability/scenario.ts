@@ -17,17 +17,19 @@ import { SCENARIO_TIMELINE } from "./timeline";
 import { DECISION_IDS, HINT_IDS } from "./decisions";
 import { coffeeScriptedTransactions } from "./scripted-transactions";
 import { coffeeRuntime } from "./runtime";
+import {
+  coffeeEvidenceStaffAttributions,
+  coffeePortraitAssets,
+  coffeeStaffProfiles,
+} from "./staff-profiles";
 
 export const coffeeScenario: ScenarioDefinition = {
   scenarioId: "SCN_COFFEE_001",
   /*
-   * 2.2.0: custody transfer and quantity correction use genuine Ed25519
-   * approvals from the exact organizations required by constrained policies.
-   * The configuration hash and scenario version are exact TC3 identity
-   * boundaries because the command journal includes pending-proposal and
-   * endorsement actions.
+   * 2.3.0: versioned fictional staff profiles and locally bundled portrait
+   * assets add professional role context without changing transaction rules.
    */
-  scenarioVersion: "2.2.0",
+  scenarioVersion: "2.3.0",
   titleKey: "app.title",
   descriptionKey: "app.subtitle",
   // Nine stages rather than ten, to protect this budget (section 2.4).
@@ -36,6 +38,9 @@ export const coffeeScenario: ScenarioDefinition = {
   organizations,
   actors,
   locations,
+  portraitAssets: coffeePortraitAssets,
+  staffProfiles: coffeeStaffProfiles,
+  evidenceStaffAttributions: coffeeEvidenceStaffAttributions,
   timeline: SCENARIO_TIMELINE,
 
   seedAssets: coffeeSeedAssets,

@@ -57,6 +57,7 @@ const ROOT_KEYS = [
   "competencyFrameworks",
   "rubrics",
   "evidenceRules",
+  "portraitAssets",
   "scenarios",
   "assetHashes",
   "publication",
@@ -2474,6 +2475,7 @@ function validateScenario(
   indicatorIds: ReadonlySet<string>,
   rubricIds: ReadonlySet<string>,
   evidenceRuleIds: ReadonlySet<string>,
+  portraitAssetIds: ReadonlySet<string>,
 ): void {
   const scenario = context.object(value, path);
   if (scenario === null) return;
@@ -2490,6 +2492,7 @@ function validateScenario(
       "competencyTargets",
       "organizations",
       "roles",
+      "staffProfiles",
       "assetTypes",
       "initialState",
       "policies",
@@ -2981,6 +2984,131 @@ function validateScenario(
     });
   }
 
+  const staffProfileIds = new Set<string>();
+  const staffProfiles = context.array(
+    scenario.staffProfiles,
+    `${path}.staffProfiles`,
+  );
+  if (staffProfiles !== null) {
+    staffProfiles.forEach((profileValue, profileIndex) => {
+      const profilePath =
+        `${path}.staffProfiles[${String(profileIndex)}]`;
+      const profile = context.object(profileValue, profilePath);
+      if (profile === null) return;
+      context.allowedKeys(
+        profile,
+        [
+          "staffProfileId",
+          "roleId",
+          "organizationId",
+          "displayName",
+          "roleTitle",
+          "portraitAssetId",
+          "portraitAlt",
+          "shortProfile",
+          "professionalResponsibility",
+          "visibility",
+          "fictional",
+        ],
+        profilePath,
+      );
+      const profileId = context.string(
+        profile.staffProfileId,
+        `${profilePath}.staffProfileId`,
+        { identifier: true },
+      );
+      if (profileId !== null) {
+        context.check(
+          !staffProfileIds.has(profileId),
+          "DUPLICATE_STAFF_PROFILE_ID",
+          `${profilePath}.staffProfileId`,
+          "must be unique within the scenario",
+        );
+        staffProfileIds.add(profileId);
+      }
+      const roleId = context.string(
+        profile.roleId,
+        `${profilePath}.roleId`,
+        { identifier: true },
+      );
+      context.check(
+        roleId !== null && roleIds.has(roleId),
+        "UNKNOWN_ROLE_REFERENCE",
+        `${profilePath}.roleId`,
+        "must reference a role in this scenario",
+      );
+      const organizationId = context.string(
+        profile.organizationId,
+        `${profilePath}.organizationId`,
+        { identifier: true },
+      );
+      context.check(
+        organizationId !== null && organizationIds.has(organizationId),
+        "UNKNOWN_ORGANIZATION_REFERENCE",
+        `${profilePath}.organizationId`,
+        "must reference an organization in this scenario",
+      );
+      const portraitAssetId = context.string(
+        profile.portraitAssetId,
+        `${profilePath}.portraitAssetId`,
+        { identifier: true },
+      );
+      context.check(
+        portraitAssetId !== null && portraitAssetIds.has(portraitAssetId),
+        "UNKNOWN_PORTRAIT_ASSET_REFERENCE",
+        `${profilePath}.portraitAssetId`,
+        "must reference a portrait asset in this pack",
+      );
+      validateLocalizedText(
+        context,
+        profile.displayName,
+        `${profilePath}.displayName`,
+        supportedLocales,
+      );
+      validateLocalizedText(
+        context,
+        profile.roleTitle,
+        `${profilePath}.roleTitle`,
+        supportedLocales,
+      );
+      validateLocalizedText(
+        context,
+        profile.portraitAlt,
+        `${profilePath}.portraitAlt`,
+        supportedLocales,
+      );
+      if (profile.shortProfile !== undefined) {
+        validateLocalizedText(
+          context,
+          profile.shortProfile,
+          `${profilePath}.shortProfile`,
+          supportedLocales,
+        );
+      }
+      if (profile.professionalResponsibility !== undefined) {
+        validateLocalizedText(
+          context,
+          profile.professionalResponsibility,
+          `${profilePath}.professionalResponsibility`,
+          supportedLocales,
+        );
+      }
+      context.check(
+        profile.visibility === "LEARNER_VISIBLE" ||
+          profile.visibility === "INSTRUCTOR_ONLY",
+        "INVALID_STAFF_VISIBILITY",
+        `${profilePath}.visibility`,
+        "must be learner-visible or instructor-only",
+      );
+      context.check(
+        profile.fictional === true,
+        "STAFF_PROFILE_MUST_BE_FICTIONAL",
+        `${profilePath}.fictional`,
+        "must explicitly declare a fictional person",
+      );
+    });
+  }
+
   const assetTypes = context.array(
     scenario.assetTypes,
     `${path}.assetTypes`,
@@ -3122,6 +3250,7 @@ function validateScenario(
           "evidenceType",
           "title",
           "sourceOrganizationId",
+          "staffProfileId",
           "visibleToRoleIds",
           "content",
         ],
@@ -3163,6 +3292,19 @@ function validateScenario(
           "UNKNOWN_ORGANIZATION_REFERENCE",
           `${evidencePath}.sourceOrganizationId`,
           "must reference an organization in this scenario",
+        );
+      }
+      if (evidence.staffProfileId !== undefined) {
+        const staffProfileId = context.string(
+          evidence.staffProfileId,
+          `${evidencePath}.staffProfileId`,
+          { identifier: true },
+        );
+        context.check(
+          staffProfileId !== null && staffProfileIds.has(staffProfileId),
+          "UNKNOWN_STAFF_PROFILE_REFERENCE",
+          `${evidencePath}.staffProfileId`,
+          "must reference a staff profile in this scenario",
         );
       }
       validateUniqueStrings(
@@ -3279,10 +3421,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.5.0",
+    schemaVersion === "1.6.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.5.0",
+    "requires scenario-pack schema version 1.6.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -3463,10 +3605,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.5.0",
+      pack.schemaVersion === "1.6.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.5.0",
+      "must equal 1.6.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });
@@ -3565,6 +3707,111 @@ export function validateScenarioPack(
       "$.evidenceRules",
       indicatorIds,
     );
+    const portraitAssetIds = new Set<string>();
+    const portraitAssetHashes = new Map<string, string>();
+    const portraitAssets = context.array(
+      pack.portraitAssets,
+      "$.portraitAssets",
+    );
+    if (portraitAssets !== null) {
+      portraitAssets.forEach((assetValue, assetIndex) => {
+        const assetPath = `$.portraitAssets[${String(assetIndex)}]`;
+        const asset = context.object(assetValue, assetPath);
+        if (asset === null) return;
+        context.allowedKeys(
+          asset,
+          [
+            "assetId",
+            "sourceType",
+            "licenseOrApprovalReference",
+            "fictionalSubject",
+            "filePath",
+            "sha256",
+            "width",
+            "height",
+            "format",
+            "developmentPlaceholder",
+          ],
+          assetPath,
+        );
+        const assetId = context.string(
+          asset.assetId,
+          `${assetPath}.assetId`,
+          { identifier: true },
+        );
+        if (assetId !== null) {
+          context.check(
+            !portraitAssetIds.has(assetId),
+            "DUPLICATE_PORTRAIT_ASSET_ID",
+            `${assetPath}.assetId`,
+            "must be unique within the pack",
+          );
+          portraitAssetIds.add(assetId);
+        }
+        context.check(
+          asset.sourceType === "AI_GENERATED" ||
+            asset.sourceType === "LICENSED_STOCK" ||
+            asset.sourceType === "ORIGINAL_WITH_RELEASE",
+          "INVALID_PORTRAIT_SOURCE",
+          `${assetPath}.sourceType`,
+          "must use an approved portrait source type",
+        );
+        context.string(
+          asset.licenseOrApprovalReference,
+          `${assetPath}.licenseOrApprovalReference`,
+        );
+        context.check(
+          asset.fictionalSubject === true,
+          "PORTRAIT_SUBJECT_MUST_BE_FICTIONAL",
+          `${assetPath}.fictionalSubject`,
+          "must explicitly declare a fictional subject",
+        );
+        const filePath = context.string(
+          asset.filePath,
+          `${assetPath}.filePath`,
+        );
+        context.check(
+          filePath !== null &&
+            filePath.startsWith("media/staff/") &&
+            !filePath.split("/").includes("..") &&
+            !filePath.includes("\\") &&
+            !/^[a-z][a-z0-9+.-]*:/iu.test(filePath),
+          "INVALID_PORTRAIT_PATH",
+          `${assetPath}.filePath`,
+          "must be a safe local media/staff path",
+        );
+        const hash = context.string(asset.sha256, `${assetPath}.sha256`);
+        context.check(
+          hash !== null && SHA256.test(hash),
+          "INVALID_PORTRAIT_HASH",
+          `${assetPath}.sha256`,
+          "must be a lowercase SHA-256 digest",
+        );
+        if (filePath !== null && hash !== null) {
+          portraitAssetHashes.set(filePath, hash);
+        }
+        context.number(asset.width, `${assetPath}.width`, {
+          integer: true,
+          minimum: 320,
+        });
+        context.number(asset.height, `${assetPath}.height`, {
+          integer: true,
+          minimum: 400,
+        });
+        context.check(
+          asset.format === "webp",
+          "INVALID_PORTRAIT_FORMAT",
+          `${assetPath}.format`,
+          "must be webp",
+        );
+        context.check(
+          asset.developmentPlaceholder === false,
+          "DEVELOPMENT_PORTRAIT_FORBIDDEN",
+          `${assetPath}.developmentPlaceholder`,
+          "must be false for repository packs",
+        );
+      });
+    }
     const scenarios = context.array(pack.scenarios, "$.scenarios");
     if (scenarios !== null) {
       context.check(
@@ -3585,6 +3832,7 @@ export function validateScenarioPack(
           indicatorIds,
           rubricIds,
           evidenceRuleIds,
+          portraitAssetIds,
         );
         if (isJsonObject(scenarioValue)) {
           const scenarioId =
@@ -3623,6 +3871,14 @@ export function validateScenarioPack(
           "INVALID_ASSET_HASH",
           `$.assetHashes.${assetPath}`,
           "must be a lowercase SHA-256 digest",
+        );
+      }
+      for (const [portraitPath, portraitHash] of portraitAssetHashes) {
+        context.check(
+          assetHashes[portraitPath] === portraitHash,
+          "PORTRAIT_ASSET_HASH_MISMATCH",
+          `$.assetHashes.${portraitPath}`,
+          "must contain the exact hash declared by the portrait asset",
         );
       }
     }

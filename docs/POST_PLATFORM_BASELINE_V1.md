@@ -16,7 +16,7 @@ disciplinary validity, or real assistive-technology usability.
 | Source commit | `088576970ae5648447d5baff20d906941b944d46` plus the uncommitted priorities 5, 6, 7, 8, and 11 candidate diff | Not immutable |
 | Deployment revision | No deployment was requested or performed for this candidate | Not accepted |
 | Database schema version | The current D1 foundation is created directly by `ensureD1FoundationSchema`; it has no separately recorded release version | Open baseline limitation |
-| Scenario-pack schema | `1.5.0` | Implemented in candidate |
+| Scenario-pack schema | `1.6.0` | Implemented in candidate |
 | Counterfactual contract | `1.0.0` | Implemented |
 | Curriculum-overlay schema | `2.0.0` | Implemented in candidate |
 | Accepted package versions | Prior evidence records Guided `2.2.0`, Challenge A `1.1.0`, and Assessment `2.2.0`; these are not acceptance evidence for the current working tree | Prior release only |

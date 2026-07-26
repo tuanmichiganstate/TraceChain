@@ -13,7 +13,7 @@ effective date.
 
 ## Ownership and version boundary
 
-Scenario-pack schema `1.5.0` contains no `curriculumCrosswalks` property.
+Scenario-pack schema `1.6.0` contains no `curriculumCrosswalks` property.
 Curriculum overlays use their own schema:
 
 ```text

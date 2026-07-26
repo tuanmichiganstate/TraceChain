@@ -36,6 +36,7 @@ import type {
   AssignmentProcessAnalyticsV1,
 } from "../contracts/process-analytics";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
+import { HostedStaffIdentity } from "../components/hosted-staff-identity";
 import type {
   InstructorIncidentControlV1,
 } from "../contracts/simulation-director";
@@ -3543,6 +3544,13 @@ function RunReview({
               })}
             </h3>
             <p>{t("instructorReview.replayHelp")}</p>
+            {replay.projection.staffProfile === undefined ? null : (
+              <HostedStaffIdentity
+                profile={replay.projection.staffProfile}
+                labelKey="instructorReview.replayRole"
+                compact
+              />
+            )}
             <dl className="instructor-review__facts">
               <div>
                 <dt>{t("instructorReview.event")}</dt>

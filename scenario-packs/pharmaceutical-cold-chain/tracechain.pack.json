@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.5.0",
+  "schemaVersion": "1.6.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -402,6 +402,7 @@
       "expectedValue": "DECISION_PHARMA_TRANSFER_DISPOSITION"
     }
   ],
+  "portraitAssets": [],
   "scenarios": [
     {
       "scenarioId": "SCN_PHARMA_COLD_CHAIN_STARTER",
@@ -524,6 +525,7 @@
           }
         }
       ],
+      "staffProfiles": [],
       "assetTypes": [
         {
           "assetTypeId": "MEDICINE_SHIPMENT",
@@ -886,6 +888,7 @@
           }
         }
       ],
+      "staffProfiles": [],
       "assetTypes": [
         {
           "assetTypeId": "VACCINE_SHIPMENT",

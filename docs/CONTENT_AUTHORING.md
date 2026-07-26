@@ -15,6 +15,7 @@ Everything that makes the coffee activity *the coffee activity* is data in
 |---|---|
 | `scenario.ts` | Assembles the whole thing. The object exported here is the activity. |
 | `organizations.ts` | Organizations, actors, locations, and who may do what |
+| `staff-profiles.ts` | Fictional professional identities, approved portrait assets, and evidence attribution |
 | `stages.ts` | The nine stages: titles, roles, required actions, completion conditions, hints, knowledge checks |
 | `timeline.ts` | Every scenario timestamp, plus the ordering constraints between them |
 | `seed-assets.ts` | Background lots and their provenance |
@@ -102,6 +103,21 @@ Add it to `ScenarioStageId` and `SCENARIO_STAGE_ORDER` (append only), add a
 `ScenarioStageDefinition` to `stages.ts`, and register a component in
 `src/features/stage-registry.ts`. Mark it implemented only when its component
 and executable scenario-contract acceptance are both present.
+
+**Add or replace a fictional staff portrait**
+Add the approved local WebP to `public/media/staff/`, then declare its immutable
+path, SHA-256 digest, dimensions, source type, and approval reference in
+`staff-profiles.ts`. Link a `ScenarioStaffProfile` to an existing actor,
+organization, and role; add every localization key to both catalogues; then
+reference the profile from only the stages or evidence records where the person
+provides useful professional context.
+
+Portraits must be fictional, locally bundled, at least 320 by 400 pixels, and
+must not be development placeholders. Remote URLs are rejected. A replacement
+is a scenario content change: update the asset digest and scenario version
+instead of silently changing an already published identity. The visible staff
+profile describes a human professional; signing keys, fingerprints, and
+authorization results remain separate cryptographic evidence.
 
 ---
 

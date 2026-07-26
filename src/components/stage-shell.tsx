@@ -11,6 +11,7 @@ import { allScorableItems, type ScenarioHint } from "../domain/types/scenario";
 import { hintPointsAtRisk } from "../domain/scoring/score-engine";
 import { StatusPill } from "./status-pill";
 import { useOptionalConfiguration } from "../app/providers/configuration-provider";
+import { ActiveRolePresence } from "./staff-presence";
 
 /**
  * The frame every stage sits in: title, instruction, what still needs doing,
@@ -88,6 +89,7 @@ export function StageShell({
       </aside>
 
       <div className="stage__application stack">
+        <ActiveRolePresence stageId={stageId} />
         {briefing}
         {children}
         <StageAdvance stageId={stageId} />

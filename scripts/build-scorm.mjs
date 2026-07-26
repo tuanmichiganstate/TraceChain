@@ -39,6 +39,7 @@ const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
   "tracechain.config.json",
   "scenario.json",
+  "media-manifest.json",
   "identity-registry.json",
   "educational-signing-keys.json",
   "authorization-policies.json",
@@ -211,7 +212,8 @@ function hashStaticApplication(directory) {
   const files = listFilesRecursively(directory).filter(
     (file) =>
       !runtimeFileNames.has(file) &&
-      !packagingFileNames.has(file),
+      !packagingFileNames.has(file) &&
+      !file.startsWith("media/"),
   );
   for (const file of files) {
     digest.update(file, "utf8");
@@ -522,6 +524,36 @@ function packageOne({
   const scenarioHash = createHash("sha256")
     .update(scenarioContent, "utf8")
     .digest("hex");
+  const mediaManifest = {
+    schemaVersion: "1",
+    scenarioId: scenario.scenarioId,
+    scenarioVersion: scenario.scenarioVersion,
+    assets: scenario.portraitAssets,
+  };
+  const mediaManifestContent = `${JSON.stringify(mediaManifest, null, 2)}\n`;
+  writeFileSync(
+    join(packageDirectory, "media-manifest.json"),
+    mediaManifestContent,
+    "utf8",
+  );
+  const portraitMediaHashes = {};
+  for (const asset of scenario.portraitAssets) {
+    const assetPath = join(packageDirectory, ...asset.filePath.split("/"));
+    if (!existsSync(assetPath)) {
+      throw new Error(
+        `Portrait asset "${asset.assetId}" is missing at ${asset.filePath}`,
+      );
+    }
+    const digest = createHash("sha256")
+      .update(readFileSync(assetPath))
+      .digest("hex");
+    if (digest !== asset.sha256) {
+      throw new Error(
+        `Portrait asset "${asset.assetId}" does not match its authored SHA-256`,
+      );
+    }
+    portraitMediaHashes[asset.filePath] = digest;
+  }
   const cryptographicRuntimeHashes = {};
   if (cryptographicRuntime !== null) {
     for (const [fileName, value] of [
@@ -581,6 +613,11 @@ function packageOne({
           ? "2"
           : "1",
     cryptographicRuntimeHashes,
+    portraitMediaSchemaVersion: "1",
+    portraitMediaManifestHash: createHash("sha256")
+      .update(mediaManifestContent, "utf8")
+      .digest("hex"),
+    portraitMediaHashes,
     cryptographicMechanisms:
       cryptographicRuntime === null
         ? null
@@ -644,6 +681,10 @@ function packageOne({
       `PASSING SCORE      ${configuration.scoring.passScore} of 100`,
       `LANGUAGE           ${configuration.locale}`,
       `RELEASE BUILD      ${provenance.releaseBuild ? "yes" : "no"}`,
+      "",
+      "FICTIONAL STAFF",
+      "  The people and portrait images in this simulation are fictional.",
+      "  They do not represent real staff of the organizations shown.",
       ...(cryptographicRuntime === null
         ? []
         : [

@@ -11,6 +11,12 @@ import { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 
 async function installChallengeRuntime(page: Page): Promise<void> {
+  const mediaManifest = {
+    schemaVersion: "1",
+    scenarioId: challengeAScenario.scenarioId,
+    scenarioVersion: challengeAScenario.scenarioVersion,
+    assets: challengeAScenario.portraitAssets,
+  };
   await page.route("**/tracechain.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -21,6 +27,12 @@ async function installChallengeRuntime(page: Page): Promise<void> {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(challengeAScenario),
+    });
+  });
+  await page.route("**/media-manifest.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(mediaManifest),
     });
   });
   await page.route("**/build-info.json", async (route) => {
@@ -35,6 +47,15 @@ async function installChallengeRuntime(page: Page): Promise<void> {
         ...buildInformation,
         scenarioHash: sha256Hex(
           `${JSON.stringify(challengeAScenario, null, 2)}\n`,
+        ),
+        portraitMediaManifestHash: sha256Hex(
+          `${JSON.stringify(mediaManifest, null, 2)}\n`,
+        ),
+        portraitMediaHashes: Object.fromEntries(
+          challengeAScenario.portraitAssets.map((asset) => [
+            asset.filePath,
+            asset.sha256,
+          ]),
         ),
       }),
     });
@@ -97,6 +118,16 @@ test("loads Assessment with no hints and final-only feedback", async ({
   await expect(
     page.getByRole("button", { name: "Xem gợi ý" }),
   ).toHaveCount(0);
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_PRODUCER_MANAGER"]')
+      .first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Ghi nhận chính xác lô cà phê thực tế trước giao dịch đầu tiên trên sổ cái.",
+    ),
+  ).toHaveCount(0);
 });
 
 test("loads Challenge A and preserves mitigation history through its causal report", async ({
@@ -118,6 +149,13 @@ test("loads Challenge A and preserves mitigation history through its causal repo
 
   await activity.submitAndSeal("Thông tin lô hàng");
   await activity.continue();
+  await expect(
+    page
+      .locator(
+        '[data-staff-profile-id="STAFF_CERTIFICATION_OFFICER"]',
+      )
+      .first(),
+  ).toBeVisible();
 
   await page
     .getByRole("combobox", { name: "Nội dung và thời hạn chứng nhận" })
@@ -171,6 +209,18 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await activity.submitAndSeal("Cấp chứng nhận cho lô hàng");
   await activity.continue();
 
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_PRODUCER_MANAGER"]')
+      .first(),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(
+        '[data-staff-profile-id="STAFF_LOGISTICS_COORDINATOR"]',
+      )
+      .first(),
+  ).toBeVisible();
   await activity.answer(/Chỉ chuyển quyền lưu giữ/);
   await activity.submitEndorsedAndSeal(
     "Bàn giao lô hàng cho đơn vị vận chuyển",
@@ -179,6 +229,16 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await activity.submitAndSeal("Ghi nhận điều kiện vận chuyển");
   await activity.continue();
 
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_PROCESSING_MANAGER"]')
+      .first(),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_SHIPPING_CLERK"]')
+      .first(),
+  ).toBeVisible();
   await activity.submitAndSeal("Tiếp nhận lô hàng");
   await activity.submitAndSeal("Ghi nhận việc mua lô hàng");
   await page
@@ -224,6 +284,16 @@ test("loads Challenge A and preserves mitigation history through its causal repo
   await activity.classifyGovernanceItems();
   await activity.continue();
 
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_RETAIL_MANAGER"]')
+      .first(),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('[data-staff-profile-id="STAFF_REGULATORY_AUDITOR"]')
+      .first(),
+  ).toHaveCount(0);
   await activity.selectLots(/BAT_PACKAGED_COFFEE_CA01/);
   await expect(page.getByText(/Phạm vi thu hồi chính xác/)).toHaveCount(0);
   await page
@@ -249,6 +319,9 @@ test("loads Challenge A and preserves mitigation history through its causal repo
       name: "Chuyển vụ việc đã xem xét ra bên ngoài",
     })
     .click();
+  await expect(
+    page.locator('[data-staff-profile-id="STAFF_REGULATORY_AUDITOR"]'),
+  ).toBeVisible();
   await activity.submitAndSeal(
     "Gửi lại lệnh thu hồi với thẩm quyền phù hợp",
   );
@@ -262,7 +335,7 @@ test("loads Challenge A and preserves mitigation history through its causal repo
     report.getByText(/Lần gửi lệnh thu hồi đầu tiên dùng vai trò không có thẩm quyền/),
   ).toBeVisible();
   await expect(
-    report.getByText("SCN_COFFEE_CHALLENGE_A@1.1.0"),
+    report.getByText("SCN_COFFEE_CHALLENGE_A@1.2.0"),
   ).toBeVisible();
   await expect(
     report.getByText(hashConfiguration(CHALLENGE_PRESET)),

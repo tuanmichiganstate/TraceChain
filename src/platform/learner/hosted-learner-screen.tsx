@@ -29,6 +29,7 @@ import {
   type CounterfactualExplorerApi,
 } from "../counterfactual/counterfactual-api";
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
+import { HostedStaffIdentity } from "../components/hosted-staff-identity";
 
 interface LearnerSession {
   readonly userId: string;
@@ -730,6 +731,9 @@ function RunWorkspace({
   const currentNode = presentation?.currentNode;
   return (
     <>
+      {projection.staffProfile === undefined ? null : (
+        <HostedStaffIdentity profile={projection.staffProfile} />
+      )}
       <section className="card card--brief">
         <h2>{t("hostedLearner.workspace")}</h2>
         <dl className="instructor-review__facts">

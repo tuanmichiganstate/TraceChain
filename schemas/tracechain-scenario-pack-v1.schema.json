@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.5",
+  "title": "TraceChain Scenario Pack V1.6",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -15,12 +15,13 @@
     "competencyFrameworks",
     "rubrics",
     "evidenceRules",
+    "portraitAssets",
     "scenarios",
     "assetHashes"
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.5.0" },
+    "schemaVersion": { "const": "1.6.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -62,6 +63,10 @@
     "evidenceRules": {
       "type": "array",
       "items": { "$ref": "#/$defs/evidenceRule" }
+    },
+    "portraitAssets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/portraitAsset" }
     },
     "scenarios": {
       "type": "array",
@@ -346,6 +351,78 @@
         "displayName": { "$ref": "#/$defs/localizedText" }
       }
     },
+    "portraitAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "sourceType",
+        "licenseOrApprovalReference",
+        "fictionalSubject",
+        "filePath",
+        "sha256",
+        "width",
+        "height",
+        "format",
+        "developmentPlaceholder"
+      ],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/identifier" },
+        "sourceType": {
+          "enum": [
+            "AI_GENERATED",
+            "LICENSED_STOCK",
+            "ORIGINAL_WITH_RELEASE"
+          ]
+        },
+        "licenseOrApprovalReference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fictionalSubject": { "const": true },
+        "filePath": {
+          "type": "string",
+          "pattern": "^media/staff/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\:]+\\.webp$"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 320 },
+        "height": { "type": "integer", "minimum": 400 },
+        "format": { "const": "webp" },
+        "developmentPlaceholder": { "const": false }
+      }
+    },
+    "staffProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "staffProfileId",
+        "roleId",
+        "organizationId",
+        "displayName",
+        "roleTitle",
+        "portraitAssetId",
+        "portraitAlt",
+        "visibility",
+        "fictional"
+      ],
+      "properties": {
+        "staffProfileId": { "$ref": "#/$defs/identifier" },
+        "roleId": { "$ref": "#/$defs/identifier" },
+        "organizationId": { "$ref": "#/$defs/identifier" },
+        "displayName": { "$ref": "#/$defs/localizedText" },
+        "roleTitle": { "$ref": "#/$defs/localizedText" },
+        "portraitAssetId": { "$ref": "#/$defs/identifier" },
+        "portraitAlt": { "$ref": "#/$defs/localizedText" },
+        "shortProfile": { "$ref": "#/$defs/localizedText" },
+        "professionalResponsibility": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "visibility": {
+          "enum": ["LEARNER_VISIBLE", "INSTRUCTOR_ONLY"]
+        },
+        "fictional": { "const": true }
+      }
+    },
     "assetType": {
       "type": "object",
       "additionalProperties": false,
@@ -389,6 +466,7 @@
         "evidenceType": { "$ref": "#/$defs/identifier" },
         "title": { "$ref": "#/$defs/localizedText" },
         "sourceOrganizationId": { "$ref": "#/$defs/identifier" },
+        "staffProfileId": { "$ref": "#/$defs/identifier" },
         "visibleToRoleIds": {
           "type": "array",
           "minItems": 1,
@@ -1141,6 +1219,7 @@
         "competencyTargets",
         "organizations",
         "roles",
+        "staffProfiles",
         "assetTypes",
         "initialState",
         "policies",
@@ -1192,6 +1271,10 @@
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/role" }
+        },
+        "staffProfiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/staffProfile" }
         },
         "assetTypes": {
           "type": "array",

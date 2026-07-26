@@ -161,9 +161,9 @@ npm run verify:scorm
 ```
 
 Strict release generation produces
-`TraceChain_Guided_StandardCoffee_vi_v2.2.0.zip` and
-`TraceChain_Challenge_ChallengeA_vi_v1.1.0.zip`, plus
-`TraceChain_Assessment_StandardCoffee_vi_v2.2.0.zip`. The local command appends
+`TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip` and
+`TraceChain_Challenge_ChallengeA_vi_v1.2.0.zip`, plus
+`TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`. The local command appends
 `_NON_RELEASE` to every archive name. The Docker demo selects the current Guided
 and Challenge archives by their embedded build metadata, deploys them into
 separate reset activities, and ignores stale ZIPs. Assessment is generated and
@@ -267,7 +267,7 @@ schemas/               published versioned JSON Schemas
   point B roadmap for the hosted instructor-ready platform
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.5 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.6 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure

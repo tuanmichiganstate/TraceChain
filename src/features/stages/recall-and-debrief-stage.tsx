@@ -29,6 +29,7 @@ import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
 import { SignatureTrustSummary } from "../../components/signature-trust-summary";
 import { ProvenanceViewer } from "../../components/provenance-viewer";
 import { RoleApplicationShell } from "../../components/simulation-workspace";
+import { RoleHandoffPanel } from "../../components/staff-presence";
 
 /**
  * Stage 9. Trace the contamination forward, recall exactly what it reached, and
@@ -187,6 +188,29 @@ export function RecallAndDebriefStage(): ReactNode {
         ))}
       </div>
     );
+  const guidedHandoff = availableHandoffs[0];
+  const guidedHandoffFrom =
+    guidedHandoff === undefined
+      ? undefined
+      : scenario.runtime.trustedContexts.find(
+          (context) => context.contextId === guidedHandoff.fromContextId,
+        );
+  const guidedHandoffTo =
+    guidedHandoff === undefined
+      ? undefined
+      : scenario.runtime.trustedContexts.find(
+          (context) => context.contextId === guidedHandoff.toContextId,
+        );
+  const handoffPortraitPanel =
+    packageConfiguration?.configuration.mode === "guided" &&
+    guidedHandoffFrom !== undefined &&
+    guidedHandoffTo !== undefined ? (
+      <RoleHandoffPanel
+        fromActorId={guidedHandoffFrom.actorId}
+        toActorId={guidedHandoffTo.actorId}
+        explanatoryTextKey="staff.handoff.recallHelp"
+      />
+    ) : null;
 
   return (
     <StageShell
@@ -337,6 +361,7 @@ export function RecallAndDebriefStage(): ReactNode {
               <p className="muted">
                 {t("stage.recallAndDebrief.precommitHandoffPrompt")}
               </p>
+              {handoffPortraitPanel}
               {handoffControls ?? (
                 <p>{t("stage.recallAndDebrief.handoffComplete")}</p>
               )}
@@ -402,6 +427,7 @@ export function RecallAndDebriefStage(): ReactNode {
                 ) : null}
                 <p>{t("stage.recallAndDebrief.unauthorizedFeedback")}</p>
                 <p className="muted">{t("stage.recallAndDebrief.handoffPrompt")}</p>
+                {handoffPortraitPanel}
                 {handoffControls}
               </>
             ) : handoffPending ? (

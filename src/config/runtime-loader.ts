@@ -19,6 +19,13 @@ export interface RuntimePackage {
   readonly cryptographicRuntime: CryptographicRuntime | null;
 }
 
+interface PortraitMediaManifest {
+  readonly schemaVersion: "1";
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly assets: ScenarioDefinition["portraitAssets"];
+}
+
 export type RuntimeFetch = (input: string) => Promise<{
   readonly ok: boolean;
   readonly status: number;
@@ -63,6 +70,12 @@ export async function loadRuntimePackage(
   ) {
     throw new IncompatibleAttemptError("Embedded configuration hash does not match its content");
   }
+  const [scenarioFile, mediaManifestFile, buildInformationFile] =
+    await Promise.all([
+      loadJson(fetcher, "./scenario.json"),
+      loadJson(fetcher, "./media-manifest.json"),
+      loadJson(fetcher, "./build-info.json"),
+    ]);
   const cryptographicFiles =
     configurationFile.configuration.technicalFeatures.digitalSignatures
       ? await Promise.all([
@@ -70,10 +83,8 @@ export async function loadRuntimePackage(
           loadJson(fetcher, "./educational-signing-keys.json"),
           loadJson(fetcher, "./authorization-policies.json"),
           loadJson(fetcher, "./endorsement-policies.json"),
-          loadJson(fetcher, "./build-info.json"),
         ])
       : null;
-  const scenarioFile = await loadJson(fetcher, "./scenario.json");
 
   let scenarioValidation;
   try {
@@ -105,6 +116,37 @@ export async function loadRuntimePackage(
   if (scenario.scoringConfiguration.maxScore !== configurationFile.configuration.scoring.maximumScore) {
     throw new IncompatibleAttemptError("Scenario maximum score does not match package configuration");
   }
+  const mediaManifest = mediaManifestFile as Partial<PortraitMediaManifest>;
+  const buildInformation = buildInformationFile as {
+    readonly scenarioHash?: unknown;
+    readonly cryptographicEvidenceSchemaVersion?: unknown;
+    readonly cryptographicRuntimeHashes?: unknown;
+    readonly portraitMediaSchemaVersion?: unknown;
+    readonly portraitMediaManifestHash?: unknown;
+    readonly portraitMediaHashes?: unknown;
+  };
+  const mediaManifestSource = `${JSON.stringify(mediaManifestFile, null, 2)}\n`;
+  const recordedPortraitHashes =
+    typeof buildInformation.portraitMediaHashes === "object" &&
+    buildInformation.portraitMediaHashes !== null
+      ? (buildInformation.portraitMediaHashes as Readonly<Record<string, unknown>>)
+      : null;
+  if (
+    mediaManifest.schemaVersion !== "1" ||
+    mediaManifest.scenarioId !== scenario.scenarioId ||
+    mediaManifest.scenarioVersion !== scenario.scenarioVersion ||
+    JSON.stringify(mediaManifest.assets) !== JSON.stringify(scenario.portraitAssets) ||
+    buildInformation.portraitMediaSchemaVersion !== "1" ||
+    buildInformation.portraitMediaManifestHash !== sha256Hex(mediaManifestSource) ||
+    recordedPortraitHashes === null ||
+    scenario.portraitAssets.some(
+      (asset) => recordedPortraitHashes[asset.filePath] !== asset.sha256,
+    )
+  ) {
+    throw new IncompatibleAttemptError(
+      "Portrait media manifest does not match the embedded scenario",
+    );
+  }
   const cryptographicRuntime =
     cryptographicFiles === null
       ? null
@@ -115,11 +157,6 @@ export async function loadRuntimePackage(
           endorsementPolicies: cryptographicFiles[3],
         } as CryptographicRuntime;
   if (cryptographicRuntime !== null) {
-    const buildInformation = cryptographicFiles?.[4] as {
-      readonly scenarioHash?: unknown;
-      readonly cryptographicEvidenceSchemaVersion?: unknown;
-      readonly cryptographicRuntimeHashes?: unknown;
-    };
     if (
       buildInformation.scenarioHash !==
         sha256Hex(`${JSON.stringify(scenario, null, 2)}\n`) ||

@@ -61,6 +61,7 @@ export function StartScreen(): ReactNode {
                 term={t("app.permissionedTerm")}
               />
             </p>
+            <p>{t("app.fictionalStaffNotice")}</p>
           </div>
 
           {state.platformMode === PlatformMode.STANDALONE ? (

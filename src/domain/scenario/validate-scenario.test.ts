@@ -5,6 +5,8 @@ import { SCENARIO_STAGE_ORDER, ScenarioStageId, TransactionType } from "../types
 import { ScoreComponent } from "../types/scoring";
 import { KnowledgeCheckType, type ScenarioDefinition } from "../types/scenario";
 import { assertValidScenario, validateScenario } from "./validate-scenario";
+import en from "../../locales/en.json";
+import vi from "../../locales/vi.json";
 
 /** Mutate a copy of the real scenario, so each case tests one broken thing. */
 function withScenario(mutate: (draft: ScenarioDefinition) => ScenarioDefinition): ScenarioDefinition {
@@ -120,6 +122,28 @@ describe("the coffee scenario", () => {
   it("passes the throwing form used at startup", () => {
     expect(() => assertValidScenario(coffeeScenario)).not.toThrow();
   });
+
+  it("defines a complete bilingual identity for every fictional staff profile", () => {
+    const enCatalog = en as Readonly<Record<string, string>>;
+    const viCatalog = vi as Readonly<Record<string, string>>;
+    const keys = coffeeScenario.staffProfiles.flatMap((profile) =>
+      [
+        profile.displayNameKey,
+        profile.roleTitleKey,
+        profile.departmentKey,
+        profile.portraitAltKey,
+        profile.shortProfileKey,
+        profile.professionalResponsibilityKey,
+      ].filter((key): key is string => key !== undefined),
+    );
+
+    expect(coffeeScenario.staffProfiles).toHaveLength(7);
+    expect(coffeeScenario.portraitAssets).toHaveLength(7);
+    for (const key of keys) {
+      expect(enCatalog[key], `Missing English staff key ${key}`).toBeTruthy();
+      expect(viCatalog[key], `Missing Vietnamese staff key ${key}`).toBeTruthy();
+    }
+  });
 });
 
 describe("scenario validation catches authoring mistakes", () => {
@@ -203,6 +227,66 @@ describe("scenario validation catches authoring mistakes", () => {
       ),
     }));
     expect(errorMessages(broken)).toMatch(/unknown organization "ORG_GHOST"/);
+  });
+
+  it("rejects remote portrait URLs", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      portraitAssets: draft.portraitAssets.map((asset, index) =>
+        index === 0
+          ? { ...asset, filePath: "https://example.test/portrait.webp" }
+          : asset,
+      ),
+    }));
+    expect(errorMessages(broken)).toMatch(/safe local media\/staff path/);
+  });
+
+  it("rejects development portrait placeholders", () => {
+    const broken = withScenario((draft) => {
+      (
+        draft.portraitAssets[0] as unknown as {
+          developmentPlaceholder: boolean;
+        }
+      ).developmentPlaceholder = true;
+      return draft;
+    });
+    expect(errorMessages(broken)).toMatch(/cannot use placeholders/);
+  });
+
+  it("rejects a staff profile whose portrait is missing", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      staffProfiles: draft.staffProfiles.map((profile, index) =>
+        index === 0
+          ? { ...profile, portraitAssetId: "PORTRAIT_MISSING" }
+          : profile,
+      ),
+    }));
+    expect(errorMessages(broken)).toMatch(/unknown portrait "PORTRAIT_MISSING"/);
+  });
+
+  it("rejects a staff identity that disagrees with its trusted actor", () => {
+    const broken = withScenario((draft) => ({
+      ...draft,
+      staffProfiles: draft.staffProfiles.map((profile, index) =>
+        index === 0
+          ? { ...profile, organizationId: "ORG_LOGISTICS_PROVIDER" }
+          : profile,
+      ),
+    }));
+    expect(errorMessages(broken)).toMatch(/actor must belong to its organization/);
+  });
+
+  it("rejects an unsupported staff-profile visibility", () => {
+    const broken = withScenario((draft) => {
+      (
+        draft.staffProfiles[0] as unknown as {
+          visibility: string;
+        }
+      ).visibility = "PUBLIC";
+      return draft;
+    });
+    expect(errorMessages(broken)).toMatch(/visibility is invalid/);
   });
 
   it("rejects identifiers that break the prefix convention", () => {

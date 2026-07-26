@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.5.0",
+  "schemaVersion": "1.6.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -677,10 +677,96 @@
       "eventType": "DECISION_SUBMITTED"
     }
   ],
+  "portraitAssets": [
+    {
+      "assetId": "PORTRAIT_PRODUCER_MANAGER",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/producer-manager.webp",
+      "sha256": "e12d002f111b56d9f8209db549c8fd58bc183e4f68f8478b182cbff3a853f616",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_CERTIFICATION_OFFICER",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/certification-officer.webp",
+      "sha256": "96d744a37b95d82cceb9a6f58399b3a64a3cf7a740621829b7c81bb7bf4c5d11",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_LOGISTICS_COORDINATOR",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/logistics-coordinator.webp",
+      "sha256": "3863c4f85ced3fee1916ee145ce6f817d30fc9a36ff62f58d18f576d3ad2a95c",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_PROCESSING_MANAGER",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/processing-manager.webp",
+      "sha256": "d83c3d90d5268c9d985428faeb5fac8be610e15f900801e7d800d5d5024b985f",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_SHIPPING_CLERK",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/shipping-clerk.webp",
+      "sha256": "f51510f254decd6ff1fb03844300238b6942e4381f21ae53dd97dc4977af2fc5",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_RETAIL_MANAGER",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/retail-manager.webp",
+      "sha256": "12aa24499b1b73d608d93f4e527d7f4748e85ab85b02dc634b863daa35f10fae",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    },
+    {
+      "assetId": "PORTRAIT_REGULATORY_AUDITOR",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "fictionalSubject": true,
+      "filePath": "media/staff/regulatory-auditor.webp",
+      "sha256": "25a7526bb2258722e7a6febed2a03f2397346ff71a3a5fe260badeda6a1ea4c5",
+      "width": 480,
+      "height": 600,
+      "format": "webp",
+      "developmentPlaceholder": false
+    }
+  ],
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
@@ -954,6 +1040,106 @@
           "displayName": {
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.roles.ORG_REGULATOR.displayName"
           }
+        },
+        {
+          "roleId": "SHIPPING_CLERK",
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": {
+            "localizationKey": "staff.shippingClerk.role"
+          }
+        }
+      ],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_PRODUCER_MANAGER",
+          "roleId": "PRODUCER_MANAGER",
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": { "localizationKey": "staff.producerManager.name" },
+          "roleTitle": { "localizationKey": "staff.producerManager.role" },
+          "portraitAssetId": "PORTRAIT_PRODUCER_MANAGER",
+          "portraitAlt": { "localizationKey": "staff.producerManager.alt" },
+          "shortProfile": { "localizationKey": "staff.producerManager.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.producerManager.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_CERTIFICATION_OFFICER",
+          "roleId": "CERTIFICATION_OFFICER",
+          "organizationId": "ORG_CERTIFICATION_BODY",
+          "displayName": { "localizationKey": "staff.certificationOfficer.name" },
+          "roleTitle": { "localizationKey": "staff.certificationOfficer.role" },
+          "portraitAssetId": "PORTRAIT_CERTIFICATION_OFFICER",
+          "portraitAlt": { "localizationKey": "staff.certificationOfficer.alt" },
+          "shortProfile": { "localizationKey": "staff.certificationOfficer.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.certificationOfficer.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_LOGISTICS_COORDINATOR",
+          "roleId": "LOGISTICS_COORDINATOR",
+          "organizationId": "ORG_LOGISTICS_PROVIDER",
+          "displayName": { "localizationKey": "staff.logisticsCoordinator.name" },
+          "roleTitle": { "localizationKey": "staff.logisticsCoordinator.role" },
+          "portraitAssetId": "PORTRAIT_LOGISTICS_COORDINATOR",
+          "portraitAlt": { "localizationKey": "staff.logisticsCoordinator.alt" },
+          "shortProfile": { "localizationKey": "staff.logisticsCoordinator.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.logisticsCoordinator.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_PROCESSING_MANAGER",
+          "roleId": "PROCESSING_MANAGER",
+          "organizationId": "ORG_COFFEE_PROCESSOR",
+          "displayName": { "localizationKey": "staff.processingManager.name" },
+          "roleTitle": { "localizationKey": "staff.processingManager.role" },
+          "portraitAssetId": "PORTRAIT_PROCESSING_MANAGER",
+          "portraitAlt": { "localizationKey": "staff.processingManager.alt" },
+          "shortProfile": { "localizationKey": "staff.processingManager.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.processingManager.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_SHIPPING_CLERK",
+          "roleId": "SHIPPING_CLERK",
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": { "localizationKey": "staff.shippingClerk.name" },
+          "roleTitle": { "localizationKey": "staff.shippingClerk.role" },
+          "portraitAssetId": "PORTRAIT_SHIPPING_CLERK",
+          "portraitAlt": { "localizationKey": "staff.shippingClerk.alt" },
+          "shortProfile": { "localizationKey": "staff.shippingClerk.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.shippingClerk.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_RETAIL_MANAGER",
+          "roleId": "RETAIL_MANAGER",
+          "organizationId": "ORG_RETAILER",
+          "displayName": { "localizationKey": "staff.retailManager.name" },
+          "roleTitle": { "localizationKey": "staff.retailManager.role" },
+          "portraitAssetId": "PORTRAIT_RETAIL_MANAGER",
+          "portraitAlt": { "localizationKey": "staff.retailManager.alt" },
+          "shortProfile": { "localizationKey": "staff.retailManager.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.retailManager.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        },
+        {
+          "staffProfileId": "STAFF_REGULATORY_AUDITOR",
+          "roleId": "REGULATORY_AUDITOR",
+          "organizationId": "ORG_REGULATOR",
+          "displayName": { "localizationKey": "staff.regulatoryAuditor.name" },
+          "roleTitle": { "localizationKey": "staff.regulatoryAuditor.role" },
+          "portraitAssetId": "PORTRAIT_REGULATORY_AUDITOR",
+          "portraitAlt": { "localizationKey": "staff.regulatoryAuditor.alt" },
+          "shortProfile": { "localizationKey": "staff.regulatoryAuditor.profile" },
+          "professionalResponsibility": { "localizationKey": "staff.regulatoryAuditor.responsibility" },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
         }
       ],
       "assetTypes": [
@@ -1050,6 +1236,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.evidenceItems.EVID_CERTIFICATE_RECORD.title"
           },
           "sourceOrganizationId": "ORG_CERTIFICATION_BODY",
+          "staffProfileId": "STAFF_CERTIFICATION_OFFICER",
           "visibleToRoleIds": [
             "CERTIFICATION_OFFICER",
             "LOGISTICS_COORDINATOR"
@@ -3066,7 +3253,7 @@
       "hostedRuntime": {
         "runtimeId": "tracechain-coffee-v2",
         "domainScenarioId": "SCN_COFFEE_001",
-        "domainScenarioVersion": "2.2.0",
+        "domainScenarioVersion": "2.3.0",
         "entryStageId": "STG_03_ANCHOR_CERTIFICATE",
         "actionBindings": [
           {
@@ -3139,5 +3326,13 @@
       }
     }
   ],
-  "assetHashes": {}
+  "assetHashes": {
+    "media/staff/producer-manager.webp": "e12d002f111b56d9f8209db549c8fd58bc183e4f68f8478b182cbff3a853f616",
+    "media/staff/certification-officer.webp": "96d744a37b95d82cceb9a6f58399b3a64a3cf7a740621829b7c81bb7bf4c5d11",
+    "media/staff/logistics-coordinator.webp": "3863c4f85ced3fee1916ee145ce6f817d30fc9a36ff62f58d18f576d3ad2a95c",
+    "media/staff/processing-manager.webp": "d83c3d90d5268c9d985428faeb5fac8be610e15f900801e7d800d5d5024b985f",
+    "media/staff/shipping-clerk.webp": "f51510f254decd6ff1fb03844300238b6942e4381f21ae53dd97dc4977af2fc5",
+    "media/staff/retail-manager.webp": "12aa24499b1b73d608d93f4e527d7f4748e85ab85b02dc634b863daa35f10fae",
+    "media/staff/regulatory-auditor.webp": "25a7526bb2258722e7a6febed2a03f2397346ff71a3a5fe260badeda6a1ea4c5"
+  }
 }

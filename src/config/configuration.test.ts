@@ -13,6 +13,33 @@ import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
 import { coffeeCryptographicRuntime } from "../scenarios/coffee-traceability/cryptographic-runtime";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
 
+function portraitMediaFiles(): Readonly<Record<string, unknown>> {
+  const mediaManifest = {
+    schemaVersion: "1",
+    scenarioId: coffeeScenario.scenarioId,
+    scenarioVersion: coffeeScenario.scenarioVersion,
+    assets: coffeeScenario.portraitAssets,
+  };
+  return {
+    "./media-manifest.json": mediaManifest,
+    "./build-info.json": {
+      scenarioHash: sha256Hex(
+        `${JSON.stringify(coffeeScenario, null, 2)}\n`,
+      ),
+      portraitMediaSchemaVersion: "1",
+      portraitMediaManifestHash: sha256Hex(
+        `${JSON.stringify(mediaManifest, null, 2)}\n`,
+      ),
+      portraitMediaHashes: Object.fromEntries(
+        coffeeScenario.portraitAssets.map((asset) => [
+          asset.filePath,
+          asset.sha256,
+        ]),
+      ),
+    },
+  };
+}
+
 function cryptographicFiles(): Readonly<Record<string, unknown>> {
   const values: Readonly<Record<string, unknown>> = {
     "identity-registry.json":
@@ -33,6 +60,7 @@ function cryptographicFiles(): Readonly<Record<string, unknown>> {
     "./endorsement-policies.json":
       values["endorsement-policies.json"],
     "./build-info.json": {
+      ...(portraitMediaFiles()["./build-info.json"] as object),
       scenarioHash: sha256Hex(
         `${JSON.stringify(coffeeScenario, null, 2)}\n`,
       ),
@@ -139,6 +167,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
+      ...portraitMediaFiles(),
       ...cryptographicFiles(),
     };
     const fetcher: RuntimeFetch = async (path) => ({
@@ -162,6 +191,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(configuration),
       "./scenario.json": coffeeScenario,
+      ...portraitMediaFiles(),
       ...cryptographicFiles(),
     };
     const runtime = await loadRuntimePackage(async (path) => ({
@@ -187,6 +217,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(configuration),
       "./scenario.json": coffeeScenario,
+      ...portraitMediaFiles(),
     };
     const runtime = await loadRuntimePackage(async (path) => {
       requested.push(path);
@@ -201,7 +232,33 @@ describe("TraceChain configuration", () => {
     expect(requested).toEqual([
       "./tracechain.config.json",
       "./scenario.json",
+      "./media-manifest.json",
+      "./build-info.json",
     ]);
+  });
+
+  it("rejects portrait media metadata bound to different scenario content", async () => {
+    const media = portraitMediaFiles();
+    const files: Readonly<Record<string, unknown>> = {
+      "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
+      "./scenario.json": coffeeScenario,
+      ...media,
+      ...cryptographicFiles(),
+      "./media-manifest.json": {
+        ...(media["./media-manifest.json"] as object),
+        assets: [],
+      },
+    };
+
+    await expect(
+      loadRuntimePackage(async (path) => ({
+        ok: path in files,
+        status: path in files ? 200 : 404,
+        json: async () => files[path],
+      })),
+    ).rejects.toThrow(
+      "Portrait media manifest does not match the embedded scenario",
+    );
   });
 
   it("rejects cryptographic runtime metadata bound to different scenario content", async () => {
@@ -209,6 +266,7 @@ describe("TraceChain configuration", () => {
     const files: Readonly<Record<string, unknown>> = {
       "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
+      ...portraitMediaFiles(),
       ...crypto,
       "./build-info.json": {
         ...(crypto["./build-info.json"] as object),

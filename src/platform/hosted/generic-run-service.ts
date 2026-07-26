@@ -80,6 +80,7 @@ import type {
   RubricEvidenceProjection,
 } from "./stage3-types";
 import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
+import { staffProfileProjection } from "./staff-profile-projection";
 
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actorId",
@@ -880,6 +881,11 @@ export class GenericHostedRunService {
         this.toProjectionState(state),
         state.activeTrustedContext.roleId,
       ),
+      staffProfile: staffProfileProjection(
+        this.pack,
+        this.scenario,
+        state.activeTrustedContext.roleId,
+      ),
       timing: this.runTiming(
         state,
         loaded.startedAt,
@@ -909,6 +915,11 @@ export class GenericHostedRunService {
         this.toProjectionState(loaded.state),
         loaded.state.activeTrustedContext.roleId,
       ),
+      staffProfile: staffProfileProjection(
+        this.pack,
+        this.scenario,
+        loaded.state.activeTrustedContext.roleId,
+      ),
       timing: this.runTiming(
         loaded.state,
         loaded.startedAt,
@@ -936,6 +947,11 @@ export class GenericHostedRunService {
     return {
       ...projectRunStateForRole(
         this.toProjectionState(loaded.state),
+        loaded.state.activeTrustedContext.roleId,
+      ),
+      staffProfile: staffProfileProjection(
+        this.pack,
+        this.scenario,
         loaded.state.activeTrustedContext.roleId,
       ),
       timing: this.runTiming(
@@ -978,6 +994,11 @@ export class GenericHostedRunService {
     return {
       ...projectRunStateForRole(
         this.toProjectionState(state),
+        roleId,
+      ),
+      staffProfile: staffProfileProjection(
+        this.pack,
+        this.scenario,
         roleId,
       ),
       presentation: this.presentation(state),
@@ -1197,6 +1218,11 @@ export class GenericHostedRunService {
       projection: {
         ...projectRunStateForRole(
           this.toProjectionState(state),
+          state.activeTrustedContext.roleId,
+        ),
+        staffProfile: staffProfileProjection(
+          this.pack,
+          this.scenario,
           state.activeTrustedContext.roleId,
         ),
         presentation: this.presentation(state),

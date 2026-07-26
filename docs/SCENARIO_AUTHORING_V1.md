@@ -13,6 +13,7 @@ The first release supports:
 - editing draft identity, bilingual titles, and workflow destinations;
 - path-specific schema and semantic validation;
 - deterministic role-and-mode preview;
+- preview and selection of approved fictional staff portraits;
 - exact-version comparison;
 - immutable publication; and
 - retirement metadata that does not alter published content.
@@ -47,6 +48,21 @@ They override application catalogue values only for that pack preview.
 The standard coffee native pack uses the application catalogues. This preserves
 the existing SCORM localization contract while
 allowing new disciplinary authoring packs to be self-contained.
+
+## Staff portraits
+
+The draft editor shows the staff profiles already authored in a scenario and
+allows each profile to select from that pack's approved `portraitAssets`
+registry. It does not accept remote URLs, upload arbitrary files, or generate
+images. A portable pack author must provide the local WebP, immutable digest,
+dimensions, source/approval metadata, fictional declaration, bilingual
+identity text, and valid role and organization references before validation
+will pass.
+
+Human presence is presentation data. It does not modify the active trusted
+role, cryptographic signer, authorization result, or endorsement policy. A
+published replacement requires a new versioned pack rather than mutating an
+existing historical run.
 
 ## Starter pack
 

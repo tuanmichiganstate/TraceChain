@@ -132,6 +132,124 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
     );
   }
 
+  // ---- Fictional staff and local portrait media ------------------------
+
+  const portraitAssetIds = new Set(
+    scenario.portraitAssets.map((asset) => asset.assetId),
+  );
+  const staffProfileIds = new Set(
+    scenario.staffProfiles.map((profile) => profile.staffProfileId),
+  );
+  check(
+    portraitAssetIds.size === scenario.portraitAssets.length,
+    "portraitAssets",
+    "Portrait asset identifiers must be unique",
+  );
+  check(
+    staffProfileIds.size === scenario.staffProfiles.length,
+    "staffProfiles",
+    "Staff-profile identifiers must be unique",
+  );
+
+  for (const asset of scenario.portraitAssets) {
+    const path = `portraitAssets.${asset.assetId}`;
+    check(asset.assetId.startsWith("PORTRAIT_"), path, "Must use the PORTRAIT_ prefix");
+    check(
+      asset.sourceType === "AI_GENERATED" ||
+        asset.sourceType === "LICENSED_STOCK" ||
+        asset.sourceType === "ORIGINAL_WITH_RELEASE",
+      path,
+      "Portrait must use an approved source type",
+    );
+    check(asset.fictionalSubject, path, "Portrait subject must be declared fictional");
+    check(!asset.developmentPlaceholder, path, "Release scenarios cannot use placeholders");
+    check(asset.format === "webp", path, "Runtime portraits must use WebP");
+    check(asset.width >= 320 && asset.height >= 400, path, "Portrait dimensions are too small");
+    check(/^[a-f0-9]{64}$/u.test(asset.sha256), path, "Must contain a SHA-256 digest");
+    check(
+      asset.filePath.startsWith("media/staff/") &&
+        !asset.filePath.includes("..") &&
+        !asset.filePath.includes("\\") &&
+        !/^[a-z][a-z0-9+.-]*:/iu.test(asset.filePath),
+      path,
+      "Portrait path must be a safe local media/staff path",
+    );
+    check(
+      asset.licenseOrApprovalReference.length > 0,
+      path,
+      "Portrait must have an approval or license reference",
+    );
+  }
+
+  for (const profile of scenario.staffProfiles) {
+    const path = `staffProfiles.${profile.staffProfileId}`;
+    const actor = actorsById.get(profile.actorId);
+    check(profile.staffProfileId.startsWith("STAFF_"), path, "Must use the STAFF_ prefix");
+    check(profile.fictional, path, "Staff profiles must be declared fictional");
+    check(
+      profile.visibility === "LEARNER_VISIBLE" ||
+        profile.visibility === "INSTRUCTOR_ONLY",
+      path,
+      "Staff profile visibility is invalid",
+    );
+    check(actor !== undefined, path, `References unknown actor "${profile.actorId}"`);
+    check(
+      organizationIds.has(profile.organizationId),
+      path,
+      `References unknown organization "${profile.organizationId}"`,
+    );
+    check(
+      actor?.organizationId === profile.organizationId,
+      path,
+      "Profile actor must belong to its organization",
+    );
+    check(
+      actor?.actorRole === profile.roleId,
+      path,
+      "Profile role must match the declared actor role",
+    );
+    check(
+      profile.locationId === undefined || locationIds.has(profile.locationId),
+      path,
+      `References unknown location "${profile.locationId ?? ""}"`,
+    );
+    check(
+      portraitAssetIds.has(profile.portraitAssetId),
+      path,
+      `References unknown portrait "${profile.portraitAssetId}"`,
+    );
+    for (const [field, key] of Object.entries({
+      displayNameKey: profile.displayNameKey,
+      roleTitleKey: profile.roleTitleKey,
+      portraitAltKey: profile.portraitAltKey,
+      departmentKey: profile.departmentKey,
+      shortProfileKey: profile.shortProfileKey,
+      professionalResponsibilityKey: profile.professionalResponsibilityKey,
+    })) {
+      check(
+        key === undefined || key.length > 0,
+        `${path}.${field}`,
+        "Localization key cannot be empty",
+      );
+    }
+  }
+
+  for (const attribution of scenario.evidenceStaffAttributions) {
+    const path = `evidenceStaffAttributions.${attribution.evidenceId}`;
+    check(attribution.evidenceId.length > 0, path, "Evidence identifier cannot be empty");
+    check(
+      staffProfileIds.has(attribution.staffProfileId),
+      path,
+      `References unknown staff profile "${attribution.staffProfileId}"`,
+    );
+    check(
+      attribution.occurredAt === undefined ||
+        Number.isFinite(Date.parse(attribution.occurredAt)),
+      path,
+      "Evidence attribution time must be a valid ISO instant",
+    );
+  }
+
   // ---- Trusted execution contexts -------------------------------------
 
   const trustedContextIds = new Set(
@@ -560,6 +678,13 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
 
     for (const actorId of stage.activeActorIds) {
       check(actorIds.has(actorId), path, `Active actor "${actorId}" is not defined`);
+    }
+    for (const staffProfileId of stage.staffProfileIds ?? []) {
+      check(
+        staffProfileIds.has(staffProfileId),
+        path,
+        `References unknown staff profile "${staffProfileId}"`,
+      );
     }
 
     check(

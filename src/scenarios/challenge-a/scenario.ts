@@ -203,7 +203,7 @@ const scripts = transformed.scriptedTransactions.map((script) => {
 export const challengeAScenario: ScenarioDefinition = {
   ...transformed,
   scenarioId: "SCN_COFFEE_CHALLENGE_A",
-  scenarioVersion: "1.1.0",
+  scenarioVersion: "1.2.0",
   titleKey: "challenge.title",
   descriptionKey: "challenge.description",
   estimatedMinutes: 22,

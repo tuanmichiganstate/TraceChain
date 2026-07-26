@@ -20,9 +20,17 @@ const cryptographicRuntimeHashes = Object.fromEntries(
   ]),
 );
 const developmentScenarioSource = `${JSON.stringify(coffeeScenario, null, 2)}\n`;
+const developmentMediaManifest = {
+  schemaVersion: "1",
+  scenarioId: coffeeScenario.scenarioId,
+  scenarioVersion: coffeeScenario.scenarioVersion,
+  assets: coffeeScenario.portraitAssets,
+};
+const developmentMediaManifestSource = `${JSON.stringify(developmentMediaManifest, null, 2)}\n`;
 const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
   "tracechain.config.json": `${JSON.stringify(embedConfiguration(GUIDED_PRESET), null, 2)}\n`,
   "scenario.json": developmentScenarioSource,
+  "media-manifest.json": developmentMediaManifestSource,
   ...cryptographicRuntimeFiles,
   "build-info.json": `${JSON.stringify(
     {
@@ -31,6 +39,16 @@ const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
         .digest("hex"),
       cryptographicEvidenceSchemaVersion: "2",
       cryptographicRuntimeHashes,
+      portraitMediaSchemaVersion: "1",
+      portraitMediaManifestHash: createHash("sha256")
+        .update(developmentMediaManifestSource, "utf8")
+        .digest("hex"),
+      portraitMediaHashes: Object.fromEntries(
+        coffeeScenario.portraitAssets.map((asset) => [
+          asset.filePath,
+          asset.sha256,
+        ]),
+      ),
       cryptographicMechanisms: {
         signatureAlgorithm: "Ed25519",
         signatureProvider: "@noble/ed25519@3.1.0",

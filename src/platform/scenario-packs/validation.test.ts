@@ -59,6 +59,74 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("binds each coffee staff profile to approved local portrait media", () => {
+    const pack = validPack();
+    const scenario = pack.scenarios[0]!;
+
+    expect(pack.portraitAssets).toHaveLength(7);
+    expect(scenario.staffProfiles).toHaveLength(7);
+    for (const profile of scenario.staffProfiles) {
+      expect(
+        pack.portraitAssets.some(
+          (asset) => asset.assetId === profile.portraitAssetId,
+        ),
+      ).toBe(true);
+      expect(profile.fictional).toBe(true);
+    }
+  });
+
+  it("rejects a missing staff localization key", () => {
+    const invalid = structuredClone(packJson);
+    invalid.scenarios[0]!.staffProfiles[0]!.displayName.localizationKey =
+      "staff.missing.name";
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "MISSING_LOCALIZATION_KEY",
+          path: "$.scenarios[0].staffProfiles[0].displayName.localizationKey",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects remote portrait media", () => {
+    const invalid = structuredClone(packJson);
+    invalid.portraitAssets[0]!.filePath =
+      "https://example.test/staff.webp";
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "INVALID_PORTRAIT_PATH",
+          path: "$.portraitAssets[0].filePath",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects a portrait hash that disagrees with the asset manifest", () => {
+    const invalid = structuredClone(packJson);
+    invalid.portraitAssets[0]!.sha256 = "0".repeat(64);
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "PORTRAIT_ASSET_HASH_MISMATCH",
+        }),
+      ]),
+    );
+  });
+
   it("validates a self-localized disciplinary starter without source catalog changes", () => {
     const result = validateScenarioPack(
       structuredClone(pharmaceuticalPackJson),

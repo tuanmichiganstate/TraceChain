@@ -6,10 +6,10 @@
 | Generation command | `npm run generate:content-review` |
 | Generator version | `1.0.0` |
 | Format version | `1` |
-| Source commit | `42cdbe82febf7ca7fbc6c1051098a6540b9f0b59` |
-| Source SHA-256 | `9d0ff941e2bfe8facad96469c523dbd2d824d6632d9dbeb5ce3e7402e15efc2c` |
-| Locale parity | **1792/1792** strings present, 0 missing |
-| Artifact SHA-256 | `caa22634d450a8f38bea84324b68cbfc3d631071901752006f49cd14c0c96dfe` |
+| Source commit | `6e7f83b35a2d53eb9a9fbaeb94cc5b49cef9b73a` |
+| Source SHA-256 | `fd15e1175678a5130f154fbefba7492e572b1c9f22f752d9ffa118247b4ae481` |
+| Locale parity | **1843/1843** strings present, 0 missing |
+| Artifact SHA-256 | `341cd73b9196944ebaa8964c698ea02c0dba574df0de68558385af7368afc4ba` |
 | Review status | **Not yet reviewed** — awaiting Vietnamese subject-expert adjudication |
 
 The source commit records the clean committed base used for generation. The

@@ -24,6 +24,7 @@ import {
 } from "../../domain/scenario/answer-codec";
 import { RoleApplicationShell } from "../../components/simulation-workspace";
 import { StatusPill } from "../../components/status-pill";
+import { RoleHandoffPanel } from "../../components/staff-presence";
 
 /**
  * Stage 4. The handover, and what travels with it.
@@ -138,6 +139,12 @@ export function ShipAndMonitorStage(): ReactNode {
             <AssetCard asset={asset} />
           </section>
         ) : null}
+
+        <RoleHandoffPanel
+          fromActorId={definition?.activeActorIds[0] ?? ""}
+          toActorId={definition?.activeActorIds[1] ?? ""}
+          explanatoryTextKey="staff.handoff.custodyHelp"
+        />
 
         <div className="field-handoff__workflow">
           <section

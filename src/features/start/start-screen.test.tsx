@@ -82,4 +82,13 @@ describe("the start screen notices", () => {
     );
     expect(objectives).toEqual([1, 2, 3, 4, 5, 6].map((n) => vi(`start.objective${n}`)));
   });
+
+  it("discloses that the people shown in the scenario are fictional", async () => {
+    render(<StartUnderTest />);
+
+    expect(
+      await screen.findByText(vi("app.fictionalStaffNotice")),
+    ).toBeInTheDocument();
+    expect(en("app.fictionalStaffNotice")).toMatch(/fictional/iu);
+  });
 });

@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.5
+# TraceChain scenario-pack V1.6
 
-The V1.5 scenario-pack format is the active contract for the hosted
+The V1.6 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -48,6 +48,7 @@ A pack contains:
 - versioned competency frameworks and performance indicators;
 - analytic rubrics and declarative evidence rules;
 - one or more scenario versions;
+- approved fictional portrait assets and scenario staff profiles;
 - referenced asset hashes; and
 - publication metadata for immutable published or retired versions.
 
@@ -59,6 +60,33 @@ pack data. Embedded catalogues must cover every supported locale and override
 application values only inside that pack. Competency, indicator, rubric, evidence-rule,
 organization, role, policy, evidence, decision, node, transition, and native
 runtime references are validated.
+
+## Staff profiles and portrait media
+
+`portraitAssets` is a pack-level registry of approved, immutable media. Each
+entry records a stable asset ID, provenance or approval reference, fictional
+subject declaration, local `media/staff/` path, SHA-256 digest, intrinsic
+dimensions, WebP format, and a release-placeholder flag. The same path and
+digest must appear in `assetHashes`.
+
+Each scenario owns its `staffProfiles`. A profile references one scenario role,
+one organization, and one pack portrait asset, with localized name, role title,
+portrait description, optional short profile, and optional professional
+responsibility. Evidence may reference a profile through `staffProfileId`.
+Portraits never supply actor identity, authorization, signatures, or
+endorsement evidence.
+
+Portable packs may select only assets registered in the pack. The authoring UI
+does not accept arbitrary image URLs. Published scenario versions retain exact
+profile and asset references so hosted replay resolves the professional
+identity used by that historical run.
+
+SCORM packages contain `media-manifest.json` plus the referenced local WebP
+files. Generation validates the authored hashes against the source bytes;
+package verification repeats that check, validates dimensions and localization,
+and rejects missing, remote, unapproved, or placeholder media. Portrait media
+is package-specific runtime content, while the JavaScript and CSS remain one
+shared static application build across Guided and Challenge.
 
 Every scenario must provide `modeConfigurations`, `outcomeModels`,
 `instructorIncidents`, `counterfactualComparisonDimensions`, and
@@ -171,7 +199,7 @@ the 39/61 operational/knowledge split.
 
 ## Curriculum ownership boundary
 
-V1.5 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.6 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 
@@ -212,7 +240,7 @@ to:
 
 ```text
 runtime: tracechain-coffee-v2
-scenario: SCN_COFFEE_001@2.2.0
+scenario: SCN_COFFEE_001@2.3.0
 stage: STG_03_ANCHOR_CERTIFICATE
 ```
 
