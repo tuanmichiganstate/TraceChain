@@ -283,6 +283,15 @@ function shouldServeAppShell(request: Request): boolean {
   return pathname === "/" || acceptsHtml(request);
 }
 
+function isAppShellFallbackResponse(response: Response): boolean {
+  return (
+    response.status === 404 ||
+    (response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get("location") === "/")
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -3858,8 +3867,8 @@ const worker = {
 
     const assetResponse = await environment.ASSETS.fetch(request);
     if (
-      assetResponse.status !== 404 ||
-      !shouldServeAppShell(request)
+      !shouldServeAppShell(request) ||
+      !isAppShellFallbackResponse(assetResponse)
     ) {
       return withSecurityHeaders(assetResponse);
     }

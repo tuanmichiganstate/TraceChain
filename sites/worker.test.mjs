@@ -46,7 +46,10 @@ const instructorCounterfactualReplay = {
   requireReflection: true,
 };
 
-function createAssetEnvironment(files = {}) {
+function createAssetEnvironment(
+  files = {},
+  { redirectNavigationToRoot = false } = {},
+) {
   const requestedPaths = [];
 
   return {
@@ -70,6 +73,15 @@ function createAssetEnvironment(files = {}) {
                 "content-type":
                   file.contentType ?? "application/octet-stream",
               },
+            });
+          }
+          if (
+            redirectNavigationToRoot &&
+            request.headers.get("accept")?.includes("text/html")
+          ) {
+            return new Response(null, {
+              status: 307,
+              headers: { location: "/" },
             });
           }
 
@@ -310,7 +322,10 @@ test("serves the application shell for browser navigation routes", async () => {
     "/author",
     "/admin",
   ]) {
-    const { env, requestedPaths } = createAssetEnvironment();
+    const { env, requestedPaths } = createAssetEnvironment(
+      {},
+      { redirectNavigationToRoot: true },
+    );
     const response = await worker.fetch(
       new Request(`https://tracechain.example${pathname}`, {
         headers: { accept: "text/html,application/xhtml+xml" },
