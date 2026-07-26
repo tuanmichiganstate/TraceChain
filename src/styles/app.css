@@ -2764,6 +2764,22 @@
   margin-bottom: 0;
 }
 
+/*
+ * This summary already divides each row into a label and value. Reusing the
+ * asset grid's viewport-driven two-column layout divided it a second time, so
+ * text zoom left verdicts only a few characters wide. Keep the evidence rows
+ * in one full-width sequence and reserve arbitrary breaking for technical
+ * hashes and identifiers below.
+ */
+.signature-trust > .asset-card__grid {
+  grid-template-columns: 1fr;
+}
+
+.signature-trust .asset-card__row dd {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .signature-trust__evidence {
   margin-top: var(--space-3);
 }

@@ -204,6 +204,46 @@ test.describe("reflow", () => {
     expect(report.scrolls).toBe(false);
   });
 
+  test("keeps signature and authorization results readable at 200% text size", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "layout-only check; one engine suffices");
+    await page.setViewportSize({ width: 900, height: 1074 });
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.continue();
+    await activity.submitSoundCertificateDecision();
+    await activity.inspectUnauthorizedCertificateSignature();
+
+    await page.addStyleTag({ content: "html { font-size: 200%; }" });
+    const panel = activity.panel(
+      "Kiểm tra chữ ký của bên đề nghị cấp chứng nhận",
+    );
+
+    const lineCount = async (text: string): Promise<number> =>
+      panel.getByText(text, { exact: true }).evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return new Set(
+          Array.from(range.getClientRects(), (rect) => Math.round(rect.top)),
+        ).size;
+      });
+
+    expect(await lineCount("Hợp lệ")).toBeLessThanOrEqual(2);
+    expect(await lineCount("Được công nhận")).toBeLessThanOrEqual(2);
+    expect(await lineCount("Đang hoạt động")).toBeLessThanOrEqual(2);
+    expect(await lineCount("Công ty Vận tải Liên Việt")).toBeLessThanOrEqual(3);
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
   /**
    * The recall question is the only check whose options carry asset identifiers,
    * and a fieldset -- uniquely among elements -- refuses to shrink below its
