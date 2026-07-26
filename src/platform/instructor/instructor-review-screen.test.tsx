@@ -506,30 +506,67 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentCurriculumCrosswalks: vi.fn().mockResolvedValue({
-        schemaVersion: "1.1.0",
+        schemaVersion: "2.0.0",
         interpretation:
           "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
         assignmentId: "ASSIGNMENT_EXPORT_001",
         packId: "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-        packVersion: "1.3.0",
+        packVersion: "1.4.0",
         scenarioId: "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-        scenarioVersion: "1.0.0",
-        crosswalks: [
+        scenarioVersion: "1.1.0",
+        competencyFrameworks: [
           {
-            crosswalkId: "CROSSWALK_PHARMA_PILOT_CLO",
-            crosswalkVersion: "1.0.0",
-            effectiveFrom: "2026-07-25",
-            titleKey:
-              "platformPack.pharmaColdChain.crosswalk.title",
+            frameworkId: "TRACECHAIN_CORE",
+            frameworkVersion: "1.0.0",
+          },
+        ],
+        competencyIndicators: [
+          {
+            frameworkId: "TRACECHAIN_CORE",
+            frameworkVersion: "1.0.0",
+            competencyId: "BC3",
+            competencyVersion: "1.0.0",
+            competencyTitleKey: "unused.competency.title",
+            indicatorId: "BC3.PI1",
+            indicatorVersion: "1.0.0",
+            indicatorStatementKey: "unused.indicator.statement",
+            targetType: "primary",
+          },
+        ],
+        overlays: [
+          {
+            overlayId: "OVERLAY_PHARMA_PILOT_COURSE",
+            overlayVersion: "1.0.0",
+            status: "ADOPTED",
+            owner: {
+              ownerId: "TRACECHAIN_DEMO_COURSE",
+              ownerType: "COURSE",
+              displayName: {
+                valuesByLocale: {
+                  en: "TraceChain demonstration course",
+                  vi: "Học phần minh họa TraceChain",
+                },
+              },
+            },
+            educationalDemoOnly: true,
+            effectiveFrom: "2026-07-26",
+            adoptedAt: "2026-07-26T00:00:00.000Z",
+            adoptedBy: "TRACECHAIN_DEMO_PRODUCT_OWNER",
+            traceChainFrameworks: [
+              {
+                frameworkId: "TRACECHAIN_CORE",
+                frameworkVersion: "1.0.0",
+              },
+            ],
             externalFrameworkId:
               "PHARMA_PILOT_COURSE_OUTCOMES",
             externalFrameworkVersion: "1.0.0",
-            externalFrameworkTitleKey:
-              "platformPack.pharmaColdChain.crosswalk.framework.title",
             labelsByLocale: {
               en: {
                 title:
-                  "Pharmaceutical pilot curriculum crosswalk",
+                  "Pharmaceutical cold-chain course-outcome overlay",
+                ownerDisplayName:
+                  "TraceChain demonstration course",
                 externalFrameworkTitle:
                   "Pilot pharmaceutical course outcomes",
                 outcomeTitles: {
@@ -539,7 +576,9 @@ describe("instructor review screen", () => {
               },
               vi: {
                 title:
-                  "Bảng đối chiếu chương trình thí điểm dược phẩm",
+                  "Bảng đối chiếu chuẩn đầu ra học phần cho chuỗi lạnh dược phẩm",
+                ownerDisplayName:
+                  "Học phần minh họa TraceChain",
                 externalFrameworkTitle:
                   "Chuẩn đầu ra học phần dược phẩm thí điểm",
                 outcomeTitles: {
@@ -557,6 +596,8 @@ describe("instructor review screen", () => {
                     mappedIndicatorIds: ["BC3.PI1"],
                     evidenceObservationCount: 2,
                     currentRatingCount: 1,
+                    evidenceObservations: [],
+                    currentRatings: [],
                   },
                 ],
               },
@@ -565,11 +606,10 @@ describe("instructor review screen", () => {
               {
                 outcomeId: "CLO_EVIDENCE_EVALUATION",
                 outcomeType: "COURSE_LEARNING_OUTCOME",
-                outcomeTitleKey:
-                  "platformPack.pharmaColdChain.crosswalk.outcome.evidence",
                 mappedIndicatorIds: ["BC3.PI1"],
                 primaryIndicatorIds: ["BC3.PI1"],
                 supportingIndicatorIds: [],
+                contextualIndicatorIds: [],
                 targetTypes: ["primary"],
                 assignedLearnerCount: 1,
                 learnersWithEvidence: 1,
@@ -818,17 +858,22 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
     expect(
       report.getByText(
-        "This crosswalk projects recorded evidence onto versioned external outcomes. It does not calculate attainment, mastery, or another grade.",
+        "Adopted course and program overlays project recorded evidence onto versioned external outcomes. They do not calculate attainment, mastery, or another grade.",
       ),
     ).toBeInTheDocument();
     expect(
       report.getByText(
-        "Pharmaceutical pilot curriculum crosswalk",
+        "Pharmaceutical cold-chain course-outcome overlay",
       ),
     ).toBeInTheDocument();
     expect(
       report.getByText(
-        "Pilot pharmaceutical course outcomes (crosswalk 1.0.0; framework 1.0.0)",
+        "Pilot pharmaceutical course outcomes (overlay 1.0.0; framework 1.0.0)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      report.getByText(
+        "Owned and adopted by TraceChain demonstration course (COURSE)",
       ),
     ).toBeInTheDocument();
     const curriculumOutcome = report
@@ -1351,8 +1396,8 @@ describe("instructor review screen", () => {
             : path.endsWith("/curriculum-crosswalks")
               ? {
                   curriculumCrosswalks: {
-                    schemaVersion: "1.1.0",
-                    crosswalks: [],
+                    schemaVersion: "2.0.0",
+                    overlays: [],
                   },
                 }
             : path.includes("/replay?sequence=")

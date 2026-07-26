@@ -78,10 +78,11 @@ competence from one run. Once feedback is released, the learner workspace
 shows only that learner's evidence profile and never the class aggregate or a
 second score. Versioned declarative evidence rules are evaluated against their
 referenced append-only events before competency evidence is recorded.
-Versioned curriculum crosswalks can project that evidence onto external course
-or program outcomes while explicitly refusing to infer attainment or create a
-second grade. The instructor assignment report presents this projection with
-pack-localized labels and offers an exact-version JSON download.
+Independently owned and adopted curriculum overlays can project that evidence
+onto external course or program outcomes while explicitly refusing to infer
+attainment or create a second grade. The instructor assignment report presents
+the exact overlay, framework, and evidence provenance with self-localized labels
+and offers a versioned JSON download.
 Instructors can replay any event sequence through the
 existing deterministic reducer and inspect the role-filtered view that existed
 at that point, with the submitted response beside the evidence available at
@@ -231,6 +232,7 @@ schemas/               published versioned JSON Schemas
 | `npm run validate:locales` | Key parity, placeholders, no stray Vietnamese in source |
 | `npm run validate:scenario` | Schema consistency plus executable cross-layer contracts |
 | `npm run validate:platform-pack [-- <pack.json> …]` | Validate declarative platform packs with path-specific diagnostics |
+| `npm run validate:curriculum-overlays` | Validate independently owned curriculum overlays and exact TraceChain framework references |
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
@@ -251,7 +253,7 @@ schemas/               published versioned JSON Schemas
   point B roadmap for the hosted instructor-ready platform
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.4 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure
@@ -263,8 +265,9 @@ schemas/               published versioned JSON Schemas
   evidence, realized outcomes, and active-run concealment
 - `docs/COMPETENCY_REPORT_V1.md` — versioned learner and class competency
   evidence aggregation and its no-inference boundary
-- `docs/CURRICULUM_CROSSWALK_V1.md` — versioned external-outcome mappings,
-  evidence projection, validation, and the no-attainment boundary
+- `docs/CURRICULUM_OVERLAY_V2.md` — independently owned versioned
+  external-outcome mappings, evidence provenance, validation, and the
+  no-attainment boundary
 - `docs/RUN_REPLAY_V1.md` — exact sequence-bounded instructor replay and the
   hidden-state boundary
 - `docs/RUBRIC_MODERATION_V1.md` — append-only rubric score resolution and its
@@ -278,8 +281,16 @@ schemas/               published versioned JSON Schemas
   assignment-level counterfactual reporting
 - `docs/POST_PLATFORM_ROADMAP.md` — ranked learning, adoption, collaboration,
   and ecosystem priorities after the instructor-ready boundary
+- `docs/POST_PLATFORM_BASELINE_V1.md` — candidate release identity and the
+  boundary between automated readiness and human acceptance
 - `docs/PILOT_VALIDATION_PROTOCOL_V1.md` — operational pilot measures,
   accessibility and content review, reliability, calibration, and exit gates
+- `docs/PILOT_EXECUTION_RECORD_V1.md` — immutable pilot baseline, approvals,
+  cohorts, evidence, and product-decision record
+- `docs/PHARMACEUTICAL_TRANSFER_ACCEPTANCE_V1.md` — transfer-case technical
+  evidence and still-open subject, calibration, accessibility, and pilot gates
+- `docs/ROADMAP_RERANKING_REVIEW_V1.md` — evidence inventory and the current
+  decision to defer re-ranking until pilot findings exist
 - `docs/SCENARIO_AUTHORING_V1.md` — self-localized pack import, visual draft
   editing, validation, preview, comparison, publication, and retirement
 - `docs/SCORM_PACKAGE_JOBS_V1.md` — hosted package identity, object storage,

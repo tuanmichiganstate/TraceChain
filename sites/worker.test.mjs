@@ -1089,14 +1089,38 @@ test("imports and previews a self-localized disciplinary pack", async () => {
     const curriculumCrosswalks = (
       await curriculumCrosswalkResponse.json()
     ).curriculumCrosswalks;
-    assert.equal(curriculumCrosswalks.schemaVersion, "1.1.0");
+    assert.equal(curriculumCrosswalks.schemaVersion, "2.0.0");
     assert.equal(
       curriculumCrosswalks.interpretation,
       "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
     );
-    assert.equal(curriculumCrosswalks.crosswalks.length, 1);
+    assert.deepEqual(
+      curriculumCrosswalks.competencyIndicators.map(
+        (indicator) => ({
+          competencyId: indicator.competencyId,
+          competencyVersion: indicator.competencyVersion,
+          indicatorId: indicator.indicatorId,
+          indicatorVersion: indicator.indicatorVersion,
+        }),
+      ),
+      [
+        {
+          competencyId: "PHARMA.COLD_CHAIN",
+          competencyVersion: "1.2.0",
+          indicatorId: "PHARMA.COLD_CHAIN.PI1",
+          indicatorVersion: "1.1.0",
+        },
+      ],
+    );
+    assert.equal(curriculumCrosswalks.overlays.length, 2);
     const curriculumCrosswalk =
-      curriculumCrosswalks.crosswalks[0];
+      curriculumCrosswalks.overlays.find(
+        (overlay) => overlay.owner.ownerType === "COURSE",
+      );
+    assert.equal(
+      curriculumCrosswalk.owner.ownerId,
+      "TRACECHAIN_DEMO_COURSE",
+    );
     assert.equal(
       curriculumCrosswalk.labelsByLocale.vi
         .externalFrameworkTitle,
@@ -1112,8 +1136,34 @@ test("imports and previews a self-localized disciplinary pack", async () => {
     ]);
     assert.equal(evidenceOutcome.learnersWithEvidence, 1);
     assert.equal(evidenceOutcome.evidenceObservationCount, 1);
+    const learnerEvidence =
+      curriculumCrosswalk.learners[0].outcomes.find(
+        (outcome) =>
+          outcome.outcomeId === "CLO_EVIDENCE_EVALUATION",
+      );
+    assert.equal(learnerEvidence.evidenceObservations.length, 1);
+    assert.equal(
+      learnerEvidence.evidenceObservations[0].sourceEventIds.length,
+      1,
+    );
+    assert.equal(
+      learnerEvidence.evidenceObservations[0].evidenceRuleVersion,
+      "1.1.0",
+    );
+    assert.equal(
+      typeof learnerEvidence.evidenceObservations[0]
+        .sourceEventIds[0],
+      "string",
+    );
     assert.equal(Object.hasOwn(evidenceOutcome, "attainment"), false);
     assert.equal(Object.hasOwn(evidenceOutcome, "mastery"), false);
+    const programOverlay = curriculumCrosswalks.overlays.find(
+      (overlay) => overlay.owner.ownerType === "PROGRAM",
+    );
+    assert.equal(
+      programOverlay.overlayId,
+      "OVERLAY_PHARMA_PILOT_PROGRAM",
+    );
 
     const curriculumCrosswalkDownload = await worker.fetch(
       apiRequest(
@@ -1131,7 +1181,7 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       curriculumCrosswalkDownload.headers.get(
         "content-disposition",
       ),
-      'attachment; filename="TraceChain_ASSIGNMENT_PHARMA_001_curriculum_crosswalk_v1.json"',
+      'attachment; filename="TraceChain_ASSIGNMENT_PHARMA_001_curriculum_overlay_v2.json"',
     );
 
     const learnerCurriculumCrosswalk = await worker.fetch(

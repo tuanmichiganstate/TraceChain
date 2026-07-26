@@ -34,7 +34,6 @@ export type ScenarioPackValidationResult =
 const SEMANTIC_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u;
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9._:-]*$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const ISO_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const FORBIDDEN_EXECUTABLE_KEYS = new Set([
@@ -56,7 +55,6 @@ const ROOT_KEYS = [
   "localizationCatalogs",
   "manifest",
   "competencyFrameworks",
-  "curriculumCrosswalks",
   "rubrics",
   "evidenceRules",
   "scenarios",
@@ -133,21 +131,6 @@ const LIFECYCLE_STATUSES = new Set([
   "published",
   "retired",
 ]);
-const CURRICULUM_OUTCOME_TYPES = new Set([
-  "COURSE_LEARNING_OUTCOME",
-  "PROGRAM_LEARNING_OUTCOME",
-  "PERFORMANCE_INDICATOR",
-  "GRADUATE_ATTRIBUTE",
-  "QUALIFICATION_FRAMEWORK_OUTCOME",
-  "DACUM_TASK",
-  "ACCREDITATION_OUTCOME",
-  "OTHER",
-]);
-const CURRICULUM_ALIGNMENT_STRENGTHS = new Set([
-  "PRIMARY",
-  "SUPPORTING",
-]);
-
 class ValidationContext {
   readonly issues: ScenarioPackValidationIssue[] = [];
   checkedCount = 0;
@@ -834,259 +817,6 @@ function validateRubrics(
   return rubricIds;
 }
 
-function validateCurriculumCrosswalks(
-  context: ValidationContext,
-  value: unknown,
-  path: string,
-  supportedLocales: readonly string[],
-  indicatorIds: ReadonlySet<string>,
-): void {
-  const crosswalks = context.array(value, path);
-  if (crosswalks === null) return;
-  const crosswalkIds = new Set<string>();
-  crosswalks.forEach((crosswalkValue, crosswalkIndex) => {
-    const crosswalkPath =
-      `${path}[${String(crosswalkIndex)}]`;
-    const crosswalk = context.object(
-      crosswalkValue,
-      crosswalkPath,
-    );
-    if (crosswalk === null) return;
-    context.allowedKeys(
-      crosswalk,
-      [
-        "schemaVersion",
-        "crosswalkId",
-        "version",
-        "status",
-        "effectiveFrom",
-        "title",
-        "externalFramework",
-        "mappings",
-      ],
-      crosswalkPath,
-    );
-    context.check(
-      crosswalk.schemaVersion === "1.0.0",
-      "UNSUPPORTED_SCHEMA_VERSION",
-      `${crosswalkPath}.schemaVersion`,
-      "must equal 1.0.0",
-    );
-    const crosswalkId = context.string(
-      crosswalk.crosswalkId,
-      `${crosswalkPath}.crosswalkId`,
-      { identifier: true },
-    );
-    if (crosswalkId !== null) {
-      context.check(
-        !crosswalkIds.has(crosswalkId),
-        "DUPLICATE_CURRICULUM_CROSSWALK_ID",
-        `${crosswalkPath}.crosswalkId`,
-        "must be unique within the pack",
-      );
-      crosswalkIds.add(crosswalkId);
-    }
-    context.string(
-      crosswalk.version,
-      `${crosswalkPath}.version`,
-      { semanticVersion: true },
-    );
-    context.check(
-      typeof crosswalk.status === "string" &&
-        LIFECYCLE_STATUSES.has(crosswalk.status),
-      "INVALID_LIFECYCLE_STATUS",
-      `${crosswalkPath}.status`,
-      "must be draft, validated, published, or retired",
-    );
-    const effectiveFrom = context.string(
-      crosswalk.effectiveFrom,
-      `${crosswalkPath}.effectiveFrom`,
-    );
-    if (effectiveFrom !== null) {
-      context.check(
-        ISO_DATE.test(effectiveFrom) &&
-          Number.isFinite(Date.parse(`${effectiveFrom}T00:00:00.000Z`)),
-        "INVALID_EFFECTIVE_DATE",
-        `${crosswalkPath}.effectiveFrom`,
-        "must be a valid YYYY-MM-DD date",
-      );
-    }
-    validateLocalizedText(
-      context,
-      crosswalk.title,
-      `${crosswalkPath}.title`,
-      supportedLocales,
-    );
-
-    const framework = context.object(
-      crosswalk.externalFramework,
-      `${crosswalkPath}.externalFramework`,
-    );
-    const outcomeIds = new Set<string>();
-    if (framework !== null) {
-      const frameworkPath = `${crosswalkPath}.externalFramework`;
-      context.allowedKeys(
-        framework,
-        ["frameworkId", "version", "title", "outcomes"],
-        frameworkPath,
-      );
-      context.string(
-        framework.frameworkId,
-        `${frameworkPath}.frameworkId`,
-        { identifier: true },
-      );
-      context.string(
-        framework.version,
-        `${frameworkPath}.version`,
-        { semanticVersion: true },
-      );
-      validateLocalizedText(
-        context,
-        framework.title,
-        `${frameworkPath}.title`,
-        supportedLocales,
-      );
-      const outcomes = context.array(
-        framework.outcomes,
-        `${frameworkPath}.outcomes`,
-      );
-      if (outcomes !== null) {
-        context.check(
-          outcomes.length > 0,
-          "EMPTY_CURRICULUM_FRAMEWORK",
-          `${frameworkPath}.outcomes`,
-          "must contain at least one external outcome",
-        );
-        outcomes.forEach((outcomeValue, outcomeIndex) => {
-          const outcomePath =
-            `${frameworkPath}.outcomes[${String(outcomeIndex)}]`;
-          const outcome = context.object(
-            outcomeValue,
-            outcomePath,
-          );
-          if (outcome === null) return;
-          context.allowedKeys(
-            outcome,
-            ["outcomeId", "outcomeType", "title"],
-            outcomePath,
-          );
-          const outcomeId = context.string(
-            outcome.outcomeId,
-            `${outcomePath}.outcomeId`,
-            { identifier: true },
-          );
-          if (outcomeId !== null) {
-            context.check(
-              !outcomeIds.has(outcomeId),
-              "DUPLICATE_CURRICULUM_OUTCOME_ID",
-              `${outcomePath}.outcomeId`,
-              "must be unique within the external framework",
-            );
-            outcomeIds.add(outcomeId);
-          }
-          context.check(
-            typeof outcome.outcomeType === "string" &&
-              CURRICULUM_OUTCOME_TYPES.has(outcome.outcomeType),
-            "INVALID_CURRICULUM_OUTCOME_TYPE",
-            `${outcomePath}.outcomeType`,
-            "must use a supported curriculum outcome type",
-          );
-          validateLocalizedText(
-            context,
-            outcome.title,
-            `${outcomePath}.title`,
-            supportedLocales,
-          );
-        });
-      }
-    }
-
-    const mappings = context.array(
-      crosswalk.mappings,
-      `${crosswalkPath}.mappings`,
-    );
-    const mappedIndicatorIds = new Set<string>();
-    const mappedOutcomeIds = new Set<string>();
-    if (mappings !== null) {
-      context.check(
-        mappings.length > 0,
-        "EMPTY_CURRICULUM_CROSSWALK",
-        `${crosswalkPath}.mappings`,
-        "must contain at least one indicator mapping",
-      );
-      mappings.forEach((mappingValue, mappingIndex) => {
-        const mappingPath =
-          `${crosswalkPath}.mappings[${String(mappingIndex)}]`;
-        const mapping = context.object(mappingValue, mappingPath);
-        if (mapping === null) return;
-        context.allowedKeys(
-          mapping,
-          ["indicatorId", "outcomeIds", "alignment", "rationale"],
-          mappingPath,
-        );
-        const indicatorId = context.string(
-          mapping.indicatorId,
-          `${mappingPath}.indicatorId`,
-          { identifier: true },
-        );
-        if (indicatorId !== null) {
-          context.check(
-            indicatorIds.has(indicatorId),
-            "UNKNOWN_INDICATOR_REFERENCE",
-            `${mappingPath}.indicatorId`,
-            "must reference an indicator defined by this pack",
-          );
-          context.check(
-            !mappedIndicatorIds.has(indicatorId),
-            "DUPLICATE_CURRICULUM_INDICATOR_MAPPING",
-            `${mappingPath}.indicatorId`,
-            "must appear once per crosswalk; use outcomeIds for multiple outcomes",
-          );
-          mappedIndicatorIds.add(indicatorId);
-        }
-        const mappingOutcomeIds = validateUniqueStrings(
-          context,
-          mapping.outcomeIds,
-          `${mappingPath}.outcomeIds`,
-          { minimumItems: 1, identifiers: true },
-        );
-        mappingOutcomeIds.forEach((outcomeId, outcomeIndex) => {
-          context.check(
-            outcomeIds.has(outcomeId),
-            "UNKNOWN_CURRICULUM_OUTCOME_REFERENCE",
-            `${mappingPath}.outcomeIds[${String(outcomeIndex)}]`,
-            "must reference an outcome in the external framework",
-          );
-          mappedOutcomeIds.add(outcomeId);
-        });
-        context.check(
-          typeof mapping.alignment === "string" &&
-            CURRICULUM_ALIGNMENT_STRENGTHS.has(mapping.alignment),
-          "INVALID_CURRICULUM_ALIGNMENT",
-          `${mappingPath}.alignment`,
-          "must be PRIMARY or SUPPORTING",
-        );
-        if (mapping.rationale !== undefined) {
-          validateLocalizedText(
-            context,
-            mapping.rationale,
-            `${mappingPath}.rationale`,
-            supportedLocales,
-          );
-        }
-      });
-    }
-    outcomeIds.forEach((outcomeId) => {
-      context.check(
-        mappedOutcomeIds.has(outcomeId),
-        "UNMAPPED_CURRICULUM_OUTCOME",
-        `${crosswalkPath}.externalFramework.outcomes`,
-        `must map external outcome ${outcomeId} to at least one indicator`,
-      );
-    });
-  });
-}
-
 function validateEvidenceRules(
   context: ValidationContext,
   value: unknown,
@@ -1355,6 +1085,7 @@ function validateNodeContent(
   decisionIds: ReadonlySet<string>,
   proposalNodeIds: ReadonlySet<string>,
   counterfactualDimensionIds: ReadonlySet<string>,
+  counterfactualMetricIds: ReadonlySet<string>,
 ): void {
   const nodeType = node.nodeType;
   switch (nodeType) {
@@ -1482,7 +1213,12 @@ function validateNodeContent(
                 if (option === null) return;
                 context.allowedKeys(
                   option,
-                  ["optionId", "label", "authoredValue"],
+                  [
+                    "optionId",
+                    "label",
+                    "authoredValue",
+                    "counterfactualMetricEffects",
+                  ],
                   optionPath,
                 );
                 const optionId = context.string(
@@ -1511,6 +1247,40 @@ function validateNodeContent(
                   option.authoredValue,
                   `${optionPath}.authoredValue`,
                 );
+                if (option.counterfactualMetricEffects !== undefined) {
+                  const effects = context.object(
+                    option.counterfactualMetricEffects,
+                    `${optionPath}.counterfactualMetricEffects`,
+                  );
+                  if (effects !== null) {
+                    context.check(
+                      Object.keys(effects).length > 0,
+                      "EMPTY_COUNTERFACTUAL_METRIC_EFFECTS",
+                      `${optionPath}.counterfactualMetricEffects`,
+                      "must contain at least one metric effect",
+                    );
+                    for (const [metricId, metricValue] of Object.entries(
+                      effects,
+                    )) {
+                      context.check(
+                        IDENTIFIER.test(metricId),
+                        "INVALID_IDENTIFIER",
+                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                        "metric ID must be a valid identifier",
+                      );
+                      context.number(
+                        metricValue,
+                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                      );
+                      context.check(
+                        counterfactualMetricIds.has(metricId),
+                        "UNKNOWN_COUNTERFACTUAL_RUNTIME_METRIC",
+                        `${optionPath}.counterfactualMetricEffects.${metricId}`,
+                        "must reference a runtime metric declared by a scenario comparison dimension",
+                      );
+                    }
+                  }
+                }
               });
             }
           });
@@ -2438,6 +2208,7 @@ function validateScenarioNodes(
   policyIds: ReadonlySet<string>,
   roleIds: ReadonlySet<string>,
   counterfactualDimensionIds: ReadonlySet<string>,
+  counterfactualMetricIds: ReadonlySet<string>,
 ): void {
   const nodes = context.array(scenario.nodes, `${path}.nodes`);
   if (nodes === null) return;
@@ -2513,6 +2284,7 @@ function validateScenarioNodes(
       decisionIds,
       proposalNodeIds,
       counterfactualDimensionIds,
+      counterfactualMetricIds,
     );
     const targets = validateTransitions(
       context,
@@ -3322,6 +3094,19 @@ function validateScenario(
       `${path}.counterfactualComparisonDimensions`,
       supportedLocales,
     );
+  const counterfactualMetricIds = new Set(
+    (Array.isArray(scenario.counterfactualComparisonDimensions)
+      ? scenario.counterfactualComparisonDimensions
+      : []
+    ).flatMap((dimension) => {
+      if (!isJsonObject(dimension)) return [];
+      const evaluation = dimension.evaluation;
+      return isJsonObject(evaluation) &&
+        typeof evaluation.metricId === "string"
+        ? [evaluation.metricId]
+        : [];
+    }),
+  );
   validateCounterfactualConditions(
     context,
     scenario,
@@ -3338,6 +3123,7 @@ function validateScenario(
     policyIds,
     roleIds,
     counterfactualDimensionIds,
+    counterfactualMetricIds,
   );
   validateHostedRuntime(context, scenario, path, schemaVersion);
 }
@@ -3350,10 +3136,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.3.0",
-    "HOSTED_RUNTIME_REQUIRES_SCHEMA_1_3",
+    schemaVersion === "1.4.0",
+    "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.3.0",
+    "requires scenario-pack schema version 1.4.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -3534,10 +3320,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.3.0",
+      pack.schemaVersion === "1.4.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.3.0",
+      "must equal 1.4.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });
@@ -3623,13 +3409,6 @@ export function validateScenarioPack(
         );
       });
     }
-    validateCurriculumCrosswalks(
-      context,
-      pack.curriculumCrosswalks,
-      "$.curriculumCrosswalks",
-      supportedLocales,
-      indicatorIds,
-    );
     const rubricIds = validateRubrics(
       context,
       pack.rubrics,

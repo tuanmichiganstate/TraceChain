@@ -4,9 +4,6 @@ import type {
   LocalizedText,
   VersionLifecycleStatus,
 } from "./content";
-import type {
-  CurriculumCrosswalkV1,
-} from "./curriculum-crosswalk";
 import type { JsonObject, JsonValue } from "./json";
 import type {
   AutomatedEvidenceRuleV1,
@@ -159,6 +156,9 @@ export interface DecisionOptionV1 {
   readonly optionId: string;
   readonly label: LocalizedText;
   readonly authoredValue: JsonValue;
+  readonly counterfactualMetricEffects?: Readonly<
+    Record<string, number>
+  >;
 }
 
 export interface DecisionFieldV1 {
@@ -421,7 +421,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.3.0";
+  readonly schemaVersion: "1.4.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
@@ -431,7 +431,6 @@ export interface ScenarioPackV1 {
   >;
   readonly manifest: ScenarioPackManifestV1;
   readonly competencyFrameworks: readonly CompetencyFrameworkV1[];
-  readonly curriculumCrosswalks: readonly CurriculumCrosswalkV1[];
   readonly rubrics: readonly RubricDefinitionV1[];
   readonly evidenceRules: readonly AutomatedEvidenceRuleV1[];
   readonly scenarios: readonly ScenarioDefinitionV1[];

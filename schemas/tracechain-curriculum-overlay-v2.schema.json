@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracechain.example/schemas/tracechain-curriculum-overlay-v2.schema.json",
+  "title": "TraceChain Curriculum Crosswalk Overlay V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "overlayId",
+    "version",
+    "status",
+    "owner",
+    "educationalDemoOnly",
+    "effectiveFrom",
+    "supportedLocales",
+    "title",
+    "traceChainFrameworks",
+    "externalFramework",
+    "mappings"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "2.0.0"
+    },
+    "overlayId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    },
+    "status": {
+      "enum": ["DRAFT", "ADOPTED", "RETIRED"]
+    },
+    "owner": {
+      "$ref": "#/$defs/owner"
+    },
+    "educationalDemoOnly": {
+      "type": "boolean"
+    },
+    "effectiveFrom": {
+      "$ref": "#/$defs/date"
+    },
+    "adoptedAt": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "adoptedBy": {
+      "$ref": "#/$defs/identifier"
+    },
+    "supportedLocales": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/locale"
+      }
+    },
+    "title": {
+      "$ref": "#/$defs/localizedValues"
+    },
+    "traceChainFrameworks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/frameworkReference"
+      }
+    },
+    "externalFramework": {
+      "$ref": "#/$defs/externalFramework"
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/mapping"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ADOPTED"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["adoptedAt", "adoptedBy"]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": ["adoptedAt"]
+            },
+            {
+              "required": ["adoptedBy"]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+    },
+    "locale": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$"
+    },
+    "localizedValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valuesByLocale"],
+      "properties": {
+        "valuesByLocale": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/locale"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerId", "ownerType", "displayName"],
+      "properties": {
+        "ownerId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "ownerType": {
+          "enum": ["INSTITUTION", "PROGRAM", "COURSE"]
+        },
+        "displayName": {
+          "$ref": "#/$defs/localizedValues"
+        }
+      }
+    },
+    "frameworkReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameworkId", "frameworkVersion"],
+      "properties": {
+        "frameworkId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "frameworkVersion": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcomeId", "outcomeType", "title"],
+      "properties": {
+        "outcomeId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "outcomeType": {
+          "enum": [
+            "COURSE_LEARNING_OUTCOME",
+            "PROGRAM_LEARNING_OUTCOME",
+            "PERFORMANCE_INDICATOR",
+            "GRADUATE_ATTRIBUTE",
+            "QUALIFICATION_FRAMEWORK_OUTCOME",
+            "DACUM_TASK",
+            "ACCREDITATION_OUTCOME",
+            "OTHER"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/localizedValues"
+        }
+      }
+    },
+    "externalFramework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameworkId", "version", "title", "outcomes"],
+      "properties": {
+        "frameworkId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "title": {
+          "$ref": "#/$defs/localizedValues"
+        },
+        "outcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/outcome"
+          }
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["indicatorId", "outcomeIds", "alignment"],
+      "properties": {
+        "indicatorId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "alignment": {
+          "enum": ["PRIMARY", "SUPPORTING", "CONTEXTUAL"]
+        },
+        "rationale": {
+          "$ref": "#/$defs/localizedValues"
+        }
+      }
+    }
+  }
+}

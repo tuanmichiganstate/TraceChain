@@ -1,0 +1,93 @@
+{
+  "$schema": "../schemas/tracechain-curriculum-overlay-v2.schema.json",
+  "schemaVersion": "2.0.0",
+  "overlayId": "OVERLAY_PHARMA_PILOT_COURSE",
+  "version": "1.0.0",
+  "status": "ADOPTED",
+  "owner": {
+    "ownerId": "TRACECHAIN_DEMO_COURSE",
+    "ownerType": "COURSE",
+    "displayName": {
+      "valuesByLocale": {
+        "en": "TraceChain demonstration course",
+        "vi": "Học phần minh họa TraceChain"
+      }
+    }
+  },
+  "educationalDemoOnly": true,
+  "effectiveFrom": "2026-07-26",
+  "adoptedAt": "2026-07-26T00:00:00.000Z",
+  "adoptedBy": "TRACECHAIN_DEMO_PRODUCT_OWNER",
+  "supportedLocales": [
+    "en",
+    "vi"
+  ],
+  "title": {
+    "valuesByLocale": {
+      "en": "Pharmaceutical cold-chain course-outcome overlay",
+      "vi": "Bảng đối chiếu chuẩn đầu ra học phần cho chuỗi lạnh dược phẩm"
+    }
+  },
+  "traceChainFrameworks": [
+    {
+      "frameworkId": "PHARMA_COLD_CHAIN",
+      "frameworkVersion": "1.2.0"
+    }
+  ],
+  "externalFramework": {
+    "frameworkId": "PHARMA_PILOT_COURSE_OUTCOMES",
+    "version": "1.0.0",
+    "title": {
+      "valuesByLocale": {
+        "en": "Pilot pharmaceutical course outcomes",
+        "vi": "Chuẩn đầu ra học phần dược phẩm thí điểm"
+      }
+    },
+    "outcomes": [
+      {
+        "outcomeId": "CLO_EVIDENCE_EVALUATION",
+        "outcomeType": "COURSE_LEARNING_OUTCOME",
+        "title": {
+          "valuesByLocale": {
+            "en": "Evaluate conflicting ledger, custody, and physical-condition evidence.",
+            "vi": "Đánh giá bằng chứng có mâu thuẫn từ sổ cái, chuyển giao và điều kiện vật lý."
+          }
+        }
+      },
+      {
+        "outcomeId": "CLO_PROPORTIONATE_ACTION",
+        "outcomeType": "COURSE_LEARNING_OUTCOME",
+        "title": {
+          "valuesByLocale": {
+            "en": "Recommend a proportionate patient-safety and compliance response.",
+            "vi": "Đề xuất biện pháp bảo vệ người bệnh và tuân thủ ở mức tương xứng."
+          }
+        }
+      }
+    ]
+  },
+  "mappings": [
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI1",
+      "outcomeIds": [
+        "CLO_EVIDENCE_EVALUATION"
+      ],
+      "alignment": "PRIMARY"
+    },
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI2",
+      "outcomeIds": [
+        "CLO_PROPORTIONATE_ACTION"
+      ],
+      "alignment": "PRIMARY"
+    },
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI3",
+      "outcomeIds": [
+        "CLO_EVIDENCE_EVALUATION",
+        "CLO_PROPORTIONATE_ACTION"
+      ],
+      "alignment": "SUPPORTING"
+    }
+  ]
+}

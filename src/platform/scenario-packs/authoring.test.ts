@@ -128,7 +128,7 @@ describe("scenario authoring services", () => {
 
     expect(comparison).toMatchObject({
       packId: from.packId,
-      fromVersion: "1.9.0",
+      fromVersion: "1.10.0",
       toVersion: "2.0.0",
     });
     expect(comparison.changedPaths).toEqual(

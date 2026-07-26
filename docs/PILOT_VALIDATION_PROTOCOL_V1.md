@@ -1,6 +1,26 @@
 # TraceChain pilot and validation protocol V1
 
-Status: implementation-ready protocol for the instructor-ready platform.
+**Protocol version:** 1.0.0
+
+**Status:** Draft awaiting product-owner and research-method approval.
+
+**Data collection authorized:** No. Repository implementation work may prepare
+the platform and instruments, but participant recruitment and data collection
+must not begin until the approval record below is complete.
+
+## Approval record
+
+| Responsibility | Approver | Decision | Date | Evidence |
+|---|---|---|---|---|
+| Product owner | Not recorded | Pending | Not recorded | Not recorded |
+| Research method | Not recorded | Pending | Not recorded | Not recorded |
+| Privacy and ethics, where required | Not recorded | Pending | Not recorded | Not recorded |
+| Accessibility test plan | Not recorded | Pending | Not recorded | Not recorded |
+| Vietnamese subject review | Not recorded | Pending | Not recorded | Not recorded |
+
+The coding agent must not populate an approver, invent a threshold, or mark a
+review complete. Use `PILOT_EXECUTION_RECORD_V1.md` to preserve the exact
+release, participant, instrument, and acceptance evidence once approvals exist.
 
 ## 1. Purpose
 
@@ -274,3 +294,21 @@ The platform is ready for broader use when:
 If these criteria are not met, improve content, workflow, or measurement before
 adding collaboration, AI, or advanced laboratories.
 
+## 13. Threshold approval table
+
+The research-method reviewer and product owner must approve these values before
+data collection. Blank values are an intentional stop condition, not defaults.
+
+| Measure | Approved method | Approved threshold | Decision rule | Status |
+|---|---|---|---|---|
+| Core concept discrimination | Not recorded | Not recorded | Not recorded | Pending |
+| Guided-to-Challenge transfer | Not recorded | Not recorded | Not recorded | Pending |
+| Pharmaceutical transfer | Not recorded | Not recorded | Not recorded | Pending |
+| Rubric inter-rater reliability | Not recorded | Not recorded | Not recorded | Pending |
+| Instructor critical-task completion | Not recorded | Not recorded | Not recorded | Pending |
+| Learner critical-task completion | Not recorded | Not recorded | Not recorded | Pending |
+| Counterfactual reflection quality | Not recorded | Not recorded | Not recorded | Pending |
+| Critical accessibility barriers | Manual task protocol | Zero unresolved critical barriers | Stop release while any remains | Proposed |
+| Vietnamese subject review | Bilingual content-review pack | Complete review of released content | Stop release while unresolved critical issues remain | Proposed |
+
+No aggregate satisfaction score may substitute for these measures.

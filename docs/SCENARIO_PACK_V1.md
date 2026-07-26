@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.3
+# TraceChain scenario-pack V1.4
 
-The V1.3 scenario-pack format is the active contract for the hosted
+The V1.4 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -46,7 +46,6 @@ A pack contains:
 - lifecycle status;
 - supported locales and localization references for the manifest and content;
 - versioned competency frameworks and performance indicators;
-- versioned external-curriculum crosswalks;
 - analytic rubrics and declarative evidence rules;
 - one or more scenario versions;
 - referenced asset hashes; and
@@ -150,30 +149,19 @@ This hosted competency layer is separate from the current 100-point SCORM score.
 The foundation does not change existing items, hints, mitigation ceilings, or
 the 39/61 operational/knowledge split.
 
-## Curriculum crosswalks
+## Curriculum ownership boundary
 
-V1.3 adds a required `curriculumCrosswalks` collection at pack level. An empty
-collection is valid. A crosswalk maps stable TraceChain indicator IDs to
-versioned external course, program, performance-indicator, graduate-attribute,
-qualification-framework, DACUM, accreditation, or other authored outcomes.
+V1.4 removes institution-, program-, and course-owned curriculum mappings from
+the scenario-pack contract. Packs continue to own stable TraceChain
+competencies, performance indicators, and observable evidence definitions.
 
-Each crosswalk declares:
+External outcome mappings are independent `2.0.0` curriculum overlays. They
+reference exact TraceChain framework versions and must be explicitly adopted
+by their institution, program, or course owner before reporting uses them.
+Scenario-pack validation rejects the former `curriculumCrosswalks` property and
+older pack schemas; there is no migration adapter.
 
-- its own stable ID, semantic version, lifecycle status, and effective date;
-- one versioned external framework;
-- localized external-outcome titles and explicit outcome types; and
-- one primary or supporting mapping per TraceChain indicator.
-
-Validation rejects unknown indicators, unknown or unmapped outcomes, duplicate
-indicator mappings, invalid dates, localization gaps, and unsupported
-alignment values. Crosswalks are immutable published pack content and therefore
-remain tied to the exact evidence definitions used by a run.
-
-The report projection counts linked observations and current ratings by
-external outcome. It deliberately reports
-`EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE`: a mapping is not an attainment
-rule, and one simulation must not be presented as proof of program-level
-mastery. See `CURRICULUM_CROSSWALK_V1.md`.
+See `CURRICULUM_OVERLAY_V2.md`.
 
 ## Publication
 

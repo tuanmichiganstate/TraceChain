@@ -1,0 +1,99 @@
+{
+  "$schema": "../schemas/tracechain-curriculum-overlay-v2.schema.json",
+  "schemaVersion": "2.0.0",
+  "overlayId": "OVERLAY_PHARMA_PILOT_PROGRAM",
+  "version": "1.0.0",
+  "status": "ADOPTED",
+  "owner": {
+    "ownerId": "TRACECHAIN_DEMO_PROGRAM",
+    "ownerType": "PROGRAM",
+    "displayName": {
+      "valuesByLocale": {
+        "en": "TraceChain demonstration program",
+        "vi": "Chương trình minh họa TraceChain"
+      }
+    }
+  },
+  "educationalDemoOnly": true,
+  "effectiveFrom": "2026-07-26",
+  "adoptedAt": "2026-07-26T00:00:00.000Z",
+  "adoptedBy": "TRACECHAIN_DEMO_PRODUCT_OWNER",
+  "supportedLocales": [
+    "en",
+    "vi"
+  ],
+  "title": {
+    "valuesByLocale": {
+      "en": "Pharmaceutical cold-chain program-outcome overlay",
+      "vi": "Bảng đối chiếu chuẩn đầu ra chương trình cho chuỗi lạnh dược phẩm"
+    }
+  },
+  "traceChainFrameworks": [
+    {
+      "frameworkId": "PHARMA_COLD_CHAIN",
+      "frameworkVersion": "1.2.0"
+    }
+  ],
+  "externalFramework": {
+    "frameworkId": "PHARMA_PILOT_PROGRAM_OUTCOMES",
+    "version": "1.0.0",
+    "title": {
+      "valuesByLocale": {
+        "en": "Pilot professional program outcomes",
+        "vi": "Chuẩn đầu ra chương trình nghề nghiệp thí điểm"
+      }
+    },
+    "outcomes": [
+      {
+        "outcomeId": "PLO_EVIDENCE_GOVERNANCE",
+        "outcomeType": "PROGRAM_LEARNING_OUTCOME",
+        "title": {
+          "valuesByLocale": {
+            "en": "Evaluate digital and off-chain evidence within its governance limits.",
+            "vi": "Đánh giá bằng chứng số và ngoài chuỗi trong giới hạn quản trị của bằng chứng."
+          }
+        }
+      },
+      {
+        "outcomeId": "PLO_PROPORTIONATE_PROFESSIONAL_ACTION",
+        "outcomeType": "PROGRAM_LEARNING_OUTCOME",
+        "title": {
+          "valuesByLocale": {
+            "en": "Select proportionate professional action under uncertainty.",
+            "vi": "Lựa chọn biện pháp nghề nghiệp tương xứng trong điều kiện không chắc chắn."
+          }
+        }
+      }
+    ]
+  },
+  "mappings": [
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI1",
+      "outcomeIds": [
+        "PLO_EVIDENCE_GOVERNANCE"
+      ],
+      "alignment": "PRIMARY"
+    },
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI2",
+      "outcomeIds": [
+        "PLO_PROPORTIONATE_PROFESSIONAL_ACTION"
+      ],
+      "alignment": "PRIMARY"
+    },
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI3",
+      "outcomeIds": [
+        "PLO_EVIDENCE_GOVERNANCE"
+      ],
+      "alignment": "CONTEXTUAL"
+    },
+    {
+      "indicatorId": "PHARMA.COLD_CHAIN.PI3",
+      "outcomeIds": [
+        "PLO_PROPORTIONATE_PROFESSIONAL_ACTION"
+      ],
+      "alignment": "SUPPORTING"
+    }
+  ]
+}

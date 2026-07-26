@@ -10,6 +10,7 @@ import { MemoryRunEventStore } from "../runs/event-store";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import type { ApplicationPrincipal } from "./access";
+import { counterfactualDecisionPoints } from "./counterfactual-points";
 import { GenericHostedRunService } from "./generic-run-service";
 import { hostedRuntimeKindFor } from "./runtime-registry";
 
@@ -66,7 +67,7 @@ function createTransferService(store = new MemoryRunEventStore()) {
     service: new GenericHostedRunService(
       pack,
       "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-      "1.0.0",
+      "1.1.0",
       store,
       new FixedClock(NOW),
       new SequenceIdGenerator(1),
@@ -351,7 +352,7 @@ describe("GenericHostedRunService", () => {
   });
 
   it("runs the richer pharmaceutical transfer case through evidence, two decisions, and proportional disposition", async () => {
-    const { service } = createTransferService();
+    const { pack, service, store } = createTransferService();
     const created = await service.createRun(instructor, {
       commandId: "COMMAND_CREATE_PHARMA_TRANSFER",
       runId: "RUN_PHARMA_TRANSFER",
@@ -521,6 +522,53 @@ describe("GenericHostedRunService", () => {
         feedbackCode:
           "PHARMA_TRANSFER_INTEGRITY_AND_PROPORTIONALITY",
       }),
+    ]);
+    expect(
+      await service.counterfactualMetrics(
+        learner,
+        completed.state.runId,
+      ),
+    ).toEqual({
+      PHARMA_BUSINESS_COST_INDEX: 3,
+      PHARMA_COMPLIANCE_INDEX: 3,
+      PHARMA_EVIDENCE_QUALITY_INDEX: 3,
+      PHARMA_OPERATIONAL_DELAY_INDEX: 2,
+      PHARMA_PATIENT_SAFETY_INDEX: 3,
+    });
+    expect(
+      counterfactualDecisionPoints({
+        pack,
+        sourceRunId: completed.state.runId,
+        events: await store.load(completed.state.runId),
+      }).map((point) => ({
+        decisionId: point.decisionId,
+        originalOptionIds: point.originalOptionIds,
+        comparisonDimensionIds:
+          point.configuration.comparisonDimensionIds,
+      })),
+    ).toEqual([
+      {
+        decisionId: "DECISION_PHARMA_TRANSFER_TRIAGE",
+        originalOptionIds: ["HOLD_AND_INVESTIGATE"],
+        comparisonDimensionIds: [
+          "DIM_PHARMA_PATIENT_SAFETY",
+          "DIM_PHARMA_BUSINESS_COST",
+          "DIM_PHARMA_OPERATIONAL_DELAY",
+          "DIM_PHARMA_COMPLIANCE",
+          "DIM_PHARMA_EVIDENCE_QUALITY",
+        ],
+      },
+      {
+        decisionId: "DECISION_PHARMA_TRANSFER_DISPOSITION",
+        originalOptionIds: ["QUARANTINE_AFFECTED_SHIPMENT"],
+        comparisonDimensionIds: [
+          "DIM_PHARMA_PATIENT_SAFETY",
+          "DIM_PHARMA_BUSINESS_COST",
+          "DIM_PHARMA_OPERATIONAL_DELAY",
+          "DIM_PHARMA_COMPLIANCE",
+          "DIM_PHARMA_EVIDENCE_QUALITY",
+        ],
+      },
     ]);
   });
 

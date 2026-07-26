@@ -7,6 +7,9 @@ import type {
 } from "../contracts/competency-report";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import {
+  repositoryCurriculumOverlays,
+} from "../curriculum-overlays/repository-overlays";
+import {
   assignmentCurriculumCrosswalkFilename,
   createAssignmentCurriculumCrosswalkReport,
   CurriculumCrosswalkReportError,
@@ -149,38 +152,60 @@ describe("curriculum crosswalk report", () => {
   it("maps evidence to external outcomes without inventing attainment", () => {
     const report = createAssignmentCurriculumCrosswalkReport({
       pack,
+      overlays: repositoryCurriculumOverlays,
       competencyReport,
     });
 
     expect(report).toMatchObject({
-      schemaVersion: "1.1.0",
+      schemaVersion: "2.0.0",
       interpretation:
         "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
       assignmentId: "ASSIGNMENT_PHARMA_TRANSFER",
-      packVersion: "1.3.0",
+      packVersion: "1.4.0",
       scenarioId: "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-      scenarioVersion: "1.0.0",
+      scenarioVersion: "1.1.0",
+      competencyIndicators: expect.arrayContaining([
+        expect.objectContaining({
+          competencyId: "PHARMA.COLD_CHAIN",
+          competencyVersion: "1.2.0",
+          indicatorId: "PHARMA.COLD_CHAIN.PI1",
+          indicatorVersion: "1.1.0",
+        }),
+      ]),
     });
-    const crosswalk = report.crosswalks[0];
-    expect(crosswalk).toMatchObject({
-      crosswalkId: "CROSSWALK_PHARMA_PILOT_CLO",
+    expect(report.overlays).toHaveLength(2);
+    const courseOverlay = report.overlays.find(
+      (overlay) => overlay.owner.ownerType === "COURSE",
+    );
+    expect(courseOverlay).toMatchObject({
+      overlayId: "OVERLAY_PHARMA_PILOT_COURSE",
+      overlayVersion: "1.0.0",
+      status: "ADOPTED",
+      educationalDemoOnly: true,
+      owner: {
+        ownerId: "TRACECHAIN_DEMO_COURSE",
+        ownerType: "COURSE",
+      },
       externalFrameworkId: "PHARMA_PILOT_COURSE_OUTCOMES",
       labelsByLocale: {
         en: {
+          ownerDisplayName: "TraceChain demonstration course",
           externalFrameworkTitle:
             "Pilot pharmaceutical course outcomes",
         },
         vi: {
+          ownerDisplayName: "Học phần minh họa TraceChain",
           externalFrameworkTitle:
             "Chuẩn đầu ra học phần dược phẩm thí điểm",
         },
       },
     });
-    expect(crosswalk?.classOutcomes).toEqual([
+    expect(courseOverlay?.classOutcomes).toEqual([
       expect.objectContaining({
         outcomeId: "CLO_EVIDENCE_EVALUATION",
         primaryIndicatorIds: ["PHARMA.COLD_CHAIN.PI1"],
         supportingIndicatorIds: ["PHARMA.COLD_CHAIN.PI3"],
+        contextualIndicatorIds: [],
         evidenceObservationCount: 2,
         currentRatingCount: 2,
       }),
@@ -188,15 +213,28 @@ describe("curriculum crosswalk report", () => {
         outcomeId: "CLO_PROPORTIONATE_ACTION",
         primaryIndicatorIds: ["PHARMA.COLD_CHAIN.PI2"],
         supportingIndicatorIds: ["PHARMA.COLD_CHAIN.PI3"],
+        contextualIndicatorIds: [],
         evidenceObservationCount: 2,
         currentRatingCount: 2,
       }),
     ]);
-    expect(crosswalk?.learners[0]?.outcomes).toEqual([
+    expect(courseOverlay?.learners[0]?.outcomes).toEqual([
       expect.objectContaining({
         outcomeId: "CLO_EVIDENCE_EVALUATION",
         evidenceObservationCount: 2,
         currentRatingCount: 2,
+        evidenceObservations: expect.arrayContaining([
+          expect.objectContaining({
+            runId: "RUN_PHARMA_TRANSFER_001",
+            competencyEvidenceId: "CEV_TRIAGE",
+            evidenceRuleVersion: "1.0.0",
+            sourceEventIds: ["EVENT_CEV_TRIAGE"],
+            mappedIndicatorIds: [
+              "PHARMA.COLD_CHAIN.PI1",
+              "PHARMA.COLD_CHAIN.PI3",
+            ],
+          }),
+        ]),
       }),
       expect.objectContaining({
         outcomeId: "CLO_PROPORTIONATE_ACTION",
@@ -204,6 +242,26 @@ describe("curriculum crosswalk report", () => {
         currentRatingCount: 2,
       }),
     ]);
+    const programOverlay = report.overlays.find(
+      (overlay) => overlay.owner.ownerType === "PROGRAM",
+    );
+    expect(programOverlay).toMatchObject({
+      overlayId: "OVERLAY_PHARMA_PILOT_PROGRAM",
+      owner: {
+        ownerId: "TRACECHAIN_DEMO_PROGRAM",
+        ownerType: "PROGRAM",
+      },
+    });
+    expect(
+      programOverlay?.classOutcomes.find(
+        (outcome) =>
+          outcome.outcomeId === "PLO_EVIDENCE_GOVERNANCE",
+      ),
+    ).toMatchObject({
+      primaryIndicatorIds: ["PHARMA.COLD_CHAIN.PI1"],
+      supportingIndicatorIds: [],
+      contextualIndicatorIds: ["PHARMA.COLD_CHAIN.PI3"],
+    });
     expect(JSON.stringify(report)).not.toContain("attainment");
     expect(JSON.stringify(report)).not.toContain("mastery");
     expect(
@@ -214,7 +272,7 @@ describe("curriculum crosswalk report", () => {
         "ASSIGNMENT PHARMA/TRANSFER",
       ),
     ).toBe(
-      "TraceChain_ASSIGNMENT_PHARMA_TRANSFER_curriculum_crosswalk_v1.json",
+      "TraceChain_ASSIGNMENT_PHARMA_TRANSFER_curriculum_overlay_v2.json",
     );
   });
 
@@ -227,12 +285,13 @@ describe("curriculum crosswalk report", () => {
     expect(() =>
       createAssignmentCurriculumCrosswalkReport({
         pack,
+        overlays: repositoryCurriculumOverlays,
         competencyReport: mismatched,
       }),
     ).toThrowError(
       new CurriculumCrosswalkReportError(
         "CURRICULUM_CROSSWALK_SOURCE_MISMATCH",
-        "Crosswalk pack does not match the competency report.",
+        "Curriculum overlay pack does not match the competency report.",
       ),
     );
   });

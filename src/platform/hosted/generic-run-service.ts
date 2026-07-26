@@ -842,7 +842,32 @@ export class GenericHostedRunService {
       principal,
       loaded.state.learnerUserId,
     );
-    return {};
+    const metrics: Record<string, number> = {};
+    for (const node of this.scenario.nodes) {
+      if (node.nodeType !== "DECISION") continue;
+      const submission = loaded.state.decisions[node.decisionId];
+      if (submission === undefined) continue;
+      for (const field of node.fields) {
+        const selected = submission.responses[field.fieldId] ?? [];
+        for (const optionId of selected) {
+          const option = field.options.find(
+            (candidate) => candidate.optionId === optionId,
+          );
+          if (option === undefined) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              `Decision ${node.decisionId} references unknown option ${optionId}.`,
+            );
+          }
+          for (const [metricId, effect] of Object.entries(
+            option.counterfactualMetricEffects ?? {},
+          )) {
+            metrics[metricId] = (metrics[metricId] ?? 0) + effect;
+          }
+        }
+      }
+    }
+    return metrics;
   }
 
   async instructorTimeline(

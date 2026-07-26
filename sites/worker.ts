@@ -135,6 +135,9 @@ import {
   CurriculumCrosswalkReportError,
   serializeAssignmentCurriculumCrosswalkReportJson,
 } from "../src/platform/reporting/curriculum-crosswalk-report";
+import {
+  repositoryCurriculumOverlays,
+} from "../src/platform/curriculum-overlays/repository-overlays";
 import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
 import { assignmentStartAvailability } from "../src/platform/runs/assignment-availability";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
@@ -2246,12 +2249,12 @@ async function apiResponse(
     const curriculumCrosswalks =
       createAssignmentCurriculumCrosswalkReport({
         pack,
+        overlays: repositoryCurriculumOverlays,
         competencyReport: createAssignmentCompetencyReport({
           assignmentReport,
           pack,
           evidenceByRun,
         }),
-        localizationCatalogs: scenarioPackCatalogs,
       });
     if (curriculumCrosswalkDownloadAssignmentId !== null) {
       return downloadResponse(

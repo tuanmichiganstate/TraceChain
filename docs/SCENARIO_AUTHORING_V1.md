@@ -69,10 +69,10 @@ they choose a proportionate disposition. Both submissions capture bounded
 evidence citations, a policy citation, confidence, and an adverse-event risk
 estimate. The case has its own rubric and declarative evidence rules.
 
-The pack also includes a pilot course-outcome crosswalk. It maps the
-pharmaceutical performance indicators to two localized course outcomes as
-primary or supporting evidence. The crosswalk is validated and versioned with
-the pack; it does not calculate attainment or add another score.
+Course and program outcome mappings deliberately do not live in this pack.
+The repository's independent demonstration overlays reference the pack's exact
+`PHARMA_COLD_CHAIN` framework version and remain owned, adopted, validated, and
+versioned separately. They do not calculate attainment or add another score.
 
 The starter was the first scenario exercised by the generic hosted
 runtime. Once published, it can be assigned and completed through its authored

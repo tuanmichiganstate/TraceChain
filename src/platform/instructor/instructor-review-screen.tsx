@@ -25,8 +25,8 @@ import type {
   HostedAssignmentCompetencyReportV1,
 } from "../contracts/competency-report";
 import type {
-  AssignmentCurriculumCrosswalkReportV1,
-  AssignmentCurriculumCrosswalkV1,
+  AssignmentCurriculumOverlayReportV2,
+  AssignmentCurriculumOverlayV2,
 } from "../contracts/curriculum-crosswalk";
 import type {
   HostedAssignmentDecisionOutcomeReportV1,
@@ -115,7 +115,7 @@ export interface InstructorReviewApi {
   ): Promise<HostedAssignmentCompetencyReportV1>;
   loadAssignmentCurriculumCrosswalks(
     assignmentId: string,
-  ): Promise<AssignmentCurriculumCrosswalkReportV1>;
+  ): Promise<AssignmentCurriculumOverlayReportV2>;
   loadAssignmentDecisionOutcomes(
     assignmentId: string,
   ): Promise<HostedAssignmentDecisionOutcomeReportV1>;
@@ -307,7 +307,7 @@ export function createInstructorReviewApi(
     async loadAssignmentCurriculumCrosswalks(assignmentId) {
       const result = await responseJson<{
         readonly curriculumCrosswalks:
-          AssignmentCurriculumCrosswalkReportV1;
+          AssignmentCurriculumOverlayReportV2;
       }>(
         fetcher,
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/curriculum-crosswalks`,
@@ -1644,7 +1644,7 @@ function AssignmentReport({
   const [competencies, setCompetencies] =
     useState<HostedAssignmentCompetencyReportV1 | null>(null);
   const [curriculumCrosswalks, setCurriculumCrosswalks] =
-    useState<AssignmentCurriculumCrosswalkReportV1 | null>(null);
+    useState<AssignmentCurriculumOverlayReportV2 | null>(null);
   const [decisionOutcomes, setDecisionOutcomes] =
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
@@ -2090,16 +2090,17 @@ function AssignmentReport({
 }
 
 function curriculumCrosswalkLabels(
-  crosswalk: AssignmentCurriculumCrosswalkV1,
+  crosswalk: AssignmentCurriculumOverlayV2,
   locale: string,
-): AssignmentCurriculumCrosswalkV1["labelsByLocale"][string] {
+): AssignmentCurriculumOverlayV2["labelsByLocale"][string] {
   return (
     crosswalk.labelsByLocale[locale] ??
     crosswalk.labelsByLocale.en ??
     Object.values(crosswalk.labelsByLocale)[0] ?? {
-      title: crosswalk.titleKey,
+      title: crosswalk.overlayId,
+      ownerDisplayName: crosswalk.owner.ownerId,
       externalFrameworkTitle:
-        crosswalk.externalFrameworkTitleKey,
+        crosswalk.externalFrameworkId,
       outcomeTitles: {},
     }
   );
@@ -2108,7 +2109,7 @@ function curriculumCrosswalkLabels(
 function ClassCurriculumCrosswalkReport({
   report,
 }: {
-  readonly report: AssignmentCurriculumCrosswalkReportV1;
+  readonly report: AssignmentCurriculumOverlayReportV2;
 }): ReactNode {
   const t = useTranslator();
   return (
@@ -2122,21 +2123,27 @@ function ClassCurriculumCrosswalkReport({
       >
         {t("instructorReview.curriculumDownloadJson")}
       </a>
-      {report.crosswalks.length === 0 ? (
+      {report.overlays.length === 0 ? (
         <p>{t("instructorReview.curriculumNone")}</p>
       ) : (
-        report.crosswalks.map((crosswalk) => {
+        report.overlays.map((crosswalk) => {
           const labels = curriculumCrosswalkLabels(
             crosswalk,
             t.locale,
           );
           return (
-            <article key={crosswalk.crosswalkId}>
+            <article key={crosswalk.overlayId}>
               <h4>{labels.title}</h4>
+              <p>
+                {t("instructorReview.curriculumOwnerValue", {
+                  owner: labels.ownerDisplayName,
+                  ownerType: crosswalk.owner.ownerType,
+                })}
+              </p>
               <p>
                 {t("instructorReview.curriculumFrameworkValue", {
                   framework: labels.externalFrameworkTitle,
-                  crosswalkVersion: crosswalk.crosswalkVersion,
+                  crosswalkVersion: crosswalk.overlayVersion,
                   frameworkVersion:
                     crosswalk.externalFrameworkVersion,
                 })}
@@ -2164,6 +2171,11 @@ function ClassCurriculumCrosswalkReport({
                         )}
                       </th>
                       <th scope="col">
+                        {t(
+                          "instructorReview.curriculumContextualIndicators",
+                        )}
+                      </th>
+                      <th scope="col">
                         {t("instructorReview.learnersObserved")}
                       </th>
                       <th scope="col">
@@ -2185,7 +2197,7 @@ function ClassCurriculumCrosswalkReport({
                           <strong>
                             {labels.outcomeTitles[
                               outcome.outcomeId
-                            ] ?? outcome.outcomeTitleKey}
+                            ] ?? outcome.outcomeId}
                           </strong>
                           <br />
                           <code>{outcome.outcomeId}</code>
@@ -2200,6 +2212,13 @@ function ClassCurriculumCrosswalkReport({
                           0
                             ? t("instructorReview.none")
                             : outcome.supportingIndicatorIds.join(
+                                ", ",
+                              )}
+                        </td>
+                        <td>
+                          {outcome.contextualIndicatorIds.length === 0
+                            ? t("instructorReview.none")
+                            : outcome.contextualIndicatorIds.join(
                                 ", ",
                               )}
                         </td>
