@@ -158,6 +158,22 @@ test.describe("reflow", () => {
     expect(report.scrolls).toBe(false);
   });
 
+  test("does not overflow on the Stage 8 governance classification", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "layout-only check; one engine suffices");
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.playThroughStageSeven();
+    await activity.continue();
+    await activity.expectStage(8);
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
   test("expanded signature evidence remains usable at 320 px", async ({
     page,
   }) => {

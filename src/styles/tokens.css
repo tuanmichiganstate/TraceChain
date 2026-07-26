@@ -47,6 +47,13 @@
   --colour-physical: #34506b;
   --colour-physical-soft: #e8eef4;
 
+  /* Technical inspection uses a neutral slate system. These are structural
+     colours, not verdict colours and not a decorative cryptocurrency theme. */
+  --colour-technical: #33445d;
+  --colour-technical-strong: #202c3d;
+  --colour-technical-soft: #e9eef4;
+  --colour-technical-border: #aebaca;
+
   /* Typography. A system stack renders Vietnamese diacritics correctly on every
      target platform and costs no bundle weight or network request. */
   --font-body: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -93,6 +100,7 @@
   --easing-standard: cubic-bezier(0.2, 0, 0.2, 1);
 
   --layout-max-width: 1180px;
+  --layout-workspace-max-width: 1440px;
 }
 
 /*

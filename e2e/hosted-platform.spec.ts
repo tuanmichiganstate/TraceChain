@@ -341,6 +341,8 @@ test("completes an authored pharmaceutical decision through the generic runtime 
         ),
       },
       policyTitles: {},
+      instructorIncidents: [],
+      professionalConsequences: [],
       modeConfiguration,
     },
   };
@@ -1263,6 +1265,69 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     }
     if (
       pathname ===
+      `/api/v1/assignments/${assignmentId}/curriculum-crosswalks`
+    ) {
+      await route.fulfill({
+        json: {
+          curriculumCrosswalks: {
+            schemaVersion: "2.0.0",
+            interpretation:
+              "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
+            assignmentId,
+            packId: assignment.packId,
+            packVersion: assignment.packVersion,
+            scenarioId: assignment.scenarioId,
+            scenarioVersion: assignment.scenarioVersion,
+            competencyFrameworks: [],
+            competencyIndicators: [],
+            overlays: [],
+          },
+        },
+      });
+      return;
+    }
+    if (
+      pathname ===
+      `/api/v1/assignments/${assignmentId}/process-analytics`
+    ) {
+      await route.fulfill({
+        json: {
+          analytics: {
+            schemaVersion: "1.0.0",
+            reportType:
+              "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+            interpretation:
+              "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
+            ruleVersion:
+              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+            assignmentId,
+            packId: assignment.packId,
+            packVersion: assignment.packVersion,
+            scenarioId: assignment.scenarioId,
+            scenarioVersion: assignment.scenarioVersion,
+            generatedAt: "2026-07-24T08:05:00.000Z",
+            runs: [],
+            summary: {
+              runCount: 0,
+              evidenceInspectionCounts: {},
+              evidenceCitationCounts: {},
+              policyConsultationCounts: {},
+              decisionSubmissionCounts: {},
+              rejectedAttemptCount: 0,
+              mitigationCount: 0,
+            },
+            limitations: [
+              "ELAPSED_INTERVAL_IS_NOT_ATTENTION",
+              "NO_MOTIVATION_OR_ABILITY_INFERENCE",
+              "NO_AUTOMATED_HIGH_STAKES_DECISION",
+            ],
+          },
+        },
+      });
+      return;
+    }
+    if (
+      pathname ===
       `/api/v1/assignments/${assignmentId}/decision-outcomes`
     ) {
       await route.fulfill({
@@ -1355,6 +1420,22 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
           assignment,
           ratings: [],
           moderationResolutions: [],
+        },
+      });
+      return;
+    }
+    if (
+      pathname ===
+      "/api/v1/runs/RUN_MONITOR_001/instructor-incidents"
+    ) {
+      await route.fulfill({
+        json: {
+          director: {
+            schemaVersion: "1.0.0",
+            runId: "RUN_MONITOR_001",
+            runVersion: 4,
+            incidents: [],
+          },
         },
       });
       return;
@@ -1458,8 +1539,12 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   ).toBeVisible();
   await expect(page.getByText("270 seconds")).toBeVisible();
   await page.getByText("View activity", { exact: true }).click();
-  await expect(page.getByText("Evidence inspections")).toBeVisible();
-  await expect(page.getByText("Rejected attempts")).toBeVisible();
+  await expect(
+    page.getByText("Evidence inspections", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Rejected attempts", { exact: true }).first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: "Common rejection findings",

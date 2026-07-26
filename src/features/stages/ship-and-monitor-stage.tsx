@@ -22,6 +22,8 @@ import {
   decodeAnswer,
   isAnswerCorrect,
 } from "../../domain/scenario/answer-codec";
+import { RoleApplicationShell } from "../../components/simulation-workspace";
+import { StatusPill } from "../../components/status-pill";
 
 /**
  * Stage 4. The handover, and what travels with it.
@@ -86,116 +88,233 @@ export function ShipAndMonitorStage(): ReactNode {
       proposal.actionId === "TRANSFER_CUSTODY" &&
       proposal.status !== "SUPERSEDED",
   );
+  const transportCommitted = Object.values(
+    state.domain.transactionsById,
+  ).some(
+    (transaction) =>
+      transaction.transactionType ===
+        TransactionType.RECORD_TRANSPORT_CONDITION &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
+  );
   const CustodyTransactionAction =
     configuration?.configuration.technicalFeatures
       .endorsementPolicies === true
       ? EndorsedTransactionAction
       : TransactionAction;
+  const workspaceStatus = transportCommitted
+    ? t("stage.shipAndMonitor.workspace.statusRecorded")
+    : custodyCommitted
+      ? t("stage.shipAndMonitor.workspace.statusInTransit")
+      : custodyProposalSubmitted
+        ? t("stage.shipAndMonitor.workspace.statusAwaitingReceiver")
+        : transfersOwnership === null
+          ? t("stage.shipAndMonitor.workspace.statusReview")
+          : t("stage.shipAndMonitor.workspace.statusReady");
 
   return (
     <StageShell stageId={ScenarioStageId.SHIP_AND_MONITOR}>
-      {asset !== undefined ? (
-        <section>
-          <h3>{t("state.title")}</h3>
-          <AssetCard asset={asset} />
-        </section>
-      ) : null}
+      <RoleApplicationShell
+        eyebrow={t("stage.shipAndMonitor.workspace.eyebrow")}
+        title={t("stage.shipAndMonitor.workspace.title")}
+        description={t("stage.shipAndMonitor.workspace.description")}
+        statusLabel={t("stage.shipAndMonitor.workspace.statusLabel")}
+        status={
+          <StatusPill tone={transportCommitted ? "pass" : "neutral"}>
+            {workspaceStatus}
+          </StatusPill>
+        }
+      >
+        {asset !== undefined ? (
+          <section
+            className="field-handoff__shipment"
+            aria-labelledby="field-handoff-shipment-heading"
+          >
+            <p className="eyebrow">
+              {t("stage.shipAndMonitor.workspace.shipmentLayer")}
+            </p>
+            <h4 id="field-handoff-shipment-heading">
+              {t("stage.shipAndMonitor.workspace.shipmentHeading")}
+            </h4>
+            <AssetCard asset={asset} />
+          </section>
+        ) : null}
 
-      {scopeCheck !== undefined ? (
-        <KnowledgeCheckPanel
-          check={scopeCheck}
-          isLocked={
-            custodyProposalSubmitted || custodyCommitted
-          }
-          onAnswered={(isCorrect) => {
-            // A learner who answered "custody only" submits a valid transfer;
-            // anyone else submits the one the rules refuse, and reads why.
-            setTransfersOwnership(!isCorrect);
-          }}
-        />
-      ) : null}
+        <div className="field-handoff__workflow">
+          <section
+            className="field-handoff__phase"
+            aria-labelledby="field-handoff-custody-heading"
+          >
+            <p className="eyebrow">
+              {t("stage.shipAndMonitor.workspace.handoffLayer")}
+            </p>
+            <h4 id="field-handoff-custody-heading">
+              {t("stage.shipAndMonitor.workspace.handoffHeading")}
+            </h4>
 
-      {transfersOwnership !== null ? (
-        <CustodyTransactionAction
-          decisionId="INT_CUSTODY_TRANSFERRED_TRANSACTION"
-          actionId="TRANSFER_CUSTODY"
-          labelKey="stage.shipAndMonitor.custodyAction"
-          isFirstOfType
-          summary={[
-            ["field.assetId", <code key="a">{sourceBatchId}</code>],
-            ["field.custodian", t("organizations.logisticsProvider.name")],
-            [
-              "field.owner",
-              transfersOwnership
-                ? t("organizations.logisticsProvider.name")
-                : t("organizations.producerCoop.name"),
-            ],
-            ["field.location", t("locations.transitStation.name")],
-          ]}
-          buildCommand={() =>
-            runtimeCommand<TransferCustodyCommand>(scenario, "TRANSFER_CUSTODY", {
-              alsoTransfersOwnership: transfersOwnership,
-            })
-          }
-          context={commandContext(scenario, "TRANSFER_CUSTODY")}
-        />
-      ) : null}
+            {scopeCheck !== undefined ? (
+              <KnowledgeCheckPanel
+                check={scopeCheck}
+                presentation="professional"
+                layerLabelKey="stage.shipAndMonitor.workspace.scopeDecisionLabel"
+                isLocked={
+                  custodyProposalSubmitted || custodyCommitted
+                }
+                onAnswered={(isCorrect) => {
+                  // A learner who answered "custody only" submits a valid transfer;
+                  // anyone else submits the one the rules refuse, and reads why.
+                  setTransfersOwnership(!isCorrect);
+                }}
+              />
+            ) : null}
 
-      <section className="card card--reference">
-        <h3>{t("stage.shipAndMonitor.sensorHeading")}</h3>
-        <p>{t("stage.shipAndMonitor.roleSwitch")}</p>
-        <dl className="asset-card__grid">
-          <div className="asset-card__row">
-            <dt>{t("field.sensorId")}</dt>
-            <dd>
-              <code>{sensorCommand.sensorId}</code>
-            </dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.humidity")}</dt>
-            <dd>{sensorCommand.humidityPercent}%</dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.humidityLimit")}</dt>
-            <dd>{sensorCommand.allowedMaximumHumidityPercent}%</dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.location")}</dt>
-            <dd>{t("locations.transitStation.name")}</dd>
-          </div>
-        </dl>
-        <p className="muted">{t("stage.shipAndMonitor.oracleNotice")}</p>
-      </section>
+            {transfersOwnership !== null ? (
+              <CompactTransactionReceipt
+                isCommitted={custodyCommitted}
+                label={t("stage.shipAndMonitor.workspace.custodyReceipt")}
+              >
+                <CustodyTransactionAction
+                  decisionId="INT_CUSTODY_TRANSFERRED_TRANSACTION"
+                  actionId="TRANSFER_CUSTODY"
+                  labelKey="stage.shipAndMonitor.custodyAction"
+                  isFirstOfType
+                  summary={[
+                    ["field.assetId", <code key="a">{sourceBatchId}</code>],
+                    ["field.custodian", t("organizations.logisticsProvider.name")],
+                    [
+                      "field.owner",
+                      transfersOwnership
+                        ? t("organizations.logisticsProvider.name")
+                        : t("organizations.producerCoop.name"),
+                    ],
+                    ["field.location", t("locations.transitStation.name")],
+                  ]}
+                  buildCommand={() =>
+                    runtimeCommand<TransferCustodyCommand>(
+                      scenario,
+                      "TRANSFER_CUSTODY",
+                      {
+                        alsoTransfersOwnership: transfersOwnership,
+                      },
+                    )
+                  }
+                  context={commandContext(scenario, "TRANSFER_CUSTODY")}
+                />
+              </CompactTransactionReceipt>
+            ) : null}
+          </section>
 
-      {transportCheck !== undefined ? <KnowledgeCheckPanel check={transportCheck} /> : null}
+          <section
+            className="field-handoff__phase"
+            aria-labelledby="field-handoff-monitor-heading"
+          >
+            <p className="eyebrow">
+              {t("stage.shipAndMonitor.workspace.monitorLayer")}
+            </p>
+            <h4 id="field-handoff-monitor-heading">
+              {t("stage.shipAndMonitor.workspace.monitorHeading")}
+            </h4>
 
-      {custodyCommitted ? (
-        <TransactionAction
-          decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
-          actionId="RECORD_TRANSPORT"
-          labelKey="stage.shipAndMonitor.transportAction"
-          isFirstOfType
-          summary={[
-            ["field.assetId", <code key="a">{sourceBatchId}</code>],
-            ["field.humidity", `${sensorCommand.humidityPercent}%`],
-            ["field.complianceStatus", t("compliance.INSPECTION_REQUIRED")],
-          ]}
-          buildCommand={() =>
-            runtimeCommand<RecordTransportConditionCommand>(
-              scenario,
-              "RECORD_TRANSPORT",
-            )
-          }
-          context={commandContext(scenario, "RECORD_TRANSPORT")}
-        />
-      ) : (
-        <section className="card card--work">
-          <h3>{t("stage.shipAndMonitor.transportAction")}</h3>
-          <p className="muted">
-            {t("stage.shipAndMonitor.transportLocked")}
-          </p>
-        </section>
-      )}
+            <details className="field-inspector">
+              <summary>
+                <span>
+                  <strong>{t("stage.shipAndMonitor.sensorHeading")}</strong>
+                  <small>{t("stage.shipAndMonitor.workspace.sensorPrompt")}</small>
+                </span>
+                <StatusPill tone="warn">
+                  {sensorCommand.humidityPercent}% / {sensorCommand.allowedMaximumHumidityPercent}%
+                </StatusPill>
+              </summary>
+              <div className="field-inspector__body">
+                <p>{t("stage.shipAndMonitor.roleSwitch")}</p>
+                <dl className="asset-card__grid">
+                  <div className="asset-card__row">
+                    <dt>{t("field.sensorId")}</dt>
+                    <dd>
+                      <code>{sensorCommand.sensorId}</code>
+                    </dd>
+                  </div>
+                  <div className="asset-card__row">
+                    <dt>{t("field.humidity")}</dt>
+                    <dd>{sensorCommand.humidityPercent}%</dd>
+                  </div>
+                  <div className="asset-card__row">
+                    <dt>{t("field.humidityLimit")}</dt>
+                    <dd>{sensorCommand.allowedMaximumHumidityPercent}%</dd>
+                  </div>
+                  <div className="asset-card__row">
+                    <dt>{t("field.location")}</dt>
+                    <dd>{t("locations.transitStation.name")}</dd>
+                  </div>
+                </dl>
+                <p className="muted">{t("stage.shipAndMonitor.oracleNotice")}</p>
+              </div>
+            </details>
+
+            {transportCheck !== undefined ? (
+              <KnowledgeCheckPanel check={transportCheck} />
+            ) : null}
+
+            {custodyCommitted ? (
+              <CompactTransactionReceipt
+                isCommitted={transportCommitted}
+                label={t("stage.shipAndMonitor.workspace.transportReceipt")}
+              >
+                <TransactionAction
+                  decisionId="INT_TRANSPORT_RECORDED_TRANSACTION"
+                  actionId="RECORD_TRANSPORT"
+                  labelKey="stage.shipAndMonitor.transportAction"
+                  isFirstOfType
+                  summary={[
+                    ["field.assetId", <code key="a">{sourceBatchId}</code>],
+                    ["field.humidity", `${sensorCommand.humidityPercent}%`],
+                    ["field.complianceStatus", t("compliance.INSPECTION_REQUIRED")],
+                  ]}
+                  buildCommand={() =>
+                    runtimeCommand<RecordTransportConditionCommand>(
+                      scenario,
+                      "RECORD_TRANSPORT",
+                    )
+                  }
+                  context={commandContext(scenario, "RECORD_TRANSPORT")}
+                />
+              </CompactTransactionReceipt>
+            ) : (
+              <section className="card card--work field-handoff__locked">
+                <h3>{t("stage.shipAndMonitor.transportAction")}</h3>
+                <p className="muted">
+                  {t("stage.shipAndMonitor.transportLocked")}
+                </p>
+              </section>
+            )}
+          </section>
+        </div>
+      </RoleApplicationShell>
     </StageShell>
+  );
+}
+
+function CompactTransactionReceipt({
+  isCommitted,
+  label,
+  children,
+}: {
+  readonly isCommitted: boolean;
+  readonly label: string;
+  readonly children: ReactNode;
+}): ReactNode {
+  const t = useTranslator();
+
+  if (!isCommitted) return children;
+
+  return (
+    <details className="field-handoff__receipt">
+      <summary>
+        <StatusPill tone="pass">{label}</StatusPill>
+        <span>{t("stage.shipAndMonitor.workspace.viewReceipt")}</span>
+      </summary>
+      <div className="field-handoff__receipt-body">
+        {children}
+      </div>
+    </details>
   );
 }

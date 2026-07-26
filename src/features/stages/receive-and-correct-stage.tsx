@@ -34,6 +34,10 @@ import type {
 import { StatusPill } from "../../components/status-pill";
 import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
+import {
+  CaseWorkspaceTabs,
+  RoleApplicationShell,
+} from "../../components/simulation-workspace";
 
 const MINIMUM_REASON_LENGTH = 10;
 type DiscrepancyCauseCode =
@@ -114,6 +118,13 @@ export function ReceiveAndCorrectStage(): ReactNode {
       transaction.transactionType === TransactionType.RECEIVE_BATCH &&
       transaction.transactionStatus === TransactionStatus.COMMITTED,
   );
+  const ownershipTransaction = Object.values(
+    state.domain.transactionsById,
+  ).find(
+    (transaction) =>
+      transaction.transactionType === TransactionType.TRANSFER_OWNERSHIP &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
+  );
   const manifestTransaction = state.domain.transactionOrder
     .map((transactionId) => state.domain.transactionsById[transactionId])
     .find(
@@ -138,139 +149,274 @@ export function ReceiveAndCorrectStage(): ReactNode {
     effectiveManifestValue === undefined
       ? `${incorrectQuantity} kg`
       : formatCorrectionValueLabel(effectiveManifestValue, t);
+  const correctionSubmitted = Object.values(
+    state.domain.transactionsById,
+  ).some(
+    (transaction) =>
+      transaction.transactionType === TransactionType.RECORD_CORRECTION &&
+      transaction.transactionStatus === TransactionStatus.COMMITTED,
+  );
+  const receiptComplete =
+    receiptTransaction !== undefined && ownershipTransaction !== undefined;
+  const investigationComplete =
+    evaluation !== null &&
+    (!evaluation.requiresMitigation || investigationRecorded);
+  const recommendedTab =
+    !receiptComplete
+      ? "overview"
+      : !investigationComplete
+        ? "investigation"
+        : !correctionSubmitted
+          ? "correction"
+          : "history";
+  const caseStatusKey =
+    !receiptComplete
+      ? "stage.receiveAndCorrect.workspace.statusReceiving"
+      : initialDecision === null
+        ? "stage.receiveAndCorrect.workspace.statusInvestigating"
+        : !investigationComplete
+          ? "stage.receiveAndCorrect.workspace.statusMitigation"
+          : !correctionSubmitted
+            ? "stage.receiveAndCorrect.workspace.statusCorrection"
+            : "stage.receiveAndCorrect.workspace.statusResolved";
 
   return (
-    <StageShell
-      stageId={ScenarioStageId.RECEIVE_AND_CORRECT}
-      briefing={(
-        <ManifestDiscrepancy
-          manifestTransactionId={manifestTransaction?.transactionId}
-          effectiveQuantityLabel={effectiveQuantityLabel}
-          manifestAnchorId={manifestAnchorId}
-          manifestQuantity={incorrectQuantity}
-          weighedQuantity={correctedQuantity}
+    <StageShell stageId={ScenarioStageId.RECEIVE_AND_CORRECT}>
+      <RoleApplicationShell
+        eyebrow={t("stage.receiveAndCorrect.workspace.eyebrow")}
+        title={t("stage.receiveAndCorrect.workspace.title")}
+        description={t("stage.receiveAndCorrect.workspace.description")}
+        statusLabel={t("stage.receiveAndCorrect.workspace.statusLabel")}
+        status={(
+          <StatusPill
+            tone={
+              correctionSubmitted
+                ? "pass"
+                : evaluation?.requiresMitigation === true &&
+                    !investigationRecorded
+                  ? "warn"
+                  : "neutral"
+            }
+          >
+            {t(caseStatusKey)}
+          </StatusPill>
+        )}
+      >
+        <CaseWorkspaceTabs
+          key={recommendedTab}
+          label={t("stage.receiveAndCorrect.workspace.tabsLabel")}
+          initialTabId={recommendedTab}
+          tabs={[
+            {
+              id: "overview",
+              label: t("stage.receiveAndCorrect.workspace.overview"),
+              status: t(
+                receiptComplete
+                  ? "stage.receiveAndCorrect.workspace.complete"
+                  : "stage.receiveAndCorrect.workspace.actionRequired",
+              ),
+              content: (
+                <>
+                  <ManifestDiscrepancy
+                    manifestTransactionId={manifestTransaction?.transactionId}
+                    effectiveQuantityLabel={effectiveQuantityLabel}
+                    manifestAnchorId={manifestAnchorId}
+                    manifestQuantity={incorrectQuantity}
+                    weighedQuantity={correctedQuantity}
+                  />
+                  <TransactionAction
+                    decisionId="INT_RECEIVE_BATCH"
+                    actionId="RECEIVE_BATCH"
+                    labelKey="stage.receiveAndCorrect.receiveAction"
+                    isFirstOfType
+                    summary={[
+                      ["field.assetId", <code key="a">{sourceBatchId}</code>],
+                      [
+                        "field.custodian",
+                        t("organizations.coffeeProcessor.name"),
+                      ],
+                      ["field.quantity", `${receipt.observedQuantity} kg`],
+                      ["field.location", t("locations.processingPlant.name")],
+                    ]}
+                    buildCommand={() =>
+                      runtimeCommand<ReceiveBatchCommand>(
+                        scenario,
+                        "RECEIVE_BATCH",
+                      )
+                    }
+                    context={commandContext(scenario, "RECEIVE_BATCH")}
+                  />
+                  <TransactionAction
+                    decisionId="INT_OWNERSHIP_PURCHASED_TRANSACTION"
+                    actionId="PURCHASE_ON_RECEIPT"
+                    labelKey="stage.receiveAndCorrect.purchaseAction"
+                    isFirstOfType
+                    summary={[
+                      ["field.assetId", <code key="a">{sourceBatchId}</code>],
+                      [
+                        "field.owner",
+                        t("organizations.coffeeProcessor.name"),
+                      ],
+                      [
+                        "field.custodian",
+                        t("organizations.coffeeProcessor.name"),
+                      ],
+                    ]}
+                    buildCommand={() =>
+                      runtimeCommand<TransferOwnershipCommand>(
+                        scenario,
+                        "PURCHASE_ON_RECEIPT",
+                      )
+                    }
+                    context={commandContext(scenario, "PURCHASE_ON_RECEIPT")}
+                  />
+                </>
+              ),
+            },
+            {
+              id: "investigation",
+              label: t("stage.receiveAndCorrect.workspace.investigation"),
+              status: t(
+                investigationComplete
+                  ? "stage.receiveAndCorrect.workspace.complete"
+                  : receiptComplete
+                    ? "stage.receiveAndCorrect.workspace.actionRequired"
+                    : "stage.receiveAndCorrect.workspace.locked",
+              ),
+              content:
+                receiptTransaction !== undefined &&
+                manifestTransaction !== undefined ? (
+                  <>
+                    {initialDecision === null ? (
+                      <DiscrepancyDecisionForm
+                        value={discrepancyForm}
+                        onChange={setDiscrepancyForm}
+                        disabled={state.isReadOnly || isSubmittingDecision}
+                        onSubmit={() => {
+                          if (
+                            discrepancyForm.action === "" ||
+                            discrepancyForm.causeCode === ""
+                          ) {
+                            return;
+                          }
+                          setSubmittingDecision(true);
+                          void submitDiscrepancyDecision({
+                            commandType: "SUBMIT_DISCREPANCY_DECISION",
+                            action: discrepancyForm.action,
+                            causeCode: discrepancyForm.causeCode,
+                          }).finally(() => setSubmittingDecision(false));
+                        }}
+                      />
+                    ) : (
+                      <DiscrepancyDecisionFeedback
+                        decision={initialDecision}
+                        isRejected={evaluation?.isRejectedAttempt === true}
+                        isCorrect={evaluation?.isScorableCorrect === true}
+                        revealDetailedFeedback={revealDetailedFeedback}
+                      />
+                    )}
+                    {evaluation !== null &&
+                    evaluation.requiresMitigation &&
+                    !investigationRecorded ? (
+                      <section className="card card--work professional-decision">
+                        <p className="eyebrow">
+                          {t("professionalDecision.layerLabel")}
+                        </p>
+                        <h3>
+                          {t("stage.receiveAndCorrect.mitigationHeading")}
+                        </h3>
+                        <p>
+                          {t(
+                            evaluation.isRejectedAttempt
+                              ? "stage.receiveAndCorrect.rejectedAttempt"
+                              : "stage.receiveAndCorrect.mitigationNotice",
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          className="button button--secondary"
+                          disabled={state.isReadOnly || isMitigating}
+                          onClick={() => {
+                            setMitigating(true);
+                            void recordMitigation({
+                              commandType: "INVESTIGATE_DISCREPANCY",
+                            }).finally(() => setMitigating(false));
+                          }}
+                        >
+                          {t("stage.receiveAndCorrect.investigate")}
+                        </button>
+                      </section>
+                    ) : null}
+                  </>
+                ) : (
+                  <CaseWorkspaceGate>
+                    {t("stage.receiveAndCorrect.workspace.receiveFirst")}
+                  </CaseWorkspaceGate>
+                ),
+            },
+            {
+              id: "correction",
+              label: t("stage.receiveAndCorrect.workspace.correction"),
+              status: t(
+                correctionSubmitted
+                  ? "stage.receiveAndCorrect.workspace.complete"
+                  : readyToCorrect
+                    ? "stage.receiveAndCorrect.workspace.actionRequired"
+                    : "stage.receiveAndCorrect.workspace.locked",
+              ),
+              content:
+                readyToCorrect && manifestTransaction !== undefined ? (
+                  <CorrectionPanel
+                    correctionOfTransactionId={
+                      manifestTransaction.transactionId
+                    }
+                    manifestAnchorId={manifestAnchorId}
+                    manifestQuantity={incorrectQuantity}
+                    weighedQuantity={correctedQuantity}
+                  />
+                ) : (
+                  <CaseWorkspaceGate>
+                    {t("stage.receiveAndCorrect.workspace.investigateFirst")}
+                  </CaseWorkspaceGate>
+                ),
+            },
+            {
+              id: "history",
+              label: t("stage.receiveAndCorrect.workspace.history"),
+              status: t("stage.receiveAndCorrect.workspace.available"),
+              content: (
+                <div className="state-versus-history">
+                  {manifestTransaction !== undefined ? (
+                    <CorrectionLineage
+                      state={state.domain}
+                      target={manifestTarget}
+                    />
+                  ) : null}
+                  {asset !== undefined ? (
+                    <section className="card card--reference">
+                      <h3>{t("state.title")}</h3>
+                      <AssetCard asset={asset} />
+                    </section>
+                  ) : null}
+                </div>
+              ),
+            },
+          ]}
         />
-      )}
-    >
-      <TransactionAction
-        decisionId="INT_RECEIVE_BATCH"
-        actionId="RECEIVE_BATCH"
-        labelKey="stage.receiveAndCorrect.receiveAction"
-        isFirstOfType
-        summary={[
-          ["field.assetId", <code key="a">{sourceBatchId}</code>],
-          ["field.custodian", t("organizations.coffeeProcessor.name")],
-          ["field.quantity", `${receipt.observedQuantity} kg`],
-          ["field.location", t("locations.processingPlant.name")],
-        ]}
-        buildCommand={() => runtimeCommand<ReceiveBatchCommand>(scenario, "RECEIVE_BATCH")}
-        context={commandContext(scenario, "RECEIVE_BATCH")}
-      />
-
-      <TransactionAction
-        decisionId="INT_OWNERSHIP_PURCHASED_TRANSACTION"
-        actionId="PURCHASE_ON_RECEIPT"
-        labelKey="stage.receiveAndCorrect.purchaseAction"
-        isFirstOfType
-        summary={[
-          ["field.assetId", <code key="a">{sourceBatchId}</code>],
-          ["field.owner", t("organizations.coffeeProcessor.name")],
-          ["field.custodian", t("organizations.coffeeProcessor.name")],
-        ]}
-        buildCommand={() =>
-          runtimeCommand<TransferOwnershipCommand>(scenario, "PURCHASE_ON_RECEIPT")
-        }
-        context={commandContext(scenario, "PURCHASE_ON_RECEIPT")}
-      />
-
-      {receiptTransaction !== undefined && manifestTransaction !== undefined ? (
-        <>
-          {initialDecision === null ? (
-            <DiscrepancyDecisionForm
-              value={discrepancyForm}
-              onChange={setDiscrepancyForm}
-              disabled={state.isReadOnly || isSubmittingDecision}
-              onSubmit={() => {
-                if (
-                  discrepancyForm.action === "" ||
-                  discrepancyForm.causeCode === ""
-                ) {
-                  return;
-                }
-                setSubmittingDecision(true);
-                void submitDiscrepancyDecision({
-                  commandType: "SUBMIT_DISCREPANCY_DECISION",
-                  action: discrepancyForm.action,
-                  causeCode: discrepancyForm.causeCode,
-                }).finally(() => setSubmittingDecision(false));
-              }}
-            />
-          ) : (
-            <DiscrepancyDecisionFeedback
-              decision={initialDecision}
-              isRejected={evaluation?.isRejectedAttempt === true}
-              isCorrect={evaluation?.isScorableCorrect === true}
-              revealDetailedFeedback={revealDetailedFeedback}
-            />
-          )}
-
-          {evaluation !== null &&
-          evaluation.requiresMitigation &&
-          !investigationRecorded ? (
-            <section className="card card--work">
-              <h3>{t("stage.receiveAndCorrect.mitigationHeading")}</h3>
-              <p>
-                {t(
-                  evaluation.isRejectedAttempt
-                    ? "stage.receiveAndCorrect.rejectedAttempt"
-                    : "stage.receiveAndCorrect.mitigationNotice",
-                )}
-              </p>
-              <button
-                type="button"
-                className="button button--secondary"
-                disabled={state.isReadOnly || isMitigating}
-                onClick={() => {
-                  setMitigating(true);
-                  void recordMitigation({
-                    commandType: "INVESTIGATE_DISCREPANCY",
-                  }).finally(() => setMitigating(false));
-                }}
-              >
-                {t("stage.receiveAndCorrect.investigate")}
-              </button>
-            </section>
-          ) : null}
-
-          {readyToCorrect ? (
-            <CorrectionPanel
-              correctionOfTransactionId={manifestTransaction.transactionId}
-              manifestAnchorId={manifestAnchorId}
-              manifestQuantity={incorrectQuantity}
-              weighedQuantity={correctedQuantity}
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      {/* Ledger history beside current state. Stage 5 is the one place the two
-          genuinely disagree -- the manifest says 1000 kg forever while the
-          effective quantity is 100 -- so this is where the activity's third
-          objective, distinguishing them, can actually be seen rather than
-          reconstructed from two tabs of the reference workspace. */}
-      <div className="state-versus-history">
-        {manifestTransaction !== undefined ? (
-          <CorrectionLineage state={state.domain} target={manifestTarget} />
-        ) : null}
-
-        {asset !== undefined ? (
-          <section className="card card--reference">
-            <h3>{t("state.title")}</h3>
-            <AssetCard asset={asset} />
-          </section>
-        ) : null}
-      </div>
+      </RoleApplicationShell>
     </StageShell>
+  );
+}
+
+function CaseWorkspaceGate({
+  children,
+}: {
+  readonly children: ReactNode;
+}): ReactNode {
+  return (
+    <section className="card card--reference case-workspace__gate">
+      <p>{children}</p>
+    </section>
   );
 }
 

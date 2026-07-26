@@ -285,11 +285,15 @@ const modes: readonly HostedRunMode[] = [
 ];
 
 export function ScenarioAuthorScreen({
-  api = createScenarioAuthoringApi(),
+  api,
 }: {
   readonly api?: ScenarioAuthoringApi;
 }): ReactNode {
   const t = useTranslator();
+  const resolvedApi = useMemo(
+    () => api ?? createScenarioAuthoringApi(),
+    [api],
+  );
   const [session, setSession] = useState<AuthorSession | null>(null);
   const [packs, setPacks] = useState<readonly ScenarioPackListItemV1[]>([]);
   const [candidate, setCandidate] = useState<unknown>();
@@ -323,12 +327,12 @@ export function ScenarioAuthorScreen({
   );
 
   async function refresh() {
-    setPacks(await api.listPacks());
+    setPacks(await resolvedApi.listPacks());
   }
 
   useEffect(() => {
     let active = true;
-    void api
+    void resolvedApi
       .loadSession()
       .then(async (loaded) => {
         if (!active) return;
@@ -338,7 +342,7 @@ export function ScenarioAuthorScreen({
             ["instructor", "scenario-author", "administrator"].includes(role)
           )
         ) {
-          const listed = await api.listPacks();
+          const listed = await resolvedApi.listPacks();
           if (active) setPacks(listed);
         }
       })
@@ -348,7 +352,7 @@ export function ScenarioAuthorScreen({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [resolvedApi]);
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -382,7 +386,7 @@ export function ScenarioAuthorScreen({
     setBusy(true);
     setMessageKey(null);
     try {
-      setReport(await api.validatePack(candidate));
+      setReport(await resolvedApi.validatePack(candidate));
     } catch {
       setMessageKey("scenarioAuthor.error.generic");
     } finally {
@@ -395,7 +399,7 @@ export function ScenarioAuthorScreen({
     setBusy(true);
     setMessageKey(null);
     try {
-      const result = await api.importPack(candidate);
+      const result = await resolvedApi.importPack(candidate);
       setReport(result);
       if (result.valid) {
         await refresh();
@@ -429,7 +433,7 @@ export function ScenarioAuthorScreen({
     setBusy(true);
     setMessageKey(null);
     try {
-      const loaded = await api.loadPack(packId, version);
+      const loaded = await resolvedApi.loadPack(packId, version);
       setSelected(loaded);
       setFromVersion(version);
       setPreview(null);
@@ -451,7 +455,7 @@ export function ScenarioAuthorScreen({
     setBusy(true);
     try {
       setPreview(
-        await api.preview({
+        await resolvedApi.preview({
           packId: selected.packId,
           version: selected.version,
           scenarioId: scenarioReference.scenarioId,
@@ -474,7 +478,7 @@ export function ScenarioAuthorScreen({
     setBusy(true);
     try {
       setComparison(
-        await api.compare(selected.packId, fromVersion, toVersion),
+        await resolvedApi.compare(selected.packId, fromVersion, toVersion),
       );
     } catch {
       setMessageKey("scenarioAuthor.error.compare");
@@ -648,7 +652,8 @@ export function ScenarioAuthorScreen({
                               disabled={busy}
                               onClick={() =>
                                 void mutate(
-                                  () => api.publish(pack.packId, pack.version),
+                                  () =>
+                                    resolvedApi.publish(pack.packId, pack.version),
                                   "scenarioAuthor.published",
                                 )
                               }
@@ -663,7 +668,8 @@ export function ScenarioAuthorScreen({
                               disabled={busy}
                               onClick={() =>
                                 void mutate(
-                                  () => api.retire(pack.packId, pack.version),
+                                  () =>
+                                    resolvedApi.retire(pack.packId, pack.version),
                                   "scenarioAuthor.retired",
                                 )
                               }

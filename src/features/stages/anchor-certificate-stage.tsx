@@ -29,6 +29,10 @@ import type {
 } from "../../domain/simulation/types";
 import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
+import {
+  InspectorSurface,
+  RoleApplicationShell,
+} from "../../components/simulation-workspace";
 
 interface CertificateFormState {
   readonly certificateAssessment: CertificateAssessment | "";
@@ -116,6 +120,21 @@ export function AnchorCertificateStage(): ReactNode {
     form.issuerAssessment !== "" &&
     form.storageChoice !== "" &&
     form.lotDisposition !== "";
+  const stageComplete = state.completedStageIds.includes(
+    ScenarioStageId.ANCHOR_CERTIFICATE,
+  );
+  const caseStatusKey = stageComplete
+    ? "stage.anchorCertificate.console.caseComplete"
+    : initialDecision === null
+      ? "stage.anchorCertificate.console.caseAwaitingReview"
+      : decisionResolved
+        ? "stage.anchorCertificate.console.caseReadyForLedger"
+        : "stage.anchorCertificate.console.caseActionRequired";
+  const caseStatusTone = stageComplete
+    ? "pass"
+    : evaluation !== null && !decisionResolved
+      ? "warn"
+      : "neutral";
 
   const submit = async (): Promise<void> => {
     if (!complete) return;
@@ -145,54 +164,76 @@ export function AnchorCertificateStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.ANCHOR_CERTIFICATE}>
-      <section className="card card--reference">
-        <h3>{t("stage.anchorCertificate.documentHeading")}</h3>
-        <dl className="asset-card__grid">
-          <div className="asset-card__row">
-            <dt>{t("field.fileName")}</dt>
-            <dd>{anchor.fileName}</dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.contentHash")}</dt>
-            <dd><span className="hash">{anchor.contentHash}</span></dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.issuer")}</dt>
-            <dd>
-              {anchorIssuer === undefined
-                ? anchor.issuerOrganizationId
-                : t(anchorIssuer.displayNameKey)}
-            </dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.issuedAt")}</dt>
-            <dd>{anchor.issuedAt}</dd>
-          </div>
-          <div className="asset-card__row">
-            <dt>{t("field.expiresAt")}</dt>
-            <dd>{anchor.expiresAt ?? t("common.notAvailable")}</dd>
-          </div>
-        </dl>
-        <p className="muted">{t("stage.anchorCertificate.hashNotice")}</p>
-      </section>
+      <RoleApplicationShell
+        eyebrow={t("stage.anchorCertificate.console.eyebrow")}
+        title={t("stage.anchorCertificate.console.title")}
+        description={t("stage.anchorCertificate.console.description")}
+        statusLabel={t("stage.anchorCertificate.console.caseStatus")}
+        status={
+          <StatusPill tone={caseStatusTone}>
+            {t(caseStatusKey)}
+          </StatusPill>
+        }
+      >
+        <div className="certificate-console">
+          <section className="card card--reference evidence-document certificate-console__document">
+            <p className="eyebrow">{t("evidenceDocument.layerLabel")}</p>
+            <h3>{t("stage.anchorCertificate.documentHeading")}</h3>
+            <dl className="asset-card__grid">
+              <div className="asset-card__row">
+                <dt>{t("field.fileName")}</dt>
+                <dd>{anchor.fileName}</dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("field.contentHash")}</dt>
+                <dd><span className="hash">{anchor.contentHash}</span></dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("field.issuer")}</dt>
+                <dd>
+                  {anchorIssuer === undefined
+                    ? anchor.issuerOrganizationId
+                    : t(anchorIssuer.displayNameKey)}
+                </dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("field.issuedAt")}</dt>
+                <dd>{anchor.issuedAt}</dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("field.expiresAt")}</dt>
+                <dd>{anchor.expiresAt ?? t("common.notAvailable")}</dd>
+              </div>
+            </dl>
+            <p className="muted">{t("stage.anchorCertificate.hashNotice")}</p>
+          </section>
 
-      {initialDecision === null ? (
-        <CertificateDecisionForm
-          value={form}
-          onChange={setForm}
-          onSubmit={() => void submit()}
-          disabled={state.isReadOnly || isSubmitting}
-        />
-      ) : (
-        <CertificateDecisionFeedback
-          decision={initialDecision}
-          evaluation={evaluation}
-          revealDetailedFeedback={revealDetailedFeedback}
-        />
-      )}
+          <CertificateVerificationConsole
+            contentHash={anchor.contentHash}
+            decisionRecorded={initialDecision !== null}
+            decisionResolved={decisionResolved}
+            stageComplete={stageComplete}
+          />
+        </div>
+
+        {initialDecision === null ? (
+          <CertificateDecisionForm
+            value={form}
+            onChange={setForm}
+            onSubmit={() => void submit()}
+            disabled={state.isReadOnly || isSubmitting}
+          />
+        ) : (
+          <CertificateDecisionFeedback
+            decision={initialDecision}
+            evaluation={evaluation}
+            revealDetailedFeedback={revealDetailedFeedback}
+          />
+        )}
 
       {evaluation !== null && !decisionResolved ? (
-        <section className="card card--work">
+        <section className="card card--work professional-decision professional-decision--mitigation">
+          <p className="eyebrow">{t("professionalDecision.layerLabel")}</p>
           <h3>{t("stage.anchorCertificate.mitigationHeading")}</h3>
           <p>{t("stage.anchorCertificate.mitigationNotice")}</p>
           <div className="button-row">
@@ -231,7 +272,13 @@ export function AnchorCertificateStage(): ReactNode {
       ) : null}
 
       {decisionResolved ? (
-        <>
+        <InspectorSurface
+          eyebrow={t("blockchainInspector.layerLabel")}
+          title={t("stage.anchorCertificate.console.inspectorTitle")}
+          description={t(
+            "stage.anchorCertificate.console.inspectorDescription",
+          )}
+        >
           {packageConfiguration?.configuration.technicalFeatures
             .digitalSignatures ? (
             <TransactionAction
@@ -302,9 +349,88 @@ export function AnchorCertificateStage(): ReactNode {
             }
             context={commandContext(scenario, "ISSUE_CERTIFICATE")}
           />
-        </>
+        </InspectorSurface>
       ) : null}
+      </RoleApplicationShell>
     </StageShell>
+  );
+}
+
+function CertificateVerificationConsole({
+  contentHash,
+  decisionRecorded,
+  decisionResolved,
+  stageComplete,
+}: {
+  readonly contentHash: string;
+  readonly decisionRecorded: boolean;
+  readonly decisionResolved: boolean;
+  readonly stageComplete: boolean;
+}): ReactNode {
+  const t = useTranslator();
+  const ledgerStatusKey = stageComplete
+    ? "stage.anchorCertificate.console.ledgerRecorded"
+    : decisionResolved
+      ? "stage.anchorCertificate.console.ledgerReady"
+      : "stage.anchorCertificate.console.ledgerWaiting";
+
+  return (
+    <section className="certificate-console__verification">
+      <p className="eyebrow">
+        {t("stage.anchorCertificate.console.verificationLayer")}
+      </p>
+      <h3>{t("stage.anchorCertificate.console.verificationHeading")}</h3>
+      <dl className="verification-console__list">
+        <div>
+          <dt>{t("stage.anchorCertificate.console.digestStatus")}</dt>
+          <dd>
+            <StatusPill tone="pass">
+              {t("stage.anchorCertificate.console.digestComputed")}
+            </StatusPill>
+            <code className="hash verification-console__hash">
+              {contentHash}
+            </code>
+          </dd>
+        </div>
+        <div>
+          <dt>{t("stage.anchorCertificate.console.identityStatus")}</dt>
+          <dd>
+            <StatusPill tone="neutral">
+              {t(
+                decisionRecorded
+                  ? "stage.anchorCertificate.console.reviewRecorded"
+                  : "stage.anchorCertificate.console.reviewPending",
+              )}
+            </StatusPill>
+          </dd>
+        </div>
+        <div>
+          <dt>{t("stage.anchorCertificate.console.decisionStatus")}</dt>
+          <dd>
+            <StatusPill tone="neutral">
+              {t(
+                decisionResolved
+                  ? "stage.anchorCertificate.console.decisionResolved"
+                  : decisionRecorded
+                    ? "stage.anchorCertificate.console.decisionNeedsAction"
+                    : "stage.anchorCertificate.console.decisionPending",
+              )}
+            </StatusPill>
+          </dd>
+        </div>
+        <div>
+          <dt>{t("stage.anchorCertificate.console.ledgerStatus")}</dt>
+          <dd>
+            <StatusPill tone={stageComplete ? "pass" : "neutral"}>
+              {t(ledgerStatusKey)}
+            </StatusPill>
+          </dd>
+        </div>
+      </dl>
+      <p className="muted">
+        {t("stage.anchorCertificate.console.authenticityBoundary")}
+      </p>
+    </section>
   );
 }
 
@@ -353,7 +479,8 @@ function CertificateDecisionForm({
   } as const;
 
   return (
-    <section className="card card--work">
+    <section className="card card--work professional-decision">
+      <p className="eyebrow">{t("professionalDecision.layerLabel")}</p>
       <h3>{t("stage.anchorCertificate.decisionHeading")}</h3>
       <p>{t("stage.anchorCertificate.atomicNotice")}</p>
       <div className="classification">
@@ -429,7 +556,8 @@ function CertificateDecisionFeedback({
     HOLD: "stage.anchorCertificate.dispositionHold",
   } as const;
   return (
-    <section className="card card--reference">
+    <section className="card card--reference professional-decision professional-decision--recorded">
+      <p className="eyebrow">{t("professionalDecision.recordLabel")}</p>
       <h3>{t("stage.anchorCertificate.decisionRecorded")}</h3>
       <p>
         <StatusPill

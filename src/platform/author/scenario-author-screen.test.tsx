@@ -1,7 +1,7 @@
 import { strToU8 } from "fflate";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
@@ -10,6 +10,10 @@ import {
   ScenarioAuthorScreen,
   type ScenarioAuthoringApi,
 } from "./scenario-author-screen";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("scenario author workspace", () => {
   it("parses JSON, YAML, and a bounded scenario-pack ZIP as data", () => {
@@ -99,6 +103,63 @@ describe("scenario author workspace", () => {
         name: "Validation passed",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the default API stable while local library controls rerender", async () => {
+    const sessionRequests: string[] = [];
+    const libraryRequests: string[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === "/api/v1/session") {
+        sessionRequests.push(path);
+        return Response.json({
+          userId: "USER_AUTHOR_001",
+          email: "author@example.edu",
+          roles: ["scenario-author"],
+        });
+      }
+      if (path === "/api/v1/scenario-packs") {
+        libraryRequests.push(path);
+        return Response.json({
+          packs: [
+            {
+              schemaVersion: "1.0.0",
+              packId: "PACK_STABLE_LIBRARY",
+              version: "1.0.0",
+              status: "draft",
+              domain: "supply-chain",
+              titleKey: "pack.stable.title",
+              supportedLocales: ["vi", "en"],
+              scenarioCount: 1,
+              updatedAt: "2026-07-26T04:00:00.000Z",
+              updatedByUserId: "USER_AUTHOR_001",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText("PACK_STABLE_LIBRARY"),
+    ).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.selectOptions(
+      screen.getByLabelText("Filter by lifecycle status"),
+      "draft",
+    );
+
+    expect(screen.getByText("PACK_STABLE_LIBRARY")).toBeInTheDocument();
+    expect(sessionRequests).toHaveLength(1);
+    expect(libraryRequests).toHaveLength(1);
   });
 
   it("lists lifecycle actions and generates a role-filtered preview", async () => {

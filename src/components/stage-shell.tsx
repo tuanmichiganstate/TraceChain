@@ -32,6 +32,7 @@ export function StageShell({
   children: ReactNode;
 }): ReactNode {
   const t = useTranslator();
+  const headingId = useId();
   const { stage } = useScenario();
   const { state } = useSimulation();
   const packageConfiguration = useOptionalConfiguration();
@@ -44,50 +45,53 @@ export function StageShell({
   const actionOutcomes = evaluateRequiredActions(definition, completionContext);
 
   return (
-    <div className="stage stack">
-      <header>
-        <h2 data-stage-heading tabIndex={-1}>
-          {t(definition.titleKey)}
-        </h2>
-        <p>{t(definition.instructionKey)}</p>
-      </header>
+    <div className="stage">
+      <aside className="stage__learning stack" aria-labelledby={headingId}>
+        <header className="stage__mission">
+          <p className="eyebrow">{t("stage.learningMission")}</p>
+          <h2 id={headingId} data-stage-heading tabIndex={-1}>
+            {t(definition.titleKey)}
+          </h2>
+          <p>{t(definition.instructionKey)}</p>
+        </header>
 
-      {briefing}
+        {definition.requiredActions.length > 0 ? (
+          <section className="card card--brief required-actions">
+            <h3>{t("stage.requiredActions")}</h3>
+            <ul className="required-actions__list">
+              {actionOutcomes.map(({ action, isSatisfied }) => (
+                <li key={action.actionId}>
+                  {/* The task first, its state after it. Leading with the status
+                      made every line start with the same word and pushed the
+                      thing the learner is actually looking for to a ragged
+                      second column. */}
+                  {t(action.descriptionKey)}{" "}
+                  <StatusPill tone={isSatisfied ? "pass" : "neutral"}>
+                    {isSatisfied ? t("stage.actionDone") : t("stage.actionTodo")}
+                  </StatusPill>
+                </li>
+              ))}
+            </ul>
+            <p>
+              <StatusPill tone={completion.isComplete ? "pass" : "neutral"}>
+                {completion.isComplete ? t("stage.complete") : t("stage.incomplete")}
+              </StatusPill>
+            </p>
+          </section>
+        ) : null}
 
-      {definition.requiredActions.length > 0 ? (
-        <section className="card card--brief required-actions">
-          <h3>{t("stage.requiredActions")}</h3>
-          <ul className="required-actions__list">
-            {actionOutcomes.map(({ action, isSatisfied }) => (
-              <li key={action.actionId}>
-                {/* The task first, its state after it. Leading with the status
-                    made every line start with the same word and pushed the
-                    thing the learner is actually looking for to a ragged
-                    second column. */}
-                {t(action.descriptionKey)}{" "}
-                <StatusPill tone={isSatisfied ? "pass" : "neutral"}>
-                  {isSatisfied ? t("stage.actionDone") : t("stage.actionTodo")}
-                </StatusPill>
-              </li>
-            ))}
-          </ul>
-          <p>
-            <StatusPill tone={completion.isComplete ? "pass" : "neutral"}>
-              {completion.isComplete ? t("stage.complete") : t("stage.incomplete")}
-            </StatusPill>
-          </p>
-        </section>
-      ) : null}
+        {packageConfiguration?.configuration.hints !== "disabled"
+          ? definition.availableHints.map((hint) => (
+              <HintPanel key={hint.hintId} hint={hint} />
+            ))
+          : null}
+      </aside>
 
-      {packageConfiguration?.configuration.hints !== "disabled"
-        ? definition.availableHints.map((hint) => (
-            <HintPanel key={hint.hintId} hint={hint} />
-          ))
-        : null}
-
-      {children}
-
-      <StageAdvance stageId={stageId} />
+      <div className="stage__application stack">
+        {briefing}
+        {children}
+        <StageAdvance stageId={stageId} />
+      </div>
     </div>
   );
 }

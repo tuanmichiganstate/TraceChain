@@ -296,6 +296,12 @@ describe("the whole activity in the browser", () => {
 
     // ---- Stage 4: custody moves, ownership stays ---------------------
     await screen.findByRole("heading", { name: /Bước 4/ });
+    expect(
+      screen.getByRole("region", { name: "Bàn giao vận tải" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Lô hàng hiện tại" }),
+    ).toBeInTheDocument();
     await answer(user, /Chỉ chuyển quyền lưu giữ/);
     await submitEndorsedAndSeal(
       user,
@@ -339,6 +345,16 @@ describe("the whole activity in the browser", () => {
     // ---- Stage 8: what the public sees, and what editing history costs ----
     await advance(user);
     await screen.findByRole("heading", { name: /Bước 8/ });
+    expect(
+      screen.getByRole("region", {
+        name: "Phòng thí nghiệm xác minh blockchain",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", {
+        name: "Sổ cái và hồ sơ kỹ thuật",
+      }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Chạy thử nghiệm sửa dữ liệu" }));
 
     // The escalation is the lesson: each forgery repairs one layer and exposes
@@ -358,13 +374,23 @@ describe("the whole activity in the browser", () => {
 
     // ---- Stage 9: trace forward, recall, and account for it -----------
     await screen.findByRole("heading", { name: /Bước 9/ });
+    expect(
+      screen.getByRole("region", {
+        name: "Trung tâm chỉ huy thu hồi",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", {
+        name: "Nguồn gốc và phạm vi ảnh hưởng",
+      }),
+    ).toBeInTheDocument();
 
     // The near-miss lot shares co-op, region, product name and roasting day
     // with the contaminated one. Only the provenance edge separates them.
     await user.click(await screen.findByRole("checkbox", { name: /BAT_PACKAGED_COFFEE_001/ }));
     await user.click(screen.getByRole("checkbox", { name: /BAT_ROASTED_COFFEE_001/ }));
     await user.click(
-      screen.getAllByRole("button", { name: "Trả lời" }).find((b) => !(b as HTMLButtonElement).disabled) as HTMLElement,
+      screen.getByRole("button", { name: "Xác nhận phạm vi thu hồi" }),
     );
 
     expect(
@@ -638,11 +664,7 @@ describe("the whole activity in the browser", () => {
       }),
     );
     await user.click(
-      screen
-        .getAllByRole("button", { name: "Trả lời" })
-        .find(
-          (button) => !(button as HTMLButtonElement).disabled,
-        ) as HTMLElement,
+      screen.getByRole("button", { name: "Xác nhận phạm vi thu hồi" }),
     );
     expect(screen.queryByText(/Phạm vi thu hồi chính xác/)).toBeNull();
     await user.click(

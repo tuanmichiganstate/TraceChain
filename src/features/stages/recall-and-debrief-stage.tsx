@@ -27,6 +27,8 @@ import { buildCausalReport } from "../../domain/reporting/causal-report";
 import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
 import { SignatureTrustSummary } from "../../components/signature-trust-summary";
+import { ProvenanceViewer } from "../../components/provenance-viewer";
+import { RoleApplicationShell } from "../../components/simulation-workspace";
 
 /**
  * Stage 9. Trace the contamination forward, recall exactly what it reached, and
@@ -114,6 +116,42 @@ export function RecallAndDebriefStage(): ReactNode {
     completedStageIds: state.completedStageIds,
     simulationCompleted: isCompleted,
   });
+  const sourceAsset = state.domain.assetsById[recallSourceAssetId];
+  const organizationName = (organizationId: string): string => {
+    const organization = scenario.organizations.find(
+      (candidate) => candidate.organizationId === organizationId,
+    );
+    return organization === undefined
+      ? organizationId
+      : t(organization.displayNameKey);
+  };
+  const locationName = (locationId: string): string => {
+    const location = scenario.locations.find(
+      (candidate) => candidate.locationId === locationId,
+    );
+    return location === undefined ? locationId : t(location.displayNameKey);
+  };
+  const activeOrganizationName = organizationName(
+    activeTrustedContext.organizationId,
+  );
+  const affectedDescendants = scope.affectedAssetIds
+    .filter((assetId) => assetId !== recallSourceAssetId)
+    .map((assetId) => state.domain.assetsById[assetId])
+    .filter((asset) => asset !== undefined);
+  const commandCenterStatus = recallCommitted
+    ? t("stage.recallAndDebrief.commandStatusCommitted")
+    : initialRecallSubmitted
+      ? t("stage.recallAndDebrief.commandStatusSubmitted")
+      : hasScope
+        ? t("stage.recallAndDebrief.commandStatusScopeReady")
+        : t("stage.recallAndDebrief.commandStatusInvestigating");
+  const evidenceStrength = t(
+    causalPreview.evidenceStrength === "STRONG"
+      ? "report.evidenceStrong"
+      : causalPreview.evidenceStrength === "MODERATE"
+        ? "report.evidenceModerate"
+        : "report.evidenceWeak",
+  );
   const handoffControls =
     availableHandoffs.length === 0 ? null : (
       <div className="button-row">
@@ -145,194 +183,262 @@ export function RecallAndDebriefStage(): ReactNode {
       stageId={ScenarioStageId.RECALL_AND_DEBRIEF}
       briefing={<RecallBriefing />}
     >
-      {scopeCheck !== undefined ? (
-        <KnowledgeCheckPanel
-          check={scopeCheck}
-          isLocked={initialRecallSubmitted}
-        />
-      ) : null}
-
-      {hasScope ? (
-        <section className="card card--reference">
-          <h3>{t("stage.recallAndDebrief.selectedHeading")}</h3>
-
-          <ul className="recall-scope__list">
-            {selectedAssetIds.map((assetId) => (
-              revealDetailedFeedback ? (
-                <RecallJustificationItem key={assetId} assetId={assetId} />
-              ) : (
-                <li className="recall-scope__item" key={assetId}>
-                  <code>{assetId}</code>
-                </li>
-              )
-            ))}
-          </ul>
-
-          {revealDetailedFeedback && accuracy.missed.length > 0 ? (
-            <>
-              <h4>{t("stage.recallAndDebrief.missedHeading")}</h4>
-              <ul className="recall-scope__list">
-                {accuracy.missed.map((assetId) => (
-                  <RecallJustificationItem key={assetId} assetId={assetId} />
-                ))}
-              </ul>
-              <p className="muted">{t("stage.recallAndDebrief.missedNote")}</p>
-            </>
-          ) : null}
-
-          <p>
-            {!revealDetailedFeedback ? (
-              <StatusPill tone="neutral">{t("check.recorded")}</StatusPill>
-            ) : accuracy.isExact ? (
-              <StatusPill tone="pass">{t("stage.recallAndDebrief.accuracyExact")}</StatusPill>
-            ) : (
-              <>
-                {accuracy.missed.length > 0 ? (
-                  <StatusPill tone="fail">
-                    {t("stage.recallAndDebrief.accuracyMissed", {
-                      count: String(accuracy.missed.length),
-                    })}
-                  </StatusPill>
-                ) : null}
-                {accuracy.overSelected.length > 0 ? (
-                  <StatusPill tone="warn">
-                    {t("stage.recallAndDebrief.accuracyOver", {
-                      count: String(accuracy.overSelected.length),
-                    })}
-                  </StatusPill>
-                ) : null}
-              </>
-            )}
-          </p>
-        </section>
-      ) : null}
-
-      {hasScope && !initialRecallSubmitted ? (
-        <>
-          <section className="card card--work">
-            <h3>{t("stage.recallAndDebrief.authorizationHeading")}</h3>
-            <p className="muted">
-              {t("stage.recallAndDebrief.precommitHandoffPrompt")}
+      <RoleApplicationShell
+        eyebrow={t("stage.recallAndDebrief.commandCenterEyebrow")}
+        title={t("stage.recallAndDebrief.commandCenterTitle")}
+        description={t("stage.recallAndDebrief.commandCenterDescription")}
+        statusLabel={t("stage.recallAndDebrief.commandStatusLabel")}
+        status={<StatusPill tone={recallCommitted ? "pass" : "neutral"}>{commandCenterStatus}</StatusPill>}
+      >
+        <div className="recall-command__overview">
+          <section
+            className="recall-command__incident"
+            aria-labelledby="recall-incident-heading"
+          >
+            <p className="eyebrow">
+              {t("stage.recallAndDebrief.incidentSummaryLabel")}
             </p>
-            {handoffControls ?? (
-              <p>{t("stage.recallAndDebrief.handoffComplete")}</p>
+            <h4 id="recall-incident-heading">
+              {t("stage.recallAndDebrief.incidentSummaryHeading")}
+            </h4>
+            <dl className="recall-command__metrics">
+              <div>
+                <dt>{t("stage.recallAndDebrief.sourceLotLabel")}</dt>
+                <dd><code>{recallSourceAssetId}</code></dd>
+              </div>
+              <div>
+                <dt>{t("stage.recallAndDebrief.consumerRiskLabel")}</dt>
+                <dd><StatusPill tone="fail">{t("stage.recallAndDebrief.consumerRiskHigh")}</StatusPill></dd>
+              </div>
+              <div>
+                <dt>{t("report.evidenceStrength")}</dt>
+                <dd>{evidenceStrength}</dd>
+              </div>
+              <div>
+                <dt>{t("stage.recallAndDebrief.activeOrganizationLabel")}</dt>
+                <dd>{activeOrganizationName}</dd>
+              </div>
+              <div>
+                <dt>{t("field.location")}</dt>
+                <dd>
+                  {sourceAsset === undefined
+                    ? "—"
+                    : locationName(sourceAsset.currentLocationId)}
+                </dd>
+              </div>
+              <div>
+                <dt>{t("stage.recallAndDebrief.affectedDescendantsLabel")}</dt>
+                <dd>{affectedDescendants.length}</dd>
+              </div>
+            </dl>
+            <h5>{t("stage.recallAndDebrief.custodyLocationsHeading")}</h5>
+            <ul className="recall-command__locations">
+              {affectedDescendants.map((asset) => (
+                <li key={asset.assetId}>
+                  <code>{asset.assetId}</code>
+                  <span>{locationName(asset.currentLocationId)}</span>
+                  <span>{organizationName(asset.currentCustodianId)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <div
+            className="recall-command__provenance"
+            role="region"
+            aria-label={t("stage.recallAndDebrief.provenanceRegionLabel")}
+          >
+            <ProvenanceViewer
+              state={state.domain}
+              rootAssetId={recallSourceAssetId}
+            />
+          </div>
+        </div>
+
+        {scopeCheck !== undefined ? (
+          <KnowledgeCheckPanel
+            check={scopeCheck}
+            isLocked={initialRecallSubmitted}
+            presentation="professional"
+            layerLabelKey="stage.recallAndDebrief.scopeDecisionLabel"
+            submitLabelKey="stage.recallAndDebrief.confirmScope"
+          />
+        ) : null}
+
+        {hasScope ? (
+          <section className="card card--reference recall-command__selection">
+            <h4>{t("stage.recallAndDebrief.selectedHeading")}</h4>
+
+            <ul className="recall-scope__list">
+              {selectedAssetIds.map((assetId) => (
+                revealDetailedFeedback ? (
+                  <RecallJustificationItem key={assetId} assetId={assetId} />
+                ) : (
+                  <li className="recall-scope__item" key={assetId}>
+                    <code>{assetId}</code>
+                  </li>
+                )
+              ))}
+            </ul>
+
+            {revealDetailedFeedback && accuracy.missed.length > 0 ? (
+              <>
+                <h4>{t("stage.recallAndDebrief.missedHeading")}</h4>
+                <ul className="recall-scope__list">
+                  {accuracy.missed.map((assetId) => (
+                    <RecallJustificationItem key={assetId} assetId={assetId} />
+                  ))}
+                </ul>
+                <p className="muted">{t("stage.recallAndDebrief.missedNote")}</p>
+              </>
+            ) : null}
+
+            <p>
+              {!revealDetailedFeedback ? (
+                <StatusPill tone="neutral">{t("check.recorded")}</StatusPill>
+              ) : accuracy.isExact ? (
+                <StatusPill tone="pass">{t("stage.recallAndDebrief.accuracyExact")}</StatusPill>
+              ) : (
+                <>
+                  {accuracy.missed.length > 0 ? (
+                    <StatusPill tone="fail">
+                      {t("stage.recallAndDebrief.accuracyMissed", {
+                        count: String(accuracy.missed.length),
+                      })}
+                    </StatusPill>
+                  ) : null}
+                  {accuracy.overSelected.length > 0 ? (
+                    <StatusPill tone="warn">
+                      {t("stage.recallAndDebrief.accuracyOver", {
+                        count: String(accuracy.overSelected.length),
+                      })}
+                    </StatusPill>
+                  ) : null}
+                </>
+              )}
+            </p>
+          </section>
+        ) : null}
+
+        {hasScope && !initialRecallSubmitted ? (
+          <>
+            <section className="card card--work recall-command__authorization">
+              <h4>{t("stage.recallAndDebrief.authorizationHeading")}</h4>
+              <p className="muted">
+                {t("stage.recallAndDebrief.precommitHandoffPrompt")}
+              </p>
+              {handoffControls ?? (
+                <p>{t("stage.recallAndDebrief.handoffComplete")}</p>
+              )}
+            </section>
+            {!handoffPending ? (
+              <TransactionAction
+                decisionId="INT_RECALL_COMMITTED"
+                actionId="RECALL_BATCH"
+                labelKey="stage.recallAndDebrief.recallAction"
+                isFirstOfType
+                summary={[
+                  ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
+                  ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
+                ]}
+                buildCommand={() =>
+                  runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
+                    selectedAssetIds,
+                  })
+                }
+                context={{
+                  actorId: activeTrustedContext.actorId,
+                  organizationId: activeTrustedContext.organizationId,
+                }}
+              />
+            ) : null}
+          </>
+        ) : !hasScope ? (
+          <p className="muted">{t("stage.recallAndDebrief.recallPending")}</p>
+        ) : null}
+
+        {initialRecallSubmitted && !recallCommitted ? (
+          <section className="card card--work recall-command__authorization">
+            <h4>{t("stage.recallAndDebrief.authorizationHeading")}</h4>
+            {recallOrdered ? (
+              <TransactionAction
+                key={recallTransaction.transactionId}
+                decisionId="INT_RECALL_COMMITTED"
+                actionId="RECALL_BATCH"
+                labelKey={
+                  (recallDecision?.attemptCount ?? 0) > 1
+                    ? "stage.recallAndDebrief.resubmitAuthorized"
+                    : "stage.recallAndDebrief.recallAction"
+                }
+                isFirstOfType
+                summary={[
+                  ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
+                  ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
+                ]}
+                buildCommand={() =>
+                  runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
+                    selectedAssetIds,
+                  })
+                }
+                context={{
+                  actorId: activeTrustedContext.actorId,
+                  organizationId: activeTrustedContext.organizationId,
+                }}
+              />
+            ) : !isAuthorizedContext ? (
+              <>
+                {rejectedRecallEvidence !== undefined ? (
+                  <SignatureTrustSummary evidence={rejectedRecallEvidence} />
+                ) : null}
+                <p>{t("stage.recallAndDebrief.unauthorizedFeedback")}</p>
+                <p className="muted">{t("stage.recallAndDebrief.handoffPrompt")}</p>
+                {handoffControls}
+              </>
+            ) : handoffPending ? (
+              <p className="muted" role="status">
+                {t("status.saving")}
+              </p>
+            ) : (
+              <TransactionAction
+                decisionId="INT_RECALL_COMMITTED"
+                actionId="RECALL_BATCH"
+                labelKey="stage.recallAndDebrief.resubmitAuthorized"
+                isFirstOfType
+                summary={[
+                  ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
+                  ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
+                ]}
+                buildCommand={() =>
+                  runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
+                    selectedAssetIds,
+                  })
+                }
+                context={{
+                  actorId: activeTrustedContext.actorId,
+                  organizationId: activeTrustedContext.organizationId,
+                }}
+              />
             )}
           </section>
-          {!handoffPending ? (
-            <TransactionAction
-              decisionId="INT_RECALL_COMMITTED"
-              actionId="RECALL_BATCH"
-              labelKey="stage.recallAndDebrief.recallAction"
-              isFirstOfType
-              summary={[
-                ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
-                ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
-              ]}
-              buildCommand={() =>
-                runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
-                  selectedAssetIds,
-                })
-              }
-              context={{
-                actorId: activeTrustedContext.actorId,
-                organizationId: activeTrustedContext.organizationId,
-              }}
-            />
-          ) : null}
-        </>
-      ) : !hasScope ? (
-        <p className="muted">{t("stage.recallAndDebrief.recallPending")}</p>
-      ) : null}
+        ) : null}
 
-      {initialRecallSubmitted && !recallCommitted ? (
-        <section className="card card--work">
-          <h3>{t("stage.recallAndDebrief.authorizationHeading")}</h3>
-          {recallOrdered ? (
-            <TransactionAction
-              key={recallTransaction.transactionId}
-              decisionId="INT_RECALL_COMMITTED"
-              actionId="RECALL_BATCH"
-              labelKey={
-                (recallDecision?.attemptCount ?? 0) > 1
-                  ? "stage.recallAndDebrief.resubmitAuthorized"
-                  : "stage.recallAndDebrief.recallAction"
-              }
-              isFirstOfType
-              summary={[
-                ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
-                ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
-              ]}
-              buildCommand={() =>
-                runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
-                  selectedAssetIds,
-                })
-              }
-              context={{
-                actorId: activeTrustedContext.actorId,
-                organizationId: activeTrustedContext.organizationId,
-              }}
-            />
-          ) : !isAuthorizedContext ? (
-            <>
-              {rejectedRecallEvidence !== undefined ? (
-                <SignatureTrustSummary evidence={rejectedRecallEvidence} />
-              ) : null}
-              <p>{t("stage.recallAndDebrief.unauthorizedFeedback")}</p>
-              <p className="muted">{t("stage.recallAndDebrief.handoffPrompt")}</p>
-              {handoffControls}
-            </>
-          ) : handoffPending ? (
-            <p className="muted" role="status">
-              {t("status.saving")}
-            </p>
-          ) : (
-            <TransactionAction
-              decisionId="INT_RECALL_COMMITTED"
-              actionId="RECALL_BATCH"
-              labelKey="stage.recallAndDebrief.resubmitAuthorized"
-              isFirstOfType
-              summary={[
-                ["stage.recallAndDebrief.selectedHeading", selectedAssetIds.join(", ")],
-                ["field.reason", t("stage.recallAndDebrief.scopeHeading")],
-              ]}
-              buildCommand={() =>
-                runtimeCommand<RecallBatchCommand>(scenario, "RECALL_BATCH", {
-                  selectedAssetIds,
-                })
-              }
-              context={{
-                actorId: activeTrustedContext.actorId,
-                organizationId: activeTrustedContext.organizationId,
-              }}
-            />
-          )}
-        </section>
-      ) : null}
-
-      {initialRecallSubmitted && revealDetailedFeedback ? (
-        <section className="card card--reference">
-          <h3>{t("stage.recallAndDebrief.evidenceHeading")}</h3>
-          <p>{t("stage.recallAndDebrief.evidenceNotice")}</p>
-          <dl className="asset-card__grid">
-            <div className="asset-card__row">
-              <dt>{t("report.evidenceStrength")}</dt>
-              <dd>
-                {t(
-                  causalPreview.evidenceStrength === "STRONG"
-                    ? "report.evidenceStrong"
-                    : causalPreview.evidenceStrength === "MODERATE"
-                      ? "report.evidenceModerate"
-                      : "report.evidenceWeak",
-                )}
-              </dd>
-            </div>
-            <div className="asset-card__row">
-              <dt>{t("report.manualReviewRecords")}</dt>
-              <dd>{causalPreview.manualReviewRecords}</dd>
-            </div>
-          </dl>
-        </section>
-      ) : null}
+        {initialRecallSubmitted && revealDetailedFeedback ? (
+          <section className="card card--reference">
+            <h4>{t("stage.recallAndDebrief.evidenceHeading")}</h4>
+            <p>{t("stage.recallAndDebrief.evidenceNotice")}</p>
+            <dl className="asset-card__grid">
+              <div className="asset-card__row">
+                <dt>{t("report.evidenceStrength")}</dt>
+                <dd>{evidenceStrength}</dd>
+              </div>
+              <div className="asset-card__row">
+                <dt>{t("report.manualReviewRecords")}</dt>
+                <dd>{causalPreview.manualReviewRecords}</dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
+      </RoleApplicationShell>
 
       {debriefCheck !== undefined ? <KnowledgeCheckPanel check={debriefCheck} /> : null}
 

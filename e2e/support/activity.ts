@@ -61,7 +61,9 @@ export class Activity {
     for (const pattern of patterns) {
       await this.page.getByRole("checkbox", { name: pattern }).check();
     }
-    await this.submitAnswer();
+    await this.page
+      .getByRole("button", { name: "Xác nhận phạm vi thu hồi" })
+      .click();
   }
 
   /**
@@ -96,9 +98,9 @@ export class Activity {
 
   /** The panel whose level-3 heading is exactly `name`. */
   panel(name: string): Locator {
-    return this.page.locator("section").filter({
-      has: this.page.getByRole("heading", { level: 3, name, exact: true }),
-    });
+    return this.page
+      .getByRole("heading", { level: 3, name, exact: true })
+      .locator("xpath=ancestor::section[1]");
   }
 
   /** Submit the named transaction, then seal its block if that step is offered. */

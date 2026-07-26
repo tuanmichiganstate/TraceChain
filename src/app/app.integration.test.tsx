@@ -120,9 +120,15 @@ describe("TraceChain end to end, stages 1 to 2", () => {
 
     // ---- The first block exists and is the genesis block --------------
     const ledger = await screen.findByRole("region", { name: "Sổ cái blockchain mô phỏng" });
-    expect(within(ledger).getByText(/Số khối/)).toBeInTheDocument();
+    expect(within(ledger).getAllByText(/Số khối/).length).toBeGreaterThan(0);
     expect(within(ledger).getByText(/Khối đầu tiên không có khối trước/)).toBeInTheDocument();
     expect(within(ledger).getAllByText("Chuỗi hàm băm nhất quán").length).toBeGreaterThan(0);
+    expect(
+      within(ledger).getByRole("list", { name: "Danh sách khối" }),
+    ).toBeInTheDocument();
+    expect(
+      within(ledger).getByRole("region", { name: "Chi tiết khối 1" }),
+    ).toBeInTheDocument();
 
     // ---- World state reflects the committed transaction ---------------
     // Owner and custodian appear as separate rows: the distinction between them

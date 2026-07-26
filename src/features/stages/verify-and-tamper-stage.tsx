@@ -15,6 +15,11 @@ import {
   demonstrateTamper,
   type TamperDemonstration,
 } from "../../domain/ledger/integrity";
+import {
+  InspectorSurface,
+  RoleApplicationShell,
+} from "../../components/simulation-workspace";
+import { LedgerExplorer } from "../../components/ledger-explorer";
 
 /**
  * Stage 8. What the public can see, and what happens when someone edits history.
@@ -88,171 +93,206 @@ export function VerifyAndTamperStage(): ReactNode {
 
   return (
     <StageShell stageId={ScenarioStageId.VERIFY_AND_TAMPER}>
-      <section className="card card--reference">
-        <h3>{t("stage.verifyAndTamper.publicHeading")}</h3>
-        {packagedLot !== undefined ? (
-          <ProvenanceViewer state={state.domain} rootAssetId={packagedLotId} />
-        ) : null}
-        <p className="muted">{t("stage.verifyAndTamper.publicNotice")}</p>
-      </section>
-
-      <section className="card card--work">
-        <h3>{t("stage.verifyAndTamper.tamperHeading")}</h3>
-        <p>{t("stage.verifyAndTamper.tamperIntro")}</p>
-
-        {demonstration === null ? (
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={runDemonstration}
-            disabled={target === undefined}
-          >
-            {t("stage.verifyAndTamper.runTamper")}
-          </button>
-        ) : (
-          <ol className="stack">
-            <TamperStep
-              headingKey="stage.verifyAndTamper.step1Heading"
-              detail={t("stage.verifyAndTamper.step1Detail", {
-                transaction: demonstration.transactionId,
-                original: String(demonstration.originalQuantity),
-                tampered: String(demonstration.tamperedQuantity),
-              })}
-              label={t("stage.verifyAndTamper.recordsBroken")}
-              count={demonstration.afterEdit.invalidTransactionIds.length}
-            />
-            <TamperStep
-              headingKey="stage.verifyAndTamper.step2Heading"
-              detail={t("stage.verifyAndTamper.step2Detail", {
-                block: demonstration.editedBlockId ?? "",
-              })}
-              label={t("stage.verifyAndTamper.blocksBroken")}
-              count={demonstration.afterForgingTransaction.invalidBlockIds.length}
-            />
-            {/* Counted as broken links rather than broken blocks: repairing the
-                block digest makes that block verify again, and what fails is
-                the next block's link to the digest it recorded. */}
-            <TamperStep
-              headingKey="stage.verifyAndTamper.step3Heading"
-              detail={t("stage.verifyAndTamper.step3Detail", {
-                block: demonstration.editedBlockId ?? "",
-              })}
-              label={t("stage.verifyAndTamper.linksBroken")}
-              count={demonstration.cascadingBlockIds.length}
-            />
-          </ol>
+      <RoleApplicationShell
+        eyebrow={t("stage.verifyAndTamper.workspace.eyebrow")}
+        title={t("stage.verifyAndTamper.workspace.title")}
+        description={t("stage.verifyAndTamper.workspace.description")}
+        statusLabel={t("stage.verifyAndTamper.workspace.statusLabel")}
+        status={(
+          <StatusPill tone={demonstration === null ? "neutral" : "pass"}>
+            {t(
+              demonstration === null
+                ? "stage.verifyAndTamper.workspace.statusReady"
+                : "stage.verifyAndTamper.workspace.statusObserved",
+            )}
+          </StatusPill>
         )}
+      >
+        <InspectorSurface
+          eyebrow={t("blockchainInspector.layerLabel")}
+          title={t("stage.verifyAndTamper.workspace.inspectorTitle")}
+          description={t(
+            "stage.verifyAndTamper.workspace.inspectorDescription",
+          )}
+        >
+          <LedgerExplorer state={state.domain} headingLevel={4} />
+        </InspectorSurface>
 
-        {demonstration !== null ? (
-          <>
-            <p>{t("stage.verifyAndTamper.conclusion")}</p>
-            {/* The demonstration only proves anything if the digests are real.
-                A learner who assumes the broken chain was scripted has watched
-                a puppet show and learned nothing from it, so the claim is made
-                explicitly at the moment it carries weight. */}
-            <p className="muted">
-              {t(
-                packageConfiguration?.configuration.technicalFeatures
-                  .digitalSignatures
-                  ? "stage.verifyAndTamper.hashesAndSignaturesAreReal"
-                  : "stage.verifyAndTamper.hashesAreReal",
-              )}
+        <div className="verification-lab__support">
+          <section className="card card--reference">
+            <p className="eyebrow">
+              {t("stage.verifyAndTamper.workspace.publicLayer")}
             </p>
-            {isLedgerIntact ? (
-              <p>
-                <StatusPill tone="pass">{t("stage.verifyAndTamper.ledgerIntact")}</StatusPill>
+            <h3>{t("stage.verifyAndTamper.publicHeading")}</h3>
+            {packagedLot !== undefined ? (
+              <ProvenanceViewer
+                state={state.domain}
+                rootAssetId={packagedLotId}
+              />
+            ) : null}
+            <p className="muted">
+              {t("stage.verifyAndTamper.publicNotice")}
+            </p>
+          </section>
+
+          <section className="card card--work technical-experiment">
+            <p className="eyebrow">
+              {t("stage.verifyAndTamper.workspace.experimentLayer")}
+            </p>
+            <h3>{t("stage.verifyAndTamper.tamperHeading")}</h3>
+            <p>{t("stage.verifyAndTamper.tamperIntro")}</p>
+
+            {demonstration === null ? (
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={runDemonstration}
+                disabled={target === undefined}
+              >
+                {t("stage.verifyAndTamper.runTamper")}
+              </button>
+            ) : (
+              <ol className="tamper-escalation stack">
+                <TamperStep
+                  headingKey="stage.verifyAndTamper.step1Heading"
+                  detail={t("stage.verifyAndTamper.step1Detail", {
+                    transaction: demonstration.transactionId,
+                    original: String(demonstration.originalQuantity),
+                    tampered: String(demonstration.tamperedQuantity),
+                  })}
+                  label={t("stage.verifyAndTamper.recordsBroken")}
+                  count={demonstration.afterEdit.invalidTransactionIds.length}
+                />
+                <TamperStep
+                  headingKey="stage.verifyAndTamper.step2Heading"
+                  detail={t("stage.verifyAndTamper.step2Detail", {
+                    block: demonstration.editedBlockId ?? "",
+                  })}
+                  label={t("stage.verifyAndTamper.blocksBroken")}
+                  count={
+                    demonstration.afterForgingTransaction.invalidBlockIds.length
+                  }
+                />
+                {/* The repaired block verifies; its successor link is what fails. */}
+                <TamperStep
+                  headingKey="stage.verifyAndTamper.step3Heading"
+                  detail={t("stage.verifyAndTamper.step3Detail", {
+                    block: demonstration.editedBlockId ?? "",
+                  })}
+                  label={t("stage.verifyAndTamper.linksBroken")}
+                  count={demonstration.cascadingBlockIds.length}
+                />
+              </ol>
+            )}
+
+            {demonstration !== null ? (
+              <>
+                <p>{t("stage.verifyAndTamper.conclusion")}</p>
+                <p className="muted">
+                  {t(
+                    packageConfiguration?.configuration.technicalFeatures
+                      .digitalSignatures
+                      ? "stage.verifyAndTamper.hashesAndSignaturesAreReal"
+                      : "stage.verifyAndTamper.hashesAreReal",
+                  )}
+                </p>
+                {isLedgerIntact ? (
+                  <p>
+                    <StatusPill tone="pass">
+                      {t("stage.verifyAndTamper.ledgerIntact")}
+                    </StatusPill>
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+          </section>
+        </div>
+
+        {packageConfiguration?.configuration.technicalFeatures
+          .digitalSignatures ? (
+          <details className="card card--reference">
+            <summary>
+              {t("stage.verifyAndTamper.signatureDemoHeading")}
+            </summary>
+            <p>{t("stage.verifyAndTamper.signatureDemoIntro")}</p>
+            {signatureDemonstration === null ? (
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => void runSignatureDemonstration()}
+                disabled={signedTarget === undefined || isCheckingSignature}
+              >
+                {t("stage.verifyAndTamper.runSignatureDemo")}
+              </button>
+            ) : (
+              <div
+                className="signature-tamper-result stack"
+                role="status"
+                aria-live="polite"
+              >
+                <p>
+                  <StatusPill
+                    tone={
+                      signatureDemonstration.originalSignatureValid
+                        ? "pass"
+                        : "fail"
+                    }
+                  >
+                    {t(
+                      signatureDemonstration.originalSignatureValid
+                        ? "stage.verifyAndTamper.originalSignatureValid"
+                        : "stage.verifyAndTamper.originalSignatureInvalid",
+                    )}
+                  </StatusPill>
+                </p>
+                <dl className="asset-card__grid">
+                  <div className="asset-card__row">
+                    <dt>
+                      {t("stage.verifyAndTamper.originalProposalDigest")}
+                    </dt>
+                    <dd>
+                      <code className="hash">
+                        {signatureDemonstration.originalProposalDigest}
+                      </code>
+                    </dd>
+                  </div>
+                  <div className="asset-card__row">
+                    <dt>
+                      {t("stage.verifyAndTamper.modifiedProposalDigest")}
+                    </dt>
+                    <dd>
+                      <code className="hash">
+                        {signatureDemonstration.modifiedProposalDigest}
+                      </code>
+                    </dd>
+                  </div>
+                </dl>
+                <p>
+                  <StatusPill
+                    tone={
+                      signatureDemonstration.modifiedProposalSignatureValid
+                        ? "fail"
+                        : "pass"
+                    }
+                  >
+                    {t(
+                      signatureDemonstration.modifiedProposalSignatureValid
+                        ? "stage.verifyAndTamper.modifiedSignatureUnexpectedlyValid"
+                        : "stage.verifyAndTamper.modifiedSignatureRejected",
+                    )}
+                  </StatusPill>
+                </p>
+                <p>{t("stage.verifyAndTamper.signatureDemoConclusion")}</p>
+              </div>
+            )}
+            {signatureCheckFailed ? (
+              <p className="field__error" role="alert">
+                {t("stage.verifyAndTamper.signatureDemoFailed")}
               </p>
             ) : null}
-          </>
+          </details>
         ) : null}
-      </section>
-
-      {packageConfiguration?.configuration.technicalFeatures
-        .digitalSignatures ? (
-        <details className="card card--reference">
-          <summary>
-            {t("stage.verifyAndTamper.signatureDemoHeading")}
-          </summary>
-          <p>{t("stage.verifyAndTamper.signatureDemoIntro")}</p>
-          {signatureDemonstration === null ? (
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => void runSignatureDemonstration()}
-              disabled={signedTarget === undefined || isCheckingSignature}
-            >
-              {t("stage.verifyAndTamper.runSignatureDemo")}
-            </button>
-          ) : (
-            <div
-              className="signature-tamper-result stack"
-              role="status"
-              aria-live="polite"
-            >
-              <p>
-                <StatusPill
-                  tone={
-                    signatureDemonstration.originalSignatureValid
-                      ? "pass"
-                      : "fail"
-                  }
-                >
-                  {t(
-                    signatureDemonstration.originalSignatureValid
-                      ? "stage.verifyAndTamper.originalSignatureValid"
-                      : "stage.verifyAndTamper.originalSignatureInvalid",
-                  )}
-                </StatusPill>
-              </p>
-              <dl className="asset-card__grid">
-                <div className="asset-card__row">
-                  <dt>
-                    {t("stage.verifyAndTamper.originalProposalDigest")}
-                  </dt>
-                  <dd>
-                    <code className="hash">
-                      {signatureDemonstration.originalProposalDigest}
-                    </code>
-                  </dd>
-                </div>
-                <div className="asset-card__row">
-                  <dt>
-                    {t("stage.verifyAndTamper.modifiedProposalDigest")}
-                  </dt>
-                  <dd>
-                    <code className="hash">
-                      {signatureDemonstration.modifiedProposalDigest}
-                    </code>
-                  </dd>
-                </div>
-              </dl>
-              <p>
-                <StatusPill
-                  tone={
-                    signatureDemonstration
-                      .modifiedProposalSignatureValid
-                      ? "fail"
-                      : "pass"
-                  }
-                >
-                  {t(
-                    signatureDemonstration
-                      .modifiedProposalSignatureValid
-                      ? "stage.verifyAndTamper.modifiedSignatureUnexpectedlyValid"
-                      : "stage.verifyAndTamper.modifiedSignatureRejected",
-                  )}
-                </StatusPill>
-              </p>
-              <p>{t("stage.verifyAndTamper.signatureDemoConclusion")}</p>
-            </div>
-          )}
-          {signatureCheckFailed ? (
-            <p className="field__error" role="alert">
-              {t("stage.verifyAndTamper.signatureDemoFailed")}
-            </p>
-          ) : null}
-        </details>
-      ) : null}
+      </RoleApplicationShell>
 
       {tamperIntegrityCheck !== undefined ? (
         <KnowledgeCheckPanel check={tamperIntegrityCheck} />

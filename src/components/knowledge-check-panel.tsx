@@ -32,11 +32,18 @@ export function KnowledgeCheckPanel({
   check,
   onAnswered,
   isLocked = false,
+  presentation = "academic",
+  layerLabelKey = "check.layerLabel",
+  submitLabelKey = "check.submit",
 }: {
   check: KnowledgeCheckDefinition;
   onAnswered?: (isCorrect: boolean) => void;
   /** Consequential inputs become immutable once their command is submitted. */
   isLocked?: boolean;
+  /** Consequential decisions can reuse the answer engine without posing as a quiz. */
+  presentation?: "academic" | "professional";
+  layerLabelKey?: string;
+  submitLabelKey?: string;
 }): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
@@ -86,7 +93,12 @@ export function KnowledgeCheckPanel({
   };
 
   return (
-    <section className="card card--work knowledge-check">
+    <section
+      className={`card card--work knowledge-check knowledge-check--${presentation}`}
+    >
+      <p className="eyebrow knowledge-check__eyebrow">
+        {t(layerLabelKey)}
+      </p>
       <fieldset
         className="fieldset"
         disabled={
@@ -124,7 +136,7 @@ export function KnowledgeCheckPanel({
             state.isReadOnly
           }
         >
-          {t("check.submit")}
+          {t(submitLabelKey)}
         </button>
       ) : !revealDetailedFeedback ? (
         <div className="feedback" role="status">
