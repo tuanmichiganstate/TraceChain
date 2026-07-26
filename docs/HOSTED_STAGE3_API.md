@@ -42,7 +42,7 @@ complete coffee journey and does not create a second transaction engine.
 
 ## Authentication and identity
 
-The Sites dispatcher supplies the verified email in:
+Direct Sites access supplies the verified email in:
 
 ```text
 oai-authenticated-user-email
@@ -51,6 +51,12 @@ oai-authenticated-user-email
 The worker resolves that email against `application_users` and
 `application_role_assignments` in D1. Request bodies cannot grant an
 application role or self-assert simulation actor, organization, or role.
+
+Moodle may instead launch `/instructor` through the separate LTI 1.3 Core
+boundary. That flow verifies Moodle's signed launch, one-use state and nonce,
+registered deployment, full Instructor role, and course context before
+creating a server-side instructor session. LTI does not grant any other
+application role. See `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 For an empty deployment, the optional runtime variable
 `TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS` may contain a comma-separated email
@@ -73,14 +79,17 @@ The logical Sites binding is:
 ```
 
 The complete fresh-install schema is in `db/schema.ts`. Development databases
-are reset when this pre-release schema changes; no upgrade chain or old-row
-backfill is maintained.
+are reset atomically when the exact pre-release schema marker changes; no
+upgrade chain or old-row backfill is maintained.
 
 Tables:
 
 - `application_users`
 - `application_role_assignments`
 - `application_access_commands`
+- `lti_login_states`
+- `external_user_identities`
+- `lti_sessions`
 - `scenario_pack_versions`
 - `assignments`
 - `assignment_learners`
@@ -102,7 +111,7 @@ All endpoints use `/api/v1`.
 
 | Method and path | Application role | Result |
 |---|---|---|
-| `GET /session` | provisioned user | Server-owned user ID, email and roles |
+| `GET /session` | provisioned user | Server-owned user ID, optional display identity, roles, authentication source, and LTI course context when applicable |
 | `GET /admin/users` | administrator | Active and disabled application users with server-owned roles |
 | `GET /admin/access-audit` | administrator | Latest 100 append-only application-access commands with trusted performer identity |
 | `POST /admin/users` | administrator | Idempotent user provisioning, role replacement, disablement, or reactivation |
@@ -160,6 +169,15 @@ All endpoints use `/api/v1`.
 The hosted `/instructor`, `/learner`, `/author`, and `/admin` routes are thin workspaces
 over these endpoints. They do not create a second reporting, replay, authoring,
 or package-generation model. See `docs/HOSTED_ROLE_WORKSPACES_V1.md`.
+
+The public LTI boundary is versioned separately under `/api/lti/v1`:
+
+| Method and path | Result |
+|---|---|
+| `GET /jwks` | Configured public TraceChain tool keyset |
+| `GET` or `POST /login` | Validated OIDC login initiation and redirect to Moodle |
+| `POST /launch` | Signed LTI Resource Link launch and instructor session |
+| `POST /logout` | Same-origin session revocation and cookie clearing |
 
 Assignments retain the fully resolved published mode configuration. Sandbox
 and Configured probabilistic cases record deterministic random-draw and

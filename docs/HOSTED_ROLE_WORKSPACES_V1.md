@@ -1,7 +1,8 @@
 # Hosted role workspaces V1
 
-TraceChain relies on deployment authentication and server-provisioned
-application roles. A request body cannot grant an application role or assert a
+TraceChain relies on deployment authentication or a verified Moodle LTI 1.3
+instructor launch, followed by server-provisioned application roles. A request
+body cannot grant an application role, assert a Moodle context, or assert a
 simulation identity.
 
 ## Routes
@@ -11,6 +12,7 @@ simulation identity.
 | `/platform` | any provisioned role | Show only the workspaces granted by server-owned roles |
 | `/learner` | learner | List own assignments, start or resume own run, inspect role-visible evidence, and submit the bounded command path |
 | `/instructor` | instructor | Select a published runnable scenario and learner roster, create and close assignments, monitor reports, replay runs, rate evidence, release feedback, export records, and generate SCORM packages |
+| `/instructor` | Moodle LTI instructor | The same instructor workspace under the verified Moodle course context; no learner, author, rater, or administrator role is inferred |
 | `/instructor` | rater | Review evidence and save append-only ratings without assignment, publication, moderation, or package controls |
 | `/author` | scenario-author | Import, edit, validate, preview, compare, publish, and retire scenario packs |
 | `/instructor` and `/author` | administrator | Management, moderation, package, and authoring controls |
@@ -18,6 +20,14 @@ simulation identity.
 
 The UI is a thin client. Every privileged action is authorized again in the
 worker and repository layer.
+
+An LTI launch uses a separate HTTP-only session and carries the verified
+issuer, client, deployment, course context, and resource-link identity.
+Assignments created in that session are bound to the course context, and
+assignment-, run-, and counterfactual-specific API requests cannot cross into
+another Moodle course. LTI Core does not synchronize the Moodle roster, read
+SCORM attempts, or return grades. See
+`docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 Assignment creation loads the versioned scenario library and offers only
 published scenarios with a registered hosted runtime. Selecting one binds its
@@ -106,7 +116,9 @@ scenario seeds, outcome draws, authored correctness, and unreleased feedback.
 ## Current administrative boundary
 
 Application-user and role provisioning are available in the administrator
-workspace. The hosting layer still authenticates the email address; TraceChain
-does not implement passwords, institutional directory synchronization, course
-management, multi-tenant administration, or collaborative multi-learner runs.
+workspace. Direct hosted access still uses the hosting layer's verified email;
+Moodle instructor access may instead use a verified LTI 1.3 subject and course
+context. TraceChain does not implement passwords, institutional directory
+synchronization, Moodle roster synchronization, multi-tenant administration,
+or collaborative multi-learner runs.
 See `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md`.

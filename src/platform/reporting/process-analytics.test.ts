@@ -11,7 +11,7 @@ import { createAssignmentProcessAnalytics } from "./process-analytics";
 const report: HostedAssignmentReportV1 = {
   schemaVersion: "1.3.0",
   assignment: {
-    schemaVersion: "1.2.0",
+    schemaVersion: "1.3.0",
     assignmentId: "ASSIGNMENT_ANALYTICS_001",
     title: "Analytics cohort",
     packId: "PACK_ANALYTICS",

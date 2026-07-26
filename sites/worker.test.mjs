@@ -1,4 +1,4 @@
-/* global Request, Response, TextEncoder, URL, structuredClone */
+/* global Request, Response, TextEncoder, URL, URLSearchParams, structuredClone */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import test, { after } from "node:test";
 import { build } from "esbuild";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
 const buildDirectory = await mkdtemp(
   join(tmpdir(), "tracechain-worker-test-"),
@@ -114,7 +115,18 @@ function createArtifactBucket() {
 function createPrincipalDatabase(rows) {
   return {
     prepare(query) {
-      if (/^CREATE (?:UNIQUE )?(?:TABLE|INDEX)/u.test(query)) {
+      if (/FROM sqlite_master/u.test(query)) {
+        return {
+          async first() {
+            return null;
+          },
+        };
+      }
+      if (
+        /^(?:CREATE (?:UNIQUE )?(?:TABLE|INDEX)|DROP TABLE|INSERT OR IGNORE)/u.test(
+          query,
+        )
+      ) {
         return { query };
       }
       assert.match(query, /application_role_assignments/u);
@@ -399,6 +411,352 @@ test("returns only server-provisioned application roles", async () => {
     email: "instructor@example.edu",
     roles: ["instructor", "scenario-author"],
   });
+});
+
+test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments to the course", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  const issuer = "https://moodle.example";
+  const clientId = "TRACECHAIN_CLIENT";
+  const deploymentId = "TRACECHAIN_DEPLOYMENT";
+  const { publicKey, privateKey } = await generateKeyPair("RS256", {
+    extractable: true,
+  });
+  const publicJwk = {
+    ...(await exportJWK(publicKey)),
+    alg: "RS256",
+    kid: "MOODLE_SIGNING_KEY",
+    use: "sig",
+  };
+  env.DB = database;
+  env.TRACECHAIN_LTI_REGISTRATIONS_JSON = JSON.stringify([
+    {
+      registrationId: "MOODLE_DEMO",
+      issuer,
+      clientId,
+      deploymentId,
+      authorizationEndpoint: `${issuer}/mod/lti/auth.php`,
+      jwksUri: `${issuer}/mod/lti/certs.php`,
+      platformJwks: { keys: [publicJwk] },
+    },
+  ]);
+  env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
+    keys: [publicJwk],
+  });
+
+  async function initiateLogin() {
+    const parameters = new URLSearchParams({
+      iss: issuer,
+      login_hint: "LOGIN_HINT",
+      target_link_uri:
+        "https://tracechain.example/api/lti/v1/launch",
+      client_id: clientId,
+      lti_deployment_id: deploymentId,
+      lti_message_hint: "MESSAGE_HINT",
+    });
+    const response = await worker.fetch(
+      new Request(
+        `https://tracechain.example/api/lti/v1/login?${parameters.toString()}`,
+      ),
+      env,
+    );
+    assert.equal(response.status, 302);
+    const authorization = new URL(response.headers.get("location"));
+    assert.equal(
+      authorization.origin + authorization.pathname,
+      `${issuer}/mod/lti/auth.php`,
+    );
+    assert.equal(authorization.searchParams.get("prompt"), "none");
+    assert.equal(
+      authorization.searchParams.get("response_mode"),
+      "form_post",
+    );
+    return {
+      nonce: authorization.searchParams.get("nonce"),
+      state: authorization.searchParams.get("state"),
+    };
+  }
+
+  async function launch({
+    nonce,
+    state,
+    roles = [
+      "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor",
+    ],
+    contextId = "COURSE_ACCOUNTING_101",
+    signingKey = privateKey,
+  }) {
+    const now = Math.floor(Date.now() / 1_000);
+    const idToken = await new SignJWT({
+      nonce,
+      email: "instructor@example.edu",
+      name: "Course instructor",
+      locale: "en-US",
+      "https://purl.imsglobal.org/spec/lti/claim/version":
+        "1.3.0",
+      "https://purl.imsglobal.org/spec/lti/claim/message_type":
+        "LtiResourceLinkRequest",
+      "https://purl.imsglobal.org/spec/lti/claim/deployment_id":
+        deploymentId,
+      "https://purl.imsglobal.org/spec/lti/claim/roles": roles,
+      "https://purl.imsglobal.org/spec/lti/claim/context": {
+        id: contextId,
+        label: "ACC101",
+        title: "Accounting 101",
+      },
+      "https://purl.imsglobal.org/spec/lti/claim/resource_link": {
+        id: "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      },
+      "https://purl.imsglobal.org/spec/lti/claim/launch_presentation":
+        {
+          return_url: `${issuer}/course/view.php?id=42`,
+        },
+    })
+      .setProtectedHeader({
+        alg: "RS256",
+        kid: "MOODLE_SIGNING_KEY",
+      })
+      .setIssuer(issuer)
+      .setAudience(clientId)
+      .setSubject("MOODLE_USER_42")
+      .setIssuedAt(now)
+      .setExpirationTime(now + 120)
+      .sign(signingKey);
+    const form = new URLSearchParams({ id_token: idToken, state });
+    return worker.fetch(
+      new Request("https://tracechain.example/api/lti/v1/launch", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: form,
+      }),
+      env,
+    );
+  }
+
+  try {
+    const keyset = await worker.fetch(
+      new Request("https://tracechain.example/api/lti/v1/jwks"),
+      env,
+    );
+    assert.equal(keyset.status, 200);
+    assert.equal((await keyset.json()).keys[0].kid, "MOODLE_SIGNING_KEY");
+
+    const login = await initiateLogin();
+    const launched = await launch(login);
+    assert.equal(launched.status, 303, await launched.clone().text());
+    assert.equal(
+      launched.headers.get("location"),
+      "/instructor?locale=en",
+    );
+    const cookie = launched.headers
+      .get("set-cookie")
+      .split(";")[0];
+    assert.match(cookie, /^__Host-tracechain-lti=/u);
+
+    const session = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie },
+      }),
+      env,
+    );
+    assert.equal(session.status, 200);
+    const sessionBody = await session.json();
+    assert.deepEqual(sessionBody.roles, ["instructor"]);
+    assert.equal(sessionBody.authenticationSource, "lti");
+    assert.equal(
+      sessionBody.learningContext.contextId,
+      "COURSE_ACCOUNTING_101",
+    );
+    assert.equal(
+      sessionBody.learningContext.returnUrl,
+      `${issuer}/course/view.php?id=42`,
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          "SELECT email FROM application_users WHERE user_id = ?",
+        )
+        .get(sessionBody.userId).email,
+      null,
+    );
+
+    const modeConfiguration = (
+      await standardCoffeePack()
+    ).scenarios[0].modeConfigurations.find(
+      (configuration) => configuration.mode === "standard",
+    );
+    database.sqlite
+      .prepare(
+        `INSERT INTO scenario_pack_versions (
+          pack_id,
+          pack_version,
+          lifecycle_status,
+          pack_json,
+          updated_at_utc,
+          updated_by_user_id
+        ) VALUES ('PACK', '1.0.0', 'published', '{}', ?, ?)`,
+      )
+      .run(
+        "2026-07-26T08:00:00.000Z",
+        sessionBody.userId,
+      );
+    const insertAssignment = database.sqlite.prepare(
+      `INSERT INTO assignments (
+        assignment_id,
+        creation_command_id,
+        title,
+        pack_id,
+        pack_version,
+        scenario_id,
+        scenario_version,
+        run_mode,
+        mode_configuration_json,
+        counterfactual_configuration_json,
+        research_configuration_json,
+        learning_platform_issuer,
+        learning_platform_client_id,
+        learning_platform_deployment_id,
+        learning_context_id,
+        learning_resource_link_id,
+        lifecycle_status,
+        feedback_release_status,
+        created_at_utc,
+        created_by_user_id
+      ) VALUES (
+        ?, ?, ?, 'PACK', '1.0.0', 'SCENARIO', '1.0.0',
+        'standard', ?, ?, ?, ?, ?, ?, ?, ?,
+        'active', 'withheld', ?, ?
+      )`,
+    );
+    const assignmentArguments = [
+      JSON.stringify(modeConfiguration),
+      JSON.stringify(disabledCounterfactualReplay),
+      JSON.stringify({ enabled: false }),
+      issuer,
+      clientId,
+      deploymentId,
+    ];
+    insertAssignment.run(
+      "ASSIGNMENT_SAME_COURSE",
+      "COMMAND_SAME_COURSE",
+      "Same course",
+      ...assignmentArguments,
+      "COURSE_ACCOUNTING_101",
+      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "2026-07-26T08:00:00.000Z",
+      sessionBody.userId,
+    );
+    insertAssignment.run(
+      "ASSIGNMENT_OTHER_COURSE",
+      "COMMAND_OTHER_COURSE",
+      "Other course",
+      ...assignmentArguments,
+      "COURSE_ACCOUNTING_202",
+      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "2026-07-26T08:00:00.000Z",
+      sessionBody.userId,
+    );
+
+    const sameCourse = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_SAME_COURSE",
+        { headers: { cookie } },
+      ),
+      env,
+    );
+    assert.equal(sameCourse.status, 200, await sameCourse.clone().text());
+    const otherCourse = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_OTHER_COURSE",
+        { headers: { cookie } },
+      ),
+      env,
+    );
+    assert.equal(otherCourse.status, 403);
+    assert.equal(
+      (await otherCourse.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+    const unscopedRun = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/runs", {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "application/json",
+          origin: "https://tracechain.example",
+        },
+        body: "{}",
+      }),
+      env,
+    );
+    assert.equal(unscopedRun.status, 403);
+    assert.equal(
+      (await unscopedRun.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
+    const replayedLaunch = await launch(login);
+    assert.equal(replayedLaunch.status, 303);
+    assert.equal(
+      new URL(replayedLaunch.headers.get("location")).searchParams.get(
+        "ltiError",
+      ),
+      "LTI_LOGIN_STATE_INVALID",
+    );
+
+    const learnerLogin = await initiateLogin();
+    const learnerLaunch = await launch({
+      ...learnerLogin,
+      roles: [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+      ],
+    });
+    assert.equal(learnerLaunch.status, 303);
+    assert.equal(
+      new URL(learnerLaunch.headers.get("location")).searchParams.get(
+        "ltiError",
+      ),
+      "LTI_INSTRUCTOR_ROLE_REQUIRED",
+    );
+
+    const invalidLogin = await initiateLogin();
+    const { privateKey: wrongSigningKey } =
+      await generateKeyPair("RS256");
+    const invalidSignature = await launch({
+      ...invalidLogin,
+      signingKey: wrongSigningKey,
+    });
+    assert.equal(invalidSignature.status, 303);
+    assert.equal(
+      new URL(invalidSignature.headers.get("location")).searchParams.get(
+        "ltiError",
+      ),
+      "LTI_TOKEN_INVALID",
+    );
+
+    const logout = await worker.fetch(
+      new Request("https://tracechain.example/api/lti/v1/logout", {
+        method: "POST",
+        headers: {
+          cookie,
+          origin: "https://tracechain.example",
+        },
+      }),
+      env,
+    );
+    assert.equal(logout.status, 204);
+    const expiredSession = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie },
+      }),
+      env,
+    );
+    assert.equal(expiredSession.status, 401);
+  } finally {
+    database.close();
+  }
 });
 
 test("rejects cross-origin state-changing API requests before authorization", async () => {
@@ -1846,7 +2204,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
     assert.equal(create.status, 201, await create.clone().text());
     const created = await create.json();
     assert.deepEqual(created.assignment, {
-      schemaVersion: "1.2.0",
+      schemaVersion: "1.3.0",
       assignmentId: "ASSIGNMENT_COFFEE_001",
       title: "Coffee governance cohort",
       packId: pack.packId,

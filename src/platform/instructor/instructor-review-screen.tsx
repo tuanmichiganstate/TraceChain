@@ -9,6 +9,7 @@ import { useTranslator } from "../../app/providers/locale-provider";
 import { StatusPill } from "../../components/status-pill";
 import type { Translator } from "../../localization/i18n";
 import type { ApplicationRole } from "../contracts/run-events";
+import type { LtiLearningContextV1 } from "../contracts/lti";
 import type {
   AssignmentRunMode,
   AssignmentCounterfactualConfigurationV1,
@@ -57,8 +58,11 @@ import { HostedRunActionControls } from "../learner/hosted-learner-screen";
 
 export interface InstructorSession {
   readonly userId: string;
-  readonly email: string;
+  readonly email?: string;
+  readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
+  readonly authenticationSource?: "sites" | "lti";
+  readonly learningContext?: LtiLearningContextV1;
 }
 
 export interface InstructorRunReview {
@@ -97,6 +101,7 @@ export interface SaveInstructorModerationInput {
 
 export interface InstructorReviewApi {
   loadSession(): Promise<InstructorSession>;
+  logoutSession?(): Promise<void>;
   loadAssignmentScenarioOptions(): Promise<
     readonly HostedAssignmentScenarioOptionV1[]
   >;
@@ -230,6 +235,17 @@ export function createInstructorReviewApi(
     counterfactuals: createCounterfactualExplorerApi(fetcher),
     loadSession: () =>
       responseJson<InstructorSession>(fetcher, "/api/v1/session"),
+    async logoutSession() {
+      const response = await fetcher("/api/lti/v1/logout", {
+        method: "POST",
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new InstructorReviewApiError(
+          "LTI_LOGOUT_FAILED",
+        );
+      }
+    },
     async loadAssignmentScenarioOptions() {
       return (
         await responseJson<{
@@ -470,6 +486,9 @@ const REVIEW_ROLES: readonly ApplicationRole[] = [
 
 function errorMessageKey(error: unknown): string {
   if (error instanceof InstructorReviewApiError) {
+    if (error.code === "AUTHENTICATION_REQUIRED") {
+      return "instructorReview.error.launchFromMoodle";
+    }
     if (error.code === "RUN_NOT_FOUND") {
       return "instructorReview.error.runNotFound";
     }
@@ -513,14 +532,30 @@ function errorMessageKey(error: unknown): string {
   return "instructorReview.error.generic";
 }
 
+function initialLtiMessageKey(): string | null {
+  if (typeof window === "undefined") return null;
+  const parameters = new URLSearchParams(window.location.search);
+  if (parameters.has("ltiSignedOut")) {
+    return "instructorReview.lti.signedOut";
+  }
+  const code = parameters.get("ltiError");
+  if (code === null) return null;
+  return code === "LTI_INSTRUCTOR_ROLE_REQUIRED"
+    ? "instructorReview.lti.instructorRoleRequired"
+    : "instructorReview.lti.launchFailed";
+}
+
 export function InstructorReviewScreen({
   api = browserApi,
 }: {
   readonly api?: InstructorReviewApi;
 }): ReactNode {
   const t = useTranslator();
+  const initialLtiMessage = initialLtiMessageKey();
   const [session, setSession] = useState<InstructorSession | null>(null);
-  const [sessionErrorKey, setSessionErrorKey] = useState<string | null>(null);
+  const [sessionErrorKey, setSessionErrorKey] = useState<string | null>(
+    initialLtiMessage,
+  );
   const [runId, setRunId] = useState("");
   const [review, setReview] = useState<InstructorRunReview | null>(null);
   const [targetEventId, setTargetEventId] = useState<string | null>(
@@ -528,8 +563,10 @@ export function InstructorReviewScreen({
   );
   const [reviewErrorKey, setReviewErrorKey] = useState<string | null>(null);
   const [isReviewLoading, setReviewLoading] = useState(false);
+  const [isSigningOut, setSigningOut] = useState(false);
 
   useEffect(() => {
+    if (initialLtiMessage !== null) return;
     let active = true;
     void api.loadSession().then(
       (loaded) => {
@@ -542,7 +579,7 @@ export function InstructorReviewScreen({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, initialLtiMessage]);
 
   const mayReview =
     session?.roles.some((role) => REVIEW_ROLES.includes(role)) ?? false;
@@ -550,6 +587,31 @@ export function InstructorReviewScreen({
     session?.roles.some(
       (role) => role === "instructor" || role === "administrator",
     ) ?? false;
+  const accountLabel =
+    session?.email ??
+    session?.displayName ??
+    session?.userId ??
+    "";
+
+  async function signOutFromLti(): Promise<void> {
+    if (
+      session?.authenticationSource !== "lti" ||
+      api.logoutSession === undefined
+    ) {
+      return;
+    }
+    setSigningOut(true);
+    try {
+      await api.logoutSession();
+      window.location.assign(
+        session.learningContext?.returnUrl ??
+          "/instructor?ltiSignedOut=1",
+      );
+    } catch {
+      setSessionErrorKey("instructorReview.lti.logoutFailed");
+      setSigningOut(false);
+    }
+  }
 
   async function loadRequestedReview(
     requestedRunId: string,
@@ -601,14 +663,53 @@ export function InstructorReviewScreen({
               <h2>{t("instructorReview.sessionHeading")}</h2>
               <dl className="instructor-review__facts">
                 <div>
-                  <dt>{t("instructorReview.email")}</dt>
-                  <dd>{session.email}</dd>
+                  <dt>{t("instructorReview.account")}</dt>
+                  <dd>{accountLabel}</dd>
                 </div>
                 <div>
                   <dt>{t("instructorReview.roles")}</dt>
                   <dd>{session.roles.join(", ")}</dd>
                 </div>
+                {session.authenticationSource === "lti" &&
+                session.learningContext !== undefined ? (
+                  <>
+                    <div>
+                      <dt>{t("instructorReview.lti.connection")}</dt>
+                      <dd>{t("instructorReview.lti.connected")}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("instructorReview.lti.course")}</dt>
+                      <dd>
+                        {session.learningContext.contextTitle ??
+                          session.learningContext.contextLabel ??
+                          session.learningContext.contextId}
+                      </dd>
+                    </div>
+                  </>
+                ) : null}
               </dl>
+              {session.authenticationSource === "lti" ? (
+                <div className="instructor-review__form-actions">
+                  {session.learningContext?.returnUrl === undefined ? null : (
+                    <a
+                      className="button button--secondary"
+                      href={session.learningContext.returnUrl}
+                    >
+                      {t("instructorReview.lti.returnToMoodle")}
+                    </a>
+                  )}
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={isSigningOut}
+                    onClick={() => void signOutFromLti()}
+                  >
+                    {isSigningOut
+                      ? t("instructorReview.lti.signingOut")
+                      : t("instructorReview.lti.signOut")}
+                  </button>
+                </div>
+              ) : null}
             </section>
           )}
 

@@ -28,6 +28,7 @@ const LIST_USERS = `SELECT
   FROM application_users AS users
   LEFT JOIN application_role_assignments AS roles
     ON roles.user_id = users.user_id
+  WHERE users.email IS NOT NULL
   ORDER BY users.email COLLATE NOCASE, roles.application_role`;
 const LIST_AUDIT = `SELECT
     commands.command_id,

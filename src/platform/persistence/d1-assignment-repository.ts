@@ -29,6 +29,7 @@ import {
   validateAssignmentResearchConfiguration,
 } from "../runs/research-configuration";
 import { assignmentStartAvailability } from "../runs/assignment-availability";
+import type { LtiLearningContextV1 } from "../contracts/lti";
 import type { D1DatabaseLike } from "./d1-types";
 
 interface AssignmentRow {
@@ -43,6 +44,13 @@ interface AssignmentRow {
   readonly mode_configuration_json: string;
   readonly counterfactual_configuration_json: string;
   readonly research_configuration_json: string;
+  readonly learning_platform_issuer: string | null;
+  readonly learning_platform_client_id: string | null;
+  readonly learning_platform_deployment_id: string | null;
+  readonly learning_context_id: string | null;
+  readonly learning_resource_link_id: string | null;
+  readonly learning_context_label: string | null;
+  readonly learning_context_title: string | null;
   readonly lifecycle_status: string;
   readonly available_from_utc: string | null;
   readonly available_until_utc: string | null;
@@ -124,6 +132,13 @@ const FIND_ASSIGNMENT = `SELECT
   mode_configuration_json,
   counterfactual_configuration_json,
   research_configuration_json,
+  learning_platform_issuer,
+  learning_platform_client_id,
+  learning_platform_deployment_id,
+  learning_context_id,
+  learning_resource_link_id,
+  learning_context_label,
+  learning_context_title,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
@@ -159,6 +174,13 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.mode_configuration_json,
   assignments.counterfactual_configuration_json,
   assignments.research_configuration_json,
+  assignments.learning_platform_issuer,
+  assignments.learning_platform_client_id,
+  assignments.learning_platform_deployment_id,
+  assignments.learning_context_id,
+  assignments.learning_resource_link_id,
+  assignments.learning_context_label,
+  assignments.learning_context_title,
   assignments.lifecycle_status,
   assignments.available_from_utc,
   assignments.available_until_utc,
@@ -202,13 +224,20 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   mode_configuration_json,
   counterfactual_configuration_json,
   research_configuration_json,
+  learning_platform_issuer,
+  learning_platform_client_id,
+  learning_platform_deployment_id,
+  learning_context_id,
+  learning_resource_link_id,
+  learning_context_label,
+  learning_context_title,
   lifecycle_status,
   available_from_utc,
   available_until_utc,
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -679,6 +708,69 @@ function assignmentMode(value: unknown): AssignmentRunMode {
   return value as AssignmentRunMode;
 }
 
+function normalizeLearningContext(
+  value: LtiLearningContextV1 | undefined,
+): LtiLearningContextV1 | undefined {
+  if (value === undefined) return undefined;
+  if (
+    value.schemaVersion !== "1.0.0" ||
+    value.provider !== "lti-1.3"
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      "learningContext must use the current LTI 1.3 contract.",
+    );
+  }
+  const issuer = boundedText(
+    value.issuer,
+    "learningContext.issuer",
+    2048,
+  );
+  try {
+    new URL(issuer);
+  } catch {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      "learningContext issuer must be an absolute URL.",
+    );
+  }
+  const contextLabel =
+    value.contextLabel === undefined
+      ? undefined
+      : boundedText(value.contextLabel, "learningContext.contextLabel", 200);
+  const contextTitle =
+    value.contextTitle === undefined
+      ? undefined
+      : boundedText(value.contextTitle, "learningContext.contextTitle", 500);
+  return {
+    schemaVersion: "1.0.0",
+    provider: "lti-1.3",
+    issuer,
+    clientId: boundedText(
+      value.clientId,
+      "learningContext.clientId",
+      256,
+    ),
+    deploymentId: boundedText(
+      value.deploymentId,
+      "learningContext.deploymentId",
+      256,
+    ),
+    contextId: boundedText(
+      value.contextId,
+      "learningContext.contextId",
+      512,
+    ),
+    resourceLinkId: boundedText(
+      value.resourceLinkId,
+      "learningContext.resourceLinkId",
+      512,
+    ),
+    ...(contextLabel === undefined ? {} : { contextLabel }),
+    ...(contextTitle === undefined ? {} : { contextTitle }),
+  };
+}
+
 function normalizeRequest(
   request: CreateHostedAssignmentRequest,
 ): CreateHostedAssignmentRequest {
@@ -746,6 +838,9 @@ function normalizeRequest(
     request.availableUntil,
     "availableUntil",
   );
+  const learningContext = normalizeLearningContext(
+    request.learningContext,
+  );
   if (
     availableFrom !== undefined &&
     availableUntil !== undefined &&
@@ -772,6 +867,7 @@ function normalizeRequest(
     runConfiguration,
     counterfactualReplay,
     research,
+    ...(learningContext === undefined ? {} : { learningContext }),
     learnerUserIds,
     ...(availableFrom === undefined ? {} : { availableFrom }),
     ...(availableUntil === undefined ? {} : { availableUntil }),
@@ -1047,6 +1143,8 @@ function isSameAssignment(
       JSON.stringify(request.counterfactualReplay) &&
     JSON.stringify(existing.research) ===
       JSON.stringify(request.research) &&
+    JSON.stringify(existing.learningContext) ===
+      JSON.stringify(request.learningContext) &&
     existing.availableFrom === request.availableFrom &&
     existing.availableUntil === request.availableUntil &&
     existing.createdByUserId === principal.userId &&
@@ -1072,6 +1170,7 @@ function assignmentFrom(
   );
   let availableFrom: string | undefined;
   let availableUntil: string | undefined;
+  let learningContext: LtiLearningContextV1 | undefined;
   try {
     availableFrom = optionalUtcTimestamp(
       row.available_from_utc ?? undefined,
@@ -1081,6 +1180,42 @@ function assignmentFrom(
       row.available_until_utc ?? undefined,
       "stored availableUntil",
     );
+    const contextValues = [
+      row.learning_platform_issuer,
+      row.learning_platform_client_id,
+      row.learning_platform_deployment_id,
+      row.learning_context_id,
+      row.learning_resource_link_id,
+    ];
+    const hasAnyContext = contextValues.some((value) => value !== null);
+    const hasCompleteContext = contextValues.every(
+      (value) => value !== null,
+    );
+    if (hasAnyContext !== hasCompleteContext) {
+      throw new Error("Stored learning context is incomplete.");
+    }
+    if (hasCompleteContext) {
+      learningContext = normalizeLearningContext({
+        schemaVersion: "1.0.0",
+        provider: "lti-1.3",
+        issuer: row.learning_platform_issuer!,
+        clientId: row.learning_platform_client_id!,
+        deploymentId: row.learning_platform_deployment_id!,
+        contextId: row.learning_context_id!,
+        resourceLinkId: row.learning_resource_link_id!,
+        ...(row.learning_context_label === null
+          ? {}
+          : { contextLabel: row.learning_context_label }),
+        ...(row.learning_context_title === null
+          ? {}
+          : { contextTitle: row.learning_context_title }),
+      });
+    } else if (
+      row.learning_context_label !== null ||
+      row.learning_context_title !== null
+    ) {
+      throw new Error("Stored learning-context labels have no context.");
+    }
   } catch (error) {
     throw new AssignmentRepositoryError(
       "ASSIGNMENT_STORAGE_FAILED",
@@ -1140,7 +1275,7 @@ function assignmentFrom(
     );
   }
   return {
-    schemaVersion: "1.2.0",
+    schemaVersion: "1.3.0",
     assignmentId: row.assignment_id,
     title: row.title,
     packId: row.pack_id,
@@ -1151,6 +1286,7 @@ function assignmentFrom(
     runConfiguration,
     counterfactualReplay,
     research,
+    ...(learningContext === undefined ? {} : { learningContext }),
     learnerUserIds,
     status: row.lifecycle_status,
     ...(availableFrom === undefined ? {} : { availableFrom }),
@@ -1242,6 +1378,13 @@ export class D1AssignmentRepository {
           JSON.stringify(normalized.runConfiguration),
           JSON.stringify(normalized.counterfactualReplay),
           JSON.stringify(normalized.research),
+          normalized.learningContext?.issuer ?? null,
+          normalized.learningContext?.clientId ?? null,
+          normalized.learningContext?.deploymentId ?? null,
+          normalized.learningContext?.contextId ?? null,
+          normalized.learningContext?.resourceLinkId ?? null,
+          normalized.learningContext?.contextLabel ?? null,
+          normalized.learningContext?.contextTitle ?? null,
           normalized.availableFrom ?? null,
           normalized.availableUntil ?? null,
           now,

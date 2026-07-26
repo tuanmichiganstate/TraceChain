@@ -13,7 +13,7 @@ import {
 const assignmentReport: HostedAssignmentReportV1 = {
   schemaVersion: "1.3.0",
   assignment: {
-    schemaVersion: "1.2.0",
+    schemaVersion: "1.3.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
     title: "Coffee export cohort",
     packId: "PACK_STANDARD_COFFEE_STAGE3",

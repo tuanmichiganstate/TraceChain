@@ -1,3 +1,6 @@
+import type { LtiLearningContextV1 } from "./lti";
+import type { HostedRunModeConfigurationV1 } from "./scenario-pack";
+
 export type AssignmentRunMode =
   | "tutorial"
   | "standard"
@@ -47,7 +50,7 @@ export type AssignmentResearchConfigurationV1 =
     };
 
 export interface HostedAssignmentV1 {
-  readonly schemaVersion: "1.2.0";
+  readonly schemaVersion: "1.3.0";
   readonly assignmentId: string;
   readonly title: string;
   readonly packId: string;
@@ -59,6 +62,7 @@ export interface HostedAssignmentV1 {
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
   readonly research: AssignmentResearchConfigurationV1;
+  readonly learningContext?: LtiLearningContextV1;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly availableFrom?: string;
@@ -85,6 +89,11 @@ export interface CreateHostedAssignmentRequest {
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
   readonly research: AssignmentResearchConfigurationV1;
+  /**
+   * Server-derived from an authenticated LTI launch. Browser request bodies
+   * cannot select or replace this context.
+   */
+  readonly learningContext?: LtiLearningContextV1;
   readonly learnerUserIds: readonly string[];
   readonly availableFrom?: string;
   readonly availableUntil?: string;
@@ -294,4 +303,3 @@ export interface HostedLearnerAssignmentV1 {
   readonly startAvailability: AssignmentStartAvailabilityV1;
   readonly runs: readonly HostedAssignmentRunSummary[];
 }
-import type { HostedRunModeConfigurationV1 } from "./scenario-pack";

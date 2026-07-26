@@ -100,6 +100,11 @@ comparison metrics, reuses valid downstream commands, pauses on divergence,
 captures reflection, and provides role-filtered branch and assignment
 analytics exports. The
 hosted work does not alter the current SCORM activity.
+The hosted instructor workspace also supports an LTI 1.3 Core resource-link
+launch from Moodle. It verifies the signed Moodle launch, provisions only an
+external instructor identity, and scopes assignment records to the verified
+course context. NRPS, grade services, Deep Linking, hosted learner launch, and
+Moodle SCORM-attempt access remain deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.
@@ -310,6 +315,8 @@ schemas/               published versioned JSON Schemas
   shared-build verification, and exact download behavior
 - `docs/HOSTED_ROLE_WORKSPACES_V1.md` — authenticated learner, instructor,
   rater, author, and administrator route boundaries
+- `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md` — Moodle LTI 1.3 instructor
+  launch, course-context scope, manual registration, and deferred services
 - `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
   specification with its reasoning
 - `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time

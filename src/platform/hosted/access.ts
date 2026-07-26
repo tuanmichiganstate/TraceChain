@@ -1,9 +1,13 @@
 import type { ApplicationRole } from "../contracts/run-events";
+import type { LtiLearningContextV1 } from "../contracts/lti";
 
 export interface ApplicationPrincipal {
   readonly userId: string;
-  readonly email: string;
+  readonly email?: string;
+  readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
+  readonly authenticationSource?: "sites" | "lti";
+  readonly learningContext?: LtiLearningContextV1;
 }
 
 export class HostedAuthorizationError extends Error {

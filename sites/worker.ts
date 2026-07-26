@@ -5,6 +5,7 @@ import type {
 import type {
   CreateHostedAssignmentRequest,
   HostedAssignmentLearnerOptionV1,
+  HostedAssignmentV1,
   HostedAssignmentScenarioOptionV1,
   HostedAssignmentMonitorV1,
   HostedRunMonitorV1,
@@ -29,11 +30,26 @@ import type {
 import type { ApplicationRole } from "../src/platform/contracts/run-events";
 import en from "../src/locales/en.json";
 import vi from "../src/locales/vi.json";
+import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 import {
   AuthenticatedPrincipalError,
   AUTHENTICATED_USER_EMAIL_HEADER,
   resolveAuthenticatedPrincipal,
 } from "../src/platform/hosted/authenticated-principal";
+import {
+  beginLtiLogin,
+  clearLtiSessionCookie,
+  completeLtiLaunch,
+  LtiAuthenticationError,
+  ltiLoginParameter,
+  ltiSessionToken,
+  parseLtiLoginRequest,
+} from "../src/platform/hosted/lti-authentication";
+import {
+  LtiRegistrationError,
+  parseLtiPlatformRegistrations,
+  parseToolPublicJwks,
+} from "../src/platform/hosted/lti-registration";
 import { provisionBootstrapAdministrator } from "../src/platform/hosted/bootstrap-principal";
 import {
   HostedAuthorizationError,
@@ -70,6 +86,10 @@ import {
   sourceCommandBatchesAfterFork,
 } from "../src/platform/hosted/counterfactual-replay";
 import { D1ApplicationPrincipalRepository } from "../src/platform/persistence/d1-principal-repository";
+import {
+  D1LtiAuthenticationRepository,
+  LtiAuthenticationRepositoryError,
+} from "../src/platform/persistence/d1-lti-authentication-repository";
 import {
   ApplicationAccessRepositoryError,
   D1ApplicationAccessRepository,
@@ -182,6 +202,8 @@ interface WorkerEnvironment {
   readonly DB: D1DatabaseLike;
   readonly ARTIFACTS: R2BucketLike;
   readonly TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS?: string;
+  readonly TRACECHAIN_LTI_REGISTRATIONS_JSON?: string;
+  readonly TRACECHAIN_LTI_TOOL_JWKS_JSON?: string;
 }
 
 const securityHeaders = {
@@ -190,6 +212,7 @@ const securityHeaders = {
 };
 
 const API_PREFIX = "/api/v1/";
+const LTI_API_PREFIX = "/api/lti/v1/";
 const HOSTED_APP_ROUTE =
   /^\/(?:platform|instructor|author|learner|admin)\/?$/u;
 const MAXIMUM_COMMAND_BYTES = 64 * 1024;
@@ -366,6 +389,170 @@ async function readJson(
       "API request body is not valid JSON.",
     );
   }
+}
+
+async function readLtiForm(
+  request: Request,
+): Promise<URLSearchParams> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (
+    !contentType
+      .toLowerCase()
+      .startsWith("application/x-www-form-urlencoded")
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_REQUEST_INVALID",
+      "LTI form posts must use application/x-www-form-urlencoded.",
+    );
+  }
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAXIMUM_COMMAND_BYTES
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_REQUEST_INVALID",
+      "The LTI form exceeds its size limit.",
+    );
+  }
+  const text = await request.text();
+  if (new TextEncoder().encode(text).length > MAXIMUM_COMMAND_BYTES) {
+    throw new LtiAuthenticationError(
+      "LTI_REQUEST_INVALID",
+      "The LTI form exceeds its size limit.",
+    );
+  }
+  return new URLSearchParams(text);
+}
+
+function ltiErrorCode(error: unknown): string | null {
+  if (
+    error instanceof LtiAuthenticationError ||
+    error instanceof LtiRegistrationError ||
+    error instanceof LtiAuthenticationRepositoryError
+  ) {
+    return error.code;
+  }
+  return null;
+}
+
+function ltiErrorResponse(
+  request: Request,
+  error: unknown,
+): Response {
+  const code = ltiErrorCode(error);
+  if (code === null) {
+    console.error("TraceChain LTI failure", error);
+    return jsonResponse(500, {
+      error: { code: "LTI_INTERNAL_ERROR" },
+    });
+  }
+  const pathname = new URL(request.url).pathname;
+  if (
+    pathname === "/api/lti/v1/login" ||
+    pathname === "/api/lti/v1/launch"
+  ) {
+    const location = new URL("/instructor", request.url);
+    location.searchParams.set("ltiError", code);
+    return withSecurityHeaders(
+      new Response(null, {
+        status: 303,
+        headers: {
+          "cache-control": "no-store",
+          location: location.toString(),
+        },
+      }),
+    );
+  }
+  const status =
+    code === "LTI_INSTRUCTOR_ROLE_REQUIRED" ? 403 : 400;
+  return jsonResponse(status, { error: { code } });
+}
+
+async function ltiResponse(
+  request: Request,
+  environment: WorkerEnvironment,
+): Promise<Response> {
+  await ensureD1FoundationSchema(environment.DB);
+  const url = new URL(request.url);
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/lti/v1/jwks"
+  ) {
+    const jwks = parseToolPublicJwks(
+      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+    );
+    return jsonResponse(200, { keys: jwks.keys });
+  }
+  const registrations = parseLtiPlatformRegistrations(
+    environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+  );
+  const clock = new SystemUtcClock();
+  const repository = new D1LtiAuthenticationRepository(
+    environment.DB,
+    clock,
+  );
+  if (
+    (request.method === "GET" || request.method === "POST") &&
+    url.pathname === "/api/lti/v1/login"
+  ) {
+    const parameters =
+      request.method === "GET"
+        ? url.searchParams
+        : await readLtiForm(request);
+    return withSecurityHeaders(
+      await beginLtiLogin({
+        request,
+        input: parseLtiLoginRequest(request, parameters),
+        registrations,
+        repository,
+        clock,
+      }),
+    );
+  }
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/lti/v1/launch"
+  ) {
+    const parameters = await readLtiForm(request);
+    return withSecurityHeaders(
+      await completeLtiLaunch({
+        idToken: ltiLoginParameter(
+          parameters.get("id_token"),
+          "id_token",
+        ),
+        state: ltiLoginParameter(
+          parameters.get("state"),
+          "state",
+        ),
+        registrations,
+        repository,
+        clock,
+      }),
+    );
+  }
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/lti/v1/logout"
+  ) {
+    enforceSameOriginMutation(request);
+    const token = ltiSessionToken(request);
+    if (token !== null) {
+      await repository.revokeSession(sha256Hex(token));
+    }
+    return withSecurityHeaders(
+      new Response(null, {
+        status: 204,
+        headers: {
+          "cache-control": "no-store",
+          "set-cookie": clearLtiSessionCookie(),
+        },
+      }),
+    );
+  }
+  return jsonResponse(404, {
+    error: { code: "LTI_ENDPOINT_NOT_FOUND" },
+  });
 }
 
 function enforceSameOriginMutation(request: Request): void {
@@ -636,6 +823,117 @@ function pathScormPackageJob(
   return match?.[1] === undefined
     ? null
     : decodeURIComponent(match[1]);
+}
+
+function firstDecodedPathSegment(
+  pathname: string,
+  prefix: string,
+): string | null {
+  if (!pathname.startsWith(prefix)) return null;
+  const segment = pathname.slice(prefix.length).split("/")[0];
+  if (segment === undefined || segment.length === 0) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The requested resource identifier is invalid.",
+    );
+  }
+}
+
+function ltiContextMatchesAssignment(
+  principal: ApplicationPrincipal,
+  assignment: HostedAssignmentV1,
+): boolean {
+  const principalContext = principal.learningContext;
+  const assignmentContext = assignment.learningContext;
+  return (
+    principal.authenticationSource === "lti" &&
+    principalContext !== undefined &&
+    assignmentContext !== undefined &&
+    principalContext.issuer === assignmentContext.issuer &&
+    principalContext.clientId === assignmentContext.clientId &&
+    principalContext.deploymentId ===
+      assignmentContext.deploymentId &&
+    principalContext.contextId === assignmentContext.contextId
+  );
+}
+
+async function enforceLtiCourseRequestScope(options: {
+  readonly principal: ApplicationPrincipal;
+  readonly pathname: string;
+  readonly environment: WorkerEnvironment;
+}): Promise<void> {
+  if (options.principal.authenticationSource !== "lti") return;
+  if (options.principal.learningContext === undefined) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The LTI instructor session has no Moodle course context.",
+    );
+  }
+  if (options.pathname === "/api/v1/runs") {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "Moodle-launched instructors must create runs through a course-bound assignment.",
+    );
+  }
+  let assignmentId = firstDecodedPathSegment(
+    options.pathname,
+    "/api/v1/assignments/",
+  );
+  const runId = firstDecodedPathSegment(
+    options.pathname,
+    "/api/v1/runs/",
+  );
+  if (assignmentId === null && runId !== null) {
+    assignmentId = (
+      await new D1AssignmentRepository(
+        options.environment.DB,
+        new SystemUtcClock(),
+      ).findForRun(runId)
+    )?.assignmentId ?? null;
+  }
+  const branchId = firstDecodedPathSegment(
+    options.pathname,
+    "/api/v1/counterfactuals/",
+  );
+  if (assignmentId === null && branchId !== null) {
+    const metadata = await new D1CounterfactualRunRepository(
+      options.environment.DB,
+    ).find(branchId);
+    if (metadata !== null) {
+      assignmentId = (
+        await new D1AssignmentRepository(
+          options.environment.DB,
+          new SystemUtcClock(),
+        ).findForRun(metadata.sourceRunId)
+      )?.assignmentId ?? null;
+    }
+  }
+  if (
+    (runId !== null || branchId !== null) &&
+    assignmentId === null
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The requested run is not bound to this Moodle course.",
+    );
+  }
+  if (assignmentId === null) return;
+  const assignment = await new D1AssignmentRepository(
+    options.environment.DB,
+    new SystemUtcClock(),
+  ).find(assignmentId);
+  if (
+    assignment === null ||
+    !ltiContextMatchesAssignment(options.principal, assignment)
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The requested assignment belongs to another Moodle course.",
+    );
+  }
 }
 
 function byteHash(bytes: ArrayBuffer): Promise<string> {
@@ -989,48 +1287,78 @@ async function apiResponse(
   const principalRepository = new D1ApplicationPrincipalRepository(
     environment.DB,
   );
-  let principal;
-  try {
-    principal = await resolveAuthenticatedPrincipal(
-      request,
-      principalRepository,
-    );
-  } catch (error) {
-    if (
-      !(error instanceof AuthenticatedPrincipalError) ||
-      error.code !== "APPLICATION_ACCESS_NOT_PROVISIONED"
-    ) {
-      throw error;
+  const clock = new SystemUtcClock();
+  const sessionToken = ltiSessionToken(request);
+  let principal: ApplicationPrincipal | null =
+    sessionToken === null
+      ? null
+      : await new D1LtiAuthenticationRepository(
+          environment.DB,
+          clock,
+        ).findActiveSession(sha256Hex(sessionToken));
+  if (principal === null) {
+    try {
+      principal = await resolveAuthenticatedPrincipal(
+        request,
+        principalRepository,
+      );
+    } catch (error) {
+      if (
+        !(error instanceof AuthenticatedPrincipalError) ||
+        error.code !== "APPLICATION_ACCESS_NOT_PROVISIONED"
+      ) {
+        throw error;
+      }
+      const verifiedEmail = request.headers.get(
+        AUTHENTICATED_USER_EMAIL_HEADER,
+      );
+      if (
+        verifiedEmail === null ||
+        !(await provisionBootstrapAdministrator({
+          database: environment.DB,
+          verifiedEmail,
+          configuredEmailAllowlist:
+            environment.TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS,
+          clock,
+        }))
+      ) {
+        throw error;
+      }
+      principal = await resolveAuthenticatedPrincipal(
+        request,
+        principalRepository,
+      );
     }
-    const verifiedEmail = request.headers.get(
-      AUTHENTICATED_USER_EMAIL_HEADER,
-    );
-    if (
-      verifiedEmail === null ||
-      !(await provisionBootstrapAdministrator({
-        database: environment.DB,
-        verifiedEmail,
-        configuredEmailAllowlist:
-          environment.TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS,
-        clock: new SystemUtcClock(),
-      }))
-    ) {
-      throw error;
-    }
-    principal = await resolveAuthenticatedPrincipal(
-      request,
-      principalRepository,
-    );
   }
   const url = new URL(request.url);
 
   if (request.method === "GET" && url.pathname === "/api/v1/session") {
     return jsonResponse(200, {
       userId: principal.userId,
-      email: principal.email,
+      ...(principal.email === undefined
+        ? {}
+        : { email: principal.email }),
+      ...(principal.displayName === undefined
+        ? {}
+        : { displayName: principal.displayName }),
       roles: principal.roles,
+      ...(principal.authenticationSource === undefined
+        ? {}
+        : {
+            authenticationSource:
+              principal.authenticationSource,
+          }),
+      ...(principal.learningContext === undefined
+        ? {}
+        : { learningContext: principal.learningContext }),
     });
   }
+
+  await enforceLtiCourseRequestScope({
+    principal,
+    pathname: url.pathname,
+    environment,
+  });
 
   if (
     request.method === "GET" &&
@@ -1797,11 +2125,18 @@ async function apiResponse(
       clock,
     ).create(
       {
-        ...(body as unknown as CreateHostedAssignmentRequest),
+        ...(Object.fromEntries(
+          Object.entries(body).filter(
+            ([key]) => key !== "learningContext",
+          ),
+        ) as unknown as CreateHostedAssignmentRequest),
         mode,
         runConfiguration: modeConfigurationFor(scenario, mode),
         counterfactualReplay,
         research,
+        ...(principal.learningContext === undefined
+          ? {}
+          : { learningContext: principal.learningContext }),
       },
       principal,
     );
@@ -3866,6 +4201,13 @@ const worker = {
     environment: WorkerEnvironment,
   ): Promise<Response> {
     const pathname = new URL(request.url).pathname;
+    if (pathname.startsWith(LTI_API_PREFIX)) {
+      try {
+        return await ltiResponse(request, environment);
+      } catch (error) {
+        return ltiErrorResponse(request, error);
+      }
+    }
     if (pathname.startsWith(API_PREFIX)) {
       try {
         return await apiResponse(request, environment);

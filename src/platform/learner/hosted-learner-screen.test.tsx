@@ -52,7 +52,7 @@ describe("hosted learner workspace", () => {
     const startRun = vi.fn();
     const assignment = (assignmentId: string, title: string) => ({
       assignment: {
-        schemaVersion: "1.2.0" as const,
+        schemaVersion: "1.3.0" as const,
         assignmentId,
         title,
         packId: "PACK_COFFEE",

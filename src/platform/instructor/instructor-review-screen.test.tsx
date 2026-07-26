@@ -120,6 +120,60 @@ function renderScreen(api: InstructorReviewApi) {
 }
 
 describe("instructor review screen", () => {
+  it("shows the verified Moodle course context without requiring an email claim", async () => {
+    const api: InstructorReviewApi = {
+      createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
+      loadAssignmentReport: vi.fn(),
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_001",
+        displayName: "Course instructor",
+        roles: ["instructor"],
+        authenticationSource: "lti",
+        learningContext: {
+          schemaVersion: "1.0.0",
+          provider: "lti-1.3",
+          issuer: "https://moodle.example",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_ACCOUNTING_101",
+          resourceLinkId: "RESOURCE_INSTRUCTOR",
+          contextTitle: "Accounting 101",
+          returnUrl:
+            "https://moodle.example/course/view.php?id=42",
+        },
+      }),
+      loadRunReplay: vi.fn(),
+      loadRunReview: vi.fn(),
+      logoutSession: vi.fn(),
+      releaseFeedback: vi.fn(),
+      saveModeration: vi.fn(),
+      saveRating: vi.fn(),
+    };
+    renderScreen(api);
+
+    expect(
+      await screen.findByText("Course instructor"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Accounting 101")).toBeInTheDocument();
+    expect(screen.getByText("Moodle course launch")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Return to Moodle" }),
+    ).toHaveAttribute(
+      "href",
+      "https://moodle.example/course/view.php?id=42",
+    );
+    expect(
+      screen.getByRole("button", { name: "Sign out" }),
+    ).toBeInTheDocument();
+  });
+
   it("generates an accepted assessment package through the hosted job API", async () => {
     const createScormPackageJob = vi.fn().mockResolvedValue({
       schemaVersion: "1.0.0",
@@ -198,7 +252,7 @@ describe("instructor review screen", () => {
     const availableFrom = new Date(availableFromLocal).toISOString();
     const availableUntil = new Date(availableUntilLocal).toISOString();
     const assignment = {
-      schemaVersion: "1.2.0" as const,
+      schemaVersion: "1.3.0" as const,
       assignmentId: "ASSIGNMENT_001",
       title: "Coffee cohort",
       packId: publishedCoffeeOption.packId,
@@ -424,7 +478,7 @@ describe("instructor review screen", () => {
 
   it("manages access and offers stable downloads after loading an assignment report", async () => {
     const assignment = {
-      schemaVersion: "1.2.0" as const,
+      schemaVersion: "1.3.0" as const,
       assignmentId: "ASSIGNMENT_EXPORT_001",
       title: "Coffee export cohort",
       packId: "PACK_STANDARD_COFFEE_STAGE3",
