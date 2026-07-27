@@ -19,7 +19,7 @@ import type {
   ScenarioDefinition,
   ScenarioTrustedContext,
 } from "../types/scenario";
-import type { TraceChainConfiguration } from "../../config/types";
+import type { BusinessSimulationConfiguration } from "../../config/types";
 import type {
   CompactCommandJournalEntry,
   JournalOpcodeDefinition,
@@ -190,7 +190,7 @@ export function commandJournalDefinitions(
 }
 
 export function tc3CodecSchema(options: {
-  readonly configuration: TraceChainConfiguration;
+  readonly configuration: BusinessSimulationConfiguration;
   readonly configurationHash: string;
   readonly scenario: ScenarioDefinition;
   readonly variantBank?: ScenarioVariantBank;

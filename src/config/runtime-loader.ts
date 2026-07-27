@@ -3,9 +3,10 @@ import { validateScenario } from "../domain/scenario/validate-scenario";
 import { IncompatibleAttemptError, ScenarioConfigurationError } from "../domain/errors";
 import { hashConfiguration } from "./hash";
 import type {
+  BusinessSimulationConfiguration,
   EmbeddedTraceChainConfiguration,
-  TraceChainConfiguration,
 } from "./types";
+import { isBusinessSimulationConfiguration } from "./types";
 import { assertValidConfiguration } from "./validation";
 import type { CryptographicRuntime } from "../crypto/signatures/types";
 import { NobleEd25519Provider } from "../crypto/signatures/noble-ed25519-provider";
@@ -15,7 +16,7 @@ import type { ScenarioVariantBank } from "../domain/scenario/variant-bank";
 import { validateVariantBank } from "../domain/scenario/variant-bank";
 
 export interface RuntimePackage {
-  readonly configuration: TraceChainConfiguration;
+  readonly configuration: BusinessSimulationConfiguration;
   readonly configurationHash: string;
   readonly scenario: ScenarioDefinition;
   readonly cryptographicRuntime: CryptographicRuntime | null;
@@ -73,6 +74,12 @@ export async function loadRuntimePackage(
   ) {
     throw new IncompatibleAttemptError("Embedded configuration hash does not match its content");
   }
+  const configuration = configurationFile.configuration;
+  if (!isBusinessSimulationConfiguration(configuration)) {
+    throw new ScenarioConfigurationError(
+      "Technical Laboratory packages require the dedicated laboratory runtime loader",
+    );
+  }
   const [scenarioFile, mediaManifestFile, buildInformationFile] =
     await Promise.all([
       loadJson(fetcher, "./scenario.json"),
@@ -80,12 +87,12 @@ export async function loadRuntimePackage(
       loadJson(fetcher, "./build-info.json"),
     ]);
   const variantBankFile =
-    configurationFile.configuration.scenarioVariation.strategy ===
+    configuration.scenarioVariation.strategy ===
     "SEEDED_VARIANT_BANK"
       ? await loadJson(fetcher, "./scenario-variant-bank.json")
       : null;
   const cryptographicFiles =
-    configurationFile.configuration.technicalFeatures.digitalSignatures
+    configuration.technicalFeatures.digitalSignatures
       ? await Promise.all([
           loadJson(fetcher, "./identity-registry.json"),
           loadJson(fetcher, "./educational-signing-keys.json"),
@@ -114,14 +121,14 @@ export async function loadRuntimePackage(
   }
   const scenario = scenarioFile as ScenarioDefinition;
   if (
-    scenario.scenarioId !== configurationFile.configuration.scenarioId ||
-    scenario.scenarioVersion !== configurationFile.configuration.scenarioVersion
+    scenario.scenarioId !== configuration.scenarioId ||
+    scenario.scenarioVersion !== configuration.scenarioVersion
   ) {
     throw new IncompatibleAttemptError(
       "Embedded scenario identity does not match tracechain.config.json",
     );
   }
-  if (scenario.scoringConfiguration.maxScore !== configurationFile.configuration.scoring.maximumScore) {
+  if (scenario.scoringConfiguration.maxScore !== configuration.scoring.maximumScore) {
     throw new IncompatibleAttemptError("Scenario maximum score does not match package configuration");
   }
   const variantBank =
@@ -131,7 +138,7 @@ export async function loadRuntimePackage(
   if (variantBank !== null) {
     const bankValidation = validateVariantBank({
       bank: variantBank,
-      configuration: configurationFile.configuration,
+      configuration,
     });
     if (!bankValidation.isValid) {
       throw new ScenarioConfigurationError(
@@ -217,8 +224,7 @@ export async function loadRuntimePackage(
       buildInformation.scenarioHash !==
         sha256Hex(`${JSON.stringify(scenario, null, 2)}\n`) ||
       buildInformation.cryptographicEvidenceSchemaVersion !==
-        (configurationFile.configuration.technicalFeatures
-          .endorsementPolicies
+        (configuration.technicalFeatures.endorsementPolicies
           ? "2"
           : "1") ||
       typeof buildInformation.cryptographicRuntimeHashes !== "object" ||
@@ -272,7 +278,7 @@ export async function loadRuntimePackage(
     }
   }
   return {
-    configuration: configurationFile.configuration,
+    configuration,
     configurationHash: configurationFile.configurationHash,
     scenario,
     cryptographicRuntime,

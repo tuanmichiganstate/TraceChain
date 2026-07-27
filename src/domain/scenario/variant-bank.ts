@@ -1,4 +1,4 @@
-import type { TraceChainConfiguration } from "../../config/types";
+import type { BusinessSimulationConfiguration } from "../../config/types";
 import { canonicalize } from "../../infrastructure/hashing/canonicalize";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type { ScenarioDefinition } from "../types/scenario";
@@ -229,7 +229,7 @@ function structuralSignature(
 
 export function validateVariantBank(options: {
   readonly bank: ScenarioVariantBank;
-  readonly configuration?: TraceChainConfiguration;
+  readonly configuration?: BusinessSimulationConfiguration;
 }): VariantBankValidationResult {
   const issues: VariantBankValidationIssue[] = [];
   const add = (

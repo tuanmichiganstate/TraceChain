@@ -1,0 +1,465 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracechain.local/schemas/tracechain-technical-lab-pack-v1.schema.json",
+  "title": "TraceChain Technical Laboratory Pack V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pack",
+    "modules",
+    "fixtures",
+    "localizationCatalogs"
+  ],
+  "properties": {
+    "pack": {
+      "$ref": "#/$defs/pack"
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fixture"
+      }
+    },
+    "localizationCatalogs": {
+      "type": "object",
+      "required": [
+        "vi",
+        "en"
+      ],
+      "properties": {
+        "vi": {
+          "$ref": "#/$defs/catalog"
+        },
+        "en": {
+          "$ref": "#/$defs/catalog"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,95}$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "localizedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "localizationKey"
+      ],
+      "properties": {
+        "localizationKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,159}$"
+        }
+      }
+    },
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "evidenceSchemaVersion",
+        "labPackId",
+        "labPackVersion",
+        "presetId",
+        "title",
+        "description",
+        "authenticityDisclosure",
+        "supportedLocales",
+        "moduleIds",
+        "scoringContract",
+        "status"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "evidenceSchemaVersion": {
+          "const": "1"
+        },
+        "labPackId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "labPackVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "presetId": {
+          "const": "permissioned-blockchain-foundations"
+        },
+        "title": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "description": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "authenticityDisclosure": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "supportedLocales": {
+          "const": [
+            "vi",
+            "en"
+          ]
+        },
+        "moduleIds": {
+          "const": [
+            "TL1",
+            "TL2",
+            "TL3",
+            "TL4",
+            "TL5",
+            "TL6",
+            "TL7"
+          ]
+        },
+        "scoringContract": {
+          "$ref": "#/$defs/scoringContract"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "validated",
+            "published",
+            "retired"
+          ]
+        },
+        "publication": {
+          "type": "object"
+        }
+      }
+    },
+    "scoringContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scoringContractId",
+        "maximumScore",
+        "passScore",
+        "moduleAllocations"
+      ],
+      "properties": {
+        "scoringContractId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "maximumScore": {
+          "const": 100
+        },
+        "passScore": {
+          "const": 70
+        },
+        "moduleAllocations": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "$ref": "#/$defs/moduleScore"
+          }
+        }
+      }
+    },
+    "moduleScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "moduleId",
+        "experimentPoints",
+        "interpretationPoints",
+        "applicationPoints"
+      ],
+      "properties": {
+        "moduleId": {
+          "enum": [
+            "TL1",
+            "TL2",
+            "TL3",
+            "TL4",
+            "TL5",
+            "TL6",
+            "TL7"
+          ]
+        },
+        "experimentPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "interpretationPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "applicationPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "moduleId",
+        "moduleVersion",
+        "title",
+        "summary",
+        "learningOutcomes",
+        "prerequisiteModuleIds",
+        "estimatedMinutes",
+        "rendererId",
+        "experimentDefinitions",
+        "scorableItemIds",
+        "hintIds",
+        "glossaryTermIds",
+        "realMechanismIds",
+        "simulatedMechanismIds"
+      ],
+      "properties": {
+        "moduleId": {
+          "enum": [
+            "TL1",
+            "TL2",
+            "TL3",
+            "TL4",
+            "TL5",
+            "TL6",
+            "TL7"
+          ]
+        },
+        "moduleVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "title": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "summary": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "learningOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/localizedText"
+          }
+        },
+        "prerequisiteModuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        },
+        "estimatedMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "rendererId": {
+          "enum": [
+            "hash-avalanche",
+            "canonical-serialization",
+            "digital-signature",
+            "identity-authorization",
+            "endorsement-policy",
+            "proposal-mismatch",
+            "state-version-conflict"
+          ]
+        },
+        "experimentDefinitions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/experiment"
+          }
+        },
+        "scorableItemIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "hintIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "glossaryTermIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "realMechanismIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "simulatedMechanismIds": {
+          "$ref": "#/$defs/identifierArray"
+        }
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experimentId",
+        "fixtureId",
+        "steps",
+        "expectedObservationIds",
+        "interpretationItemIds",
+        "applicationItemIds",
+        "evidencePanelIds"
+      ],
+      "properties": {
+        "experimentId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "fixtureId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "expectedObservationIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "interpretationItemIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "applicationItemIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "evidencePanelIds": {
+          "$ref": "#/$defs/identifierArray"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stepId",
+        "actionType",
+        "maximumOccurrences"
+      ],
+      "properties": {
+        "stepId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "actionType": {
+          "enum": [
+            "VIEW_INPUT",
+            "EDIT_INPUT",
+            "CANONICALIZE",
+            "HASH",
+            "SIGN",
+            "VERIFY_SIGNATURE",
+            "RESOLVE_IDENTITY",
+            "CHECK_AUTHORIZATION",
+            "ADD_ENDORSEMENT",
+            "EVALUATE_POLICY",
+            "COMPARE_DIGESTS",
+            "ADVANCE_ASSET_VERSION",
+            "VALIDATE_STATE_VERSION",
+            "COMMIT_TRANSACTION",
+            "RESET_EXPERIMENT_COPY"
+          ]
+        },
+        "maximumOccurrences": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "editConstraint": {
+          "$ref": "#/$defs/editConstraint"
+        }
+      }
+    },
+    "editConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximumInputUtf8Bytes",
+        "maximumMutations"
+      ],
+      "properties": {
+        "maximumInputUtf8Bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512
+        },
+        "maximumMutations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixtureId",
+        "fixtureVersion",
+        "educationalOnly",
+        "initialInput",
+        "identityIds",
+        "keyIds",
+        "policyIds"
+      ],
+      "properties": {
+        "fixtureId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "fixtureVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "educationalOnly": {
+          "const": true
+        },
+        "initialInput": {
+          "type": "object"
+        },
+        "identityIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "keyIds": {
+          "$ref": "#/$defs/identifierArray"
+        },
+        "policyIds": {
+          "$ref": "#/$defs/identifierArray"
+        }
+      }
+    },
+    "identifierArray": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/identifier"
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,159}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

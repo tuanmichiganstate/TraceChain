@@ -1,4 +1,4 @@
-import type { TraceChainConfiguration } from "../../config/types";
+import type { BusinessSimulationConfiguration } from "../../config/types";
 import type {
   CompactCommandJournalEntry,
   Tc3AttemptSnapshot,
@@ -238,7 +238,7 @@ export async function replayCommandJournal(options: {
   readonly snapshot: Tc3AttemptSnapshot;
   readonly initialDomain: DomainState;
   readonly scenario: ScenarioDefinition;
-  readonly configuration: TraceChainConfiguration;
+  readonly configuration: BusinessSimulationConfiguration;
   readonly configurationHash?: string;
   readonly cryptographicRuntime?: CryptographicRuntime | null;
   readonly signatureProvider?: SignatureProvider;

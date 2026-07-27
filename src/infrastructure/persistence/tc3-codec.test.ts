@@ -12,7 +12,7 @@ import { KnowledgeCheckType } from "../../domain/types/scenario";
 import type { ScenarioDefinition } from "../../domain/types/scenario";
 import { hashConfiguration } from "../../config/hash";
 import { CHALLENGE_PRESET, GUIDED_PRESET } from "../../config/presets";
-import type { TraceChainConfiguration } from "../../config/types";
+import type { BusinessSimulationConfiguration } from "../../config/types";
 import {
   commandJournalDefinitions,
   JournalOpcode,
@@ -120,7 +120,7 @@ function maximumEncodedDecisionValues(
 
 function maximumJournal(
   scenario: ScenarioDefinition,
-  configuration: TraceChainConfiguration,
+  configuration: BusinessSimulationConfiguration,
 ): readonly CompactCommandJournalEntry[] {
   const recallOptions =
     scenario.stages
@@ -403,7 +403,11 @@ describe("TC3 attempt codec", () => {
     ["challenge", CHALLENGE_PRESET, challengeAScenario],
   ] as const)(
     "keeps the actual %s authored worst case within every documented budget",
-    (_name, configuration: TraceChainConfiguration, scenario: ScenarioDefinition) => {
+    (
+      _name,
+      configuration: BusinessSimulationConfiguration,
+      scenario: ScenarioDefinition,
+    ) => {
       const variantAssignment =
         configuration.scenarioVariation.strategy ===
         "SEEDED_VARIANT_BANK"

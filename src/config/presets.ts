@@ -1,4 +1,4 @@
-import type { TraceChainConfiguration } from "./types";
+import type { BusinessSimulationConfiguration } from "./types";
 
 export type LecturerPresetId =
   | "guided"
@@ -6,7 +6,7 @@ export type LecturerPresetId =
   | "assessment";
 
 const COMMON = {
-  configurationVersion: "2",
+  configurationVersion: "3",
   applicationCompatibilityVersion: "tc3-v2",
   referenceWorkspace: "enabled",
   technicalFeatures: {
@@ -25,7 +25,7 @@ const COMMON = {
   locale: "vi",
 } as const;
 
-export const GUIDED_PRESET: TraceChainConfiguration = {
+export const GUIDED_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
   mode: "guided",
   scenarioId: "SCN_COFFEE_001",
@@ -42,7 +42,7 @@ export const GUIDED_PRESET: TraceChainConfiguration = {
   },
 };
 
-export const CHALLENGE_PRESET: TraceChainConfiguration = {
+export const CHALLENGE_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
   mode: "challenge",
   scenarioId: "SCN_COFFEE_CHALLENGE",
@@ -62,7 +62,7 @@ export const CHALLENGE_PRESET: TraceChainConfiguration = {
   },
 };
 
-export const ASSESSMENT_PRESET: TraceChainConfiguration = {
+export const ASSESSMENT_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
   mode: "assessment",
   scenarioId: "SCN_COFFEE_001",
@@ -80,13 +80,15 @@ export const ASSESSMENT_PRESET: TraceChainConfiguration = {
 };
 
 export const LECTURER_PRESETS: Readonly<
-  Record<LecturerPresetId, TraceChainConfiguration>
+  Record<LecturerPresetId, BusinessSimulationConfiguration>
 > = {
   guided: GUIDED_PRESET,
   challenge: CHALLENGE_PRESET,
   assessment: ASSESSMENT_PRESET,
 };
 
-export function resolvePreset(presetId: LecturerPresetId): TraceChainConfiguration {
+export function resolvePreset(
+  presetId: LecturerPresetId,
+): BusinessSimulationConfiguration {
   return structuredClone(LECTURER_PRESETS[presetId]);
 }
