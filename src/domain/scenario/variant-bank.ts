@@ -58,7 +58,10 @@ export interface ScenarioVariantBank {
   readonly status: VariantBankStatus;
   readonly titleKey: string;
   readonly descriptionKey: string;
-  readonly supportedModes: readonly ["CHALLENGE"];
+  readonly supportedModes: readonly (
+    | "PRACTICE"
+    | "CHALLENGE"
+  )[];
   readonly blueprint: VariantAssessmentBlueprint;
   /** Immutable order used by selection algorithm version 1. */
   readonly variants: readonly ScenarioVariant[];
@@ -247,11 +250,30 @@ export function validateVariantBank(options: {
   if (!PORTABLE_IDENTIFIER.test(bank.bankVersion)) {
     add("ERROR", "bankVersion", "must be a bounded portable identifier");
   }
-  if (bank.variants.length < 3) {
+  const supportsChallenge =
+    bank.supportedModes.includes("CHALLENGE");
+  const minimumVariants = supportsChallenge ? 3 : 1;
+  if (bank.variants.length < minimumVariants) {
     add(
       "ERROR",
       "variants",
-      "the Challenge bank must contain at least three curated variants",
+      supportsChallenge
+        ? "the Challenge bank must contain at least three curated variants"
+        : "the Practice bank must contain at least one curated case",
+    );
+  }
+  if (
+    bank.supportedModes.length === 0 ||
+    bank.supportedModes.length !==
+      new Set(bank.supportedModes).size ||
+    bank.supportedModes.some(
+      (mode) => mode !== "PRACTICE" && mode !== "CHALLENGE",
+    )
+  ) {
+    add(
+      "ERROR",
+      "supportedModes",
+      "must contain unique Practice or Challenge support profiles",
     );
   }
   const variantIds = new Set<string>();
@@ -347,6 +369,7 @@ export function validateVariantBank(options: {
     );
   }
   if (
+    bank.variants.length > 1 &&
     new Set(
       bank.variants.map((variant) => variant.metadata.answerPatternHash),
     ).size < 2
@@ -366,6 +389,20 @@ export function validateVariantBank(options: {
   }
 
   const configuredVariation = options.configuration?.scenarioVariation;
+  if (
+    options.configuration !== undefined &&
+    !bank.supportedModes.includes(
+      options.configuration.supportProfile as
+        | "PRACTICE"
+        | "CHALLENGE",
+    )
+  ) {
+    add(
+      "ERROR",
+      "configuration.supportProfile",
+      "is not supported by this variant bank",
+    );
+  }
   if (
     configuredVariation?.strategy === "SEEDED_VARIANT_BANK" &&
     (configuredVariation.bankId !== bank.bankId ||

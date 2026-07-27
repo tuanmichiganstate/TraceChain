@@ -11,7 +11,11 @@ import {
 import { KnowledgeCheckType } from "../../domain/types/scenario";
 import type { ScenarioDefinition } from "../../domain/types/scenario";
 import { hashConfiguration } from "../../config/hash";
-import { CHALLENGE_PRESET, GUIDED_PRESET } from "../../config/presets";
+import {
+  CHALLENGE_PRESET,
+  GUIDED_PRESET,
+  PRACTICE_PRESET,
+} from "../../config/presets";
 import type { BusinessSimulationConfiguration } from "../../config/types";
 import {
   commandJournalDefinitions,
@@ -21,6 +25,8 @@ import {
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../../scenarios/challenge-a/scenario";
 import { challengeVariantBank } from "../../scenarios/challenge-a/variant-bank";
+import { practiceAScenario } from "../../scenarios/practice-a/scenario";
+import { practiceVariantBank } from "../../scenarios/practice-a/variant-bank";
 import { selectVariantAssignment } from "../../domain/scenario/variant-bank";
 import {
   TC3_AUTHORED_PAYLOAD_LIMIT,
@@ -400,6 +406,7 @@ describe("TC3 attempt codec", () => {
 
   it.each([
     ["guided", GUIDED_PRESET, coffeeScenario],
+    ["practice", PRACTICE_PRESET, practiceAScenario],
     ["challenge", CHALLENGE_PRESET, challengeAScenario],
   ] as const)(
     "keeps the actual %s authored worst case within every documented budget",
@@ -408,11 +415,15 @@ describe("TC3 attempt codec", () => {
       configuration: BusinessSimulationConfiguration,
       scenario: ScenarioDefinition,
     ) => {
+      const variantBank =
+        configuration.presetId === "practice"
+          ? practiceVariantBank
+          : challengeVariantBank;
       const variantAssignment =
         configuration.scenarioVariation.strategy ===
         "SEEDED_VARIANT_BANK"
           ? selectVariantAssignment({
-              bank: challengeVariantBank,
+              bank: variantBank,
               attemptSeed: "WORSTCASEATTEMPTSEED01",
               assignmentSource: "SCORM_ATTEMPT",
             })
@@ -420,7 +431,7 @@ describe("TC3 attempt codec", () => {
       const activeScenario =
         variantAssignment === undefined
           ? scenario
-          : (challengeVariantBank.variants[
+          : (variantBank.variants[
               variantAssignment.variantIndex
             ]?.scenario ?? scenario);
       const actualSchema = tc3CodecSchema({
@@ -429,7 +440,7 @@ describe("TC3 attempt codec", () => {
         scenario: activeScenario,
         ...(variantAssignment === undefined
           ? {}
-          : { variantBank: challengeVariantBank }),
+          : { variantBank }),
       });
       const maximum: Tc3AttemptSnapshot = {
         sessionId: "SES_000001",

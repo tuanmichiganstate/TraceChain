@@ -12,6 +12,10 @@ import { hintPointsAtRisk } from "../domain/scoring/score-engine";
 import { StatusPill } from "./status-pill";
 import { useOptionalConfiguration } from "../app/providers/configuration-provider";
 import { ActiveRolePresence } from "./staff-presence";
+import {
+  resolveOperationsStageSupport,
+  type ResolvedOperationsStageSupport,
+} from "../config/operations-support";
 
 /**
  * The frame every stage sits in: title, instruction, what still needs doing,
@@ -44,6 +48,13 @@ export function StageShell({
   const completionContext = { state: state.domain, decisions: state.decisions };
   const completion = evaluateStageCompletion(definition, completionContext);
   const actionOutcomes = evaluateRequiredActions(definition, completionContext);
+  const support =
+    packageConfiguration === null
+      ? null
+      : resolveOperationsStageSupport(
+          packageConfiguration.configuration.guidance,
+          stageId,
+        );
 
   return (
     <div className="stage">
@@ -55,6 +66,10 @@ export function StageShell({
           </h2>
           <p>{t(definition.instructionKey)}</p>
         </header>
+
+        {support === null ? null : (
+          <OperationsSupportPanel support={support} />
+        )}
 
         {definition.requiredActions.length > 0 ? (
           <section className="card card--brief required-actions">
@@ -96,6 +111,50 @@ export function StageShell({
         <StageAdvance stageId={stageId} />
       </div>
     </div>
+  );
+}
+
+function OperationsSupportPanel({
+  support,
+}: {
+  readonly support: ResolvedOperationsStageSupport;
+}): ReactNode {
+  const t = useTranslator();
+  const hasEvidence =
+    support.evidenceGuidance !== "NONE";
+  const hasPolicy = support.policyGuidance !== "NONE";
+  if (!hasEvidence && !hasPolicy) return null;
+
+  const content = (
+    <div className="operations-support__content stack">
+      {hasEvidence ? (
+        <div>
+          <h4>{t("operationsSupport.evidenceHeading")}</h4>
+          <p>{t(support.content.evidenceSuggestionKey)}</p>
+        </div>
+      ) : null}
+      {hasPolicy ? (
+        <div>
+          <h4>{t("operationsSupport.policyHeading")}</h4>
+          <p>{t(support.content.policySuggestionKey)}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+  const direct =
+    support.evidenceGuidance === "DIRECT" ||
+    support.policyGuidance === "DIRECT";
+
+  return direct ? (
+    <section className="card card--brief operations-support">
+      <h3>{t("operationsSupport.directHeading")}</h3>
+      {content}
+    </section>
+  ) : (
+    <details className="card card--reference operations-support">
+      <summary>{t("operationsSupport.suggestedHeading")}</summary>
+      {content}
+    </details>
   );
 }
 

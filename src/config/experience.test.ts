@@ -10,6 +10,7 @@ import {
   ASSESSMENT_PRESET,
   CHALLENGE_PRESET,
   GUIDED_PRESET,
+  PRACTICE_PRESET,
 } from "./presets";
 import {
   experienceConfigurationHash,
@@ -34,6 +35,12 @@ describe("Configuration Schema V2 product dimensions", () => {
       deliveryPurpose: "FORMATIVE",
       outcomeStrategy: "FIXED",
     });
+    expect(resolveProductDimensions("practice")).toEqual({
+      activityType: "OPERATIONS",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
+    });
     expect(resolveProductDimensions("challenge")).toEqual({
       activityType: "OPERATIONS",
       supportProfile: "CHALLENGE",
@@ -54,7 +61,7 @@ describe("Configuration Schema V2 product dimensions", () => {
     });
   });
 
-  it("preserves the accepted Guided, Challenge, and Assessment behavior", () => {
+  it("preserves accepted behavior and resolves the Practice bridge", () => {
     expect(GUIDED_PRESET).toMatchObject({
       configurationSchemaVersion: "2",
       scenarioId: "SCN_COFFEE_001",
@@ -68,6 +75,24 @@ describe("Configuration Schema V2 product dimensions", () => {
       scenarioVersion: "2.0.0",
       feedback: { timing: "STAGE_END" },
       hints: { availability: "LIMITED" },
+      scenarioVariation: {
+        strategy: "SEEDED_VARIANT_BANK",
+      },
+    });
+    expect(PRACTICE_PRESET).toMatchObject({
+      scenarioId: "SCN_COFFEE_PRACTICE",
+      scenarioVersion: "1.0.0",
+      supportProfile: "PRACTICE",
+      feedback: { timing: "IMMEDIATE" },
+      hints: {
+        availability: "ENABLED",
+        proactiveOffer: "AVAILABLE_ON_REQUEST",
+      },
+      retries: {
+        professionalDecisionRevision:
+          "APPEND_ONLY_MITIGATION",
+        maximumMitigationActions: 1,
+      },
       scenarioVariation: {
         strategy: "SEEDED_VARIANT_BANK",
       },
@@ -109,6 +134,27 @@ describe("Configuration Schema V2 product dimensions", () => {
         incompleteHostedConfiguration,
       ).map((entry) => entry.path),
     ).toContain("guidance.referenceWorkspace");
+
+    const invalidPractice = validateConfiguration({
+      ...PRACTICE_PRESET,
+      feedback: {
+        ...PRACTICE_PRESET.feedback,
+        timing: "STAGE_END",
+      },
+      hints: {
+        ...PRACTICE_PRESET.hints,
+        availability: "LIMITED",
+      },
+    });
+    expect(invalidPractice.isValid).toBe(false);
+    expect(
+      invalidPractice.issues.map((entry) => entry.path),
+    ).toEqual(
+      expect.arrayContaining([
+        "feedback.timing",
+        "hints.availability",
+      ]),
+    );
   });
 
   it("resolves every hosted behavior profile into stable product metadata", () => {
@@ -157,6 +203,12 @@ describe("Configuration Schema V2 product dimensions", () => {
       supportProfile: "PRACTICE",
       deliveryPurpose: "SANDBOX",
       outcomeStrategy: "SEEDED_STOCHASTIC",
+    });
+    expect(configurations[2]?.configuration).toMatchObject({
+      guidance: PRACTICE_PRESET.guidance,
+      feedback: PRACTICE_PRESET.feedback,
+      hints: PRACTICE_PRESET.hints,
+      retries: PRACTICE_PRESET.retries,
     });
   });
 });

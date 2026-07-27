@@ -1,9 +1,9 @@
 <?php
 /**
- * Deploy the current Guided, Challenge, and Assessment packages.
+ * Deploy the current Guided, Practice, Challenge, and Assessment packages.
  *
  * The first run adopts the existing TraceChain activity as Guided and
- * duplicates it for Challenge and Assessment. Later runs find all activities
+ * duplicates it for Practice, Challenge, and Assessment. Later runs find all activities
  * by their stable names. Every deployment clears attempts, grades, and
  * completion state before replacing all packages.
  *
@@ -19,6 +19,7 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/completionlib.php');
 
 const TRACECHAIN_ACTIVITY_GUIDED = 'TraceChain Guided';
+const TRACECHAIN_ACTIVITY_PRACTICE = 'TraceChain Practice';
 const TRACECHAIN_ACTIVITY_CHALLENGE = 'TraceChain Challenge';
 const TRACECHAIN_ACTIVITY_ASSESSMENT = 'TraceChain Assessment';
 
@@ -70,6 +71,12 @@ function ensure_managed_activities(): array {
         '*',
         IGNORE_MISSING
     );
+    $practice = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_PRACTICE],
+        '*',
+        IGNORE_MISSING
+    );
     $assessment = $DB->get_record(
         'scorm',
         ['name' => TRACECHAIN_ACTIVITY_ASSESSMENT],
@@ -82,6 +89,7 @@ function ensure_managed_activities(): array {
         foreach ($DB->get_records('scorm', [], 'id ASC') as $candidate) {
             if (
                 $candidate->name !== TRACECHAIN_ACTIVITY_CHALLENGE &&
+                $candidate->name !== TRACECHAIN_ACTIVITY_PRACTICE &&
                 $candidate->name !== TRACECHAIN_ACTIVITY_ASSESSMENT
             ) {
                 $candidates[] = $candidate;
@@ -101,6 +109,39 @@ function ensure_managed_activities(): array {
             MUST_EXIST
         );
         echo "adopted:  cmid={$guidedcm->id} as \"".TRACECHAIN_ACTIVITY_GUIDED."\"\n";
+    }
+
+    if ($practice === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Practice');
+        }
+        $practice = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $practice = rename_activity(
+            $practice,
+            TRACECHAIN_ACTIVITY_PRACTICE
+        );
+        $practicecm = get_coursemodule_from_instance(
+            'scorm',
+            $practice->id,
+            $practice->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$practicecm->id} as \"".TRACECHAIN_ACTIVITY_PRACTICE."\"\n";
     }
 
     if ($challenge === false) {
@@ -170,6 +211,7 @@ function ensure_managed_activities(): array {
     }
 
     if (
+        (int)$guided->course !== (int)$practice->course ||
         (int)$guided->course !== (int)$challenge->course ||
         (int)$guided->course !== (int)$assessment->course
     ) {
@@ -178,6 +220,7 @@ function ensure_managed_activities(): array {
 
     return [
         'guided' => $guided,
+        'practice' => $practice,
         'challenge' => $challenge,
         'assessment' => $assessment,
     ];
@@ -333,12 +376,14 @@ function deploy_package(object $scorm, string $zip): void {
 
 $packages = [
     'guided' => package_from_environment('TRACECHAIN_GUIDED_PACKAGE'),
+    'practice' => package_from_environment('TRACECHAIN_PRACTICE_PACKAGE'),
     'challenge' => package_from_environment('TRACECHAIN_CHALLENGE_PACKAGE'),
     'assessment' => package_from_environment('TRACECHAIN_ASSESSMENT_PACKAGE'),
 ];
 $activities = ensure_managed_activities();
 
 deploy_package($activities['guided'], $packages['guided']);
+deploy_package($activities['practice'], $packages['practice']);
 deploy_package($activities['challenge'], $packages['challenge']);
 deploy_package($activities['assessment'], $packages['assessment']);
 

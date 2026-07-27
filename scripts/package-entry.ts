@@ -11,6 +11,8 @@ export { validateConfiguration } from "../src/config/validation";
 export { validateScenario } from "../src/domain/scenario/validate-scenario";
 export { validateVariantBank } from "../src/domain/scenario/variant-bank";
 export { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
+export { practiceAScenario } from "../src/scenarios/practice-a/scenario";
+export { practiceVariantBank } from "../src/scenarios/practice-a/variant-bank";
 export { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
 export { challengeBScenario } from "../src/scenarios/challenge-a/challenge-b";
 export { challengeCScenario } from "../src/scenarios/challenge-a/challenge-c";

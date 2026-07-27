@@ -60,7 +60,7 @@ function usage() {
   return [
     "Usage:",
     "  npm run package:scorm -- --preset guided",
-    "  npm run package:scorm -- --preset guided,challenge,assessment",
+    "  npm run package:scorm -- --preset guided,practice,challenge,assessment",
     "  npm run package:scorm -- --config configs/package.json",
     "",
     "Options:",
@@ -307,6 +307,7 @@ function loadConfigurationFile(configurationPath, definitions) {
 function scenarioMap(definitions) {
   return new Map([
     [definitions.coffeeScenario.scenarioId, definitions.coffeeScenario],
+    [definitions.practiceAScenario.scenarioId, definitions.practiceAScenario],
     [definitions.challengeAScenario.scenarioId, definitions.challengeAScenario],
   ]);
 }
@@ -315,11 +316,17 @@ function variantBankForConfiguration(configuration, definitions) {
   if (configuration.scenarioVariation.strategy !== "SEEDED_VARIANT_BANK") {
     return null;
   }
-  const bank = definitions.challengeVariantBank;
-  if (
-    bank.bankId !== configuration.scenarioVariation.bankId ||
-    bank.bankVersion !== configuration.scenarioVariation.bankVersion
-  ) {
+  const bank = [
+    definitions.practiceVariantBank,
+    definitions.challengeVariantBank,
+  ].find(
+    (candidate) =>
+      candidate.bankId ===
+        configuration.scenarioVariation.bankId &&
+      candidate.bankVersion ===
+        configuration.scenarioVariation.bankVersion,
+  );
+  if (bank === undefined) {
     throw new Error(
       `No authored variant bank is available for ` +
         `${configuration.scenarioVariation.bankId} ` +
@@ -399,6 +406,7 @@ function safeFileSegment(value) {
 
 function defaultScenarioLabel(configuration) {
   if (configuration.scenarioId === "SCN_COFFEE_001") return "StandardCoffee";
+  if (configuration.scenarioId === "SCN_COFFEE_PRACTICE") return "PracticeCase";
   if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE") return "ChallengeBank";
   return safeFileSegment(configuration.scenarioId);
 }

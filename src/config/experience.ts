@@ -14,6 +14,7 @@ import type {
 
 export type CurrentExperiencePresetId =
   | "guided"
+  | "practice"
   | "challenge"
   | "assessment"
   | "technical-lab"
@@ -35,6 +36,12 @@ const FIXED_PRESET_DIMENSIONS = {
     supportProfile: "GUIDED",
     deliveryPurpose: "FORMATIVE",
     outcomeStrategy: "FIXED",
+  },
+  practice: {
+    activityType: "OPERATIONS",
+    supportProfile: "PRACTICE",
+    deliveryPurpose: "FORMATIVE",
+    outcomeStrategy: "CURATED_VARIANT",
   },
   challenge: {
     activityType: "OPERATIONS",

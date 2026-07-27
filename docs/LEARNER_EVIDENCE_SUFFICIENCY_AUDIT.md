@@ -12,10 +12,10 @@ This report is generated from the compiled SCORM scenarios, all hosted scenario 
 
 ## Coverage summary
 
-- Audited fields: **94**
+- Audited fields: **120**
 - HOSTED: **28**
 - HOSTED_COUNTERFACTUAL: **14**
-- SCORM: **52**
+- SCORM: **78**
 - Open blocker/high findings: **0**
 
 ## Field-level inventory
@@ -116,6 +116,32 @@ This report is generated from the compiled SCORM scenarios, all hosted scenario 
 | SCORM | SCN_COFFEE_CHALLENGE@2.0.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_BLOCKCHAIN_NECESSITY | response | KNOWLEDGE | Multi-organization shared-record context and explicit blockchain limitations | PASS |
 | SCORM | SCN_COFFEE_CHALLENGE@2.0.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_COMMITTED | authorizationPath | CONSEQUENTIAL_DECISION | Active trusted organization, permitted handoffs, and regulator authorization rule | PASS |
 | SCORM | SCN_COFFEE_CHALLENGE@2.0.0 | challenge | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_SCOPE | response | KNOWLEDGE | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_01_ORIENTATION | INT_ORIENTATION_TRUTH_CHECK | response | DIAGNOSTIC | Pre-task statement distinguishing integrity from truth | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | certificateAssessment | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | issuerAssessment | CONSEQUENTIAL_DECISION | Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | lotDisposition | CONSEQUENTIAL_DECISION | Certificate scope, batch, issue date, expiry date, and decision date; Scenario-controlled issuer registry entry and permitted action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | INT_CERTIFICATE_INITIAL_SUBMITTED | storageChoice | CONSEQUENTIAL_DECISION | Off-chain document and on-chain SHA-256 integrity explanation | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REMEDIATE_STORAGE | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | REVIEW_ISSUER | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_03_ANCHOR_CERTIFICATE | MITIGATION_CERTIFICATE | SUSPEND_LOT | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFER_SCOPE | response | KNOWLEDGE | Role briefing and asset owner/custodian state | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_04_SHIP_AND_MONITOR | INT_CUSTODY_TRANSFERRED_TRANSACTION | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_04_SHIP_AND_MONITOR | INT_TRANSPORT_CONDITION | response | KNOWLEDGE | Observed humidity, permitted threshold, oracle boundary, and source dataset treatment | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_05_RECEIVE_AND_CORRECT | INT_CORRECTION_RECORDED | endorsementAction | ENDORSEMENT_JUDGMENT | Exact proposal digest, required organizations, signed state versions, and policy progress | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | action | CONSEQUENTIAL_DECISION | Committed manifest, plant weight, and append-only correction rule | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_05_RECEIVE_AND_CORRECT | INT_DISCREPANCY_INITIAL_SUBMITTED | causeCode | CONSEQUENTIAL_DECISION | Scenario-specific source-sheet and investigation evidence | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_05_RECEIVE_AND_CORRECT | MITIGATION_DISCREPANCY | INVESTIGATE_DISCREPANCY | MITIGATION | Locked initial decision, validation outcome, and authored corrective action | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_06_TRANSFORM_BATCH | INT_TRANSFORMATION_PROVENANCE | response | KNOWLEDGE | Corrected input state and transformation task briefing; Role-visible oldest-to-newest provenance graph | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_BATCH_ID | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CERTIFICATE_PDF | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_CUSTOMER_ADDRESS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_RECALL_STATUS | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_SENSOR_DATASET | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_DATA_GOVERNANCE_CLASSIFICATION | ITEM_WHOLESALE_PRICE | KNOWLEDGE | Scenario-specific shared, large-file, sensitive, and unnecessary-data criteria | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_08_VERIFY_AND_TAMPER | INT_TAMPER_DEMONSTRATION | response | KNOWLEDGE | Observed transaction, block, and chain verification results | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_09_RECALL_AND_DEBRIEF | INT_BLOCKCHAIN_NECESSITY | response | KNOWLEDGE | Multi-organization shared-record context and explicit blockchain limitations | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_COMMITTED | authorizationPath | CONSEQUENTIAL_DECISION | Active trusted organization, permitted handoffs, and regulator authorization rule | PASS |
+| SCORM | SCN_COFFEE_PRACTICE@1.0.0 | practice | STG_09_RECALL_AND_DEBRIEF | INT_RECALL_SCOPE | response | KNOWLEDGE | Laboratory incident, source lot, descendant graph, custody, and location evidence; Role-visible oldest-to-newest provenance graph | PASS |
 
 ## Findings and remediation
 

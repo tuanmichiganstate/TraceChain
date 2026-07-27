@@ -368,7 +368,7 @@ export const schemaStatements = [
     job_id TEXT PRIMARY KEY,
     creation_command_id TEXT NOT NULL UNIQUE,
     preset_id TEXT NOT NULL
-      CHECK (preset_id IN ('guided', 'challenge', 'assessment')),
+      CHECK (preset_id IN ('guided', 'practice', 'challenge', 'assessment')),
     lifecycle_status TEXT NOT NULL
       CHECK (lifecycle_status = 'completed'),
     title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 120),

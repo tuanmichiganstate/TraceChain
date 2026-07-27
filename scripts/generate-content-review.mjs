@@ -28,6 +28,8 @@ const SOURCE_FILES = [
   VI_LOCALE,
   EN_LOCALE,
   "src/scenarios/coffee-traceability/",
+  "src/scenarios/practice-a/",
+  "src/scenarios/challenge-a/",
   "src/domain/types/scenario.ts",
   "src/domain/types/enums.ts",
   "src/domain/types/scoring.ts",

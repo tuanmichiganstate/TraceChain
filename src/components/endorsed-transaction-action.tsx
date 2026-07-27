@@ -84,6 +84,14 @@ export function EndorsedTransactionAction({
   >([]);
   const [submissionFailed, setSubmissionFailed] =
     useState(false);
+  const supportProfile =
+    configuration?.configuration.supportProfile;
+  const handoffPromptKey =
+    supportProfile === "CHALLENGE"
+      ? "endorsement.handoffChallengePrompt"
+      : supportProfile === "PRACTICE"
+        ? "endorsement.handoffPracticePrompt"
+        : "endorsement.handoffGuidedPrompt";
 
   const pending = useMemo(
     () =>
@@ -508,12 +516,7 @@ export function EndorsedTransactionAction({
       availableHandoff !== null ? (
         <section className="endorsement-actions">
           <p className="muted">
-            {t(
-              configuration?.configuration.supportProfile ===
-                "CHALLENGE"
-                ? "endorsement.handoffChallengePrompt"
-                : "endorsement.handoffGuidedPrompt",
-            )}
+            {t(handoffPromptKey)}
           </p>
           <button
             type="button"
@@ -537,8 +540,7 @@ export function EndorsedTransactionAction({
             {t(
               isHandoffPending
                 ? "action.processing"
-                : configuration?.configuration.supportProfile ===
-                    "CHALLENGE"
+                : supportProfile === "CHALLENGE"
                   ? "endorsement.handoffChallenge"
                   : availableHandoff.labelKey,
             )}

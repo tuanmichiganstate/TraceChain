@@ -87,9 +87,11 @@ function packageFileName(configuration, releaseBuild) {
   const scenarioLabel =
     configuration.scenarioId === "SCN_COFFEE_001"
       ? "StandardCoffee"
-      : configuration.scenarioId === "SCN_COFFEE_CHALLENGE"
-        ? "ChallengeBank"
-        : safeFileSegment(configuration.scenarioId);
+      : configuration.scenarioId === "SCN_COFFEE_PRACTICE"
+        ? "PracticeCase"
+        : configuration.scenarioId === "SCN_COFFEE_CHALLENGE"
+          ? "ChallengeBank"
+          : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
     "TraceChain",
     safeFileSegment(preset),
@@ -101,7 +103,7 @@ function packageFileName(configuration, releaseBuild) {
 }
 
 function defaultPackagePaths() {
-  return ["guided", "challenge", "assessment"].map((presetId) => {
+  return ["guided", "practice", "challenge", "assessment"].map((presetId) => {
     const configurationPath = join(
       projectRoot,
       "dist-scorm",
@@ -901,9 +903,11 @@ function verifyPackage(zipPath) {
         variantBank.bankVersion ===
           configuration.scenarioVariation.bankVersion,
     );
+    const minimumVariantCount =
+      configuration.supportProfile === "CHALLENGE" ? 3 : 1;
     check(
-      "Variant bank contains at least three unique curated cases",
-      variantIds.length >= 3 &&
+      "Variant bank contains the required unique curated cases",
+      variantIds.length >= minimumVariantCount &&
         new Set(variantIds).size === variantIds.length &&
         new Set(caseReferences).size === caseReferences.length,
     );
@@ -1221,16 +1225,16 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 }
 
 const defaultInvocation = process.argv.length === 2;
-if (defaultInvocation && results.length === 3) {
+if (defaultInvocation && results.length === 4) {
   const presetIds = results
     .map((result) => result.configuration?.presetId)
     .sort();
   if (
     JSON.stringify(presetIds) !==
-    JSON.stringify(["assessment", "challenge", "guided"])
+    JSON.stringify(["assessment", "challenge", "guided", "practice"])
   ) {
     crossPackageErrors.push(
-      "Default verification must cover guided, challenge, and assessment packages",
+      "Default verification must cover guided, practice, challenge, and assessment packages",
     );
   }
 }

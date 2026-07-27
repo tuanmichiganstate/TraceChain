@@ -5,9 +5,12 @@ import { embedConfiguration, hashConfiguration } from "../src/config/hash";
 import {
   ASSESSMENT_PRESET,
   CHALLENGE_PRESET,
+  PRACTICE_PRESET,
 } from "../src/config/presets";
 import { challengeAScenario } from "../src/scenarios/challenge-a/scenario";
 import { challengeVariantBank } from "../src/scenarios/challenge-a/variant-bank";
+import { practiceAScenario } from "../src/scenarios/practice-a/scenario";
+import { practiceVariantBank } from "../src/scenarios/practice-a/variant-bank";
 import { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 import { ScenarioStageId } from "../src/domain/types/enums";
@@ -147,6 +150,107 @@ async function installAssessmentRuntime(page: Page): Promise<void> {
     });
   });
 }
+
+async function installPracticeRuntime(page: Page): Promise<void> {
+  const mediaManifest = {
+    schemaVersion: "1",
+    scenarioId: practiceAScenario.scenarioId,
+    scenarioVersion: practiceAScenario.scenarioVersion,
+    assets: practiceAScenario.portraitAssets,
+  };
+  await page.route("**/tracechain.config.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(embedConfiguration(PRACTICE_PRESET)),
+    });
+  });
+  await page.route("**/scenario.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(practiceAScenario),
+    });
+  });
+  await page.route(
+    "**/scenario-variant-bank.json",
+    async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(practiceVariantBank),
+      });
+    },
+  );
+  await page.route("**/media-manifest.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(mediaManifest),
+    });
+  });
+  await page.route("**/build-info.json", async (route) => {
+    const response = await route.fetch();
+    const buildInformation = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...buildInformation,
+        scenarioHash: sha256Hex(
+          `${JSON.stringify(practiceAScenario, null, 2)}\n`,
+        ),
+        portraitMediaManifestHash: sha256Hex(
+          `${JSON.stringify(mediaManifest, null, 2)}\n`,
+        ),
+        portraitMediaHashes: Object.fromEntries(
+          practiceAScenario.portraitAssets.map((asset) => [
+            asset.filePath,
+            asset.sha256,
+          ]),
+        ),
+        variantBankId: practiceVariantBank.bankId,
+        variantBankVersion: practiceVariantBank.bankVersion,
+        variantBankHash: sha256Hex(
+          `${JSON.stringify(practiceVariantBank, null, 2)}\n`,
+        ),
+        variantContentHashes: Object.fromEntries(
+          practiceVariantBank.variants.map((variant) => [
+            variant.metadata.variantId,
+            variant.metadata.contentHash,
+          ]),
+        ),
+      }),
+    });
+  });
+}
+
+test("loads independent Practice with optional support and immediate feedback", async ({
+  page,
+}) => {
+  await installScormApi(page);
+  await installPracticeRuntime(page);
+  await page.goto("/");
+  const activity = new Activity(page);
+
+  await expect(page.getByText("PR-01", { exact: true })).toBeVisible();
+  await activity.start();
+  const support = page.locator("details.operations-support");
+  await expect(
+    support.getByText("Bằng chứng nên kiểm tra"),
+  ).toBeHidden();
+  await support
+    .getByText("Xem gợi ý về bằng chứng và quy tắc")
+    .click();
+  await expect(
+    support.getByText("Bằng chứng nên kiểm tra"),
+  ).toBeVisible();
+
+  await activity.answer(/Có\. Dữ liệu đã ghi lên blockchain/);
+  await expect(
+    page.getByRole("status").getByText("Chưa đúng", {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
 
 test("loads Assessment with no hints and final-only feedback", async ({
   page,

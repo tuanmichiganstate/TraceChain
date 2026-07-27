@@ -20,6 +20,7 @@ export type OutcomeStrategy =
 
 export type LearningPresetId =
   | "guided"
+  | "practice"
   | "challenge"
   | "assessment"
   | "technical-lab";

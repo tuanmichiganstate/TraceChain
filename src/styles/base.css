@@ -148,6 +148,24 @@ li { margin-bottom: var(--space-2); }
   box-shadow: none;
 }
 
+.operations-support summary {
+  color: var(--colour-navy);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.operations-support__content {
+  margin-top: var(--space-4);
+}
+
+.operations-support__content h4 {
+  margin-bottom: var(--space-1);
+}
+
+.operations-support__content p {
+  margin-bottom: 0;
+}
+
 .notice {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-medium);

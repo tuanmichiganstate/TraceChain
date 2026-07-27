@@ -8,6 +8,7 @@ require_once($CFG->libdir.'/gradelib.php');
 $mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
 $activitynames = [
     'guided' => 'TraceChain Guided',
+    'practice' => 'TraceChain Practice',
     'challenge' => 'TraceChain Challenge',
     'assessment' => 'TraceChain Assessment',
 ];

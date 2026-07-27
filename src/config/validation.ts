@@ -39,6 +39,7 @@ const OUTCOME_STRATEGIES = new Set([
 ]);
 const BUSINESS_PRESETS = new Set([
   "guided",
+  "practice",
   "challenge",
   "assessment",
 ]);
@@ -675,6 +676,7 @@ function validateDimensions(
     typeof value.presetId === "string" &&
     [
       "guided",
+      "practice",
       "challenge",
       "assessment",
       "technical-lab",
@@ -683,6 +685,7 @@ function validateDimensions(
     const expected = resolveProductDimensions(
       value.presetId as
         | "guided"
+        | "practice"
         | "challenge"
         | "assessment"
         | "technical-lab",
@@ -827,12 +830,63 @@ function validateBusinessConfiguration(
     );
   }
   if (
+    value.presetId === "practice" &&
+    value.scenarioId !== "SCN_COFFEE_PRACTICE"
+  ) {
+    issue(
+      "scenarioId",
+      "practice preset requires the curated Practice case",
+    );
+  }
+  if (
     value.presetId === "challenge" &&
     value.scenarioId !== "SCN_COFFEE_CHALLENGE"
   ) {
     issue(
       "scenarioId",
       "challenge preset requires the curated Challenge bank",
+    );
+  }
+
+  const presetId = String(value.presetId);
+  if (
+    ["guided", "practice"].includes(presetId) &&
+    isObject(value.feedback) &&
+    value.feedback.timing !== "IMMEDIATE"
+  ) {
+    issue(
+      "feedback.timing",
+      `${presetId} delivery requires immediate feedback`,
+    );
+  }
+  if (
+    presetId === "challenge" &&
+    isObject(value.feedback) &&
+    value.feedback.timing !== "STAGE_END"
+  ) {
+    issue(
+      "feedback.timing",
+      "challenge delivery requires stage-end feedback",
+    );
+  }
+  if (
+    ["guided", "practice"].includes(presetId) &&
+    isObject(value.hints) &&
+    value.hints.availability !== "ENABLED"
+  ) {
+    issue(
+      "hints.availability",
+      `${presetId} delivery requires enabled hints`,
+    );
+  }
+  if (
+    presetId === "challenge" &&
+    isObject(value.hints) &&
+    value.hints.availability !== "LIMITED"
+  ) {
+    issue(
+      "hints.availability",
+      "challenge delivery requires limited hints",
     );
   }
 }

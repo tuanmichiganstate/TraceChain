@@ -57,7 +57,11 @@ const INSERT_COMPLETED = `INSERT INTO scorm_package_jobs (
 interface JobRow {
   readonly job_id: string;
   readonly creation_command_id: string;
-  readonly preset_id: "guided" | "challenge" | "assessment";
+  readonly preset_id:
+    | "guided"
+    | "practice"
+    | "challenge"
+    | "assessment";
   readonly lifecycle_status: "completed";
   readonly title: string;
   readonly filename: string;
@@ -140,7 +144,9 @@ function validateArtifact(
   artifact: HostedScormPackageArtifactV1,
 ): void {
   if (
-    !["guided", "challenge", "assessment"].includes(artifact.presetId) ||
+    !["guided", "practice", "challenge", "assessment"].includes(
+      artifact.presetId,
+    ) ||
     artifact.title.length < 1 ||
     artifact.title.length > 120 ||
     !artifact.filename.endsWith(".zip") ||
@@ -152,7 +158,7 @@ function validateArtifact(
     !artifact.downloadPath.startsWith("/scorm-packages/") ||
     artifact.configurationSchemaVersion !== "2" ||
     artifact.activityType !== "OPERATIONS" ||
-    !["GUIDED", "CHALLENGE"].includes(
+    !["GUIDED", "PRACTICE", "CHALLENGE"].includes(
       artifact.supportProfile,
     ) ||
     !["FORMATIVE", "ASSESSMENT"].includes(

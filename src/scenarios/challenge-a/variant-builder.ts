@@ -21,12 +21,17 @@ type DiscrepancyCause =
   SubmitDiscrepancyDecisionCommand["causeCode"];
 
 export interface ChallengeVariantSpec {
-  readonly identifierSuffix: "CA01" | "CB01" | "CC01";
+  readonly identifierSuffix:
+    | "PA01"
+    | "CA01"
+    | "CB01"
+    | "CC01";
   readonly manifestQuantityKg: number;
   readonly receivedQuantityKg: number;
   readonly roastedQuantityKg: number;
   readonly packageCount: number;
   readonly instructionKeyPrefix:
+    | "stage.practiceA"
     | "stage.challengeA"
     | "stage.challengeB"
     | "stage.challengeC";

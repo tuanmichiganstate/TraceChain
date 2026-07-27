@@ -76,10 +76,24 @@ export function StartScreen(): ReactNode {
           state.variantAssignment !== undefined ? (
             <div className="notice" role="note">
               <p>
-                <strong>{t("start.challengeCaseLabel")}</strong>{" "}
+                <strong>
+                  {t(
+                    packageConfiguration.configuration
+                      .supportProfile === "PRACTICE"
+                      ? "start.practiceCaseLabel"
+                      : "start.challengeCaseLabel",
+                  )}
+                </strong>{" "}
                 <code>{state.variantAssignment.caseReference}</code>
               </p>
-              <p>{t("start.challengeCaseNotice")}</p>
+              <p>
+                {t(
+                  packageConfiguration.configuration
+                    .supportProfile === "PRACTICE"
+                    ? "start.practiceCaseNotice"
+                    : "start.challengeCaseNotice",
+                )}
+              </p>
             </div>
           ) : null}
         </div>

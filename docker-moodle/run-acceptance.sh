@@ -52,7 +52,7 @@ fi
   /tmp/acceptance.php /tmp/acceptance-cleanup.php
 
 trap cleanup_on_exit EXIT
-for active_mode in guided challenge assessment; do
+for active_mode in guided practice challenge assessment; do
   echo "--- acceptance $active_mode ---"
   run_as_daemon /tmp/acceptance.php
   echo "--- cleanup $active_mode ---"
@@ -60,4 +60,4 @@ for active_mode in guided challenge assessment; do
   active_mode=""
 done
 trap - EXIT
-echo "MOODLE GUIDED + CHALLENGE + ASSESSMENT ACCEPTANCE PASSED"
+echo "MOODLE GUIDED + PRACTICE + CHALLENGE + ASSESSMENT ACCEPTANCE PASSED"

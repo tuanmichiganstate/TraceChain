@@ -7,13 +7,13 @@ Build all packages and deploy them into separate activities:
     ./docker-moodle/deploy.sh --no-build   # deploy current packages, reset all
 
 The first run adopts the existing activity as `TraceChain Guided` and creates
-`TraceChain Challenge` and `TraceChain Assessment` beside it. Later runs update
-those three stable activities. Each deployment clears attempts, grades, and
+`TraceChain Practice`, `TraceChain Challenge`, and `TraceChain Assessment`
+beside it. Later runs update those four stable activities. Each deployment clears attempts, grades, and
 completion state for all activities, then goes through `scorm_parse()` to
 extract each package and bump its cache revision. Every ZIP entry is checked
 against Moodle's content area, so partial extraction fails immediately.
 
-The deployment only manages those three named activities. It will not guess when
+The deployment only manages those four named activities. It will not guess when
 several unnamed SCORM activities already exist.
 
 ## Moodle acceptance pass

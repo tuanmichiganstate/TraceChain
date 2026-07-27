@@ -5,6 +5,7 @@ import {
   CHALLENGE_PRESET,
   GUIDED_PRESET,
   LECTURER_PRESETS,
+  PRACTICE_PRESET,
 } from "./presets";
 import { embedConfiguration, hashConfiguration } from "./hash";
 import { validateConfiguration } from "./validation";
@@ -94,6 +95,12 @@ describe("TraceChain configuration", () => {
 
   it("makes every shipped configuration identity distinct", () => {
     expect(hashConfiguration(GUIDED_PRESET)).not.toBe(hashConfiguration(CHALLENGE_PRESET));
+    expect(hashConfiguration(PRACTICE_PRESET)).not.toBe(
+      hashConfiguration(GUIDED_PRESET),
+    );
+    expect(hashConfiguration(PRACTICE_PRESET)).not.toBe(
+      hashConfiguration(CHALLENGE_PRESET),
+    );
     expect(hashConfiguration(ASSESSMENT_PRESET)).not.toBe(
       hashConfiguration(GUIDED_PRESET),
     );

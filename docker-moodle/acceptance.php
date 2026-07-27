@@ -15,6 +15,7 @@ $MID  = 'TC3.' . str_repeat('B', 220) . '.00000000';
 $mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
 $activitynames = [
     'guided' => 'TraceChain Guided',
+    'practice' => 'TraceChain Practice',
     'challenge' => 'TraceChain Challenge',
     'assessment' => 'TraceChain Assessment',
 ];

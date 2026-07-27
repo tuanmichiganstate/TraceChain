@@ -9,7 +9,7 @@ transferring custody and ownership separately, anchoring documents off-chain,
 correcting a committed error without deleting it, transforming and packaging,
 and tracing provenance forwards and backwards.
 
-The shipped Guided and curated Challenge-bank presets use **Vietnamese**; the same
+The shipped Guided, curated Practice, and Challenge-bank presets use **Vietnamese**; the same
 localization system also contains English. All code, identifiers, comments,
 tests and documentation are **English**.
 
@@ -20,8 +20,8 @@ mining. The interface says so on every screen.
 
 ## Status
 
-Version 2 implements the complete nine-stage activity as configurable Guided
-and curated Challenge-bank packages, including atomic consequential decisions,
+Version 2 implements the complete nine-stage activity as configurable Guided,
+curated Practice, and Challenge-bank packages, including atomic consequential decisions,
 trusted role handoff, append-only correction, deterministic TC3 replay, and a
 causal final report. Genuine Ed25519 proposal and endorsement signatures,
 scenario-authored authorization, and constrained endorsement-policy evaluation
@@ -39,6 +39,9 @@ Operations, Audit, Blockchain Inspector, professional-decision, finding, and
 persistent-result workspace architecture. The prototypes are intentionally not
 rolled into every learner screen until their recognition review is complete;
 see `docs/PRODUCT_MODES_PHASE_2.md`.
+Phase 3 makes Guided, Practice, and Challenge explicit Operations support
+profiles and adds one curated Practice bridge case without introducing another
+simulation engine or scoring contract; see `docs/PRODUCT_MODES_PHASE_3.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -129,12 +132,12 @@ second score or a generic game currency.
 | | |
 |---|---|
 | Domain | complete — all 12 transaction types and the full rule registry |
-| Scenario | complete — one shared engine, fixed Standard Coffee and three curated Challenge cases |
+| Scenario | complete — one shared engine, fixed Standard Coffee, one curated Practice case, and three curated Challenge cases |
 | Cryptographic evidence | real Ed25519 proposal and endorsement signatures; simulated educational identities and key custody |
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
 | Content review | deterministic bilingual pack; human Vietnamese review remains open |
-| SCORM package | one-build guided/challenge generation with cross-package byte verification |
+| SCORM package | one-build guided/practice/challenge/assessment generation with cross-package byte verification |
 | Moodle | Docker acceptance covers storage, grading, forced failure, and cleanup |
 
 Stage order, trusted contexts, role handoffs, completion conditions, knowledge
@@ -160,7 +163,7 @@ For a clean release tree:
 
 ```bash
 npm run package:scorm -- --preset guided
-npm run package:scorm -- --preset guided,challenge,assessment
+npm run package:scorm -- --preset guided,practice,challenge,assessment
 ```
 
 For local verification of all accepted presets from an existing build:
@@ -172,11 +175,12 @@ npm run verify:scorm
 ```
 
 Strict release generation produces
-`TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip` and
+`TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip`,
+`TraceChain_Practice_PracticeCase_vi_v1.0.0.zip`,
 `TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
 `TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`. The local command appends
 `_NON_RELEASE` to every archive name. The Docker demo selects the current
-Guided, Challenge, and Assessment archives by their embedded build metadata,
+Guided, Practice, Challenge, and Assessment archives by their embedded build metadata,
 deploys them into separate reset activities, and ignores stale ZIPs.
 Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
@@ -225,6 +229,7 @@ src/
 │   └── scenario-packs validation and immutable publication
 ├── scenarios/
 │   ├── coffee-traceability/
+│   ├── practice-a/
 │   └── challenge-a/
 ├── features/          one folder per stage + the stage registry
 ├── components/        shared UI
@@ -259,8 +264,8 @@ schemas/               published versioned JSON Schemas
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
-| `npm run build:scorm` | Build all three local non-release preset packages |
-| `npm run verify:scorm` | Validate all three packages and their shared static build |
+| `npm run build:scorm` | Build all four local non-release preset packages |
+| `npm run verify:scorm` | Validate all four packages and their shared static build |
 | `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 
@@ -276,6 +281,8 @@ schemas/               published versioned JSON Schemas
   and endorsement policies
 - `docs/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md` — the approved stopping
   point B roadmap for the hosted instructor-ready platform
+- `docs/PRODUCT_MODES_PHASE_3.md` — the implemented Operations support
+  profiles, curated Practice case, persistence contract, and acceptance gates
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
 - `docs/SCENARIO_PACK_V1.md` — the V1.6 pack schema, validation, publication,

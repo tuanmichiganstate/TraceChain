@@ -9,6 +9,7 @@ import {
 
 export type LecturerPresetId =
   | "guided"
+  | "practice"
   | "challenge"
   | "assessment";
 
@@ -83,6 +84,53 @@ export const GUIDED_PRESET: BusinessSimulationConfiguration = {
     optionOrdering: "FIXED",
     attemptPolicy: "STABLE_WITHIN_ATTEMPT",
     displayCaseReferenceToLearner: false,
+  },
+};
+
+const PRACTICE_DIMENSIONS =
+  resolveProductDimensions("practice");
+
+export const PRACTICE_PRESET: BusinessSimulationConfiguration = {
+  ...COMMON,
+  presetId: "practice",
+  ...PRACTICE_DIMENSIONS,
+  content: {
+    packId: "PACK_SCORM_PRACTICE_COFFEE",
+    packVersion: "1.0.0",
+    scenarioId: "SCN_COFFEE_PRACTICE",
+    scenarioVersion: "1.0.0",
+    variantBankId: "BANK_COFFEE_PRACTICE_V1",
+    variantBankVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor(
+    PRACTICE_DIMENSIONS.supportProfile,
+  ),
+  feedback: feedbackPolicyFor("IMMEDIATE"),
+  hints: hintPolicyFor(
+    "ENABLED",
+    PRACTICE_DIMENSIONS.supportProfile,
+  ),
+  retries: retryPolicyFor(
+    PRACTICE_DIMENSIONS.supportProfile,
+    PRACTICE_DIMENSIONS.deliveryPurpose,
+  ),
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    attemptPolicyId: "LMS_MANAGED",
+  },
+  scenarioId: "SCN_COFFEE_PRACTICE",
+  scenarioVersion: "1.0.0",
+  scenarioSeed: "practice-bank-v1",
+  difficulty: "intermediate",
+  scenarioVariation: {
+    strategy: "SEEDED_VARIANT_BANK",
+    bankId: "BANK_COFFEE_PRACTICE_V1",
+    bankVersion: "1.0.0",
+    selectionAlgorithmVersion: "1",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: true,
   },
 };
 
@@ -183,6 +231,7 @@ export const LECTURER_PRESETS: Readonly<
   Record<LecturerPresetId, BusinessSimulationConfiguration>
 > = {
   guided: GUIDED_PRESET,
+  practice: PRACTICE_PRESET,
   challenge: CHALLENGE_PRESET,
   assessment: ASSESSMENT_PRESET,
 };

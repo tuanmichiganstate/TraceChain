@@ -267,10 +267,15 @@ async function loadScormScenarios(root) {
 }
 
 export async function buildLearnerInteractionInventory(root = projectRoot) {
-  const { coffeeScenario, challengeAScenario } =
+  const {
+    coffeeScenario,
+    practiceAScenario,
+    challengeAScenario,
+  } =
     await loadScormScenarios(root);
   const items = [
     ...scormInventory(coffeeScenario, ["guided", "assessment"]),
+    ...scormInventory(practiceAScenario, ["practice"]),
     ...scormInventory(challengeAScenario, ["challenge"]),
   ];
   for (const relativePath of hostedPackPaths) {

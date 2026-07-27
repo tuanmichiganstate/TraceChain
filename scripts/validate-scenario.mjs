@@ -66,11 +66,14 @@ try {
   const module = await import(pathToFileURL(bundlePath).href);
   const {
     coffeeScenario,
+    practiceAScenario,
     challengeAScenario,
     challengeBScenario,
     challengeCScenario,
     challengeVariantBank,
+    practiceVariantBank,
     CHALLENGE_PRESET,
+    PRACTICE_PRESET,
     validateScenario,
     validateVariantBank,
     ALL_SCENARIO_DATES,
@@ -84,6 +87,7 @@ try {
 
   const scenarios = [
     coffeeScenario,
+    practiceAScenario,
     challengeAScenario,
     challengeBScenario,
     challengeCScenario,
@@ -110,6 +114,20 @@ try {
   check(
     "Challenge variant bank passes its shared replay and scoring contract",
     bankResult.isValid,
+  );
+  const practiceBankResult = validateVariantBank({
+    bank: practiceVariantBank,
+    configuration: PRACTICE_PRESET,
+  });
+  checkedCount += practiceBankResult.issues.length + 1;
+  for (const issue of practiceBankResult.issues) {
+    const line = `${practiceVariantBank.bankId}.${issue.path}: ${issue.message}`;
+    if (issue.severity === "ERROR") errors.push(line);
+    else warnings.push(line);
+  }
+  check(
+    "Practice case passes its shared replay and scoring contract",
+    practiceBankResult.isValid,
   );
 
   // ---- Timeline ordering ----------------------------------------------

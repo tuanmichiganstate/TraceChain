@@ -1,5 +1,6 @@
 export type ScormPackagePresetId =
   | "guided"
+  | "practice"
   | "challenge"
   | "assessment";
 
