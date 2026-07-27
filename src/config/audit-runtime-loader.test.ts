@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import packJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import challengePackJson from "../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
 import { publishScenarioPack } from "../platform/scenario-packs/publication";
 import { validateScenarioPack } from "../platform/scenario-packs/validation";
 import { embedConfiguration } from "./hash";
-import { AUDIT_GUIDED_PRESET } from "./presets";
+import {
+  AUDIT_CHALLENGE_PRESET,
+  AUDIT_GUIDED_PRESET,
+} from "./presets";
 import {
   loadAuditRuntimePackage,
 } from "./audit-runtime-loader";
@@ -28,7 +32,7 @@ function files() {
       auditScenarioPackHash: sha256Hex(source),
       auditScenarioPackContentHash:
         pack.publication?.contentHash,
-      auditPersistenceSchemaVersion: "TA1",
+      auditPersistenceSchemaVersion: "TA2",
     },
   } as const;
 }
@@ -43,8 +47,33 @@ function fetcher(
   });
 }
 
+function challengeFiles() {
+  const validation = validateScenarioPack(
+    structuredClone(challengePackJson),
+  );
+  if (!validation.isValid) {
+    throw new Error("Audit Challenge fixture is invalid.");
+  }
+  const pack = publishScenarioPack(validation.pack, {
+    publishedAt: "2026-07-27T03:00:00.000Z",
+    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+  });
+  const source = `${JSON.stringify(pack, null, 2)}\n`;
+  return {
+    "./tracechain.config.json":
+      embedConfiguration(AUDIT_CHALLENGE_PRESET),
+    "./audit-scenario-pack.json": pack,
+    "./build-info.json": {
+      auditScenarioPackHash: sha256Hex(source),
+      auditScenarioPackContentHash:
+        pack.publication?.contentHash,
+      auditPersistenceSchemaVersion: "TA2",
+    },
+  } as const;
+}
+
 describe("Audit runtime package loader", () => {
-  it("loads one exact published Audit case and its TA1 metadata", async () => {
+  it("loads one exact published Audit case and its TA2 metadata", async () => {
     const runtime = await loadAuditRuntimePackage(
       fetcher(files()),
     );
@@ -72,5 +101,21 @@ describe("Audit runtime package loader", () => {
         }),
       ),
     ).rejects.toThrow(/metadata/iu);
+  });
+
+  it("loads the immutable Audit Challenge bank without selecting a new case", async () => {
+    const runtime = await loadAuditRuntimePackage(
+      fetcher(challengeFiles()),
+    );
+
+    expect(runtime.variantBank?.bankId).toBe(
+      AUDIT_CHALLENGE_PRESET.scenarioVariation.strategy ===
+        "SEEDED_VARIANT_BANK"
+        ? AUDIT_CHALLENGE_PRESET.scenarioVariation.bankId
+        : "",
+    );
+    expect(runtime.scenario.scenarioId).toBe(
+      runtime.variantBank?.variants[0]?.scenarioId,
+    );
   });
 });

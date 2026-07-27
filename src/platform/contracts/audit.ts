@@ -81,8 +81,94 @@ export interface AuditScoringBlueprintV1 {
   }[];
 }
 
+export type AuditVariantBankStatusV1 =
+  | "DRAFT"
+  | "EXPERT_REVIEWED"
+  | "PILOT_CALIBRATED"
+  | "RETIRED";
+
+export interface AuditVariantEquivalenceBlueprintV1 {
+  readonly blueprintId: string;
+  readonly version: string;
+  readonly targetCompetencyIndicatorIds: readonly string[];
+  readonly scorableItemRoles: readonly {
+    readonly scorableItemId:
+      AuditScoringBlueprintV1["items"][number]["scorableItemId"];
+    readonly maximumScore: number;
+  }[];
+  readonly maximumScore: 100;
+  readonly passScore: number;
+  readonly evidenceRoles: readonly string[];
+  readonly materialFindingCount: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly decoyCount: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly evidenceItemCount: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly policyCount: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly estimatedMinutes: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly complexityBand: "INTERMEDIATE";
+  readonly reportBurden: "COMPLETE_AUDIT_CONCLUSION";
+}
+
+export interface AuditVariantDefinitionV1 {
+  readonly variantId: string;
+  readonly variantVersion: string;
+  readonly caseReference: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly auditCaseId: string;
+  readonly auditCaseVersion: string;
+  readonly contentHash: string;
+  readonly answerPatternHash: string;
+  readonly estimatedMinutes: number;
+  readonly complexityBand: "INTERMEDIATE";
+}
+
+export interface AuditVariantBankDefinitionV1 {
+  readonly bankId: string;
+  readonly bankVersion: string;
+  readonly status: AuditVariantBankStatusV1;
+  readonly title: LocalizedText;
+  readonly description: LocalizedText;
+  readonly supportedPurposes: readonly (
+    | "CHALLENGE_FORMATIVE"
+    | "ASSESSMENT"
+  )[];
+  readonly blueprint: AuditVariantEquivalenceBlueprintV1;
+  readonly variants: readonly AuditVariantDefinitionV1[];
+}
+
+export interface AuditVariantAssignmentV1 {
+  readonly bankId: string;
+  readonly bankVersion: string;
+  readonly variantIndex: number;
+  readonly variantId: string;
+  readonly variantVersion: string;
+  readonly variantContentHash: string;
+  readonly attemptSeed: string;
+  readonly selectionAlgorithmVersion: "1";
+  readonly caseReference: string;
+  readonly assignmentSource:
+    | "SCORM_ATTEMPT"
+    | "STANDALONE_ATTEMPT"
+    | "HOSTED_ASSIGNMENT";
+}
+
 export interface AuditCaseDefinitionV1 {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly auditCaseId: string;
   readonly version: string;
   readonly sourceProcessId: string;
@@ -116,7 +202,11 @@ export interface AuditCaseDefinitionV1 {
   readonly findingDefinitions: readonly AuditFindingDefinitionV1[];
   readonly decoyDefinitions: readonly AuditDecoyDefinitionV1[];
   readonly scoringBlueprint: AuditScoringBlueprintV1;
-  readonly supportProfiles: readonly ("GUIDED" | "PRACTICE")[];
+  readonly supportProfiles: readonly (
+    | "GUIDED"
+    | "PRACTICE"
+    | "CHALLENGE"
+  )[];
   readonly inputLimits: {
     readonly maximumDrafts: 1;
     readonly maximumDraftRecords: 1;
@@ -204,7 +294,11 @@ export interface AuditLearnerProjectionV1 {
   readonly sourceProcessId: string;
   readonly sourceProcessVersion: string;
   readonly sourceStateHash: string;
-  readonly supportProfile: "GUIDED" | "PRACTICE";
+  readonly variantAssignment?: AuditVariantAssignmentV1;
+  readonly supportProfile:
+    | "GUIDED"
+    | "PRACTICE"
+    | "CHALLENGE";
   readonly scopeViewed: boolean;
   readonly objective: LearnerRunLocalizedTextV1;
   readonly scope: {

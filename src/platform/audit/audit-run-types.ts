@@ -3,6 +3,7 @@ import type { TrustedExecutionContext } from "../../domain/simulation/types";
 import type {
   AuditConclusionSubmissionV1,
   AuditFindingSubmissionV1,
+  AuditVariantAssignmentV1,
 } from "../contracts/audit";
 import type { JsonObject } from "../contracts/json";
 import type { HostedRunModeConfigurationV1 } from "../contracts/scenario-pack";
@@ -30,6 +31,7 @@ export interface AuditHostedRunStateV1 {
   readonly auditCaseId: string;
   readonly auditCaseVersion: string;
   readonly sourceStateHash: string;
+  readonly variantAssignment?: AuditVariantAssignmentV1;
   readonly modeConfiguration: HostedRunModeConfigurationV1;
   readonly experienceConfiguration:
     TraceChainExperienceConfigurationV2;

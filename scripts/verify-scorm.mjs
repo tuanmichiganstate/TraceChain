@@ -97,6 +97,9 @@ function packageFileName(configuration, releaseBuild) {
             : configuration.scenarioId ===
                 "SCN_PRACTICE_COFFEE_AUDIT"
               ? "PracticeCoffeeAudit"
+              : configuration.scenarioId ===
+                  "SCN_COFFEE_AUDIT_CHALLENGE_BANK"
+                ? "ChallengeCoffeeAuditBank"
           : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
     "TraceChain",
@@ -116,6 +119,8 @@ function defaultPackagePaths() {
     "assessment",
     "audit-guided",
     "audit-practice",
+    "audit-challenge",
+    "audit-assessment",
   ].map((presetId) => {
     const configurationPath = join(
       projectRoot,
@@ -910,11 +915,33 @@ function verifyPackage(zipPath) {
       auditPack = JSON.parse(
         zip.readAsText("audit-scenario-pack.json"),
       );
-      scenario = auditPack.scenarios?.find(
-        (candidate) =>
-          candidate.scenarioId === configuration.scenarioId &&
-          candidate.version === configuration.scenarioVersion,
-      );
+      if (
+        configuration.scenarioVariation?.strategy ===
+        "SEEDED_VARIANT_BANK"
+      ) {
+        variantBank = auditPack.auditVariantBanks?.find(
+          (candidate) =>
+            candidate.bankId ===
+              configuration.scenarioVariation.bankId &&
+            candidate.bankVersion ===
+              configuration.scenarioVariation.bankVersion,
+        );
+        const representative = variantBank?.variants?.[0];
+        scenario = auditPack.scenarios?.find(
+          (candidate) =>
+            candidate.scenarioId ===
+              representative?.scenarioId &&
+            candidate.version ===
+              representative?.scenarioVersion,
+        );
+      } else {
+        scenario = auditPack.scenarios?.find(
+          (candidate) =>
+            candidate.scenarioId === configuration.scenarioId &&
+            candidate.version ===
+              configuration.scenarioVersion,
+        );
+      }
     } catch {
       // Reported below.
     }
@@ -945,7 +972,7 @@ function verifyPackage(zipPath) {
       .digest("hex");
     check(
       "Audit pack is the exact immutable configured content",
-      auditPack.schemaVersion === "1.8.0" &&
+      auditPack.schemaVersion === "1.9.0" &&
         auditPack.status === "published" &&
         auditPack.packId === configuration.content?.packId &&
         auditPack.version === configuration.content?.packVersion &&
@@ -953,25 +980,41 @@ function verifyPackage(zipPath) {
     );
     check(
       "Audit scenario and case identity match configuration",
-      scenario?.scenarioId === configuration.scenarioId &&
-        scenario?.version === configuration.scenarioVersion &&
-        scenario?.auditCase?.auditCaseId ===
-          configuration.auditCaseId &&
-        scenario?.auditCase?.version ===
-          configuration.auditCaseVersion &&
+      (variantBank !== null
+        ? variantBank.variants?.some(
+            (variant) =>
+              variant.scenarioId === scenario?.scenarioId &&
+              variant.scenarioVersion === scenario?.version &&
+              variant.auditCaseId ===
+                scenario?.auditCase?.auditCaseId &&
+              variant.auditCaseVersion ===
+                scenario?.auditCase?.version,
+          )
+        : scenario?.scenarioId === configuration.scenarioId &&
+          scenario?.version === configuration.scenarioVersion &&
+          scenario?.auditCase?.auditCaseId ===
+            configuration.auditCaseId &&
+          scenario?.auditCase?.version ===
+            configuration.auditCaseVersion) &&
         scenario?.hostedRuntime?.runtimeId ===
           "tracechain-audit-v1",
     );
     check(
       "Audit scoring contract matches configuration",
-      scenario?.auditCase?.scoringBlueprint?.scoringBlueprintId ===
-        configuration.scoring?.scoringBlueprintId &&
-        scenario?.auditCase?.scoringBlueprint?.version ===
-          configuration.scoring?.scoringBlueprintVersion &&
-        scenario?.auditCase?.scoringBlueprint?.maximumScore ===
-          configuration.scoring?.maximumScore &&
-        scenario?.auditCase?.scoringBlueprint?.passScore ===
-          configuration.scoring?.passScore,
+      variantBank !== null
+        ? variantBank.blueprint?.maximumScore ===
+            configuration.scoring?.maximumScore &&
+          variantBank.blueprint?.passScore ===
+            configuration.scoring?.passScore
+        : scenario?.auditCase?.scoringBlueprint
+              ?.scoringBlueprintId ===
+            configuration.scoring?.scoringBlueprintId &&
+          scenario?.auditCase?.scoringBlueprint?.version ===
+            configuration.scoring?.scoringBlueprintVersion &&
+          scenario?.auditCase?.scoringBlueprint?.maximumScore ===
+            configuration.scoring?.maximumScore &&
+          scenario?.auditCase?.scoringBlueprint?.passScore ===
+            configuration.scoring?.passScore,
     );
     check(
       "Audit compact persistence is explicitly bounded",
@@ -1004,7 +1047,7 @@ function verifyPackage(zipPath) {
     );
     check(
       "Audit runtime bytes and content identity match build metadata",
-      buildInformation?.auditPersistenceSchemaVersion === "TA1" &&
+      buildInformation?.auditPersistenceSchemaVersion === "TA2" &&
         buildInformation?.auditScenarioPackHash ===
           createHash("sha256")
             .update(
@@ -1023,16 +1066,25 @@ function verifyPackage(zipPath) {
   check(
     "Variant-bank runtime presence matches configuration",
     usesVariantBank
-      ? entryNames.includes("scenario-variant-bank.json") &&
+      ? isAudit
+        ? !entryNames.includes("scenario-variant-bank.json") &&
+          variantBank !== null
+        : entryNames.includes("scenario-variant-bank.json") &&
           variantBank !== null
       : !entryNames.includes("scenario-variant-bank.json"),
   );
   if (usesVariantBank && variantBank !== null) {
     const variantIds = variantBank.variants?.map(
-      (variant) => variant?.metadata?.variantId,
+      (variant) =>
+        isAudit
+          ? variant?.variantId
+          : variant?.metadata?.variantId,
     ) ?? [];
     const caseReferences = variantBank.variants?.map(
-      (variant) => variant?.metadata?.caseReference,
+      (variant) =>
+        isAudit
+          ? variant?.caseReference
+          : variant?.metadata?.caseReference,
     ) ?? [];
     check(
       "Variant bank identity matches configuration",
@@ -1051,28 +1103,52 @@ function verifyPackage(zipPath) {
     );
     check(
       "Every variant matches the configured scenario family",
-      variantBank.variants.every(
-        (variant) =>
-          variant?.scenario?.scenarioId ===
-            configuration.scenarioId &&
-          variant?.scenario?.scenarioVersion ===
-            configuration.scenarioVersion,
-      ),
+      isAudit
+        ? variantBank.variants.every((variant) =>
+            auditPack.scenarios?.some(
+              (candidate) =>
+                candidate.scenarioId === variant.scenarioId &&
+                candidate.version === variant.scenarioVersion &&
+                candidate.auditCase?.auditCaseId ===
+                  variant.auditCaseId &&
+                candidate.auditCase?.version ===
+                  variant.auditCaseVersion,
+            ),
+          )
+        : variantBank.variants.every(
+            (variant) =>
+              variant?.scenario?.scenarioId ===
+                configuration.scenarioId &&
+              variant?.scenario?.scenarioVersion ===
+                configuration.scenarioVersion,
+          ),
     );
     check(
       "Every canonical variant hash matches its scenario",
-      variantBank.variants.every(
-        (variant) =>
-          variant?.metadata?.contentHash ===
+      variantBank.variants.every((variant) => {
+        const variantScenario = isAudit
+          ? auditPack.scenarios?.find(
+              (candidate) =>
+                candidate.scenarioId === variant.scenarioId &&
+                candidate.version === variant.scenarioVersion,
+            )
+          : variant.scenario;
+        return (
+          (isAudit
+            ? variant?.contentHash
+            : variant?.metadata?.contentHash) ===
           createHash("sha256")
             .update(
               canonicalize({
-                domain: "TRACECHAIN_SCENARIO_VARIANT_V1",
-                scenario: variant.scenario,
+                domain: isAudit
+                  ? "TRACECHAIN_AUDIT_VARIANT_V1"
+                  : "TRACECHAIN_SCENARIO_VARIANT_V1",
+                scenario: variantScenario,
               }),
             )
-            .digest("hex"),
-      ),
+            .digest("hex")
+        );
+      }),
     );
     check(
       "Variant bank bytes match recorded build metadata",
@@ -1082,7 +1158,11 @@ function verifyPackage(zipPath) {
         buildInformation?.variantBankHash ===
           createHash("sha256")
             .update(
-              zip.getEntry("scenario-variant-bank.json").getData(),
+              isAudit
+                ? `${JSON.stringify(variantBank, null, 2)}\n`
+                : zip
+                    .getEntry("scenario-variant-bank.json")
+                    .getData(),
             )
             .digest("hex"),
     );
@@ -1091,8 +1171,13 @@ function verifyPackage(zipPath) {
       variantBank.variants.every(
         (variant) =>
           buildInformation?.variantContentHashes?.[
-            variant.metadata.variantId
-          ] === variant.metadata.contentHash,
+            isAudit
+              ? variant.variantId
+              : variant.metadata.variantId
+          ] ===
+          (isAudit
+            ? variant.contentHash
+            : variant.metadata.contentHash),
       ),
     );
   } else {
@@ -1118,9 +1203,17 @@ function verifyPackage(zipPath) {
   );
   check(
     "Scenario identity matches configuration",
-    scenario?.scenarioId === configuration?.scenarioId &&
-      (isAudit ? scenario?.version : scenario?.scenarioVersion) ===
-        configuration?.scenarioVersion,
+    isAudit && usesVariantBank
+      ? variantBank?.variants?.some(
+          (variant) =>
+            variant.scenarioId === scenario?.scenarioId &&
+            variant.scenarioVersion === scenario?.version,
+        )
+      : scenario?.scenarioId === configuration?.scenarioId &&
+        (isAudit
+          ? scenario?.version
+          : scenario?.scenarioVersion) ===
+          configuration?.scenarioVersion,
   );
   check(
     "Scenario content matches its recorded hash",
@@ -1374,7 +1467,7 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 }
 
 const defaultInvocation = process.argv.length === 2;
-if (defaultInvocation && results.length === 6) {
+if (defaultInvocation && results.length === 8) {
   const presetIds = results
     .map((result) => result.configuration?.presetId)
     .sort();
@@ -1382,6 +1475,8 @@ if (defaultInvocation && results.length === 6) {
     JSON.stringify(presetIds) !==
     JSON.stringify([
       "assessment",
+      "audit-assessment",
+      "audit-challenge",
       "audit-guided",
       "audit-practice",
       "challenge",
@@ -1390,7 +1485,7 @@ if (defaultInvocation && results.length === 6) {
     ])
   ) {
     crossPackageErrors.push(
-      "Default verification must cover Operations and Audit Guided/Practice packages plus Challenge and Assessment",
+      "Default verification must cover all Operations and Audit Guided, Practice, Challenge, and Assessment packages",
     );
   }
 }

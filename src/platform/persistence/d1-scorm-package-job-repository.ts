@@ -151,6 +151,8 @@ function validateArtifact(
       "assessment",
       "audit-guided",
       "audit-practice",
+      "audit-challenge",
+      "audit-assessment",
     ].includes(artifact.presetId) ||
     artifact.title.length < 1 ||
     artifact.title.length > 120 ||

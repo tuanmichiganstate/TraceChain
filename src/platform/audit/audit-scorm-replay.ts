@@ -5,8 +5,8 @@ import {
 import type { AuditRuntimePackage } from "../../config/audit-runtime-loader";
 import type {
   AuditCommandJournalEntry,
-  Ta1AuditSnapshot,
-} from "../../infrastructure/persistence/ta1-audit-codec";
+  Ta2AuditSnapshot,
+} from "../../infrastructure/persistence/ta2-audit-codec";
 import type {
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
@@ -102,9 +102,9 @@ function submittedCommand(
   }
 }
 
-export async function replayTa1AuditAttempt(
+export async function replayTa2AuditAttempt(
   runtime: AuditRuntimePackage,
-  snapshot: Ta1AuditSnapshot,
+  snapshot: Ta2AuditSnapshot,
 ): Promise<ReplayedAuditAttempt> {
   const store = new MemoryRunEventStore();
   const service = new AuditHostedRunService(
@@ -114,23 +114,27 @@ export async function replayTa1AuditAttempt(
     store,
     new FixedClock(runtime.auditCase.scope.periodEnd),
     new SequenceIdGenerator(1),
+    snapshot.variantAssignment,
   );
   let result = await service.createRun(learner, {
-    commandId: "TA1_COMMAND_000",
+    commandId: "TA2_COMMAND_000",
     runId: SCORM_AUDIT_RUN_ID,
     assignmentId: SCORM_AUDIT_ASSIGNMENT_ID,
     learnerUserId: SCORM_AUDIT_LEARNER_ID,
     mode:
-      runtime.auditCase.supportProfiles[0] === "PRACTICE"
-        ? "standard"
-        : "tutorial",
+      runtime.auditCase.supportProfiles[0] === "GUIDED"
+        ? "tutorial"
+        : runtime.auditCase.supportProfiles[0] === "PRACTICE" ||
+            runtime.configuration.deliveryPurpose === "ASSESSMENT"
+          ? "standard"
+          : "configured",
   });
   for (const [index, entry] of snapshot.commandJournal.entries()) {
     result = await service.submit(
       learner,
       submittedCommand(
         entry,
-        `TA1_COMMAND_${String(index + 1).padStart(3, "0")}`,
+        `TA2_COMMAND_${String(index + 1).padStart(3, "0")}`,
         result.state,
       ),
     );

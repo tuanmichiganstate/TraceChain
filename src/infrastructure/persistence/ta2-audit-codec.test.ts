@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import guidedPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import practicePackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
+import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import type { AuditCaseDefinitionV1 } from "../../platform/contracts/audit";
 import type { ScenarioPackV1 } from "../../platform/contracts/scenario-pack";
+import { auditVariantAssignmentForIndex } from "../../platform/audit/audit-variant-bank";
 import {
-  decodeTa1AuditSnapshot,
-  emptyTa1AuditSnapshot,
-  encodeTa1AuditSnapshot,
-  TA1_SUSPEND_DATA_CEILING,
-  type Ta1AuditCodecSchema,
-  type Ta1AuditSnapshot,
-} from "./ta1-audit-codec";
+  decodeTa2AuditSnapshot,
+  emptyTa2AuditSnapshot,
+  encodeTa2AuditSnapshot,
+  TA2_SUSPEND_DATA_CEILING,
+  type Ta2AuditCodecSchema,
+  type Ta2AuditSnapshot,
+} from "./ta2-audit-codec";
 
 const guidedPack = guidedPackJson as ScenarioPackV1;
 const guidedScenario = guidedPack.scenarios[0]!;
@@ -18,15 +20,17 @@ const guidedAuditCase = guidedScenario.auditCase!;
 const practicePack = practicePackJson as ScenarioPackV1;
 const practiceScenario = practicePack.scenarios[0]!;
 const practiceAuditCase = practiceScenario.auditCase!;
+const challengePack = challengePackJson as ScenarioPackV1;
+const challengeBank = challengePack.auditVariantBanks[0]!;
 
-const schema: Ta1AuditCodecSchema = {
+const schema: Ta2AuditCodecSchema = {
   configurationHash: "a".repeat(64),
   packContentHash: "b".repeat(64),
   scenarioId: guidedScenario.scenarioId,
   scenarioVersion: guidedScenario.version,
   auditCase: guidedAuditCase,
 };
-const TA1_AUTHORED_WORST_CASE_BUDGET = 3_300;
+const TA2_AUTHORED_WORST_CASE_BUDGET = 3_300;
 
 function randomAscii(length: number, seed: number): string {
   let state = seed >>> 0;
@@ -73,10 +77,10 @@ function finding(
   };
 }
 
-describe("TA1 compact Audit persistence", () => {
+describe("TA2 compact Audit persistence", () => {
   it("round-trips compact replay inputs across the exact case boundary", () => {
-    const snapshot: Ta1AuditSnapshot = {
-      ...emptyTa1AuditSnapshot(),
+    const snapshot: Ta2AuditSnapshot = {
+      ...emptyTa2AuditSnapshot(),
       commandJournal: [
         { operation: "VIEW_SCOPE" },
         ...guidedAuditCase.evidenceItemIds.slice(0, 2).map((evidenceId) => ({
@@ -114,32 +118,73 @@ describe("TA1 compact Audit persistence", () => {
       ],
     };
 
-    const encoded = encodeTa1AuditSnapshot(snapshot, schema);
-    expect(encoded.startsWith("TA1.")).toBe(true);
+    const encoded = encodeTa2AuditSnapshot(snapshot, schema);
+    expect(encoded.startsWith("TA2.")).toBe(true);
     expect(encoded.length).toBeLessThanOrEqual(
-      TA1_SUSPEND_DATA_CEILING,
+      TA2_SUSPEND_DATA_CEILING,
     );
-    expect(decodeTa1AuditSnapshot(encoded, schema)).toEqual(snapshot);
+    expect(decodeTa2AuditSnapshot(encoded, schema)).toEqual(snapshot);
   });
 
   it("rejects progress from another exact configuration", () => {
-    const encoded = encodeTa1AuditSnapshot(
-      emptyTa1AuditSnapshot(),
+    const encoded = encodeTa2AuditSnapshot(
+      emptyTa2AuditSnapshot(),
       schema,
     );
     expect(() =>
-      decodeTa1AuditSnapshot(encoded, {
+      decodeTa2AuditSnapshot(encoded, {
         ...schema,
         configurationHash: "c".repeat(64),
       }),
     ).toThrow(/incompatible/iu);
   });
 
+  it.each(challengeBank.variants.map((variant, variantIndex) => ({
+    variant,
+    variantIndex,
+  })))(
+    "round-trips the persisted assignment for $variant.caseReference before reveal",
+    ({ variant, variantIndex }) => {
+      const selectedScenario = challengePack.scenarios.find(
+        (candidate) =>
+          candidate.scenarioId === variant.scenarioId &&
+          candidate.version === variant.scenarioVersion,
+      )!;
+      const selectedCase = selectedScenario.auditCase!;
+      const selectedSchema: Ta2AuditCodecSchema = {
+        ...schema,
+        scenarioId: selectedScenario.scenarioId,
+        scenarioVersion: selectedScenario.version,
+        auditCase: selectedCase,
+        variantBank: challengeBank,
+      };
+      const assignment = auditVariantAssignmentForIndex({
+        bank: challengeBank,
+        variantIndex,
+        attemptSeed: `CCCCCCCCCCCCCCCCCCCCC${String(variantIndex)}`,
+        assignmentSource: "SCORM_ATTEMPT",
+      });
+      const snapshot = emptyTa2AuditSnapshot(assignment);
+      const encoded = encodeTa2AuditSnapshot(
+        snapshot,
+        selectedSchema,
+      );
+
+      expect(
+        decodeTa2AuditSnapshot(encoded, selectedSchema),
+      ).toEqual(snapshot);
+      expect(encoded.length).toBeLessThan(
+        TA2_SUSPEND_DATA_CEILING,
+      );
+    },
+  );
+
   it.each([
     {
       label: "Guided Audit",
       auditCase: guidedAuditCase,
       codecSchema: schema,
+      variantAssignment: null,
     },
     {
       label: "Practice Audit",
@@ -152,13 +197,41 @@ describe("TA1 compact Audit persistence", () => {
         scenarioVersion: practiceScenario.version,
         auditCase: practiceAuditCase,
       },
+      variantAssignment: null,
     },
+    ...challengeBank.variants.map((variant, variantIndex) => {
+      const scenario = challengePack.scenarios.find(
+        (candidate) =>
+          candidate.scenarioId === variant.scenarioId &&
+          candidate.version === variant.scenarioVersion,
+      )!;
+      return {
+        label: `Audit Challenge ${variant.caseReference}`,
+        auditCase: scenario.auditCase!,
+        codecSchema: {
+          ...schema,
+          configurationHash: "e".repeat(64),
+          packContentHash: "f".repeat(64),
+          scenarioId: scenario.scenarioId,
+          scenarioVersion: scenario.version,
+          auditCase: scenario.auditCase!,
+          variantBank: challengeBank,
+        },
+        variantAssignment: auditVariantAssignmentForIndex({
+          bank: challengeBank,
+          variantIndex,
+          attemptSeed: `DDDDDDDDDDDDDDDDDDDDD${String(variantIndex)}`,
+          assignmentSource: "SCORM_ATTEMPT",
+        }),
+      };
+    }),
   ])(
     "fits the actual $label authored worst case below the internal ceiling",
-    ({ auditCase, codecSchema }) => {
+    ({ auditCase, codecSchema, variantAssignment }) => {
       const maximumRecords =
         auditCase.inputLimits.maximumFindingRecords;
-      const snapshot: Ta1AuditSnapshot = {
+      const snapshot: Ta2AuditSnapshot = {
+        variantAssignment,
         commandJournal: [
           { operation: "VIEW_SCOPE" },
           ...auditCase.evidenceItemIds.flatMap((evidenceId) => [
@@ -233,19 +306,19 @@ describe("TA1 compact Audit persistence", () => {
           },
         ],
       };
-      const encoded = encodeTa1AuditSnapshot(
+      const encoded = encodeTa2AuditSnapshot(
         snapshot,
         codecSchema,
       );
 
       expect(encoded.length).toBeLessThanOrEqual(
-        TA1_AUTHORED_WORST_CASE_BUDGET,
+        TA2_AUTHORED_WORST_CASE_BUDGET,
       );
       expect(encoded.length).toBeLessThanOrEqual(
-        TA1_SUSPEND_DATA_CEILING,
+        TA2_SUSPEND_DATA_CEILING,
       );
       expect(
-        decodeTa1AuditSnapshot(encoded, codecSchema),
+        decodeTa2AuditSnapshot(encoded, codecSchema),
       ).toEqual(snapshot);
     },
   );

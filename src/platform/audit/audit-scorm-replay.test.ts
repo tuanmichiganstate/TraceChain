@@ -6,8 +6,8 @@ import type { AuditRuntimePackage } from "../../config/audit-runtime-loader";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
-import type { Ta1AuditSnapshot } from "../../infrastructure/persistence/ta1-audit-codec";
-import { replayTa1AuditAttempt } from "./audit-scorm-replay";
+import type { Ta2AuditSnapshot } from "../../infrastructure/persistence/ta2-audit-codec";
+import { replayTa2AuditAttempt } from "./audit-scorm-replay";
 
 function runtime(): AuditRuntimePackage {
   const validation = validateScenarioPack(structuredClone(packJson));
@@ -25,13 +25,15 @@ function runtime(): AuditRuntimePackage {
     pack,
     scenario,
     auditCase: scenario.auditCase!,
+    variantBank: null,
   };
 }
 
-describe("TA1 Audit replay through the shared command service", () => {
+describe("TA2 Audit replay through the shared command service", () => {
   it("reconstructs the same events, state, score, and report from compact inputs", async () => {
     const configured = runtime();
-    const snapshot: Ta1AuditSnapshot = {
+    const snapshot: Ta2AuditSnapshot = {
+      variantAssignment: null,
       commandJournal: [
         { operation: "VIEW_SCOPE" },
         {
@@ -86,8 +88,8 @@ describe("TA1 Audit replay through the shared command service", () => {
       ],
     };
 
-    const first = await replayTa1AuditAttempt(configured, snapshot);
-    const second = await replayTa1AuditAttempt(configured, snapshot);
+    const first = await replayTa2AuditAttempt(configured, snapshot);
+    const second = await replayTa2AuditAttempt(configured, snapshot);
 
     expect(second).toEqual(first);
     expect(first.state.status).toBe("completed");

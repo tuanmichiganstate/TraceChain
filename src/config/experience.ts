@@ -19,6 +19,8 @@ export type CurrentExperiencePresetId =
   | "assessment"
   | "audit-guided"
   | "audit-practice"
+  | "audit-challenge"
+  | "audit-assessment"
   | "technical-lab"
   | "tutorial"
   | "standard"
@@ -69,6 +71,18 @@ const FIXED_PRESET_DIMENSIONS = {
     activityType: "AUDIT",
     supportProfile: "PRACTICE",
     deliveryPurpose: "FORMATIVE",
+    outcomeStrategy: "CURATED_VARIANT",
+  },
+  "audit-challenge": {
+    activityType: "AUDIT",
+    supportProfile: "CHALLENGE",
+    deliveryPurpose: "FORMATIVE",
+    outcomeStrategy: "CURATED_VARIANT",
+  },
+  "audit-assessment": {
+    activityType: "AUDIT",
+    supportProfile: "CHALLENGE",
+    deliveryPurpose: "ASSESSMENT",
     outcomeStrategy: "CURATED_VARIANT",
   },
   "technical-lab": {

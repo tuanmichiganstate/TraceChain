@@ -1,4 +1,5 @@
 import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import {
   FixedClock,
   SequenceIdGenerator,
@@ -49,6 +50,35 @@ function fixture() {
       "SCN_GUIDED_COFFEE_AUDIT",
       "2.0.0",
       store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    ),
+  };
+}
+
+function assessmentFixture() {
+  const validation = validateScenarioPack(
+    structuredClone(challengePackJson),
+  );
+  if (!validation.isValid) {
+    throw new Error(
+      validation.issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
+        .join("\n"),
+    );
+  }
+  const pack = publishScenarioPack(validation.pack, {
+    publishedAt: NOW,
+    publishedBy: instructor.userId,
+  });
+  const scenario = pack.scenarios[0]!;
+  return {
+    scenario,
+    service: new AuditHostedRunService(
+      pack,
+      scenario.scenarioId,
+      scenario.version,
+      new MemoryRunEventStore(),
       new FixedClock(NOW),
       new SequenceIdGenerator(1),
     ),
@@ -108,6 +138,93 @@ async function submitFinding(
 }
 
 describe("AuditHostedRunService", () => {
+  it("withholds Assessment feedback until completion and enforces one-shot findings", async () => {
+    const { scenario, service } = assessmentFixture();
+    const auditCase = scenario.auditCase!;
+    const definition = auditCase.findingDefinitions[0]!;
+    let result = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_AUDIT_ASSESSMENT",
+      runId: "RUN_AUDIT_ASSESSMENT",
+      assignmentId: "ASSIGNMENT_AUDIT_ASSESSMENT",
+      learnerUserId: learner.userId,
+      mode: "standard",
+    });
+    const input: AuditFindingInputV1 = {
+      findingId: "F1",
+      categoryId: definition.categoryId,
+      entityId: definition.entityId,
+      title: "Evidence-linked assessment finding",
+      observation:
+        "The evidence and policy support this submitted finding.",
+      severity: definition.expectedSeverity,
+      materiality: definition.expectedMateriality,
+      confidence: 85,
+      evidenceIds: definition.requiredEvidenceIds,
+      policyIds: definition.applicablePolicyIds,
+      rootCauseCode: definition.acceptableRootCauseCodes[0]!,
+      recommendationCode:
+        definition.acceptableRecommendationCodes[0]!,
+      recommendation:
+        "Apply the authored control response and retain evidence.",
+    };
+    result = await submitFinding(
+      service,
+      result.state,
+      input,
+      "COMMAND_ASSESSMENT_FINDING",
+    );
+    const beforeCompletion = await service.learnerProjection(
+      learner,
+      result.state.runId,
+    );
+
+    expect(beforeCompletion.audit?.findings[0]?.feedback).toBeUndefined();
+    expect(beforeCompletion.audit?.report).toBeUndefined();
+    expect(
+      beforeCompletion.workflowState.permittedActionIds,
+    ).not.toContain("VIEW_AUDIT_HINT");
+    expect(
+      beforeCompletion.workflowState.permittedActionIds,
+    ).not.toContain("AMEND_AUDIT_FINDING");
+    await expect(
+      service.submit(learner, {
+        commandType: "AMEND_AUDIT_FINDING",
+        commandId: "COMMAND_ASSESSMENT_AMEND",
+        runId: result.state.runId,
+        expectedRunVersion: result.state.version,
+        finding: input,
+      }),
+    ).rejects.toThrow(/one-shot|not permitted/iu);
+
+    result = await service.submit(learner, {
+      commandType: "SUBMIT_AUDIT_CONCLUSION",
+      commandId: "COMMAND_ASSESSMENT_CONCLUSION",
+      runId: result.state.runId,
+      expectedRunVersion: result.state.version,
+      conclusion: {
+        conclusionCategory:
+          auditCase.conclusionCategories[0]!.conclusionCategory,
+        scopeSummary: "Reviewed the authored process scope.",
+        materialFindingsSummary:
+          "Recorded the supported material findings.",
+        nonMaterialFindingsSummary:
+          "Recorded no unsupported non-material findings.",
+        limitations: "The conclusion is limited to authored evidence.",
+        uncertainty: "No inference extends beyond the review period.",
+        recommendations: "Apply the documented control response.",
+        confidence: 85,
+      },
+    });
+    const completed = await service.learnerProjection(
+      learner,
+      result.state.runId,
+    );
+
+    expect(result.state.status).toBe("completed");
+    expect(completed.audit?.findings[0]?.feedback).toBeDefined();
+    expect(completed.audit?.report).toBeDefined();
+  });
+
   it("keeps the source process immutable and separates attempt records from ledger projection", async () => {
     const { service, store } = fixture();
     const created = await create(service);

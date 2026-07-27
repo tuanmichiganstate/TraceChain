@@ -47,8 +47,12 @@ coffee process. Audit findings, decoys, workpapers, scoring, conclusions, and
 reports use the shared event, replay, assignment, competency, and persistence
 boundaries while remaining outside the operational ledger. Phase 5 adds one
 curated Practice Audit case plus Guided and Practice Audit SCORM packages with
-bounded TA1 replay; see `docs/PRODUCT_MODES_PHASE_4.md` and
-`docs/PRODUCT_MODES_PHASE_5.md`.
+bounded replay. Phase 6 adds three complete Audit Challenge cases, deterministic
+TA2 assignment before reveal, a final-feedback Audit Assessment configuration,
+shared hosted allocation policies, and review-only calibration summaries. The
+new Audit bank remains a calibration candidate rather than a claim of
+high-stakes equivalence; see `docs/PRODUCT_MODES_PHASE_4.md`,
+`docs/PRODUCT_MODES_PHASE_5.md`, and `docs/PRODUCT_MODES_PHASE_6.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -170,7 +174,7 @@ For a clean release tree:
 
 ```bash
 npm run package:scorm -- --preset guided
-npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice
+npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment
 ```
 
 For local verification of all accepted presets from an existing build:
@@ -187,7 +191,10 @@ Strict release generation produces
 `TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
 `TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`,
 `TraceChain_AuditGuided_GuidedCoffeeAudit_vi_v2.0.0.zip`, and
-`TraceChain_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`. The local command
+`TraceChain_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`, plus the
+calibration-candidate
+`TraceChain_AuditChallenge_ChallengeCoffeeAuditBank_vi_v1.0.0.zip` and
+`TraceChain_AuditAssessment_ChallengeCoffeeAuditBank_vi_v1.0.0.zip`. The local command
 appends `_NON_RELEASE` to every archive name. The Docker demo selects the
 current six archives by their embedded build metadata, deploys them into
 separate reset activities, and ignores stale ZIPs.
@@ -273,8 +280,8 @@ schemas/               published versioned JSON Schemas
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
-| `npm run build:scorm` | Build all six local non-release preset packages |
-| `npm run verify:scorm` | Validate all six packages and their shared static build |
+| `npm run build:scorm` | Build all eight local non-release preset packages |
+| `npm run verify:scorm` | Validate all eight packages and their shared static build |
 | `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 
@@ -292,11 +299,14 @@ schemas/               published versioned JSON Schemas
   point B roadmap for the hosted instructor-ready platform
 - `docs/PRODUCT_MODES_PHASE_3.md` — the implemented Operations support
   profiles, curated Practice case, persistence contract, and acceptance gates
-- `docs/PRODUCT_MODES_PHASE_5.md` — Practice Audit, bounded TA1 workpaper
-  replay, six-package generation, and the Phase 5 acceptance boundary
+- `docs/PRODUCT_MODES_PHASE_5.md` — the historical Practice Audit and TA1
+  boundary, superseded by the direct TA2 upgrade in Phase 6
+- `docs/PRODUCT_MODES_PHASE_6.md` — Audit Challenge and Assessment candidate
+  bank, TA2 assignment, hosted allocation, calibration, and remaining human
+  review gate
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.8 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.9 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure

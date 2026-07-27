@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.8",
+  "title": "TraceChain Scenario Pack V1.9",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -16,12 +16,13 @@
     "rubrics",
     "evidenceRules",
     "portraitAssets",
+    "auditVariantBanks",
     "scenarios",
     "assetHashes"
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.8.0" },
+    "schemaVersion": { "const": "1.9.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -67,6 +68,10 @@
     "portraitAssets": {
       "type": "array",
       "items": { "$ref": "#/$defs/portraitAsset" }
+    },
+    "auditVariantBanks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/auditVariantBank" }
     },
     "scenarios": {
       "type": "array",
@@ -1297,6 +1302,186 @@
         }
       }
     },
+    "auditVariantRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "auditVariantBank": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bankId",
+        "bankVersion",
+        "status",
+        "title",
+        "description",
+        "supportedPurposes",
+        "blueprint",
+        "variants"
+      ],
+      "properties": {
+        "bankId": { "$ref": "#/$defs/identifier" },
+        "bankVersion": { "$ref": "#/$defs/version" },
+        "status": {
+          "enum": [
+            "DRAFT",
+            "EXPERT_REVIEWED",
+            "PILOT_CALIBRATED",
+            "RETIRED"
+          ]
+        },
+        "title": { "$ref": "#/$defs/localizedText" },
+        "description": { "$ref": "#/$defs/localizedText" },
+        "supportedPurposes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["CHALLENGE_FORMATIVE", "ASSESSMENT"]
+          }
+        },
+        "blueprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "blueprintId",
+            "version",
+            "targetCompetencyIndicatorIds",
+            "scorableItemRoles",
+            "maximumScore",
+            "passScore",
+            "evidenceRoles",
+            "materialFindingCount",
+            "decoyCount",
+            "evidenceItemCount",
+            "policyCount",
+            "estimatedMinutes",
+            "complexityBand",
+            "reportBurden"
+          ],
+          "properties": {
+            "blueprintId": { "$ref": "#/$defs/identifier" },
+            "version": { "$ref": "#/$defs/version" },
+            "targetCompetencyIndicatorIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "scorableItemRoles": {
+              "type": "array",
+              "minItems": 7,
+              "maxItems": 7,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["scorableItemId", "maximumScore"],
+                "properties": {
+                  "scorableItemId": {
+                    "enum": [
+                      "AUD_DETECTION",
+                      "AUD_FALSE_POSITIVE_AVOIDANCE",
+                      "AUD_EVIDENCE",
+                      "AUD_POLICY",
+                      "AUD_CLASSIFICATION",
+                      "AUD_RECOMMENDATION",
+                      "AUD_CONCLUSION"
+                    ]
+                  },
+                  "maximumScore": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            },
+            "maximumScore": { "const": 100 },
+            "passScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "evidenceRoles": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "materialFindingCount": {
+              "$ref": "#/$defs/auditVariantRange"
+            },
+            "decoyCount": {
+              "$ref": "#/$defs/auditVariantRange"
+            },
+            "evidenceItemCount": {
+              "$ref": "#/$defs/auditVariantRange"
+            },
+            "policyCount": {
+              "$ref": "#/$defs/auditVariantRange"
+            },
+            "estimatedMinutes": {
+              "$ref": "#/$defs/auditVariantRange"
+            },
+            "complexityBand": { "const": "INTERMEDIATE" },
+            "reportBurden": {
+              "const": "COMPLETE_AUDIT_CONCLUSION"
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "variantId",
+              "variantVersion",
+              "caseReference",
+              "scenarioId",
+              "scenarioVersion",
+              "auditCaseId",
+              "auditCaseVersion",
+              "contentHash",
+              "answerPatternHash",
+              "estimatedMinutes",
+              "complexityBand"
+            ],
+            "properties": {
+              "variantId": { "$ref": "#/$defs/identifier" },
+              "variantVersion": { "$ref": "#/$defs/version" },
+              "caseReference": { "$ref": "#/$defs/identifier" },
+              "scenarioId": { "$ref": "#/$defs/identifier" },
+              "scenarioVersion": { "$ref": "#/$defs/version" },
+              "auditCaseId": { "$ref": "#/$defs/identifier" },
+              "auditCaseVersion": { "$ref": "#/$defs/version" },
+              "contentHash": { "$ref": "#/$defs/sha256" },
+              "answerPatternHash": { "$ref": "#/$defs/sha256" },
+              "estimatedMinutes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 240
+              },
+              "complexityBand": { "const": "INTERMEDIATE" }
+            }
+          }
+        }
+      }
+    },
     "auditCase": {
       "type": "object",
       "additionalProperties": false,
@@ -1326,7 +1511,7 @@
         "completionDefinition"
       ],
       "properties": {
-        "schemaVersion": { "const": "2.0.0" },
+        "schemaVersion": { "const": "3.0.0" },
         "auditCaseId": { "$ref": "#/$defs/identifier" },
         "version": { "$ref": "#/$defs/version" },
         "sourceProcessId": { "$ref": "#/$defs/identifier" },
@@ -1458,7 +1643,7 @@
           "maxItems": 1,
           "uniqueItems": true,
           "items": {
-            "enum": ["GUIDED", "PRACTICE"]
+            "enum": ["GUIDED", "PRACTICE", "CHALLENGE"]
           }
         },
         "inputLimits": {

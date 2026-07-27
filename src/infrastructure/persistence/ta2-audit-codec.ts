@@ -7,13 +7,20 @@ import {
 import type {
   AuditCaseDefinitionV1,
   AuditConclusionSubmissionV1,
+  AuditVariantAssignmentV1,
+  AuditVariantBankDefinitionV1,
 } from "../../platform/contracts/audit";
+import {
+  assignmentForVariant,
+  validateAttemptSeed,
+} from "../../domain/scenario/variant-bank";
+import { canonicalize } from "../hashing/canonicalize";
 import type {
   AuditFindingInputV1,
 } from "../../platform/audit/audit-run-types";
 
-export const TA1_SUSPEND_DATA_CEILING = 3_800;
-const PREFIX = "TA1.";
+export const TA2_SUSPEND_DATA_CEILING = 3_800;
+const PREFIX = "TA2.";
 
 export type AuditInteractionJournalEntry =
   | { readonly operation: "VIEW_SCOPE" }
@@ -60,16 +67,35 @@ export type AuditCommandJournalEntry =
       >;
     };
 
-export interface Ta1AuditSnapshot {
+export interface Ta2AuditSnapshot {
+  readonly variantAssignment: AuditVariantAssignmentV1 | null;
   readonly commandJournal: readonly AuditCommandJournalEntry[];
 }
 
-export interface Ta1AuditCodecSchema {
+export interface Ta2AuditCodecSchema {
   readonly configurationHash: string;
   readonly packContentHash: string;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly auditCase: AuditCaseDefinitionV1;
+  readonly variantBank?: AuditVariantBankDefinitionV1;
+}
+
+export interface Ta2AuditStoredHeader {
+  readonly configurationHash: string;
+  readonly packContentHash: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly auditCaseId: string;
+  readonly auditCaseVersion: string;
+  readonly assignment:
+    | null
+    | {
+        readonly variantIndex: number;
+        readonly attemptSeed: string;
+        readonly assignmentSource:
+          AuditVariantAssignmentV1["assignmentSource"];
+      };
 }
 
 type FindingWire = readonly [
@@ -103,7 +129,7 @@ function base64UrlEncode(bytes: Uint8Array): string {
 
 function base64UrlDecode(value: string): Uint8Array {
   if (!/^[A-Za-z0-9_-]+$/u.test(value)) {
-    throw new Error("TA1 payload is not valid base64url.");
+    throw new Error("TA2 payload is not valid base64url.");
   }
   const padded = value
     .replace(/-/gu, "+")
@@ -251,7 +277,7 @@ function caseIndexes(auditCase: AuditCaseDefinitionV1) {
 
 function encodeFinding(
   finding: AuditFindingInputV1,
-  schema: Ta1AuditCodecSchema,
+  schema: Ta2AuditCodecSchema,
 ): FindingWire {
   const values = caseIndexes(schema.auditCase);
   const limits = schema.auditCase.inputLimits;
@@ -261,7 +287,7 @@ function encodeFinding(
     16,
   );
   if (!/^F[1-9][0-9]?$/u.test(findingId)) {
-    throw new Error("TA1 finding IDs must use the compact F1-F99 form.");
+    throw new Error("TA2 finding IDs must use the compact F1-F99 form.");
   }
   return [
     findingId,
@@ -324,7 +350,7 @@ function encodeFinding(
 
 function decodeFinding(
   value: unknown,
-  schema: Ta1AuditCodecSchema,
+  schema: Ta2AuditCodecSchema,
   path: string,
 ): AuditFindingInputV1 {
   const wire = expectArray(value, path);
@@ -391,10 +417,74 @@ function decodeFinding(
   };
 }
 
-export function emptyTa1AuditSnapshot(): Ta1AuditSnapshot {
+export function emptyTa2AuditSnapshot(
+  variantAssignment: AuditVariantAssignmentV1 | null = null,
+): Ta2AuditSnapshot {
   return {
+    variantAssignment,
     commandJournal: [],
   };
+}
+
+const ASSIGNMENT_SOURCES = [
+  "SCORM_ATTEMPT",
+  "STANDALONE_ATTEMPT",
+  "HOSTED_ASSIGNMENT",
+] as const;
+
+function assignmentWire(
+  snapshot: Ta2AuditSnapshot,
+  schema: Ta2AuditCodecSchema,
+): readonly [number, string, number] | null {
+  const assignment = snapshot.variantAssignment;
+  if (schema.variantBank === undefined) {
+    if (assignment !== null) {
+      throw new Error(
+        "A fixed Audit package cannot persist a variant assignment.",
+      );
+    }
+    return null;
+  }
+  if (assignment === null) {
+    throw new Error(
+      "An Audit variant-bank package requires an assignment before reveal.",
+    );
+  }
+  validateAttemptSeed(assignment.attemptSeed);
+  const expected = assignmentForVariant({
+    bank: {
+      bankId: schema.variantBank.bankId,
+      bankVersion: schema.variantBank.bankVersion,
+      variants: schema.variantBank.variants.map((variant) => ({
+        metadata: {
+          variantId: variant.variantId,
+          variantVersion: variant.variantVersion,
+          contentHash: variant.contentHash,
+          caseReference: variant.caseReference,
+        },
+      })),
+    },
+    variantIndex: assignment.variantIndex,
+    attemptSeed: assignment.attemptSeed,
+    assignmentSource: assignment.assignmentSource,
+  });
+  const variant = schema.variantBank.variants[assignment.variantIndex];
+  if (
+    canonicalize(expected) !== canonicalize(assignment) ||
+    variant?.scenarioId !== schema.scenarioId ||
+    variant.scenarioVersion !== schema.scenarioVersion ||
+    variant.auditCaseId !== schema.auditCase.auditCaseId ||
+    variant.auditCaseVersion !== schema.auditCase.version
+  ) {
+    throw new Error(
+      "Audit variant assignment does not match the selected complete case.",
+    );
+  }
+  return [
+    assignment.variantIndex,
+    assignment.attemptSeed,
+    ASSIGNMENT_SOURCES.indexOf(assignment.assignmentSource),
+  ];
 }
 
 function maximumCommandRecords(
@@ -413,7 +503,7 @@ function maximumCommandRecords(
 
 function encodeConclusion(
   conclusion: Omit<AuditConclusionSubmissionV1, "submittedAt">,
-  schema: Ta1AuditCodecSchema,
+  schema: Ta2AuditCodecSchema,
 ): readonly unknown[] {
   const values = caseIndexes(schema.auditCase);
   return [
@@ -447,7 +537,7 @@ function encodeConclusion(
 
 function decodeConclusion(
   value: unknown,
-  schema: Ta1AuditCodecSchema,
+  schema: Ta2AuditCodecSchema,
   path: string,
 ): Omit<AuditConclusionSubmissionV1, "submittedAt"> {
   const wire = expectArray(value, path);
@@ -481,16 +571,16 @@ function decodeConclusion(
   };
 }
 
-export function encodeTa1AuditSnapshot(
-  snapshot: Ta1AuditSnapshot,
-  schema: Ta1AuditCodecSchema,
+export function encodeTa2AuditSnapshot(
+  snapshot: Ta2AuditSnapshot,
+  schema: Ta2AuditCodecSchema,
 ): string {
   const values = caseIndexes(schema.auditCase);
   if (
     snapshot.commandJournal.length >
     maximumCommandRecords(schema.auditCase)
   ) {
-    throw new Error("TA1 command journal exceeds the authored limit.");
+    throw new Error("TA2 command journal exceeds the authored limit.");
   }
   const seenInteractions = new Set<string>();
   let draftRecords = 0;
@@ -563,7 +653,7 @@ export function encodeTa1AuditSnapshot(
         const identity = JSON.stringify(wire);
         if (seenInteractions.has(identity)) {
           throw new Error(
-            "TA1 command journal must not contain duplicate interactions.",
+            "TA2 command journal must not contain duplicate interactions.",
           );
         }
         seenInteractions.add(identity);
@@ -578,20 +668,21 @@ export function encodeTa1AuditSnapshot(
     schema.auditCase.inputLimits.maximumFindingRecords
   ) {
     throw new Error(
-      "TA1 workpaper journal exceeds the authored record limits.",
+      "TA2 workpaper journal exceeds the authored record limits.",
     );
   }
   if (conclusionRecords > 1) {
-    throw new Error("TA1 permits exactly one submitted conclusion.");
+    throw new Error("TA2 permits exactly one submitted conclusion.");
   }
   const wire = [
-    "TA1",
+    "TA2",
     schema.configurationHash,
     schema.packContentHash,
     schema.scenarioId,
     schema.scenarioVersion,
     schema.auditCase.auditCaseId,
     schema.auditCase.version,
+    assignmentWire(snapshot, schema),
     commandJournal,
   ];
   const encoded =
@@ -599,23 +690,23 @@ export function encodeTa1AuditSnapshot(
     base64UrlEncode(
       deflateSync(strToU8(JSON.stringify(wire)), { level: 9 }),
     );
-  if (encoded.length > TA1_SUSPEND_DATA_CEILING) {
+  if (encoded.length > TA2_SUSPEND_DATA_CEILING) {
     throw new Error(
-      `TA1 snapshot is ${String(encoded.length)} characters, above the ${String(TA1_SUSPEND_DATA_CEILING)}-character ceiling.`,
+      `TA2 snapshot is ${String(encoded.length)} characters, above the ${String(TA2_SUSPEND_DATA_CEILING)}-character ceiling.`,
     );
   }
   return encoded;
 }
 
-export function decodeTa1AuditSnapshot(
+export function decodeTa2AuditSnapshot(
   encoded: string,
-  schema: Ta1AuditCodecSchema,
-): Ta1AuditSnapshot {
+  schema: Ta2AuditCodecSchema,
+): Ta2AuditSnapshot {
   if (
     !encoded.startsWith(PREFIX) ||
-    encoded.length > TA1_SUSPEND_DATA_CEILING
+    encoded.length > TA2_SUSPEND_DATA_CEILING
   ) {
-    throw new Error("Stored progress is not a bounded TA1 payload.");
+    throw new Error("Stored progress is not a bounded TA2 payload.");
   }
   let parsed: unknown;
   try {
@@ -628,15 +719,15 @@ export function decodeTa1AuditSnapshot(
     );
   } catch (error) {
     throw new Error(
-      `Stored TA1 progress could not be decoded: ${
+      `Stored TA2 progress could not be decoded: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
   }
-  const wire = expectArray(parsed, "TA1");
+  const wire = expectArray(parsed, "TA2");
   if (
-    wire.length !== 8 ||
-    wire[0] !== "TA1" ||
+    wire.length !== 9 ||
+    wire[0] !== "TA2" ||
     wire[1] !== schema.configurationHash ||
     wire[2] !== schema.packContentHash ||
     wire[3] !== schema.scenarioId ||
@@ -645,19 +736,32 @@ export function decodeTa1AuditSnapshot(
     wire[6] !== schema.auditCase.version
   ) {
     throw new Error(
-      "Stored TA1 progress is incompatible with this exact configuration and Audit case.",
+      "Stored TA2 progress is incompatible with this exact configuration and Audit case.",
+    );
+  }
+  const storedHeader = decodeStoredAssignment(wire[7]);
+  const assignment =
+    storedHeader === null
+      ? null
+      : assignmentFromStoredHeader(storedHeader, schema);
+  if (
+    (schema.variantBank === undefined) !==
+    (assignment === null)
+  ) {
+    throw new Error(
+      "Stored TA2 variant assignment does not match this package.",
     );
   }
   const values = caseIndexes(schema.auditCase);
   const commandWire = expectArray(
-    wire[7],
-    "TA1.commandJournal",
+    wire[8],
+    "TA2.commandJournal",
   );
   if (
     commandWire.length >
     maximumCommandRecords(schema.auditCase)
   ) {
-    throw new Error("Stored TA1 command journal exceeds its limit.");
+    throw new Error("Stored TA2 command journal exceeds its limit.");
   }
   const seenInteractions = new Set<string>();
   let draftRecords = 0;
@@ -667,11 +771,11 @@ export function decodeTa1AuditSnapshot(
     (value, index): AuditCommandJournalEntry => {
       const entry = expectArray(
         value,
-        `TA1.commandJournal[${String(index)}]`,
+        `TA2.commandJournal[${String(index)}]`,
       );
       const operation = expectInteger(
         entry[0],
-        `TA1.commandJournal[${String(index)}][0]`,
+        `TA2.commandJournal[${String(index)}][0]`,
         0,
         9,
       );
@@ -680,14 +784,14 @@ export function decodeTa1AuditSnapshot(
         (operation !== 0 && entry.length !== 2)
       ) {
         throw new Error(
-          "TA1 command journal entry has an invalid shape.",
+          "TA2 command journal entry has an invalid shape.",
         );
       }
       if (operation <= 4) {
         const identity = JSON.stringify(entry);
         if (seenInteractions.has(identity)) {
           throw new Error(
-            "Stored TA1 command journal contains duplicate interactions.",
+            "Stored TA2 command journal contains duplicate interactions.",
           );
         }
         seenInteractions.add(identity);
@@ -702,7 +806,7 @@ export function decodeTa1AuditSnapshot(
           evidenceId: atIndex(
             values.evidence,
             entry[1],
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
           ),
         };
       }
@@ -712,7 +816,7 @@ export function decodeTa1AuditSnapshot(
           sourceRecordId: atIndex(
             values.sourceRecords,
             entry[1],
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
           ),
         };
       }
@@ -722,7 +826,7 @@ export function decodeTa1AuditSnapshot(
           hintId: atIndex(
             values.hints,
             entry[1],
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
           ),
         };
       }
@@ -733,7 +837,7 @@ export function decodeTa1AuditSnapshot(
           finding: decodeFinding(
             entry[1],
             schema,
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
           ),
         };
       }
@@ -747,7 +851,7 @@ export function decodeTa1AuditSnapshot(
           finding: decodeFinding(
             entry[1],
             schema,
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
           ),
         };
       }
@@ -757,7 +861,7 @@ export function decodeTa1AuditSnapshot(
           operation: "WITHDRAW_FINDING",
           findingId: expectString(
             entry[1],
-            `TA1.commandJournal[${String(index)}][1]`,
+            `TA2.commandJournal[${String(index)}][1]`,
             16,
           ),
         };
@@ -768,7 +872,7 @@ export function decodeTa1AuditSnapshot(
         conclusion: decodeConclusion(
           entry[1],
           schema,
-          `TA1.commandJournal[${String(index)}][1]`,
+          `TA2.commandJournal[${String(index)}][1]`,
         ),
       };
     },
@@ -781,10 +885,133 @@ export function decodeTa1AuditSnapshot(
     conclusionRecords > 1
   ) {
     throw new Error(
-      "Stored TA1 workpaper journal exceeds its authored record limits.",
+      "Stored TA2 workpaper journal exceeds its authored record limits.",
     );
   }
   return {
+    variantAssignment: assignment,
     commandJournal,
+  };
+}
+
+function parsedWire(encoded: string): readonly unknown[] {
+  if (
+    !encoded.startsWith(PREFIX) ||
+    encoded.length > TA2_SUSPEND_DATA_CEILING
+  ) {
+    throw new Error("Stored progress is not a bounded TA2 payload.");
+  }
+  try {
+    return expectArray(
+      JSON.parse(
+        strFromU8(
+          inflateSync(
+            base64UrlDecode(encoded.slice(PREFIX.length)),
+          ),
+        ),
+      ),
+      "TA2",
+    );
+  } catch (error) {
+    throw new Error(
+      `Stored TA2 progress could not be decoded: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
+function decodeStoredAssignment(
+  value: unknown,
+): Ta2AuditStoredHeader["assignment"] {
+  if (value === null) return null;
+  const wire = expectArray(value, "TA2.variantAssignment");
+  if (wire.length !== 3) {
+    throw new Error("TA2 variant assignment has an invalid shape.");
+  }
+  const variantIndex = expectInteger(
+    wire[0],
+    "TA2.variantAssignment[0]",
+    0,
+    100,
+  );
+  const attemptSeed = expectString(
+    wire[1],
+    "TA2.variantAssignment[1]",
+    64,
+  );
+  validateAttemptSeed(attemptSeed);
+  const sourceIndex = expectInteger(
+    wire[2],
+    "TA2.variantAssignment[2]",
+    0,
+    ASSIGNMENT_SOURCES.length - 1,
+  );
+  return {
+    variantIndex,
+    attemptSeed,
+    assignmentSource: ASSIGNMENT_SOURCES[sourceIndex]!,
+  };
+}
+
+function assignmentFromStoredHeader(
+  stored: NonNullable<Ta2AuditStoredHeader["assignment"]>,
+  schema: Ta2AuditCodecSchema,
+): AuditVariantAssignmentV1 {
+  if (schema.variantBank === undefined) {
+    throw new Error(
+      "Stored TA2 progress contains an unexpected variant assignment.",
+    );
+  }
+  return assignmentForVariant({
+    bank: {
+      bankId: schema.variantBank.bankId,
+      bankVersion: schema.variantBank.bankVersion,
+      variants: schema.variantBank.variants.map((variant) => ({
+        metadata: {
+          variantId: variant.variantId,
+          variantVersion: variant.variantVersion,
+          contentHash: variant.contentHash,
+          caseReference: variant.caseReference,
+        },
+      })),
+    },
+    variantIndex: stored.variantIndex,
+    attemptSeed: stored.attemptSeed,
+    assignmentSource: stored.assignmentSource,
+  });
+}
+
+export function inspectTa2AuditStoredHeader(
+  encoded: string,
+): Ta2AuditStoredHeader {
+  const wire = parsedWire(encoded);
+  if (wire.length !== 9 || wire[0] !== "TA2") {
+    throw new Error("Stored progress is not an active TA2 payload.");
+  }
+  return {
+    configurationHash: expectString(
+      wire[1],
+      "TA2.configurationHash",
+      128,
+    ),
+    packContentHash: expectString(
+      wire[2],
+      "TA2.packContentHash",
+      128,
+    ),
+    scenarioId: expectString(wire[3], "TA2.scenarioId", 96),
+    scenarioVersion: expectString(
+      wire[4],
+      "TA2.scenarioVersion",
+      96,
+    ),
+    auditCaseId: expectString(wire[5], "TA2.auditCaseId", 96),
+    auditCaseVersion: expectString(
+      wire[6],
+      "TA2.auditCaseVersion",
+      96,
+    ),
+    assignment: decodeStoredAssignment(wire[7]),
   };
 }

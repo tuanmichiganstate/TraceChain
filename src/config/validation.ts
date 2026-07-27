@@ -46,6 +46,8 @@ const BUSINESS_PRESETS = new Set([
 const AUDIT_PRESETS = new Set([
   "audit-guided",
   "audit-practice",
+  "audit-challenge",
+  "audit-assessment",
 ]);
 const BUSINESS_FEEDBACK = new Set([
   "IMMEDIATE",
@@ -97,6 +99,7 @@ const AUDIT_TOP_LEVEL_FIELDS = new Set([
   "auditCaseId",
   "auditCaseVersion",
   "scenarioSeed",
+  "scenarioVariation",
 ]);
 const LAB_TOP_LEVEL_FIELDS = new Set([
   ...COMMON_TOP_LEVEL_FIELDS,
@@ -693,6 +696,8 @@ function validateDimensions(
       "assessment",
       "audit-guided",
       "audit-practice",
+      "audit-challenge",
+      "audit-assessment",
       "technical-lab",
     ].includes(value.presetId)
   ) {
@@ -704,6 +709,8 @@ function validateDimensions(
         | "assessment"
         | "audit-guided"
         | "audit-practice"
+        | "audit-challenge"
+        | "audit-assessment"
         | "technical-lab",
     );
     for (const field of [
@@ -982,7 +989,7 @@ function validateAuditConfiguration(
   value: Record<string, unknown>,
   issue: (path: string, message: string) => void,
 ): void {
-  if (value.applicationCompatibilityVersion !== "ta1-v1") {
+  if (value.applicationCompatibilityVersion !== "ta2-v1") {
     issue(
       "applicationCompatibilityVersion",
       "is not compatible with the Audit SCORM player",
@@ -1002,6 +1009,7 @@ function validateAuditConfiguration(
       issue(field, "must be a bounded portable identifier");
     }
   }
+  validateScenarioVariation(value.scenarioVariation, issue);
   if (
     isObject(value.content) &&
     (value.content.scenarioId !== value.scenarioId ||
@@ -1034,6 +1042,8 @@ function validateAuditConfiguration(
     );
   }
   if (
+    (value.presetId === "audit-guided" ||
+      value.presetId === "audit-practice") &&
     isObject(value.feedback) &&
     value.feedback.timing !== "IMMEDIATE"
   ) {
@@ -1043,6 +1053,8 @@ function validateAuditConfiguration(
     );
   }
   if (
+    (value.presetId === "audit-guided" ||
+      value.presetId === "audit-practice") &&
     isObject(value.hints) &&
     value.hints.availability !== "ENABLED"
   ) {
@@ -1052,16 +1064,98 @@ function validateAuditConfiguration(
     );
   }
   if (
+    (value.presetId === "audit-challenge" ||
+      value.presetId === "audit-assessment") &&
+    (value.scenarioId !==
+      "SCN_COFFEE_AUDIT_CHALLENGE_BANK" ||
+      value.auditCaseId !== "AUDIT_COFFEE_CHALLENGE_BANK")
+  ) {
+    issue(
+      "scenarioId",
+      "Audit Challenge and Assessment require the curated Audit bank",
+    );
+  }
+  if (
+    (value.presetId === "audit-challenge" ||
+      value.presetId === "audit-assessment") &&
+    isObject(value.scenarioVariation) &&
+    ((value.outcomeStrategy === "CURATED_VARIANT") !==
+      (value.scenarioVariation.strategy ===
+        "SEEDED_VARIANT_BANK"))
+  ) {
+    issue(
+      "outcomeStrategy",
+      "must agree with the Audit scenario variation strategy",
+    );
+  }
+  if (
+    isObject(value.scenarioVariation) &&
+    value.scenarioVariation.strategy ===
+      "SEEDED_VARIANT_BANK" &&
+    isObject(value.content) &&
+    (value.content.variantBankId !==
+      value.scenarioVariation.bankId ||
+      value.content.variantBankVersion !==
+        value.scenarioVariation.bankVersion)
+  ) {
+    issue(
+      "content.variantBankId",
+      "must identify the exact Audit variant bank",
+    );
+  }
+  if (
+    value.presetId === "audit-challenge" &&
+    isObject(value.feedback) &&
+    value.feedback.timing !== "STAGE_END"
+  ) {
+    issue(
+      "feedback.timing",
+      "Audit Challenge requires delayed stage-end feedback",
+    );
+  }
+  if (
+    value.presetId === "audit-challenge" &&
+    isObject(value.hints) &&
+    (value.hints.availability !== "LIMITED" ||
+      value.hints.maximumHintsPerRun !== 1)
+  ) {
+    issue(
+      "hints",
+      "Audit Challenge permits exactly one on-request hint",
+    );
+  }
+  if (
+    value.presetId === "audit-assessment" &&
+    isObject(value.feedback) &&
+    value.feedback.timing !== "FINAL"
+  ) {
+    issue(
+      "feedback.timing",
+      "Audit Assessment requires final feedback",
+    );
+  }
+  if (
+    value.presetId === "audit-assessment" &&
+    isObject(value.hints) &&
+    value.hints.availability !== "DISABLED"
+  ) {
+    issue(
+      "hints.availability",
+      "Audit Assessment requires disabled hints",
+    );
+  }
+  if (
     isObject(value.scoring) &&
     (value.scoring.scoringBlueprintId !==
       "AUDIT_COFFEE_100" ||
       value.scoring.maximumScore !== 100 ||
       value.scoring.passScore !== 70 ||
-      value.scoring.official !== false)
+      value.scoring.official !==
+        (value.presetId === "audit-assessment"))
   ) {
     issue(
       "scoring",
-      "must use the formative 100-point Audit scoring contract",
+      "must use the 100-point Audit scoring contract with official status only for Assessment",
     );
   }
   if (
@@ -1078,7 +1172,7 @@ function validateAuditConfiguration(
     isObject(value.delivery) &&
     (value.delivery.channel !== "SCORM" ||
       value.delivery.persistencePolicyId !==
-        "TA1_COMPACT_WORKPAPER")
+        "TA2_COMPACT_WORKPAPER")
   ) {
     issue(
       "delivery",

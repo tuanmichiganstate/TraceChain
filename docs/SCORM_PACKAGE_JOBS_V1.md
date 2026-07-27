@@ -4,14 +4,17 @@
 
 The `/instructor` graphical builder exposes the accepted Operations presets
 (`guided`, `practice`, `challenge`, and `assessment`) and Audit presets
-(`audit-guided` and `audit-practice`). It does not reimplement the Node package
-generator.
+(`audit-guided` and `audit-practice`). Phase 6 also publishes verified
+Audit Challenge and Audit Assessment candidate artifacts to the catalogue.
+Adding those two selectors to the graphical instructor workspace belongs to
+the next instructor-tooling phase. The workspace does not reimplement the Node
+package generator.
 
 One site build:
 
 1. builds the static application once;
 2. invokes the existing multi-preset SCORM generator;
-3. verifies all six ZIPs and their shared application digest;
+3. verifies all eight ZIPs and their shared application digest;
 4. writes a content-addressed package catalogue; and
 5. copies the exact verified ZIP bytes into the hosted static artifact set.
 
@@ -47,7 +50,7 @@ Each job records:
 - ZIP filename, size, and SHA-256; and
 - the content-addressed object key.
 
-All six Operations and Audit entries must carry the same static
+All eight Operations and Audit entries must carry the same static
 application-build hash. Their external runtime configuration and content files
 differ intentionally.
 
@@ -57,8 +60,10 @@ release artifacts.
 
 ## Current presets
 
-Guided, Practice, Challenge, Assessment, Audit Guided, and Audit Practice are
-available because each has accepted content and SCORM verification. Operations
+Guided, Practice, Challenge, Assessment, Audit Guided, and Audit Practice remain
+available in the graphical workspace. Audit Challenge and Audit Assessment are
+generated and verified calibration candidates but remain outside that selector
+until the instructor-tooling phase and human review gate. Operations
 Practice uses one curated bridge case. Audit Practice uses one curated,
 reduced-guidance workpaper case. Technical Laboratory remains hidden until its
 content is complete and accepted. No empty or placeholder package is generated.

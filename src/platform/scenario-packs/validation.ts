@@ -5,6 +5,12 @@ import type {
   ScenarioNodeV1,
   ScenarioPackV1,
 } from "../contracts/scenario-pack";
+import type {
+  AuditVariantBankDefinitionV1,
+} from "../contracts/audit";
+import {
+  validateAuditVariantBank,
+} from "../audit/audit-variant-bank";
 
 export interface ScenarioPackValidationIssue {
   readonly code: string;
@@ -58,6 +64,7 @@ const ROOT_KEYS = [
   "rubrics",
   "evidenceRules",
   "portraitAssets",
+  "auditVariantBanks",
   "scenarios",
   "assetHashes",
   "publication",
@@ -3499,10 +3506,10 @@ function validateAuditCase(
     casePath,
   );
   context.check(
-    auditCase.schemaVersion === "2.0.0",
+    auditCase.schemaVersion === "3.0.0",
     "INVALID_AUDIT_CASE_SCHEMA",
     `${casePath}.schemaVersion`,
-    "must equal 2.0.0",
+    "must equal 3.0.0",
   );
   for (const key of ["auditCaseId", "sourceProcessId"] as const) {
     context.string(auditCase[key], `${casePath}.${key}`, {
@@ -4229,10 +4236,11 @@ function validateAuditCase(
   context.check(
     supportProfiles.length === 1 &&
       (supportProfiles[0] === "GUIDED" ||
-        supportProfiles[0] === "PRACTICE"),
+        supportProfiles[0] === "PRACTICE" ||
+        supportProfiles[0] === "CHALLENGE"),
     "INVALID_AUDIT_SUPPORT_PROFILE",
     `${casePath}.supportProfiles`,
-    "must contain exactly one Guided or Practice Audit profile",
+    "must contain exactly one Guided, Practice, or Challenge Audit profile",
   );
   const inputLimits = context.object(
     auditCase.inputLimits,
@@ -4327,10 +4335,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.8.0",
+    schemaVersion === "1.9.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.8.0",
+    "requires scenario-pack schema version 1.9.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -4524,6 +4532,343 @@ function validatePublication(
   });
 }
 
+function validateAuditVariantBanks(
+  context: ValidationContext,
+  value: unknown,
+  supportedLocales: readonly string[],
+  pack: Readonly<Record<string, unknown>>,
+): void {
+  const banks = context.array(value, "$.auditVariantBanks");
+  if (banks === null) return;
+  const bankKeys = new Set<string>();
+  banks.forEach((bankValue, bankIndex) => {
+    const path = `$.auditVariantBanks[${String(bankIndex)}]`;
+    const bank = context.object(bankValue, path);
+    if (bank === null) return;
+    context.allowedKeys(
+      bank,
+      [
+        "bankId",
+        "bankVersion",
+        "status",
+        "title",
+        "description",
+        "supportedPurposes",
+        "blueprint",
+        "variants",
+      ],
+      path,
+    );
+    const bankId = context.string(bank.bankId, `${path}.bankId`, {
+      identifier: true,
+    });
+    const bankVersion = context.string(
+      bank.bankVersion,
+      `${path}.bankVersion`,
+      { semanticVersion: true },
+    );
+    if (bankId !== null && bankVersion !== null) {
+      const key = `${bankId}@${bankVersion}`;
+      context.check(
+        !bankKeys.has(key),
+        "DUPLICATE_AUDIT_VARIANT_BANK",
+        path,
+        "must use a unique Audit variant-bank ID and version",
+      );
+      bankKeys.add(key);
+    }
+    context.check(
+      bank.status === "DRAFT" ||
+        bank.status === "EXPERT_REVIEWED" ||
+        bank.status === "PILOT_CALIBRATED" ||
+        bank.status === "RETIRED",
+      "INVALID_AUDIT_VARIANT_BANK_STATUS",
+      `${path}.status`,
+      "must use a supported Audit variant-bank status",
+    );
+    validateLocalizedText(
+      context,
+      bank.title,
+      `${path}.title`,
+      supportedLocales,
+    );
+    validateLocalizedText(
+      context,
+      bank.description,
+      `${path}.description`,
+      supportedLocales,
+    );
+    const purposes = validateUniqueStrings(
+      context,
+      bank.supportedPurposes,
+      `${path}.supportedPurposes`,
+      { minimumItems: 1 },
+    );
+    purposes.forEach((purpose, purposeIndex) => {
+      context.check(
+        purpose === "CHALLENGE_FORMATIVE" ||
+          purpose === "ASSESSMENT",
+        "INVALID_AUDIT_VARIANT_PURPOSE",
+        `${path}.supportedPurposes[${String(purposeIndex)}]`,
+        "must be Challenge Formative or Assessment",
+      );
+    });
+    const blueprint = context.object(
+      bank.blueprint,
+      `${path}.blueprint`,
+    );
+    if (blueprint !== null) {
+      context.allowedKeys(
+        blueprint,
+        [
+          "blueprintId",
+          "version",
+          "targetCompetencyIndicatorIds",
+          "scorableItemRoles",
+          "maximumScore",
+          "passScore",
+          "evidenceRoles",
+          "materialFindingCount",
+          "decoyCount",
+          "evidenceItemCount",
+          "policyCount",
+          "estimatedMinutes",
+          "complexityBand",
+          "reportBurden",
+        ],
+        `${path}.blueprint`,
+      );
+      context.string(
+        blueprint.blueprintId,
+        `${path}.blueprint.blueprintId`,
+        { identifier: true },
+      );
+      context.string(
+        blueprint.version,
+        `${path}.blueprint.version`,
+        { semanticVersion: true },
+      );
+      validateUniqueStrings(
+        context,
+        blueprint.targetCompetencyIndicatorIds,
+        `${path}.blueprint.targetCompetencyIndicatorIds`,
+        { minimumItems: 1, identifiers: true },
+      );
+      validateUniqueStrings(
+        context,
+        blueprint.evidenceRoles,
+        `${path}.blueprint.evidenceRoles`,
+        { minimumItems: 1, identifiers: true },
+      );
+      context.check(
+        blueprint.maximumScore === 100,
+        "INVALID_AUDIT_VARIANT_SCORE_TOTAL",
+        `${path}.blueprint.maximumScore`,
+        "must equal 100",
+      );
+      context.number(
+        blueprint.passScore,
+        `${path}.blueprint.passScore`,
+        { minimum: 0, maximum: 100 },
+      );
+      const roles = context.array(
+        blueprint.scorableItemRoles,
+        `${path}.blueprint.scorableItemRoles`,
+      );
+      if (roles !== null) {
+        context.check(
+          roles.length === AUDIT_SCORABLE_ITEMS.size,
+          "INVALID_AUDIT_VARIANT_SCORE_ROLES",
+          `${path}.blueprint.scorableItemRoles`,
+          "must contain every canonical Audit score role",
+        );
+        const seen = new Set<string>();
+        roles.forEach((roleValue, roleIndex) => {
+          const rolePath =
+            `${path}.blueprint.scorableItemRoles[${String(roleIndex)}]`;
+          const role = context.object(roleValue, rolePath);
+          if (role === null) return;
+          context.allowedKeys(
+            role,
+            ["scorableItemId", "maximumScore"],
+            rolePath,
+          );
+          const itemId = context.string(
+            role.scorableItemId,
+            `${rolePath}.scorableItemId`,
+          );
+          const maximum = context.number(
+            role.maximumScore,
+            `${rolePath}.maximumScore`,
+            { integer: true, minimum: 0, maximum: 100 },
+          );
+          if (itemId !== null) {
+            context.check(
+              !seen.has(itemId) &&
+                maximum !== null &&
+                AUDIT_SCORABLE_ITEMS.get(itemId) === maximum,
+              "INVALID_AUDIT_VARIANT_SCORE_ROLE",
+              rolePath,
+              "must match one unique canonical Audit score role",
+            );
+            seen.add(itemId);
+          }
+        });
+      }
+      for (const rangeKey of [
+        "materialFindingCount",
+        "decoyCount",
+        "evidenceItemCount",
+        "policyCount",
+        "estimatedMinutes",
+      ] as const) {
+        const rangePath = `${path}.blueprint.${rangeKey}`;
+        const range = context.object(blueprint[rangeKey], rangePath);
+        if (range === null) continue;
+        context.allowedKeys(range, ["minimum", "maximum"], rangePath);
+        const minimum = context.number(
+          range.minimum,
+          `${rangePath}.minimum`,
+          { integer: true, minimum: 0, maximum: 100 },
+        );
+        const maximum = context.number(
+          range.maximum,
+          `${rangePath}.maximum`,
+          { integer: true, minimum: 0, maximum: 100 },
+        );
+        context.check(
+          minimum !== null &&
+            maximum !== null &&
+            minimum <= maximum,
+          "INVALID_AUDIT_VARIANT_RANGE",
+          rangePath,
+          "must have a minimum no greater than its maximum",
+        );
+      }
+      context.check(
+        blueprint.complexityBand === "INTERMEDIATE",
+        "INVALID_AUDIT_VARIANT_COMPLEXITY",
+        `${path}.blueprint.complexityBand`,
+        "must equal INTERMEDIATE",
+      );
+      context.check(
+        blueprint.reportBurden ===
+          "COMPLETE_AUDIT_CONCLUSION",
+        "INVALID_AUDIT_VARIANT_REPORT_BURDEN",
+        `${path}.blueprint.reportBurden`,
+        "must require a complete Audit conclusion",
+      );
+    }
+    const variants = context.array(bank.variants, `${path}.variants`);
+    if (variants !== null) {
+      context.check(
+        variants.length >= 3,
+        "TOO_FEW_AUDIT_VARIANTS",
+        `${path}.variants`,
+        "must contain at least three complete cases",
+      );
+      variants.forEach((variantValue, variantIndex) => {
+        const variantPath =
+          `${path}.variants[${String(variantIndex)}]`;
+        const variant = context.object(variantValue, variantPath);
+        if (variant === null) return;
+        context.allowedKeys(
+          variant,
+          [
+            "variantId",
+            "variantVersion",
+            "caseReference",
+            "scenarioId",
+            "scenarioVersion",
+            "auditCaseId",
+            "auditCaseVersion",
+            "contentHash",
+            "answerPatternHash",
+            "estimatedMinutes",
+            "complexityBand",
+          ],
+          variantPath,
+        );
+        for (const key of [
+          "variantId",
+          "caseReference",
+          "scenarioId",
+          "auditCaseId",
+        ] as const) {
+          context.string(
+            variant[key],
+            `${variantPath}.${key}`,
+            { identifier: true },
+          );
+        }
+        for (const key of [
+          "variantVersion",
+          "scenarioVersion",
+          "auditCaseVersion",
+        ] as const) {
+          context.string(
+            variant[key],
+            `${variantPath}.${key}`,
+            { semanticVersion: true },
+          );
+        }
+        for (const key of [
+          "contentHash",
+          "answerPatternHash",
+        ] as const) {
+          context.check(
+            typeof variant[key] === "string" &&
+              SHA256.test(variant[key] as string),
+            "INVALID_AUDIT_VARIANT_HASH",
+            `${variantPath}.${key}`,
+            "must be a lowercase SHA-256 digest",
+          );
+        }
+        context.number(
+          variant.estimatedMinutes,
+          `${variantPath}.estimatedMinutes`,
+          { integer: true, minimum: 1, maximum: 240 },
+        );
+        context.check(
+          variant.complexityBand === "INTERMEDIATE",
+          "INVALID_AUDIT_VARIANT_COMPLEXITY",
+          `${variantPath}.complexityBand`,
+          "must equal INTERMEDIATE",
+        );
+      });
+    }
+  });
+
+  if (
+    Array.isArray(pack.scenarios) &&
+    banks.every((bank) => isJsonObject(bank))
+  ) {
+    for (const [bankIndex, bank] of banks.entries()) {
+      try {
+        const result = validateAuditVariantBank({
+          pack: pack as unknown as ScenarioPackV1,
+          bank: bank as unknown as AuditVariantBankDefinitionV1,
+        });
+        for (const issue of result.issues) {
+          context.check(
+            false,
+            "INVALID_AUDIT_VARIANT_BANK",
+            `$.auditVariantBanks[${String(bankIndex)}].${issue.path}`,
+            issue.message,
+          );
+        }
+      } catch {
+        context.check(
+          false,
+          "INVALID_AUDIT_VARIANT_BANK",
+          `$.auditVariantBanks[${String(bankIndex)}]`,
+          "could not be resolved against the complete authored scenarios",
+        );
+      }
+    }
+  }
+}
+
 export function validateScenarioPack(
   value: unknown,
   options: ScenarioPackValidationOptions = {},
@@ -4536,10 +4881,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.8.0",
+      pack.schemaVersion === "1.9.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.8.0",
+      "must equal 1.9.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });
@@ -4785,6 +5130,12 @@ export function validateScenarioPack(
         }
       });
     }
+    validateAuditVariantBanks(
+      context,
+      pack.auditVariantBanks,
+      supportedLocales,
+      pack,
+    );
 
     const assetHashes = context.object(pack.assetHashes, "$.assetHashes");
     if (assetHashes !== null) {

@@ -61,7 +61,7 @@ function usage() {
   return [
     "Usage:",
     "  npm run package:scorm -- --preset guided",
-    "  npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice",
+    "  npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment",
     "  npm run package:scorm -- --config configs/package.json",
     "",
     "Options:",
@@ -317,6 +317,7 @@ function auditPackMap(definitions) {
   return new Map([
     [definitions.guidedAuditPack.packId, definitions.guidedAuditPack],
     [definitions.practiceAuditPack.packId, definitions.practiceAuditPack],
+    [definitions.challengeAuditPack.packId, definitions.challengeAuditPack],
   ]);
 }
 
@@ -353,31 +354,81 @@ function validateAuditPackageInput(
     publishedAt: provenance.generatedAt,
     publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
   });
+  const auditVariantBank =
+    configuration.scenarioVariation.strategy ===
+    "SEEDED_VARIANT_BANK"
+      ? pack.auditVariantBanks.find(
+          (candidate) =>
+            candidate.bankId ===
+              configuration.scenarioVariation.bankId &&
+            candidate.bankVersion ===
+              configuration.scenarioVariation.bankVersion,
+        )
+      : null;
+  if (
+    configuration.scenarioVariation.strategy ===
+      "SEEDED_VARIANT_BANK" &&
+    auditVariantBank === undefined
+  ) {
+    throw new Error(
+      "Audit variant-bank identity does not match the resolved configuration",
+    );
+  }
+  if (auditVariantBank !== null && auditVariantBank !== undefined) {
+    const bankValidation = definitions.validateAuditVariantBank({
+      pack,
+      bank: auditVariantBank,
+    });
+    if (!bankValidation.isValid) {
+      throw new Error(
+        `Audit variant bank ${auditVariantBank.bankId} is invalid:\n${bankValidation.issues
+          .map((issue) => `  ${issue.path}: ${issue.message}`)
+          .join("\n")}`,
+      );
+    }
+  }
+  const representative = auditVariantBank?.variants[0];
   const scenario = pack.scenarios.find(
     (candidate) =>
-      candidate.scenarioId === configuration.scenarioId &&
-      candidate.version === configuration.scenarioVersion,
+      candidate.scenarioId ===
+        (representative?.scenarioId ?? configuration.scenarioId) &&
+      candidate.version ===
+        (representative?.scenarioVersion ??
+          configuration.scenarioVersion),
   );
+  const scoringMatches =
+    auditVariantBank === null || auditVariantBank === undefined
+      ? scenario?.auditCase?.scoringBlueprint.scoringBlueprintId ===
+          configuration.scoring.scoringBlueprintId &&
+        scenario.auditCase.scoringBlueprint.version ===
+          configuration.scoring.scoringBlueprintVersion &&
+        scenario.auditCase.scoringBlueprint.maximumScore ===
+          configuration.scoring.maximumScore &&
+        scenario.auditCase.scoringBlueprint.passScore ===
+          configuration.scoring.passScore
+      : auditVariantBank.blueprint.maximumScore ===
+          configuration.scoring.maximumScore &&
+        auditVariantBank.blueprint.passScore ===
+          configuration.scoring.passScore;
   if (
     pack.packId !== configuration.content.packId ||
     pack.version !== configuration.content.packVersion ||
     scenario?.auditCase === undefined ||
-    scenario.auditCase.auditCaseId !== configuration.auditCaseId ||
-    scenario.auditCase.version !== configuration.auditCaseVersion ||
-    scenario.auditCase.scoringBlueprint.scoringBlueprintId !==
-      configuration.scoring.scoringBlueprintId ||
-    scenario.auditCase.scoringBlueprint.version !==
-      configuration.scoring.scoringBlueprintVersion ||
-    scenario.auditCase.scoringBlueprint.maximumScore !==
-      configuration.scoring.maximumScore ||
-    scenario.auditCase.scoringBlueprint.passScore !==
-      configuration.scoring.passScore
+    (representative === undefined &&
+      (scenario.auditCase.auditCaseId !== configuration.auditCaseId ||
+        scenario.auditCase.version !==
+          configuration.auditCaseVersion)) ||
+    !scoringMatches
   ) {
     throw new Error(
       "Audit pack, scenario, case, or scoring identity does not match the resolved configuration",
     );
   }
-  return { pack, scenario };
+  return {
+    pack,
+    scenario,
+    auditVariantBank: auditVariantBank ?? null,
+  };
 }
 
 function variantBankForConfiguration(configuration, definitions) {
@@ -489,6 +540,12 @@ function defaultScenarioLabel(configuration) {
   }
   if (configuration.scenarioId === "SCN_PRACTICE_COFFEE_AUDIT") {
     return "PracticeCoffeeAudit";
+  }
+  if (
+    configuration.scenarioId ===
+    "SCN_COFFEE_AUDIT_CHALLENGE_BANK"
+  ) {
+    return "ChallengeCoffeeAuditBank";
   }
   return safeFileSegment(configuration.scenarioId);
 }
@@ -675,6 +732,16 @@ function packageOne({
       .digest("hex");
     auditScenarioPackContentHash =
       auditPack.publication.contentHash;
+    if (variantBank !== null) {
+      const variantBankContent = `${JSON.stringify(variantBank, null, 2)}\n`;
+      variantBankHash = createHash("sha256")
+        .update(variantBankContent, "utf8")
+        .digest("hex");
+      for (const variant of variantBank.variants) {
+        variantContentHashes[variant.variantId] =
+          variant.contentHash;
+      }
+    }
   } else {
     const scenarioContent = `${JSON.stringify(scenario, null, 2)}\n`;
     writeFileSync(
@@ -795,7 +862,7 @@ function packageOne({
     auditScenarioPackHash,
     auditScenarioPackContentHash,
     auditPersistenceSchemaVersion:
-      auditPack === null ? null : "TA1",
+      auditPack === null ? null : "TA2",
     variantBankId: variantBank?.bankId ?? null,
     variantBankVersion: variantBank?.bankVersion ?? null,
     variantBankHash,
@@ -974,7 +1041,8 @@ async function main() {
           `No authored Audit pack is available for ${configuration.content.packId}`,
         );
       }
-      const { pack, scenario } = validateAuditPackageInput(
+      const { pack, scenario, auditVariantBank } =
+        validateAuditPackageInput(
         configuration,
         draftPack,
         definitions,
@@ -985,7 +1053,7 @@ async function main() {
         configuration,
         sourceLabel,
         scenario,
-        variantBank: null,
+        variantBank: auditVariantBank,
         cryptographicRuntime: null,
         text: resolvePackageText(
           configuration,

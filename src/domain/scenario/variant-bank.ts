@@ -26,6 +26,16 @@ export interface VariantAssessmentBlueprint {
   readonly operationalPoints: number;
   readonly knowledgePoints: number;
   readonly itemBlueprints: readonly VariantBlueprintItem[];
+  readonly targetCompetencyIndicatorIds: readonly string[];
+  readonly evidenceRoles: readonly string[];
+  readonly consequentialDecisionRoles: readonly string[];
+  readonly feedbackPolicy: "IMMEDIATE" | "STAGE_END" | "FINAL";
+  readonly hintPolicy: "ENABLED" | "LIMITED" | "DISABLED";
+  readonly estimatedMinutes: {
+    readonly minimum: number;
+    readonly maximum: number;
+  };
+  readonly complexityBand: "INTRODUCTORY" | "INTERMEDIATE";
 }
 
 export interface ScenarioVariantProfile {
@@ -81,6 +91,19 @@ export interface ScenarioVariantAssignment {
     | "SCORM_ATTEMPT"
     | "STANDALONE_ATTEMPT"
     | "HOSTED_ASSIGNMENT";
+}
+
+export interface CuratedVariantSelectionBank {
+  readonly bankId: string;
+  readonly bankVersion: string;
+  readonly variants: readonly {
+    readonly metadata: {
+      readonly variantId: string;
+      readonly variantVersion: string;
+      readonly contentHash: string;
+      readonly caseReference: string;
+    };
+  }[];
 }
 
 export interface VariantBankValidationIssue {
@@ -147,6 +170,16 @@ export function assessmentBlueprintFromScenario(options: {
   readonly blueprintId: string;
   readonly blueprintVersion: string;
   readonly scenario: ScenarioDefinition;
+  readonly equivalence: Pick<
+    VariantAssessmentBlueprint,
+    | "targetCompetencyIndicatorIds"
+    | "evidenceRoles"
+    | "consequentialDecisionRoles"
+    | "feedbackPolicy"
+    | "hintPolicy"
+    | "estimatedMinutes"
+    | "complexityBand"
+  >;
 }): VariantAssessmentBlueprint {
   const itemBlueprints = blueprintItems(options.scenario);
   const total = (kind: VariantBlueprintItem["class"]): number =>
@@ -161,6 +194,7 @@ export function assessmentBlueprintFromScenario(options: {
     operationalPoints: total("OPERATIONAL"),
     knowledgePoints: total("KNOWLEDGE"),
     itemBlueprints,
+    ...options.equivalence,
   };
 }
 
@@ -288,6 +322,17 @@ export function validateVariantBank(options: {
           blueprintId: bank.blueprint.blueprintId,
           blueprintVersion: bank.blueprint.blueprintVersion,
           scenario: base,
+          equivalence: {
+            targetCompetencyIndicatorIds:
+              bank.blueprint.targetCompetencyIndicatorIds,
+            evidenceRoles: bank.blueprint.evidenceRoles,
+            consequentialDecisionRoles:
+              bank.blueprint.consequentialDecisionRoles,
+            feedbackPolicy: bank.blueprint.feedbackPolicy,
+            hintPolicy: bank.blueprint.hintPolicy,
+            estimatedMinutes: bank.blueprint.estimatedMinutes,
+            complexityBand: bank.blueprint.complexityBand,
+          },
         });
 
   bank.variants.forEach((variant, index) => {
@@ -369,6 +414,29 @@ export function validateVariantBank(options: {
     );
   }
   if (
+    bank.blueprint.targetCompetencyIndicatorIds.length === 0 ||
+    bank.blueprint.evidenceRoles.length === 0 ||
+    bank.blueprint.consequentialDecisionRoles.length === 0 ||
+    bank.blueprint.estimatedMinutes.minimum < 1 ||
+    bank.blueprint.estimatedMinutes.maximum <
+      bank.blueprint.estimatedMinutes.minimum ||
+    bank.variants.some(
+      (variant) =>
+        variant.metadata.estimatedMinutes <
+          bank.blueprint.estimatedMinutes.minimum ||
+        variant.metadata.estimatedMinutes >
+          bank.blueprint.estimatedMinutes.maximum ||
+        variant.metadata.difficultyBand !==
+          bank.blueprint.complexityBand,
+    )
+  ) {
+    add(
+      "ERROR",
+      "blueprint.equivalence",
+      "must define non-empty targets and contain every variant duration and complexity band",
+    );
+  }
+  if (
     bank.variants.length > 1 &&
     new Set(
       bank.variants.map((variant) => variant.metadata.answerPatternHash),
@@ -430,7 +498,7 @@ export function validateAttemptSeed(seed: string): void {
 }
 
 export function selectVariantIndex(options: {
-  readonly bank: ScenarioVariantBank;
+  readonly bank: CuratedVariantSelectionBank;
   readonly attemptSeed: string;
   readonly selectionAlgorithmVersion: "1";
 }): number {
@@ -453,7 +521,7 @@ export function selectVariantIndex(options: {
 }
 
 export function assignmentForVariant(options: {
-  readonly bank: ScenarioVariantBank;
+  readonly bank: CuratedVariantSelectionBank;
   readonly variantIndex: number;
   readonly attemptSeed: string;
   readonly assignmentSource:
@@ -479,7 +547,7 @@ export function assignmentForVariant(options: {
 }
 
 export function selectVariantAssignment(options: {
-  readonly bank: ScenarioVariantBank;
+  readonly bank: CuratedVariantSelectionBank;
   readonly attemptSeed: string;
   readonly assignmentSource:
     ScenarioVariantAssignment["assignmentSource"];

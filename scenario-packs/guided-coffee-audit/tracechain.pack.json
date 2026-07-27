@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.8.0",
+  "schemaVersion": "1.9.0",
   "packId": "PACK_GUIDED_COFFEE_AUDIT",
   "version": "2.0.0",
   "status": "draft",
@@ -324,6 +324,7 @@
     }
   ],
   "portraitAssets": [],
+  "auditVariantBanks": [],
   "scenarios": [
     {
       "scenarioId": "SCN_GUIDED_COFFEE_AUDIT",
@@ -670,7 +671,7 @@
         "auditCaseId": "AUDIT_COFFEE_CONTROLS_001"
       },
       "auditCase": {
-        "schemaVersion": "2.0.0",
+        "schemaVersion": "3.0.0",
         "auditCaseId": "AUDIT_COFFEE_CONTROLS_001",
         "version": "2.0.0",
         "sourceProcessId": "COFFEE_PROCESS_COMPLETED_001",

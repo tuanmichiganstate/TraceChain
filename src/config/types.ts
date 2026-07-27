@@ -25,6 +25,8 @@ export type LearningPresetId =
   | "assessment"
   | "audit-guided"
   | "audit-practice"
+  | "audit-challenge"
+  | "audit-assessment"
   | "technical-lab";
 export type BusinessPresetId =
   | "guided"
@@ -33,7 +35,9 @@ export type BusinessPresetId =
   | "assessment";
 export type AuditPresetId =
   | "audit-guided"
-  | "audit-practice";
+  | "audit-practice"
+  | "audit-challenge"
+  | "audit-assessment";
 export type Difficulty = "introductory" | "intermediate";
 export type FeedbackTiming =
   | "IMMEDIATE"
@@ -197,7 +201,7 @@ export interface BusinessSimulationConfiguration
 
 export interface AuditSimulationConfiguration
   extends TraceChainConfigurationBase {
-  readonly applicationCompatibilityVersion: "ta1-v1";
+  readonly applicationCompatibilityVersion: "ta2-v1";
   readonly presetId: AuditPresetId;
   readonly activityType: "AUDIT";
   readonly scenarioId: string;
@@ -205,6 +209,7 @@ export interface AuditSimulationConfiguration
   readonly auditCaseId: string;
   readonly auditCaseVersion: string;
   readonly scenarioSeed: string;
+  readonly scenarioVariation: ScenarioVariationConfiguration;
 }
 
 export interface TechnicalLabConfiguration

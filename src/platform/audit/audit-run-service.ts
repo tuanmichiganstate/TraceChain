@@ -9,6 +9,7 @@ import type {
   AuditConclusionSubmissionV1,
   AuditFindingSubmissionV1,
   AuditLearnerProjectionV1,
+  AuditVariantAssignmentV1,
 } from "../contracts/audit";
 import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
 import type {
@@ -51,6 +52,7 @@ import {
   classifyAuditFinding,
   createAuditReport,
 } from "./audit-scoring";
+import { resolveAuditVariant } from "./audit-variant-bank";
 import type {
   AuditFindingInputV1,
   AuditHostedCommand,
@@ -252,10 +254,6 @@ export class AuditHostedRunService {
   private readonly auditCase: NonNullable<
     ScenarioDefinitionV1["auditCase"]
   >;
-  private readonly mode: "tutorial" | "standard";
-  private readonly completionOutcomeCode:
-    | "GUIDED_AUDIT_COMPLETED"
-    | "PRACTICE_AUDIT_COMPLETED";
 
   constructor(
     private readonly pack: ScenarioPackV1,
@@ -264,6 +262,8 @@ export class AuditHostedRunService {
     private readonly eventStore: RunEventStore,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
+    private readonly variantAssignment:
+      AuditVariantAssignmentV1 | null = null,
   ) {
     const scenario = pack.scenarios.find(
       (candidate) =>
@@ -285,14 +285,34 @@ export class AuditHostedRunService {
     }
     this.scenario = scenario;
     this.auditCase = scenario.auditCase;
-    this.mode =
-      scenario.auditCase.supportProfiles[0] === "PRACTICE"
-        ? "standard"
-        : "tutorial";
-    this.completionOutcomeCode =
-      this.mode === "standard"
-        ? "PRACTICE_AUDIT_COMPLETED"
-        : "GUIDED_AUDIT_COMPLETED";
+    if (variantAssignment !== null) {
+      const bank = pack.auditVariantBanks.find(
+        (candidate) =>
+          candidate.bankId === variantAssignment.bankId &&
+          candidate.bankVersion ===
+            variantAssignment.bankVersion,
+      );
+      if (bank === undefined) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "The Audit variant assignment does not identify a bank in this pack.",
+        );
+      }
+      const selected = resolveAuditVariant({
+        pack,
+        bank,
+        assignment: variantAssignment,
+      });
+      if (
+        selected.scenario.scenarioId !== scenario.scenarioId ||
+        selected.scenario.version !== scenario.version
+      ) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "The Audit variant assignment does not identify the selected case.",
+        );
+      }
+    }
   }
 
   async createRun(
@@ -313,7 +333,7 @@ export class AuditHostedRunService {
         "A learner may only start their own assigned audit.",
       );
     }
-    if (request.mode !== this.mode) {
+    if (!this.scenario.supportedModes.includes(request.mode)) {
       throw new HostedRunCommandError(
         "INVALID_COMMAND",
         "The requested mode does not match this Audit support profile.",
@@ -322,9 +342,9 @@ export class AuditHostedRunService {
     const modeConfiguration = validateHostedModeConfiguration(
       request.modeConfiguration ??
         this.scenario.modeConfigurations.find(
-          (configuration) => configuration.mode === this.mode,
+          (configuration) => configuration.mode === request.mode,
         ),
-      this.mode,
+      request.mode,
     );
     const experience = resolveHostedExperienceConfiguration({
       packId: this.pack.packId,
@@ -380,6 +400,13 @@ export class AuditHostedRunService {
           experience.configurationHash,
         packContentHash: this.packContentHash(),
         sourceStateHash: this.sourceStateHash(),
+        ...(this.variantAssignment === null
+          ? {}
+          : {
+              variantAssignment: asJsonObject(
+                this.variantAssignment,
+              ),
+            }),
       },
     });
     events.push(created);
@@ -534,6 +561,20 @@ export class AuditHostedRunService {
         break;
       case "VIEW_AUDIT_HINT":
         this.requireHint(command.hintId);
+        if (
+          state.experienceConfiguration.hints.availability ===
+            "DISABLED" ||
+          (state.experienceConfiguration.hints
+            .maximumHintsPerRun !== undefined &&
+            state.viewedHintIds.length >=
+              state.experienceConfiguration.hints
+                .maximumHintsPerRun)
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "No further hint is available under this Audit policy.",
+          );
+        }
         if (state.viewedHintIds.includes(command.hintId)) {
           throw new HostedRunCommandError(
             "WORKFLOW_PRECONDITION_FAILED",
@@ -582,6 +623,16 @@ export class AuditHostedRunService {
       }
       case "SUBMIT_AUDIT_FINDING":
       case "AMEND_AUDIT_FINDING": {
+        if (
+          command.commandType === "AMEND_AUDIT_FINDING" &&
+          state.experienceConfiguration.retries
+            .professionalDecisionRevision === "ONE_SHOT"
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "Submitted findings are one-shot in this Audit Assessment.",
+          );
+        }
         const findingRecordCount = events.filter(
           (event) =>
             event.eventType === "AUDIT_FINDING_SUBMITTED" ||
@@ -682,6 +733,15 @@ export class AuditHostedRunService {
         break;
       }
       case "WITHDRAW_AUDIT_FINDING": {
+        if (
+          state.experienceConfiguration.retries
+            .professionalDecisionRevision === "ONE_SHOT"
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "Submitted findings cannot be withdrawn in this Audit Assessment.",
+          );
+        }
         const findingRecordCount = events.filter(
           (event) =>
             event.eventType === "AUDIT_FINDING_SUBMITTED" ||
@@ -741,7 +801,7 @@ export class AuditHostedRunService {
           sourceEventIds: [submitted.sequenced.eventId],
         });
         add("RUN_COMPLETED", {
-          outcomeCode: this.completionOutcomeCode,
+          outcomeCode: this.completionOutcomeCode(state),
         });
         break;
       }
@@ -1040,7 +1100,12 @@ export class AuditHostedRunService {
       }
       const modeConfiguration = validateHostedModeConfiguration(
         event.payload.modeConfiguration,
-        this.mode,
+        requiredString(
+          (event.payload.modeConfiguration as
+            | Readonly<Record<string, unknown>>
+            | undefined)?.mode,
+          "modeConfiguration.mode",
+        ) as "tutorial" | "standard" | "sandbox" | "configured",
       );
       const expectedExperience =
         resolveHostedExperienceConfiguration({
@@ -1072,7 +1137,10 @@ export class AuditHostedRunService {
       }
       if (
         event.payload.packContentHash !== this.packContentHash() ||
-        event.payload.sourceStateHash !== this.sourceStateHash()
+        event.payload.sourceStateHash !== this.sourceStateHash() ||
+        canonicalize(
+          event.payload.variantAssignment ?? null,
+        ) !== canonicalize(this.variantAssignment)
       ) {
         throw new HostedRunCommandError(
           "PACK_CONTRACT_MISMATCH",
@@ -1111,6 +1179,11 @@ export class AuditHostedRunService {
         auditCaseId: this.auditCase.auditCaseId,
         auditCaseVersion: this.auditCase.version,
         sourceStateHash: this.sourceStateHash(),
+        ...(this.variantAssignment === null
+          ? {}
+          : {
+              variantAssignment: this.variantAssignment,
+            }),
         modeConfiguration,
         experienceConfiguration:
           expectedExperience.configuration,
@@ -1337,7 +1410,8 @@ export class AuditHostedRunService {
       case "RUN_COMPLETED":
         if (
           state.conclusion === undefined ||
-          event.payload.outcomeCode !== this.completionOutcomeCode
+          event.payload.outcomeCode !==
+            this.completionOutcomeCode(state)
         ) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
@@ -1461,10 +1535,40 @@ export class AuditHostedRunService {
     return rule.evidenceRuleId;
   }
 
+  private completionOutcomeCode(
+    state: AuditHostedRunStateV1,
+  ):
+    | "GUIDED_AUDIT_COMPLETED"
+    | "PRACTICE_AUDIT_COMPLETED"
+    | "AUDIT_CHALLENGE_COMPLETED"
+    | "AUDIT_ASSESSMENT_COMPLETED" {
+    if (
+      state.experienceConfiguration.deliveryPurpose ===
+      "ASSESSMENT"
+    ) {
+      return "AUDIT_ASSESSMENT_COMPLETED";
+    }
+    const supportProfile =
+      state.experienceConfiguration.supportProfile;
+    if (supportProfile === "GUIDED") {
+      return "GUIDED_AUDIT_COMPLETED";
+    }
+    if (supportProfile === "PRACTICE") {
+      return "PRACTICE_AUDIT_COMPLETED";
+    }
+    return "AUDIT_CHALLENGE_COMPLETED";
+  }
+
   private withPermissions(
     state: AuditHostedRunStateV1,
   ): AuditHostedRunStateV1 {
     if (state.status === "completed") return state;
+    const revisionAllowed =
+      state.experienceConfiguration.retries
+        .professionalDecisionRevision !== "ONE_SHOT";
+    const hintAllowed =
+      state.experienceConfiguration.hints.availability !==
+      "DISABLED";
     return {
       ...state,
       workflowState: {
@@ -1475,11 +1579,15 @@ export class AuditHostedRunService {
             "INSPECT_AUDIT_EVIDENCE",
             "BOOKMARK_AUDIT_EVIDENCE",
             "INSPECT_AUDIT_SOURCE_RECORD",
-            "VIEW_AUDIT_HINT",
+            ...(hintAllowed ? ["VIEW_AUDIT_HINT"] : []),
             "SAVE_AUDIT_FINDING_DRAFT",
             "SUBMIT_AUDIT_FINDING",
-            "AMEND_AUDIT_FINDING",
-            "WITHDRAW_AUDIT_FINDING",
+            ...(revisionAllowed
+              ? [
+                  "AMEND_AUDIT_FINDING",
+                  "WITHDRAW_AUDIT_FINDING",
+                ]
+              : []),
             "SUBMIT_AUDIT_CONCLUSION",
           ],
         },
@@ -1538,8 +1646,13 @@ export class AuditHostedRunService {
       localizationKey: string,
     ): LearnerRunLocalizedTextV1 =>
       this.localizedText(localizationKey);
+    const feedbackReleased =
+      state.status === "completed" ||
+      state.experienceConfiguration.feedback.timing ===
+        "IMMEDIATE";
     const findings = state.findings.map((finding) => {
       if (finding.status === "WITHDRAWN") return finding;
+      if (!feedbackReleased) return finding;
       const classification = classifyAuditFinding(
         this.auditCase,
         finding,
@@ -1569,9 +1682,12 @@ export class AuditHostedRunService {
         feedback: {
           classification: "UNSUPPORTED" as const,
           explanation: localize(
-            this.mode === "standard"
-              ? "platformPack.practiceAudit.feedback.unsupported"
-              : "platformPack.guidedAudit.feedback.unsupported",
+            this.auditCase.supportProfiles[0] === "GUIDED"
+              ? "platformPack.guidedAudit.feedback.unsupported"
+              : this.auditCase.supportProfiles[0] ===
+                    "PRACTICE"
+                ? "platformPack.practiceAudit.feedback.unsupported"
+                : "platformPack.auditChallenge.feedback.unsupported",
           ),
         },
       };
@@ -1584,6 +1700,11 @@ export class AuditHostedRunService {
       sourceProcessVersion:
         this.auditCase.sourceProcessVersion,
       sourceStateHash: state.sourceStateHash,
+      ...(state.variantAssignment === undefined
+        ? {}
+        : {
+            variantAssignment: state.variantAssignment,
+          }),
       supportProfile: this.auditCase.supportProfiles[0]!,
       scopeViewed: state.scopeViewed,
       objective: localize(
@@ -1614,11 +1735,15 @@ export class AuditHostedRunService {
           label: localize(choice.label.localizationKey),
         }),
       ),
-      hints: this.auditCase.hints.map((hint) => ({
-        hintId: hint.hintId,
-        text: localize(hint.text.localizationKey),
-        viewed: state.viewedHintIds.includes(hint.hintId),
-      })),
+      hints:
+        state.experienceConfiguration.hints.availability ===
+        "DISABLED"
+          ? []
+          : this.auditCase.hints.map((hint) => ({
+              hintId: hint.hintId,
+              text: localize(hint.text.localizationKey),
+              viewed: state.viewedHintIds.includes(hint.hintId),
+            })),
       conclusionCategories:
         this.auditCase.conclusionCategories.map((choice) => ({
           conclusionCategory: choice.conclusionCategory,

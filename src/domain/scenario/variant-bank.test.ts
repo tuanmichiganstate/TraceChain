@@ -43,6 +43,20 @@ function bank(): ScenarioVariantBank {
       blueprintId: "BLUEPRINT_COFFEE_CHALLENGE_V1",
       blueprintVersion: "1.0.0",
       scenario: challengeAScenario,
+      equivalence: {
+        targetCompetencyIndicatorIds: ["BC6.PI1"],
+        evidenceRoles: ["SOURCE_EVIDENCE"],
+        consequentialDecisionRoles: [
+          "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        ],
+        feedbackPolicy: "STAGE_END",
+        hintPolicy: "LIMITED",
+        estimatedMinutes: {
+          minimum: 20,
+          maximum: 30,
+        },
+        complexityBand: "INTERMEDIATE",
+      },
     }),
     variants,
   };

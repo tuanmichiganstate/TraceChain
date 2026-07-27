@@ -5,6 +5,8 @@ import { installScormApi, peek } from "./scorm-harness";
 import { embedConfiguration, hashConfiguration } from "../src/config/hash";
 import {
   ASSESSMENT_PRESET,
+  AUDIT_ASSESSMENT_PRESET,
+  AUDIT_CHALLENGE_PRESET,
   AUDIT_PRACTICE_PRESET,
   CHALLENGE_PRESET,
   PRACTICE_PRESET,
@@ -35,10 +37,36 @@ const practiceAuditPackJson: unknown = JSON.parse(
     "utf8",
   ),
 );
+const challengeAuditPackJson: unknown = JSON.parse(
+  readFileSync(
+    new URL(
+      "../scenario-packs/challenge-coffee-audit/tracechain.pack.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 
 function publishedPracticeAuditPack() {
   const validation = validateScenarioPack(
     structuredClone(practiceAuditPackJson),
+  );
+  if (!validation.isValid) {
+    throw new Error(
+      validation.issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
+        .join("\n"),
+    );
+  }
+  return publishScenarioPack(validation.pack, {
+    publishedAt: "2026-07-27T03:00:00.000Z",
+    publishedBy: "TRACECHAIN_BROWSER_ACCEPTANCE",
+  });
+}
+
+function publishedChallengeAuditPack() {
+  const validation = validateScenarioPack(
+    structuredClone(challengeAuditPackJson),
   );
   if (!validation.isValid) {
     throw new Error(
@@ -81,7 +109,63 @@ async function installPracticeAuditRuntime(page: Page): Promise<void> {
         auditScenarioPackHash: sha256Hex(source),
         auditScenarioPackContentHash:
           pack.publication?.contentHash,
-        auditPersistenceSchemaVersion: "TA1",
+        auditPersistenceSchemaVersion: "TA2",
+      }),
+    });
+  });
+}
+
+async function installAuditBankRuntime(
+  page: Page,
+  configuration:
+    | typeof AUDIT_CHALLENGE_PRESET
+    | typeof AUDIT_ASSESSMENT_PRESET,
+): Promise<void> {
+  const pack = publishedChallengeAuditPack();
+  await page.addInitScript(() => {
+    const nativeGetRandomValues =
+      globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+    globalThis.crypto.getRandomValues = (<T extends ArrayBufferView>(
+      values: T,
+    ): T => {
+      if (values.byteLength === 16 && "fill" in values) {
+        (
+          values as unknown as {
+            fill(value: number): unknown;
+          }
+        ).fill(0);
+        return values;
+      }
+      return nativeGetRandomValues(values);
+    }) as Crypto["getRandomValues"];
+  });
+  await page.route("**/tracechain.config.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(embedConfiguration(configuration)),
+    });
+  });
+  await page.route("**/audit-scenario-pack.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(pack),
+    });
+  });
+  await page.route("**/build-info.json", async (route) => {
+    const response = await route.fetch();
+    const buildInformation = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    const source = `${JSON.stringify(pack, null, 2)}\n`;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...buildInformation,
+        auditScenarioPackHash: sha256Hex(source),
+        auditScenarioPackContentHash:
+          pack.publication?.contentHash,
+        auditPersistenceSchemaVersion: "TA2",
       }),
     });
   });
@@ -292,7 +376,7 @@ async function installPracticeRuntime(page: Page): Promise<void> {
   });
 }
 
-test("loads Practice Audit, persists a bounded hint action, and resumes it by TA1 replay", async ({
+test("loads Practice Audit, persists a bounded hint action, and resumes it by TA2 replay", async ({
   page,
   context,
 }) => {
@@ -322,7 +406,7 @@ test("loads Practice Audit, persists a bounded hint action, and resumes it by TA
   ).toBeVisible();
 
   const persisted = await peek(page, "cmi.suspend_data");
-  expect(persisted).toMatch(/^TA1\./u);
+  expect(persisted).toMatch(/^TA2\./u);
   expect(persisted.length).toBeLessThan(3_800);
   expect(
     await page.evaluate(
@@ -351,6 +435,69 @@ test("loads Practice Audit, persists a bounded hint action, and resumes it by TA
     resumed.getByRole("button", { name: "Mở gợi ý 1" }),
   ).toHaveCount(0);
   await resumed.close();
+});
+
+test("persists an Audit Challenge case before reveal and resumes the exact assignment", async ({
+  page,
+  context,
+}) => {
+  await installScormApi(page);
+  await installAuditBankRuntime(page, AUDIT_CHALLENGE_PRESET);
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", {
+      name: "Hồ sơ thử thách kiểm toán",
+    }),
+  ).toBeVisible();
+  const caseReference = page.getByText(/^AC-0[1-3]$/u);
+  await expect(caseReference).toBeVisible();
+  const selectedReference = await caseReference.textContent();
+  const persisted = await peek(page, "cmi.suspend_data");
+  expect(persisted).toMatch(/^TA2\./u);
+  expect(persisted.length).toBeLessThan(3_800);
+
+  const resumed = await context.newPage();
+  await installScormApi(resumed, {
+    initialValues: {
+      "cmi.core.entry": "resume",
+      "cmi.core.lesson_location": "AUDIT_WORKPAPER",
+      "cmi.suspend_data": persisted,
+    },
+  });
+  await installAuditBankRuntime(
+    resumed,
+    AUDIT_CHALLENGE_PRESET,
+  );
+  await resumed.goto("/");
+  await expect(
+    resumed.getByText(selectedReference!, { exact: true }),
+  ).toBeVisible();
+  await resumed.close();
+});
+
+test("loads final-feedback Audit Assessment without hints or revision actions", async ({
+  page,
+}) => {
+  await installScormApi(page);
+  await installAuditBankRuntime(page, AUDIT_ASSESSMENT_PRESET);
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", {
+      name: "Hồ sơ thử thách kiểm toán",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/^AC-0[1-3]$/u)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Mở gợi ý/u }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: /Sửa phát hiện|Rút phát hiện/u,
+    }),
+  ).toHaveCount(0);
+  expect(await peek(page, "cmi.suspend_data")).toMatch(/^TA2\./u);
 });
 
 test("loads independent Practice with optional support and immediate feedback", async ({

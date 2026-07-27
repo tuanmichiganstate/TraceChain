@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.8
+# TraceChain scenario-pack V1.9
 
-The V1.8 scenario-pack format is the active contract for the hosted
+The V1.9 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -201,7 +201,7 @@ the 39/61 operational/knowledge split.
 
 ## Audit cases
 
-V1.8 carries the Audit-specific hosted and SCORM runtime without creating a second
+V1.9 carries the Audit-specific hosted and SCORM runtime without creating a second
 application or transaction system. A scenario selects
 `tracechain-audit-v1` and references one bounded `auditCase`.
 
@@ -210,29 +210,39 @@ authored true findings, defensible decoys, supported conclusion categories,
 and an exact 100-point scoring blueprint. Learner evidence inspection,
 bookmarks, drafts, submitted findings, amendments, withdrawals, and the final
 conclusion are append-only run events. Hosted delivery stores those events in
-the server event store. SCORM delivery stores bounded replay commands in TA1
+the server event store. SCORM delivery stores bounded replay commands in TA2
 and regenerates the same events. Neither path enters the source ledger or
-asset-state projection.
+asset-state projection. Audit Challenge and Assessment packages use TA2, which
+persists the exact bank, variant index, immutable variant identity, attempt
+seed, selection algorithm, and assignment source before the case is revealed.
 
 Only source records explicitly authored as `LEDGER_TRANSACTION` appear in the
 ledger projection. Rejected attempts remain available as audit evidence while
 remaining outside ledger history. Finding ground truth and decoy explanations
 are withheld until the Guided feedback boundary.
 
-The fixed Guided coffee-control review and curated Practice review use the same
+The fixed Guided coffee-control review, curated Practice review, and three
+complete Challenge-bank cases use the same
 workbench, scoring blueprint, report, competency evidence, and exact replay
 services. Practice removes direct anomaly highlighting, requires the learner
 to request hints, and preserves immediate finding feedback. The source pack
 owns every string and interaction limit required by the compact SCORM codec.
 
-Audit-case schema `2.0.0` adds one Guided or Practice support profile,
+Audit-case schema `3.0.0` supports Guided, Practice, or Challenge profiles,
 scenario-authored hints, and explicit UTF-8, draft, finding, citation, and
-conclusion limits. The TA1 codec rejects duplicate interactions and any
+conclusion limits. The TA2 codec rejects duplicate interactions and any
 unbounded or over-limit value before persistence.
+
+`auditVariantBanks` contains complete immutable Audit cases rather than
+independently randomized findings, evidence, policies, or scoring. Each bank
+declares an equivalence blueprint, review status, answer-pattern hashes,
+duration and complexity bounds, and exact case content hashes. A `DRAFT` bank
+is usable for development and pilot calibration but does not claim
+high-stakes equivalence.
 
 ## Curriculum ownership boundary
 
-V1.8 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.9 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 

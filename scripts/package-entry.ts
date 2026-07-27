@@ -26,5 +26,9 @@ export {
 export {
   validateScenarioPack,
 } from "../src/platform/scenario-packs/validation";
+export {
+  validateAuditVariantBank,
+} from "../src/platform/audit/audit-variant-bank";
 export { default as guidedAuditPack } from "../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 export { default as practiceAuditPack } from "../scenario-packs/practice-coffee-audit/tracechain.pack.json";
+export { default as challengeAuditPack } from "../scenario-packs/challenge-coffee-audit/tracechain.pack.json";

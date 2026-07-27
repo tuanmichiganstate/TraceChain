@@ -9,7 +9,10 @@ import type {
   AutomatedEvidenceRuleV1,
   RubricDefinitionV1,
 } from "./rubric";
-import type { AuditCaseDefinitionV1 } from "./audit";
+import type {
+  AuditCaseDefinitionV1,
+  AuditVariantBankDefinitionV1,
+} from "./audit";
 
 export type HostedRunMode =
   | "tutorial"
@@ -479,7 +482,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.8.0";
+  readonly schemaVersion: "1.9.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
@@ -492,6 +495,8 @@ export interface ScenarioPackV1 {
   readonly rubrics: readonly RubricDefinitionV1[];
   readonly evidenceRules: readonly AutomatedEvidenceRuleV1[];
   readonly portraitAssets: readonly ScenarioPortraitAssetV1[];
+  readonly auditVariantBanks:
+    readonly AuditVariantBankDefinitionV1[];
   readonly scenarios: readonly ScenarioDefinitionV1[];
   readonly assetHashes: Readonly<Record<string, string>>;
   readonly publication?: ContentPublication;

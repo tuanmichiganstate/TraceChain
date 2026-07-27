@@ -108,6 +108,32 @@ export const challengeVariantBank: ScenarioVariantBank = {
     blueprintId: "BLUEPRINT_COFFEE_CHALLENGE_V1",
     blueprintVersion: "1.0.0",
     scenario: challengeAScenario,
+    equivalence: {
+      targetCompetencyIndicatorIds: [
+        "BC3.PI1",
+        "BC6.PI1",
+        "BC6.PI2",
+        "PC5.PI1",
+      ],
+      evidenceRoles: [
+        "CERTIFICATE_AND_ISSUER_REGISTRY",
+        "PHYSICAL_RECEIPT_AND_CORRECTION",
+        "PROVENANCE_AND_RECALL_SCOPE",
+      ],
+      consequentialDecisionRoles: [
+        "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        "INT_DISCREPANCY_INITIAL_SUBMITTED",
+        "INT_RECALL_INITIAL_SUBMITTED",
+        "INT_RECALL_AUTHORIZATION_RESOLVED",
+      ],
+      feedbackPolicy: "STAGE_END",
+      hintPolicy: "LIMITED",
+      estimatedMinutes: {
+        minimum: 15,
+        maximum: 30,
+      },
+      complexityBand: "INTERMEDIATE",
+    },
   }),
   variants: challengeVariants,
 };

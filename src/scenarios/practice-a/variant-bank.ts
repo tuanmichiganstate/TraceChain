@@ -54,6 +54,32 @@ export const practiceVariantBank: ScenarioVariantBank = {
     blueprintId: "BLUEPRINT_COFFEE_PRACTICE_V1",
     blueprintVersion: "1.0.0",
     scenario: practiceAScenario,
+    equivalence: {
+      targetCompetencyIndicatorIds: [
+        "BC3.PI1",
+        "BC6.PI1",
+        "BC6.PI2",
+        "PC5.PI1",
+      ],
+      evidenceRoles: [
+        "CERTIFICATE_AND_ISSUER_REGISTRY",
+        "PHYSICAL_RECEIPT_AND_CORRECTION",
+        "PROVENANCE_AND_RECALL_SCOPE",
+      ],
+      consequentialDecisionRoles: [
+        "INT_CERTIFICATE_INITIAL_SUBMITTED",
+        "INT_DISCREPANCY_INITIAL_SUBMITTED",
+        "INT_RECALL_INITIAL_SUBMITTED",
+        "INT_RECALL_AUTHORIZATION_RESOLVED",
+      ],
+      feedbackPolicy: "IMMEDIATE",
+      hintPolicy: "ENABLED",
+      estimatedMinutes: {
+        minimum: 20,
+        maximum: 40,
+      },
+      complexityBand: "INTERMEDIATE",
+    },
   }),
   variants: practiceVariants,
 };

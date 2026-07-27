@@ -50,6 +50,7 @@ import type {
 import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
 import { AuditHostedRunService } from "../audit/audit-run-service";
 import type { AuditHostedCommand } from "../audit/audit-run-types";
+import type { AuditVariantAssignmentV1 } from "../contracts/audit";
 
 export interface CreateHostedRuntimeRunRequest {
   readonly commandId: string;
@@ -185,6 +186,7 @@ export function createHostedRuntimeService(options: {
   readonly clock: Clock;
   readonly ids: IdGenerator;
   readonly counterfactualBranches?: CounterfactualBranchEngine;
+  readonly auditVariantAssignment?: AuditVariantAssignmentV1;
 }): HostedRuntimeService {
   const scenario = options.pack.scenarios.find(
     (candidate) =>
@@ -281,6 +283,7 @@ export function createHostedRuntimeService(options: {
       options.eventStore,
       options.clock,
       options.ids,
+      options.auditVariantAssignment ?? null,
     );
     const unsupported = (): never => {
       throw new HostedRunCommandError(

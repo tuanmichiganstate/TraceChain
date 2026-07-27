@@ -73,29 +73,43 @@ export function resolveHostedExperienceConfiguration(options: {
   if (options.scenario.hostedRuntime?.runtimeId === "tracechain-audit-v1") {
     const auditCase = options.scenario.auditCase;
     const supportProfile = auditCase?.supportProfiles[0];
-    const expectedMode =
-      supportProfile === "PRACTICE" ? "standard" : "tutorial";
+    const presetId =
+      supportProfile === "GUIDED"
+        ? "audit-guided"
+        : supportProfile === "PRACTICE"
+          ? "audit-practice"
+          : options.runtimeConfiguration.mode === "standard"
+            ? "audit-assessment"
+            : "audit-challenge";
+    const expectedModes =
+      supportProfile === "GUIDED"
+        ? ["tutorial"]
+        : supportProfile === "PRACTICE"
+          ? ["standard"]
+          : ["configured", "standard"];
     if (
       auditCase === undefined ||
       (supportProfile !== "GUIDED" &&
-        supportProfile !== "PRACTICE") ||
-      options.runtimeConfiguration.mode !== expectedMode
+        supportProfile !== "PRACTICE" &&
+        supportProfile !== "CHALLENGE") ||
+      !expectedModes.includes(options.runtimeConfiguration.mode)
     ) {
       throw new Error(
         "The Audit runtime configuration does not match the authored support profile.",
       );
     }
-    const dimensions = resolveProductDimensions(
-      supportProfile === "PRACTICE"
-        ? "audit-practice"
-        : "audit-guided",
-    );
+    const dimensions = resolveProductDimensions(presetId);
+    const assessment =
+      dimensions.deliveryPurpose === "ASSESSMENT";
+    const hints =
+      options.runtimeConfiguration.allowHints
+        ? supportProfile === "CHALLENGE"
+          ? "LIMITED"
+          : "ENABLED"
+        : "DISABLED";
     const configuration: TraceChainExperienceConfigurationV2 = {
       configurationSchemaVersion: "2",
-      presetId:
-        supportProfile === "PRACTICE"
-          ? "hosted-audit-practice"
-          : "hosted-audit-guided",
+      presetId: `hosted-${presetId}`,
       ...dimensions,
       content: {
         packId: options.packId,
@@ -104,11 +118,22 @@ export function resolveHostedExperienceConfiguration(options: {
         scenarioVersion: options.scenario.version,
       },
       guidance: guidancePolicyFor(supportProfile),
-      feedback: feedbackPolicyFor("IMMEDIATE"),
-      hints: hintPolicyFor("ENABLED", supportProfile),
+      feedback: feedbackPolicyFor(
+        hostedFeedbackTiming(
+          options.runtimeConfiguration.feedbackTiming,
+        ),
+      ),
+      hints: {
+        ...hintPolicyFor(hints, supportProfile),
+        ...(hints === "LIMITED"
+          ? { maximumHintsPerRun: 1 }
+          : {}),
+      },
       retries: {
         knowledgeRetry: "DISABLED",
-        professionalDecisionRevision: "FREE_REVISION",
+        professionalDecisionRevision: assessment
+          ? "ONE_SHOT"
+          : "FREE_REVISION",
         maximumKnowledgeAttempts: 1,
         maximumMitigationActions: 0,
       },
@@ -127,7 +152,7 @@ export function resolveHostedExperienceConfiguration(options: {
           auditCase.scoringBlueprint.version,
         maximumScore: 100,
         passScore: auditCase.scoringBlueprint.passScore,
-        official: false,
+        official: assessment,
         competencyEvidenceEnabled: true,
         reportDiagnosticDimensions: true,
       },

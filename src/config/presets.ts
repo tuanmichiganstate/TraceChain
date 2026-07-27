@@ -17,7 +17,9 @@ export type LecturerPresetId =
   | "challenge"
   | "assessment"
   | "audit-guided"
-  | "audit-practice";
+  | "audit-practice"
+  | "audit-challenge"
+  | "audit-assessment";
 
 const COMMON = {
   configurationSchemaVersion: "2",
@@ -235,7 +237,7 @@ export const ASSESSMENT_PRESET: BusinessSimulationConfiguration = {
 
 const AUDIT_COMMON = {
   configurationSchemaVersion: "2",
-  applicationCompatibilityVersion: "ta1-v1",
+  applicationCompatibilityVersion: "ta2-v1",
   activityType: "AUDIT",
   deliveryPurpose: "FORMATIVE",
   feedback: feedbackPolicyFor("IMMEDIATE"),
@@ -265,7 +267,7 @@ const AUDIT_COMMON = {
   },
   delivery: {
     channel: "SCORM",
-    persistencePolicyId: "TA1_COMPACT_WORKPAPER",
+    persistencePolicyId: "TA2_COMPACT_WORKPAPER",
     attemptPolicyId: "LMS_MANAGED",
   },
   locale: "vi",
@@ -297,6 +299,12 @@ export const AUDIT_GUIDED_PRESET: AuditSimulationConfiguration = {
   auditCaseId: "AUDIT_COFFEE_CONTROLS_001",
   auditCaseVersion: "2.0.0",
   scenarioSeed: "audit-guided-coffee-v1",
+  scenarioVariation: {
+    strategy: "FIXED",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: false,
+  },
 };
 
 const AUDIT_PRACTICE_DIMENSIONS =
@@ -325,6 +333,99 @@ export const AUDIT_PRACTICE_PRESET: AuditSimulationConfiguration = {
   auditCaseId: "AUDIT_COFFEE_CONTROLS_PRACTICE_001",
   auditCaseVersion: "1.0.0",
   scenarioSeed: "audit-practice-coffee-v1",
+  scenarioVariation: {
+    strategy: "FIXED",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: false,
+  },
+};
+
+const AUDIT_CHALLENGE_DIMENSIONS =
+  resolveProductDimensions("audit-challenge");
+
+export const AUDIT_CHALLENGE_PRESET: AuditSimulationConfiguration = {
+  ...AUDIT_COMMON,
+  presetId: "audit-challenge",
+  ...AUDIT_CHALLENGE_DIMENSIONS,
+  content: {
+    packId: "PACK_CHALLENGE_COFFEE_AUDIT",
+    packVersion: "1.0.0",
+    scenarioId: "SCN_COFFEE_AUDIT_CHALLENGE_BANK",
+    scenarioVersion: "1.0.0",
+    variantBankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+    variantBankVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor("CHALLENGE"),
+  feedback: feedbackPolicyFor("STAGE_END"),
+  hints: {
+    ...hintPolicyFor("LIMITED", "CHALLENGE"),
+    maximumHintsPerRun: 1,
+  },
+  retries: {
+    knowledgeRetry: "DISABLED",
+    professionalDecisionRevision: "FREE_REVISION",
+    maximumKnowledgeAttempts: 1,
+    maximumMitigationActions: 0,
+  },
+  scenarioId: "SCN_COFFEE_AUDIT_CHALLENGE_BANK",
+  scenarioVersion: "1.0.0",
+  auditCaseId: "AUDIT_COFFEE_CHALLENGE_BANK",
+  auditCaseVersion: "1.0.0",
+  scenarioSeed: "audit-challenge-bank-v1",
+  scenarioVariation: {
+    strategy: "SEEDED_VARIANT_BANK",
+    bankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+    bankVersion: "1.0.0",
+    selectionAlgorithmVersion: "1",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: true,
+  },
+};
+
+const AUDIT_ASSESSMENT_DIMENSIONS =
+  resolveProductDimensions("audit-assessment");
+
+export const AUDIT_ASSESSMENT_PRESET: AuditSimulationConfiguration = {
+  ...AUDIT_COMMON,
+  presetId: "audit-assessment",
+  ...AUDIT_ASSESSMENT_DIMENSIONS,
+  content: {
+    packId: "PACK_CHALLENGE_COFFEE_AUDIT",
+    packVersion: "1.0.0",
+    scenarioId: "SCN_COFFEE_AUDIT_CHALLENGE_BANK",
+    scenarioVersion: "1.0.0",
+    variantBankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+    variantBankVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor("CHALLENGE"),
+  feedback: feedbackPolicyFor("FINAL"),
+  hints: hintPolicyFor("DISABLED", "CHALLENGE"),
+  retries: {
+    knowledgeRetry: "DISABLED",
+    professionalDecisionRevision: "ONE_SHOT",
+    maximumKnowledgeAttempts: 1,
+    maximumMitigationActions: 0,
+  },
+  scoring: {
+    ...AUDIT_COMMON.scoring,
+    official: true,
+  },
+  scenarioId: "SCN_COFFEE_AUDIT_CHALLENGE_BANK",
+  scenarioVersion: "1.0.0",
+  auditCaseId: "AUDIT_COFFEE_CHALLENGE_BANK",
+  auditCaseVersion: "1.0.0",
+  scenarioSeed: "audit-assessment-bank-v1",
+  scenarioVariation: {
+    strategy: "SEEDED_VARIANT_BANK",
+    bankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+    bankVersion: "1.0.0",
+    selectionAlgorithmVersion: "1",
+    optionOrdering: "FIXED",
+    attemptPolicy: "STABLE_WITHIN_ATTEMPT",
+    displayCaseReferenceToLearner: true,
+  },
 };
 
 export const LECTURER_PRESETS: Readonly<
@@ -336,6 +437,8 @@ export const LECTURER_PRESETS: Readonly<
   assessment: ASSESSMENT_PRESET,
   "audit-guided": AUDIT_GUIDED_PRESET,
   "audit-practice": AUDIT_PRACTICE_PRESET,
+  "audit-challenge": AUDIT_CHALLENGE_PRESET,
+  "audit-assessment": AUDIT_ASSESSMENT_PRESET,
 };
 
 export function resolvePreset(

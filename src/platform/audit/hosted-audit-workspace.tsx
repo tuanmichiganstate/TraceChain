@@ -131,6 +131,7 @@ export function HostedAuditWorkspace({
     useState<AuditConclusionDraft>(() => initialConclusion(audit));
   const [recordFilter, setRecordFilter] = useState("");
   const isPractice = audit.supportProfile === "PRACTICE";
+  const isChallenge = audit.supportProfile === "CHALLENGE";
 
   const activeFindings = audit.findings.filter(
     (finding) => finding.status === "SUBMITTED",
@@ -533,14 +534,18 @@ export function HostedAuditWorkspace({
   return (
     <AuditWorkbenchShell
       eyebrow={t(
-        isPractice
-          ? "hostedAudit.eyebrow.practice"
-          : "hostedAudit.eyebrow",
+        isChallenge
+          ? "hostedAudit.eyebrow.challenge"
+          : isPractice
+            ? "hostedAudit.eyebrow.practice"
+            : "hostedAudit.eyebrow",
       )}
       title={t(
-        isPractice
-          ? "hostedAudit.title.practice"
-          : "hostedAudit.title",
+        isChallenge
+          ? "hostedAudit.title.challenge"
+          : isPractice
+            ? "hostedAudit.title.practice"
+            : "hostedAudit.title",
       )}
       description={localized(audit.objective, t)}
       context={[
@@ -550,6 +555,16 @@ export function HostedAuditWorkspace({
           value: `${audit.auditCaseId}@${audit.auditCaseVersion}`,
           monospace: true,
         },
+        ...(audit.variantAssignment === undefined
+          ? []
+          : [
+              {
+                id: "case-reference",
+                label: t("report.caseReference"),
+                value: audit.variantAssignment.caseReference,
+                monospace: true,
+              },
+            ]),
         {
           id: "source",
           label: t("hostedAudit.sourceProcess"),
@@ -794,7 +809,7 @@ export function HostedAuditReport({
   supportProfile = "GUIDED",
 }: {
   readonly report: NonNullable<AuditLearnerProjectionV1["report"]>;
-  readonly supportProfile?: "GUIDED" | "PRACTICE";
+  readonly supportProfile?: "GUIDED" | "PRACTICE" | "CHALLENGE";
 }): ReactNode {
   const t = useTranslator();
   return (
@@ -806,9 +821,11 @@ export function HostedAuditReport({
           : "hostedAudit.report.notPassed",
       )}
       title={t(
-        supportProfile === "PRACTICE"
-          ? "hostedAudit.report.title.practice"
-          : "hostedAudit.report.title",
+        supportProfile === "CHALLENGE"
+          ? "hostedAudit.report.title.challenge"
+          : supportProfile === "PRACTICE"
+            ? "hostedAudit.report.title.practice"
+            : "hostedAudit.report.title",
       )}
       summary={t("hostedAudit.report.summary", {
         score: report.score,

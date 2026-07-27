@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.8.0",
+  "schemaVersion": "1.9.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
   "version": "1.11.0",
   "status": "draft",
@@ -763,6 +763,7 @@
       "developmentPlaceholder": false
     }
   ],
+  "auditVariantBanks": [],
   "scenarios": [
     {
       "scenarioId": "SCN_COFFEE_STAGE3_FOUNDATION",

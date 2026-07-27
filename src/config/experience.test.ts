@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import packJson from "../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import auditPackJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import practiceAuditPackJson from "../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
+import challengeAuditPackJson from "../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import type {
   ScenarioPackV1,
 } from "../platform/contracts/scenario-pack";
@@ -10,6 +11,8 @@ import {
 } from "../platform/runs/experience-configuration";
 import {
   ASSESSMENT_PRESET,
+  AUDIT_ASSESSMENT_PRESET,
+  AUDIT_CHALLENGE_PRESET,
   AUDIT_GUIDED_PRESET,
   AUDIT_PRACTICE_PRESET,
   CHALLENGE_PRESET,
@@ -30,11 +33,15 @@ const auditPack = auditPackJson as ScenarioPackV1;
 const auditScenario = auditPack.scenarios[0];
 const practiceAuditPack = practiceAuditPackJson as ScenarioPackV1;
 const practiceAuditScenario = practiceAuditPack.scenarios[0];
+const challengeAuditPack =
+  challengeAuditPackJson as ScenarioPackV1;
+const challengeAuditScenario = challengeAuditPack.scenarios[0];
 
 if (
   scenario === undefined ||
   auditScenario === undefined ||
   practiceAuditScenario === undefined
+  || challengeAuditScenario === undefined
 ) {
   throw new Error("Expected the hosted coffee and Audit scenarios.");
 }
@@ -75,6 +82,18 @@ describe("Configuration Schema V2 product dimensions", () => {
       activityType: "AUDIT",
       supportProfile: "PRACTICE",
       deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
+    });
+    expect(resolveProductDimensions("audit-challenge")).toEqual({
+      activityType: "AUDIT",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
+    });
+    expect(resolveProductDimensions("audit-assessment")).toEqual({
+      activityType: "AUDIT",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "ASSESSMENT",
       outcomeStrategy: "CURATED_VARIANT",
     });
     expect(resolveProductDimensions("technical-lab")).toEqual({
@@ -129,19 +148,48 @@ describe("Configuration Schema V2 product dimensions", () => {
       scoring: { official: true },
     });
     expect(AUDIT_GUIDED_PRESET).toMatchObject({
-      applicationCompatibilityVersion: "ta1-v1",
+      applicationCompatibilityVersion: "ta2-v1",
       activityType: "AUDIT",
       supportProfile: "GUIDED",
       scenarioId: "SCN_GUIDED_COFFEE_AUDIT",
       scenarioVersion: "2.0.0",
     });
     expect(AUDIT_PRACTICE_PRESET).toMatchObject({
-      applicationCompatibilityVersion: "ta1-v1",
+      applicationCompatibilityVersion: "ta2-v1",
       activityType: "AUDIT",
       supportProfile: "PRACTICE",
       outcomeStrategy: "CURATED_VARIANT",
       scenarioId: "SCN_PRACTICE_COFFEE_AUDIT",
       scenarioVersion: "1.0.0",
+    });
+    expect(AUDIT_CHALLENGE_PRESET).toMatchObject({
+      applicationCompatibilityVersion: "ta2-v1",
+      activityType: "AUDIT",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "FORMATIVE",
+      feedback: { timing: "STAGE_END" },
+      hints: {
+        availability: "LIMITED",
+        maximumHintsPerRun: 1,
+      },
+      scenarioVariation: {
+        strategy: "SEEDED_VARIANT_BANK",
+      },
+    });
+    expect(AUDIT_ASSESSMENT_PRESET).toMatchObject({
+      applicationCompatibilityVersion: "ta2-v1",
+      activityType: "AUDIT",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "ASSESSMENT",
+      feedback: { timing: "FINAL" },
+      hints: { availability: "DISABLED" },
+      retries: {
+        professionalDecisionRevision: "ONE_SHOT",
+      },
+      scoring: { official: true },
+      scenarioVariation: {
+        strategy: "SEEDED_VARIANT_BANK",
+      },
     });
   });
 
@@ -343,5 +391,46 @@ describe("Configuration Schema V2 product dimensions", () => {
     expect(resolved.configurationHash).not.toBe(
       experienceConfigurationHash(AUDIT_GUIDED_PRESET),
     );
+  });
+
+  it("resolves the same Audit Challenge case into formative and final-feedback Assessment modes", () => {
+    const challengeMode =
+      challengeAuditScenario.modeConfigurations.find(
+        (configuration) => configuration.mode === "configured",
+      )!;
+    const assessmentMode =
+      challengeAuditScenario.modeConfigurations.find(
+        (configuration) => configuration.mode === "standard",
+      )!;
+    const challenge =
+      resolveHostedExperienceConfiguration({
+        packId: challengeAuditPack.packId,
+        packVersion: challengeAuditPack.version,
+        scenario: challengeAuditScenario,
+        runtimeConfiguration: challengeMode,
+      }).configuration;
+    const assessment =
+      resolveHostedExperienceConfiguration({
+        packId: challengeAuditPack.packId,
+        packVersion: challengeAuditPack.version,
+        scenario: challengeAuditScenario,
+        runtimeConfiguration: assessmentMode,
+      }).configuration;
+
+    expect(challenge).toMatchObject({
+      presetId: "hosted-audit-challenge",
+      feedback: { timing: "STAGE_END" },
+      hints: { availability: "LIMITED" },
+      scoring: { official: false },
+    });
+    expect(assessment).toMatchObject({
+      presetId: "hosted-audit-assessment",
+      feedback: { timing: "FINAL" },
+      hints: { availability: "DISABLED" },
+      retries: {
+        professionalDecisionRevision: "ONE_SHOT",
+      },
+      scoring: { official: true },
+    });
   });
 });

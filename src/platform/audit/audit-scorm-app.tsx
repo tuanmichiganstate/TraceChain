@@ -1,25 +1,30 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { AuditRuntimePackage } from "../../config/audit-runtime-loader";
+import {
+  auditRuntimeForAssignment,
+  type AuditRuntimePackage,
+} from "../../config/audit-runtime-loader";
 import type {
   AuditConclusionSubmissionV1,
   AuditLearnerProjectionV1,
+  AuditVariantAssignmentV1,
 } from "../contracts/audit";
 import type { AuditFindingInputV1 } from "./audit-run-types";
 import {
-  decodeTa1AuditSnapshot,
-  emptyTa1AuditSnapshot,
-  encodeTa1AuditSnapshot,
+  decodeTa2AuditSnapshot,
+  emptyTa2AuditSnapshot,
+  encodeTa2AuditSnapshot,
+  inspectTa2AuditStoredHeader,
   type AuditCommandJournalEntry,
-  type Ta1AuditCodecSchema,
-  type Ta1AuditSnapshot,
-} from "../../infrastructure/persistence/ta1-audit-codec";
+  type Ta2AuditCodecSchema,
+  type Ta2AuditSnapshot,
+} from "../../infrastructure/persistence/ta2-audit-codec";
+import { BrowserAttemptSeedGenerator } from "../../domain/scenario/variant-bank";
 import { Scorm12Adapter } from "../../infrastructure/scorm/scorm12-adapter";
 import {
   CompletionStatus,
@@ -29,12 +34,18 @@ import { StandalonePersistenceAdapter } from "../../infrastructure/persistence/s
 import { useTranslator } from "../../app/providers/locale-provider";
 import { HostedAuditWorkspace } from "./hosted-audit-workspace";
 import {
-  replayTa1AuditAttempt,
+  auditVariantAssignmentForIndex,
+  selectAuditVariantAssignment,
+} from "./audit-variant-bank";
+import {
+  replayTa2AuditAttempt,
   type ReplayedAuditAttempt,
 } from "./audit-scorm-replay";
 
 interface ReadyAuditScormAttempt {
-  readonly snapshot: Ta1AuditSnapshot;
+  readonly runtime: AuditRuntimePackage;
+  readonly codecSchema: Ta2AuditCodecSchema;
+  readonly snapshot: Ta2AuditSnapshot;
   readonly replay: ReplayedAuditAttempt;
   readonly isReadOnly: boolean;
 }
@@ -108,7 +119,7 @@ function commandEntry(
   }
 }
 
-function nextFindingSequence(snapshot: Ta1AuditSnapshot): number {
+function nextFindingSequence(snapshot: Ta2AuditSnapshot): number {
   let maximum = 0;
   for (const entry of snapshot.commandJournal) {
     const findingId =
@@ -132,6 +143,8 @@ async function initializeAdapter(
 ): Promise<{
   readonly adapter: LearningPlatformAdapter;
   readonly isReadOnly: boolean;
+  readonly assignmentSource:
+    AuditVariantAssignmentV1["assignmentSource"];
 }> {
   const scorm = new Scorm12Adapter();
   const initialized = await scorm.initialize();
@@ -139,6 +152,7 @@ async function initializeAdapter(
     return {
       adapter: scorm,
       isReadOnly: initialized.isReadOnly,
+      assignmentSource: "SCORM_ATTEMPT",
     };
   }
   const standalone = new StandalonePersistenceAdapter({
@@ -149,6 +163,22 @@ async function initializeAdapter(
   return {
     adapter: standalone,
     isReadOnly: fallback.isReadOnly,
+    assignmentSource: "STANDALONE_ATTEMPT",
+  };
+}
+
+function codecSchemaFor(
+  runtime: AuditRuntimePackage,
+): Ta2AuditCodecSchema {
+  return {
+    configurationHash: runtime.configurationHash,
+    packContentHash: runtime.pack.publication!.contentHash,
+    scenarioId: runtime.scenario.scenarioId,
+    scenarioVersion: runtime.scenario.version,
+    auditCase: runtime.auditCase,
+    ...(runtime.variantBank === null
+      ? {}
+      : { variantBank: runtime.variantBank }),
   };
 }
 
@@ -159,16 +189,6 @@ export function AuditScormApp({
 }): ReactNode {
   const t = useTranslator();
   const adapterRef = useRef<LearningPlatformAdapter | null>(null);
-  const codecSchema: Ta1AuditCodecSchema = useMemo(
-    () => ({
-      configurationHash: runtime.configurationHash,
-      packContentHash: runtime.pack.publication!.contentHash,
-      scenarioId: runtime.scenario.scenarioId,
-      scenarioVersion: runtime.scenario.version,
-      auditCase: runtime.auditCase,
-    }),
-    [runtime],
-  );
   const [attempt, setAttempt] =
     useState<ReadyAuditScormAttempt | null>(null);
   const [initializationFailed, setInitializationFailed] =
@@ -189,15 +209,86 @@ export function AuditScormApp({
         const initialized = await initializeAdapter(runtime);
         activeAdapter = initialized.adapter;
         const stored = await initialized.adapter.loadAttemptState();
-        const snapshot =
-          stored === null || stored.trim().length === 0
-            ? emptyTa1AuditSnapshot()
-            : decodeTa1AuditSnapshot(stored, codecSchema);
-        const replay = await replayTa1AuditAttempt(runtime, snapshot);
+        let selectedRuntime = runtime;
+        let codecSchema = codecSchemaFor(selectedRuntime);
+        let snapshot: Ta2AuditSnapshot;
+        if (stored === null || stored.trim().length === 0) {
+          const assignment =
+            runtime.variantBank === null
+              ? null
+              : selectAuditVariantAssignment({
+                  bank: runtime.variantBank,
+                  attemptSeed:
+                    new BrowserAttemptSeedGenerator().nextSeed(),
+                  assignmentSource: initialized.assignmentSource,
+                });
+          selectedRuntime = auditRuntimeForAssignment(
+            runtime,
+            assignment,
+          );
+          codecSchema = codecSchemaFor(selectedRuntime);
+          snapshot = emptyTa2AuditSnapshot(assignment);
+          if (assignment !== null) {
+            if (initialized.isReadOnly) {
+              throw new Error(
+                "A new Audit variant cannot be revealed in a read-only attempt.",
+              );
+            }
+            const encoded = encodeTa2AuditSnapshot(
+              snapshot,
+              codecSchema,
+            );
+            await initialized.adapter.saveAttemptState(encoded);
+            await initialized.adapter.setLocation("AUDIT_WORKPAPER");
+            await initialized.adapter.setCompletion(
+              CompletionStatus.INCOMPLETE,
+            );
+            await initialized.adapter.commit();
+          }
+        } else {
+          const header = inspectTa2AuditStoredHeader(stored);
+          if (
+            header.configurationHash !== runtime.configurationHash ||
+            header.packContentHash !==
+              runtime.pack.publication!.contentHash
+          ) {
+            throw new Error(
+              "Stored Audit progress belongs to another configuration or scenario pack.",
+            );
+          }
+          const assignment =
+            header.assignment === null
+              ? null
+              : runtime.variantBank === null
+                ? (() => {
+                    throw new Error(
+                      "Stored Audit progress contains an unexpected variant assignment.",
+                    );
+                  })()
+                : auditVariantAssignmentForIndex({
+                    bank: runtime.variantBank,
+                    variantIndex: header.assignment.variantIndex,
+                    attemptSeed: header.assignment.attemptSeed,
+                    assignmentSource:
+                      header.assignment.assignmentSource,
+                  });
+          selectedRuntime = auditRuntimeForAssignment(
+            runtime,
+            assignment,
+          );
+          codecSchema = codecSchemaFor(selectedRuntime);
+          snapshot = decodeTa2AuditSnapshot(stored, codecSchema);
+        }
+        const replay = await replayTa2AuditAttempt(
+          selectedRuntime,
+          snapshot,
+        );
         if (cancelled) return;
         adapterRef.current = initialized.adapter;
         findingSequenceRef.current = nextFindingSequence(snapshot);
         const ready = {
+          runtime: selectedRuntime,
+          codecSchema,
           snapshot,
           replay,
           isReadOnly: initialized.isReadOnly,
@@ -219,7 +310,7 @@ export function AuditScormApp({
       cancelled = true;
       window.removeEventListener("pagehide", finish);
     };
-  }, [codecSchema, runtime]);
+  }, [runtime]);
 
   const createFindingId = useCallback((): string => {
     const sequence = findingSequenceRef.current;
@@ -247,18 +338,20 @@ export function AuditScormApp({
         setCommandRejected(false);
         let persistenceStarted = false;
         try {
-          const prospective: Ta1AuditSnapshot = {
+          const prospective: Ta2AuditSnapshot = {
+            variantAssignment:
+              current.snapshot.variantAssignment,
             commandJournal: [
               ...current.snapshot.commandJournal,
               commandEntry(input),
             ],
           };
-          const encoded = encodeTa1AuditSnapshot(
+          const encoded = encodeTa2AuditSnapshot(
             prospective,
-            codecSchema,
+            current.codecSchema,
           );
-          const replay = await replayTa1AuditAttempt(
-            runtime,
+          const replay = await replayTa2AuditAttempt(
+            current.runtime,
             prospective,
           );
           const adapter = adapterRef.current;
@@ -285,6 +378,8 @@ export function AuditScormApp({
           }
           await adapter.commit();
           const ready = {
+            runtime: current.runtime,
+            codecSchema: current.codecSchema,
             snapshot: prospective,
             replay,
             isReadOnly: false,
@@ -309,7 +404,7 @@ export function AuditScormApp({
       );
       return scheduled;
     },
-    [codecSchema, persistenceFailed, runtime],
+    [persistenceFailed],
   );
 
   if (initializationFailed) {
