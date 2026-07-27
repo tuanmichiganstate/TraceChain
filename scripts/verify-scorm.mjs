@@ -36,6 +36,7 @@ const packagingFiles = new Set([
 const packageSpecificFiles = new Set([
   ...packagingFiles,
   "tracechain.config.json",
+  "audit-scenario-pack.json",
   "scenario.json",
   "scenario-variant-bank.json",
   "media-manifest.json",
@@ -91,6 +92,11 @@ function packageFileName(configuration, releaseBuild) {
         ? "PracticeCase"
         : configuration.scenarioId === "SCN_COFFEE_CHALLENGE"
           ? "ChallengeBank"
+          : configuration.scenarioId === "SCN_GUIDED_COFFEE_AUDIT"
+            ? "GuidedCoffeeAudit"
+            : configuration.scenarioId ===
+                "SCN_PRACTICE_COFFEE_AUDIT"
+              ? "PracticeCoffeeAudit"
           : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
     "TraceChain",
@@ -103,7 +109,14 @@ function packageFileName(configuration, releaseBuild) {
 }
 
 function defaultPackagePaths() {
-  return ["guided", "practice", "challenge", "assessment"].map((presetId) => {
+  return [
+    "guided",
+    "practice",
+    "challenge",
+    "assessment",
+    "audit-guided",
+    "audit-practice",
+  ].map((presetId) => {
     const configurationPath = join(
       projectRoot,
       "dist-scorm",
@@ -788,8 +801,6 @@ function verifyPackage(zipPath) {
     "imsmanifest.xml",
     "index.html",
     "tracechain.config.json",
-    "scenario.json",
-    "media-manifest.json",
     "build-info.json",
     "version.json",
     "README.txt",
@@ -841,6 +852,7 @@ function verifyPackage(zipPath) {
 
   let envelope = null;
   let scenario = null;
+  let auditPack = null;
   let variantBank = null;
   let buildInformation = null;
   let versionMetadata = null;
@@ -848,11 +860,6 @@ function verifyPackage(zipPath) {
     envelope = JSON.parse(zip.readAsText("tracechain.config.json"));
   } catch {
     // The checks below report each malformed file independently.
-  }
-  try {
-    scenario = JSON.parse(zip.readAsText("scenario.json"));
-  } catch {
-    // Reported below.
   }
   if (entryNames.includes("scenario-variant-bank.json")) {
     try {
@@ -874,11 +881,142 @@ function verifyPackage(zipPath) {
     // Reported below.
   }
   check("tracechain.config.json is valid JSON", envelope !== null);
-  check("scenario.json is valid JSON", scenario !== null);
   check("build-info.json is valid JSON", buildInformation !== null);
   check("version.json is valid JSON", versionMetadata !== null);
 
   const configuration = envelope?.configuration;
+  const isAudit = configuration?.activityType === "AUDIT";
+  const activityRuntimeFiles = isAudit
+    ? ["audit-scenario-pack.json"]
+    : ["scenario.json", "media-manifest.json"];
+  for (const file of activityRuntimeFiles) {
+    check(`${file} is present`, entryNames.includes(file));
+  }
+  if (
+    activityRuntimeFiles.some(
+      (file) => !entryNames.includes(file),
+    )
+  ) {
+    return {
+      zipPath,
+      errors,
+      checks,
+      staticBuild: null,
+      configuration,
+    };
+  }
+  if (isAudit) {
+    try {
+      auditPack = JSON.parse(
+        zip.readAsText("audit-scenario-pack.json"),
+      );
+      scenario = auditPack.scenarios?.find(
+        (candidate) =>
+          candidate.scenarioId === configuration.scenarioId &&
+          candidate.version === configuration.scenarioVersion,
+      );
+    } catch {
+      // Reported below.
+    }
+    check(
+      "audit-scenario-pack.json is valid JSON",
+      auditPack !== null,
+    );
+  } else {
+    try {
+      scenario = JSON.parse(zip.readAsText("scenario.json"));
+    } catch {
+      // Reported below.
+    }
+    check("scenario.json is valid JSON", scenario !== null);
+  }
+  if (isAudit && auditPack !== null) {
+    const { publication, ...packContent } = auditPack;
+    const publicationMetadata = { ...(publication ?? {}) };
+    delete publicationMetadata.contentHash;
+    const calculatedPackContentHash = createHash("sha256")
+      .update(
+        canonicalize({
+          ...packContent,
+          status: "published",
+          publication: publicationMetadata,
+        }),
+      )
+      .digest("hex");
+    check(
+      "Audit pack is the exact immutable configured content",
+      auditPack.schemaVersion === "1.8.0" &&
+        auditPack.status === "published" &&
+        auditPack.packId === configuration.content?.packId &&
+        auditPack.version === configuration.content?.packVersion &&
+        publication?.contentHash === calculatedPackContentHash,
+    );
+    check(
+      "Audit scenario and case identity match configuration",
+      scenario?.scenarioId === configuration.scenarioId &&
+        scenario?.version === configuration.scenarioVersion &&
+        scenario?.auditCase?.auditCaseId ===
+          configuration.auditCaseId &&
+        scenario?.auditCase?.version ===
+          configuration.auditCaseVersion &&
+        scenario?.hostedRuntime?.runtimeId ===
+          "tracechain-audit-v1",
+    );
+    check(
+      "Audit scoring contract matches configuration",
+      scenario?.auditCase?.scoringBlueprint?.scoringBlueprintId ===
+        configuration.scoring?.scoringBlueprintId &&
+        scenario?.auditCase?.scoringBlueprint?.version ===
+          configuration.scoring?.scoringBlueprintVersion &&
+        scenario?.auditCase?.scoringBlueprint?.maximumScore ===
+          configuration.scoring?.maximumScore &&
+        scenario?.auditCase?.scoringBlueprint?.passScore ===
+          configuration.scoring?.passScore,
+    );
+    check(
+      "Audit compact persistence is explicitly bounded",
+      scenario?.auditCase?.inputLimits?.maximumDrafts === 1 &&
+        scenario?.auditCase?.inputLimits?.maximumDraftRecords === 1 &&
+        Number.isInteger(
+          scenario?.auditCase?.inputLimits
+            ?.maximumFindingRecords,
+        ) &&
+        scenario.auditCase.inputLimits.maximumFindingRecords > 0,
+    );
+    check(
+      "Audit attempt history is not represented as ledger mutation",
+      (scenario?.auditCase?.sourceRecords ?? [])
+        .filter((record) => record.recordKind === "ATTEMPT_AUDIT")
+        .every(
+          (record) =>
+            record.details?.ledgerMutation !== true &&
+            record.details?.accepted !== true,
+        ),
+    );
+    check(
+      "Audit package contains only its selected runtime data",
+      !entryNames.includes("scenario.json") &&
+        !entryNames.includes("media-manifest.json") &&
+        !entryNames.includes("scenario-variant-bank.json") &&
+        cryptographicRuntimeFileNames.every(
+          (fileName) => !entryNames.includes(fileName),
+        ),
+    );
+    check(
+      "Audit runtime bytes and content identity match build metadata",
+      buildInformation?.auditPersistenceSchemaVersion === "TA1" &&
+        buildInformation?.auditScenarioPackHash ===
+          createHash("sha256")
+            .update(
+              zip
+                .getEntry("audit-scenario-pack.json")
+                .getData(),
+            )
+            .digest("hex") &&
+        buildInformation?.auditScenarioPackContentHash ===
+          publication?.contentHash,
+    );
+  }
   const usesVariantBank =
     configuration?.scenarioVariation?.strategy ===
     "SEEDED_VARIANT_BANK";
@@ -981,26 +1119,33 @@ function verifyPackage(zipPath) {
   check(
     "Scenario identity matches configuration",
     scenario?.scenarioId === configuration?.scenarioId &&
-      scenario?.scenarioVersion === configuration?.scenarioVersion,
+      (isAudit ? scenario?.version : scenario?.scenarioVersion) ===
+        configuration?.scenarioVersion,
   );
   check(
     "Scenario content matches its recorded hash",
-    buildInformation?.scenarioHash ===
-      createHash("sha256")
-        .update(zip.getEntry("scenario.json").getData())
-        .digest("hex"),
+    isAudit
+      ? buildInformation?.scenarioHash === null
+      : buildInformation?.scenarioHash ===
+          createHash("sha256")
+            .update(zip.getEntry("scenario.json").getData())
+            .digest("hex"),
   );
   check(
     "Scenario scoring matches configuration",
-    scenario?.scoringConfiguration?.maxScore ===
-      configuration?.scoring?.maximumScore,
+    isAudit
+      ? scenario?.auditCase?.scoringBlueprint?.maximumScore ===
+          configuration?.scoring?.maximumScore
+      : scenario?.scoringConfiguration?.maxScore ===
+          configuration?.scoring?.maximumScore,
   );
   check(
     "Build metadata matches application and package inputs",
     buildInformation?.applicationVersion === packageJson.version &&
       buildInformation?.configurationHash === envelope?.configurationHash &&
       buildInformation?.scenarioId === scenario?.scenarioId &&
-      buildInformation?.scenarioVersion === scenario?.scenarioVersion &&
+      buildInformation?.scenarioVersion ===
+        (isAudit ? scenario?.version : scenario?.scenarioVersion) &&
       buildInformation?.configurationSchemaVersion ===
         configuration?.configurationSchemaVersion &&
       buildInformation?.presetId === configuration?.presetId &&
@@ -1059,6 +1204,8 @@ function verifyPackage(zipPath) {
     "version.json agrees with build metadata",
     versionMetadata?.version === packageJson.version &&
       versionMetadata?.scenarioId === scenario?.scenarioId &&
+      versionMetadata?.scenarioVersion ===
+        (isAudit ? scenario?.version : scenario?.scenarioVersion) &&
       versionMetadata?.masteryScore === configuration?.scoring?.passScore &&
       versionMetadata?.reproducibleBuild === buildInformation?.releaseBuild,
   );
@@ -1172,13 +1319,15 @@ function verifyPackage(zipPath) {
     buildInformation,
     check,
   });
-  verifyPortraitMedia({
-    zip,
-    entryNames,
-    scenario,
-    buildInformation,
-    check,
-  });
+  if (!isAudit) {
+    verifyPortraitMedia({
+      zip,
+      entryNames,
+      scenario,
+      buildInformation,
+      check,
+    });
+  }
 
   const staticBuild = hashStaticEntries(entries);
   check(
@@ -1225,16 +1374,23 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 }
 
 const defaultInvocation = process.argv.length === 2;
-if (defaultInvocation && results.length === 4) {
+if (defaultInvocation && results.length === 6) {
   const presetIds = results
     .map((result) => result.configuration?.presetId)
     .sort();
   if (
     JSON.stringify(presetIds) !==
-    JSON.stringify(["assessment", "challenge", "guided", "practice"])
+    JSON.stringify([
+      "assessment",
+      "audit-guided",
+      "audit-practice",
+      "challenge",
+      "guided",
+      "practice",
+    ])
   ) {
     crossPackageErrors.push(
-      "Default verification must cover guided, practice, challenge, and assessment packages",
+      "Default verification must cover Operations and Audit Guided/Practice packages plus Challenge and Assessment",
     );
   }
 }

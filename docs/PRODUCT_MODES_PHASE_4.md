@@ -1,5 +1,8 @@
 # Product modes Phase 4: Guided Audit
 
+> This is the historical Phase 4 boundary. Phase 5 and scenario-pack V1.8 are
+> documented in `PRODUCT_MODES_PHASE_5.md`.
+
 ## Decision
 
 Phase 4 adds the Audit foundation and one fixed Guided Audit case to the hosted

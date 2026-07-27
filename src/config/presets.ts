@@ -1,4 +1,8 @@
-import type { BusinessSimulationConfiguration } from "./types";
+import type {
+  AuditSimulationConfiguration,
+  BusinessSimulationConfiguration,
+  TraceChainConfiguration,
+} from "./types";
 import {
   feedbackPolicyFor,
   guidancePolicyFor,
@@ -11,7 +15,9 @@ export type LecturerPresetId =
   | "guided"
   | "practice"
   | "challenge"
-  | "assessment";
+  | "assessment"
+  | "audit-guided"
+  | "audit-practice";
 
 const COMMON = {
   configurationSchemaVersion: "2",
@@ -227,17 +233,113 @@ export const ASSESSMENT_PRESET: BusinessSimulationConfiguration = {
   },
 };
 
+const AUDIT_COMMON = {
+  configurationSchemaVersion: "2",
+  applicationCompatibilityVersion: "ta1-v1",
+  activityType: "AUDIT",
+  deliveryPurpose: "FORMATIVE",
+  feedback: feedbackPolicyFor("IMMEDIATE"),
+  scoring: {
+    scoringBlueprintId: "AUDIT_COFFEE_100",
+    scoringBlueprintVersion: "1.0.0",
+    maximumScore: 100,
+    passScore: 70,
+    official: false,
+    competencyEvidenceEnabled: true,
+    reportDiagnosticDimensions: true,
+  },
+  reporting: {
+    causalReport: false,
+    auditReport: true,
+    competencyReport: true,
+    activitySummary: true,
+    showTechnicalMetadataToLearner: false,
+  },
+  decisions: {
+    requireRationale: true,
+    requireEvidenceCitations: true,
+    requirePolicyCitations: true,
+    requireConfidence: true,
+    requireRiskEstimate: false,
+    allowDrafts: true,
+  },
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TA1_COMPACT_WORKPAPER",
+    attemptPolicyId: "LMS_MANAGED",
+  },
+  locale: "vi",
+} as const;
+
+const AUDIT_GUIDED_DIMENSIONS =
+  resolveProductDimensions("audit-guided");
+
+export const AUDIT_GUIDED_PRESET: AuditSimulationConfiguration = {
+  ...AUDIT_COMMON,
+  presetId: "audit-guided",
+  ...AUDIT_GUIDED_DIMENSIONS,
+  content: {
+    packId: "PACK_GUIDED_COFFEE_AUDIT",
+    packVersion: "2.0.0",
+    scenarioId: "SCN_GUIDED_COFFEE_AUDIT",
+    scenarioVersion: "2.0.0",
+  },
+  guidance: guidancePolicyFor("GUIDED"),
+  hints: hintPolicyFor("ENABLED", "GUIDED"),
+  retries: {
+    knowledgeRetry: "DISABLED",
+    professionalDecisionRevision: "FREE_REVISION",
+    maximumKnowledgeAttempts: 1,
+    maximumMitigationActions: 0,
+  },
+  scenarioId: "SCN_GUIDED_COFFEE_AUDIT",
+  scenarioVersion: "2.0.0",
+  auditCaseId: "AUDIT_COFFEE_CONTROLS_001",
+  auditCaseVersion: "2.0.0",
+  scenarioSeed: "audit-guided-coffee-v1",
+};
+
+const AUDIT_PRACTICE_DIMENSIONS =
+  resolveProductDimensions("audit-practice");
+
+export const AUDIT_PRACTICE_PRESET: AuditSimulationConfiguration = {
+  ...AUDIT_COMMON,
+  presetId: "audit-practice",
+  ...AUDIT_PRACTICE_DIMENSIONS,
+  content: {
+    packId: "PACK_PRACTICE_COFFEE_AUDIT",
+    packVersion: "1.0.0",
+    scenarioId: "SCN_PRACTICE_COFFEE_AUDIT",
+    scenarioVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor("PRACTICE"),
+  hints: hintPolicyFor("ENABLED", "PRACTICE"),
+  retries: {
+    knowledgeRetry: "DISABLED",
+    professionalDecisionRevision: "FREE_REVISION",
+    maximumKnowledgeAttempts: 1,
+    maximumMitigationActions: 0,
+  },
+  scenarioId: "SCN_PRACTICE_COFFEE_AUDIT",
+  scenarioVersion: "1.0.0",
+  auditCaseId: "AUDIT_COFFEE_CONTROLS_PRACTICE_001",
+  auditCaseVersion: "1.0.0",
+  scenarioSeed: "audit-practice-coffee-v1",
+};
+
 export const LECTURER_PRESETS: Readonly<
-  Record<LecturerPresetId, BusinessSimulationConfiguration>
+  Record<LecturerPresetId, TraceChainConfiguration>
 > = {
   guided: GUIDED_PRESET,
   practice: PRACTICE_PRESET,
   challenge: CHALLENGE_PRESET,
   assessment: ASSESSMENT_PRESET,
+  "audit-guided": AUDIT_GUIDED_PRESET,
+  "audit-practice": AUDIT_PRACTICE_PRESET,
 };
 
 export function resolvePreset(
   presetId: LecturerPresetId,
-): BusinessSimulationConfiguration {
+): TraceChainConfiguration {
   return structuredClone(LECTURER_PRESETS[presetId]);
 }

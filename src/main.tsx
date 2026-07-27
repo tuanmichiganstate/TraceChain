@@ -6,7 +6,12 @@ import { ScenarioProvider } from "./app/providers/scenario-provider";
 import { SimulationProvider } from "./app/providers/simulation-provider";
 import { ConfigurationProvider } from "./app/providers/configuration-provider";
 import { NotificationProvider } from "./app/providers/notification-provider";
-import { loadRuntimePackage } from "./config/runtime-loader";
+import {
+  loadEmbeddedConfiguration,
+  loadRuntimePackage,
+} from "./config/runtime-loader";
+import { loadAuditRuntimePackage } from "./config/audit-runtime-loader";
+import { isAuditSimulationConfiguration } from "./config/types";
 import { initializeRuntimeAttempt } from "./config/runtime-bootstrap";
 import {
   createTranslator,
@@ -17,6 +22,7 @@ import { ScenarioAuthorScreen } from "./platform/author/scenario-author-screen";
 import { HostedLearnerScreen } from "./platform/learner/hosted-learner-screen";
 import { HostedPortalScreen } from "./platform/portal/hosted-portal-screen";
 import { ApplicationAccessScreen } from "./platform/admin/application-access-screen";
+import { AuditScormApp } from "./platform/audit/audit-scorm-app";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
@@ -80,10 +86,30 @@ if (
     </StrictMode>,
   );
 } else {
-  void loadRuntimePackage((path) => fetch(path))
-    .then((runtime) => initializeRuntimeAttempt(runtime))
+  const fetchRuntime = (path: string) => fetch(path);
+  void loadEmbeddedConfiguration(fetchRuntime)
+    .then(async (embedded) => {
+      if (isAuditSimulationConfiguration(embedded.configuration)) {
+        const runtime = await loadAuditRuntimePackage(fetchRuntime);
+        document.documentElement.lang = runtime.configuration.locale;
+        root.render(
+          <StrictMode>
+            <LocaleProvider locale={runtime.configuration.locale}>
+              <NotificationProvider>
+                <AuditScormApp runtime={runtime} />
+              </NotificationProvider>
+            </LocaleProvider>
+          </StrictMode>,
+        );
+        return null;
+      }
+      return loadRuntimePackage(fetchRuntime).then((runtime) =>
+        initializeRuntimeAttempt(runtime),
+      );
+    })
     .then(
       (runtime) => {
+        if (runtime === null) return;
         document.documentElement.lang = runtime.configuration.locale;
         root.render(
           <StrictMode>

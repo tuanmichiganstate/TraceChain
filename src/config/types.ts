@@ -23,11 +23,17 @@ export type LearningPresetId =
   | "practice"
   | "challenge"
   | "assessment"
+  | "audit-guided"
+  | "audit-practice"
   | "technical-lab";
-export type BusinessPresetId = Exclude<
-  LearningPresetId,
-  "technical-lab"
->;
+export type BusinessPresetId =
+  | "guided"
+  | "practice"
+  | "challenge"
+  | "assessment";
+export type AuditPresetId =
+  | "audit-guided"
+  | "audit-practice";
 export type Difficulty = "introductory" | "intermediate";
 export type FeedbackTiming =
   | "IMMEDIATE"
@@ -189,6 +195,18 @@ export interface BusinessSimulationConfiguration
   };
 }
 
+export interface AuditSimulationConfiguration
+  extends TraceChainConfigurationBase {
+  readonly applicationCompatibilityVersion: "ta1-v1";
+  readonly presetId: AuditPresetId;
+  readonly activityType: "AUDIT";
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly auditCaseId: string;
+  readonly auditCaseVersion: string;
+  readonly scenarioSeed: string;
+}
+
 export interface TechnicalLabConfiguration
   extends TraceChainConfigurationBase {
   readonly applicationCompatibilityVersion: "tl1-v1";
@@ -204,6 +222,7 @@ export interface TechnicalLabConfiguration
 
 export type TraceChainConfiguration =
   | BusinessSimulationConfiguration
+  | AuditSimulationConfiguration
   | TechnicalLabConfiguration;
 
 export interface EmbeddedTraceChainConfiguration {
@@ -221,4 +240,10 @@ export function isTechnicalLabConfiguration(
   configuration: TraceChainConfiguration,
 ): configuration is TechnicalLabConfiguration {
   return configuration.activityType === "TECHNICAL_LAB";
+}
+
+export function isAuditSimulationConfiguration(
+  configuration: TraceChainConfiguration,
+): configuration is AuditSimulationConfiguration {
+  return configuration.activityType === "AUDIT";
 }

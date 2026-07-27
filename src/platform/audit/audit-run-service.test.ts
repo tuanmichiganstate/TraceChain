@@ -47,7 +47,7 @@ function fixture() {
     service: new AuditHostedRunService(
       pack,
       "SCN_GUIDED_COFFEE_AUDIT",
-      "1.0.0",
+      "2.0.0",
       store,
       new FixedClock(NOW),
       new SequenceIdGenerator(1),
@@ -214,7 +214,7 @@ describe("AuditHostedRunService", () => {
     const replayedService = new AuditHostedRunService(
       pack,
       "SCN_GUIDED_COFFEE_AUDIT",
-      "1.0.0",
+      "2.0.0",
       store,
       new FixedClock(NOW),
       new SequenceIdGenerator(500),

@@ -34,7 +34,7 @@ import {
   requireAssignedLearner,
   type ApplicationPrincipal,
 } from "../hosted/access";
-import { HostedRunCommandError } from "../hosted/stage3-run-service";
+import { HostedRunCommandError } from "../hosted/run-command-error";
 import type {
   CompetencyEvidenceProjection,
   InstructorTimelineItem,
@@ -108,18 +108,40 @@ function requiredString(
   return value;
 }
 
-function boundedString(
+function utf8Length(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+function requiredUtf8String(
   value: unknown,
   path: string,
-  maximumLength: number,
+  maximumBytes: number,
 ): string {
   if (
     typeof value !== "string" ||
-    value.length > maximumLength
+    value.trim().length === 0 ||
+    utf8Length(value) > maximumBytes
   ) {
     throw new HostedRunCommandError(
       "INVALID_COMMAND",
-      `${path} must contain no more than ${String(maximumLength)} characters.`,
+      `${path} must contain from 1 to ${String(maximumBytes)} UTF-8 bytes.`,
+    );
+  }
+  return value;
+}
+
+function boundedUtf8String(
+  value: unknown,
+  path: string,
+  maximumBytes: number,
+): string {
+  if (
+    typeof value !== "string" ||
+    utf8Length(value) > maximumBytes
+  ) {
+    throw new HostedRunCommandError(
+      "INVALID_COMMAND",
+      `${path} must contain no more than ${String(maximumBytes)} UTF-8 bytes.`,
     );
   }
   return value;
@@ -230,6 +252,10 @@ export class AuditHostedRunService {
   private readonly auditCase: NonNullable<
     ScenarioDefinitionV1["auditCase"]
   >;
+  private readonly mode: "tutorial" | "standard";
+  private readonly completionOutcomeCode:
+    | "GUIDED_AUDIT_COMPLETED"
+    | "PRACTICE_AUDIT_COMPLETED";
 
   constructor(
     private readonly pack: ScenarioPackV1,
@@ -254,11 +280,19 @@ export class AuditHostedRunService {
     ) {
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",
-        "The selected scenario is not a valid Guided Audit runtime.",
+        "The selected scenario is not a valid Audit runtime.",
       );
     }
     this.scenario = scenario;
     this.auditCase = scenario.auditCase;
+    this.mode =
+      scenario.auditCase.supportProfiles[0] === "PRACTICE"
+        ? "standard"
+        : "tutorial";
+    this.completionOutcomeCode =
+      this.mode === "standard"
+        ? "PRACTICE_AUDIT_COMPLETED"
+        : "GUIDED_AUDIT_COMPLETED";
   }
 
   async createRun(
@@ -279,18 +313,18 @@ export class AuditHostedRunService {
         "A learner may only start their own assigned audit.",
       );
     }
-    if (request.mode !== "tutorial") {
+    if (request.mode !== this.mode) {
       throw new HostedRunCommandError(
         "INVALID_COMMAND",
-        "Phase 4 provides one Guided Audit in tutorial mode.",
+        "The requested mode does not match this Audit support profile.",
       );
     }
     const modeConfiguration = validateHostedModeConfiguration(
       request.modeConfiguration ??
         this.scenario.modeConfigurations.find(
-          (configuration) => configuration.mode === "tutorial",
+          (configuration) => configuration.mode === this.mode,
         ),
-      "tutorial",
+      this.mode,
     );
     const experience = resolveHostedExperienceConfiguration({
       packId: this.pack.packId,
@@ -446,24 +480,68 @@ export class AuditHostedRunService {
 
     switch (command.commandType) {
       case "VIEW_AUDIT_SCOPE":
+        if (state.scopeViewed) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The audit scope review has already been recorded.",
+          );
+        }
         add("AUDIT_SCOPE_VIEWED", {});
         break;
       case "INSPECT_AUDIT_EVIDENCE":
         this.requireEvidence(command.evidenceId);
+        if (
+          state.inspectedEvidenceIds.includes(command.evidenceId)
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "This evidence inspection has already been recorded.",
+          );
+        }
         add("AUDIT_EVIDENCE_INSPECTED", {
           evidenceId: command.evidenceId,
         });
         break;
       case "BOOKMARK_AUDIT_EVIDENCE":
         this.requireEvidence(command.evidenceId);
+        if (
+          state.bookmarkedEvidenceIds.includes(command.evidenceId)
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "This evidence bookmark has already been recorded.",
+          );
+        }
         add("AUDIT_EVIDENCE_BOOKMARKED", {
           evidenceId: command.evidenceId,
         });
         break;
       case "INSPECT_AUDIT_SOURCE_RECORD":
         this.requireSourceRecord(command.sourceRecordId);
+        if (
+          state.inspectedSourceRecordIds.includes(
+            command.sourceRecordId,
+          )
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "This source-record inspection has already been recorded.",
+          );
+        }
         add("AUDIT_SOURCE_RECORD_INSPECTED", {
           sourceRecordId: command.sourceRecordId,
+        });
+        break;
+      case "VIEW_AUDIT_HINT":
+        this.requireHint(command.hintId);
+        if (state.viewedHintIds.includes(command.hintId)) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "This hint has already been recorded.",
+          );
+        }
+        add("AUDIT_HINT_VIEWED", {
+          hintId: command.hintId,
         });
         break;
       case "SAVE_AUDIT_FINDING_DRAFT": {
@@ -471,6 +549,29 @@ export class AuditHostedRunService {
           command.finding,
           true,
         );
+        const draftRecordCount = events.filter(
+          (event) =>
+            event.eventType === "AUDIT_FINDING_DRAFT_SAVED",
+        ).length;
+        if (
+          draftRecordCount >=
+          this.auditCase.inputLimits.maximumDraftRecords
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The authored maximum number of persisted draft records has been reached.",
+          );
+        }
+        if (
+          state.drafts[finding.findingId] === undefined &&
+          Object.keys(state.drafts).length >=
+            this.auditCase.inputLimits.maximumDrafts
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "Only one active compact audit draft is permitted.",
+          );
+        }
         add("AUDIT_FINDING_DRAFT_SAVED", {
           finding: asJsonObject({
             ...finding,
@@ -481,6 +582,21 @@ export class AuditHostedRunService {
       }
       case "SUBMIT_AUDIT_FINDING":
       case "AMEND_AUDIT_FINDING": {
+        const findingRecordCount = events.filter(
+          (event) =>
+            event.eventType === "AUDIT_FINDING_SUBMITTED" ||
+            event.eventType === "AUDIT_FINDING_AMENDED" ||
+            event.eventType === "AUDIT_FINDING_WITHDRAWN",
+        ).length;
+        if (
+          findingRecordCount >=
+          this.auditCase.inputLimits.maximumFindingRecords
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The authored maximum number of finding revisions has been reached.",
+          );
+        }
         const findingInput = this.validateFindingInput(command.finding);
         const existing = state.findings.find(
           (finding) =>
@@ -566,6 +682,21 @@ export class AuditHostedRunService {
         break;
       }
       case "WITHDRAW_AUDIT_FINDING": {
+        const findingRecordCount = events.filter(
+          (event) =>
+            event.eventType === "AUDIT_FINDING_SUBMITTED" ||
+            event.eventType === "AUDIT_FINDING_AMENDED" ||
+            event.eventType === "AUDIT_FINDING_WITHDRAWN",
+        ).length;
+        if (
+          findingRecordCount >=
+          this.auditCase.inputLimits.maximumFindingRecords
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The authored maximum number of finding revisions has been reached.",
+          );
+        }
         const existing = state.findings.find(
           (finding) => finding.findingId === command.findingId,
         );
@@ -610,7 +741,7 @@ export class AuditHostedRunService {
           sourceEventIds: [submitted.sequenced.eventId],
         });
         add("RUN_COMPLETED", {
-          outcomeCode: "GUIDED_AUDIT_COMPLETED",
+          outcomeCode: this.completionOutcomeCode,
         });
         break;
       }
@@ -909,7 +1040,7 @@ export class AuditHostedRunService {
       }
       const modeConfiguration = validateHostedModeConfiguration(
         event.payload.modeConfiguration,
-        "tutorial",
+        this.mode,
       );
       const expectedExperience =
         resolveHostedExperienceConfiguration({
@@ -992,6 +1123,7 @@ export class AuditHostedRunService {
         inspectedEvidenceIds: [],
         bookmarkedEvidenceIds: [],
         inspectedSourceRecordIds: [],
+        viewedHintIds: [],
         drafts: {},
         findings: [],
         competencyEvidence: [],
@@ -1044,6 +1176,18 @@ export class AuditHostedRunService {
               ...state.inspectedSourceRecordIds,
               sourceRecordId,
             ]),
+          ],
+        });
+      }
+      case "AUDIT_HINT_VIEWED": {
+        const hintId = requiredString(
+          event.payload.hintId,
+          "hintId",
+        );
+        this.requireHint(hintId);
+        return this.updateState(state, event, {
+          viewedHintIds: [
+            ...new Set([...state.viewedHintIds, hintId]),
           ],
         });
       }
@@ -1193,7 +1337,7 @@ export class AuditHostedRunService {
       case "RUN_COMPLETED":
         if (
           state.conclusion === undefined ||
-          event.payload.outcomeCode !== "GUIDED_AUDIT_COMPLETED"
+          event.payload.outcomeCode !== this.completionOutcomeCode
         ) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
@@ -1331,6 +1475,7 @@ export class AuditHostedRunService {
             "INSPECT_AUDIT_EVIDENCE",
             "BOOKMARK_AUDIT_EVIDENCE",
             "INSPECT_AUDIT_SOURCE_RECORD",
+            "VIEW_AUDIT_HINT",
             "SAVE_AUDIT_FINDING_DRAFT",
             "SUBMIT_AUDIT_FINDING",
             "AMEND_AUDIT_FINDING",
@@ -1424,7 +1569,9 @@ export class AuditHostedRunService {
         feedback: {
           classification: "UNSUPPORTED" as const,
           explanation: localize(
-            "platformPack.guidedAudit.feedback.unsupported",
+            this.mode === "standard"
+              ? "platformPack.practiceAudit.feedback.unsupported"
+              : "platformPack.guidedAudit.feedback.unsupported",
           ),
         },
       };
@@ -1437,6 +1584,8 @@ export class AuditHostedRunService {
       sourceProcessVersion:
         this.auditCase.sourceProcessVersion,
       sourceStateHash: state.sourceStateHash,
+      supportProfile: this.auditCase.supportProfiles[0]!,
+      scopeViewed: state.scopeViewed,
       objective: localize(
         this.auditCase.auditObjective.localizationKey,
       ),
@@ -1465,6 +1614,11 @@ export class AuditHostedRunService {
           label: localize(choice.label.localizationKey),
         }),
       ),
+      hints: this.auditCase.hints.map((hint) => ({
+        hintId: hint.hintId,
+        text: localize(hint.text.localizationKey),
+        viewed: state.viewedHintIds.includes(hint.hintId),
+      })),
       conclusionCategories:
         this.auditCase.conclusionCategories.map((choice) => ({
           conclusionCategory: choice.conclusionCategory,
@@ -1518,6 +1672,7 @@ export class AuditHostedRunService {
       maximumSubmittedFindings:
         this.auditCase.completionDefinition
           .maximumSubmittedFindings,
+      inputLimits: this.auditCase.inputLimits,
       ...(state.status === "completed" &&
       state.conclusion !== undefined
         ? {
@@ -1622,11 +1777,17 @@ export class AuditHostedRunService {
     );
     if (
       (!allowIncomplete && evidenceIds.length === 0) ||
+      evidenceIds.length >
+        this.auditCase.inputLimits
+          .maximumEvidenceCitationsPerFinding ||
       evidenceIds.some(
         (evidenceId) =>
           !this.auditCase.evidenceItemIds.includes(evidenceId),
       ) ||
       (!allowIncomplete && policyIds.length === 0) ||
+      policyIds.length >
+        this.auditCase.inputLimits
+          .maximumPolicyCitationsPerFinding ||
       policyIds.some(
         (policyId) =>
           !this.auditCase.policyIds.includes(policyId),
@@ -1666,18 +1827,28 @@ export class AuditHostedRunService {
       categoryId,
       entityId,
       title: allowIncomplete
-        ? boundedString(input.title, "finding.title", 120)
-        : requiredString(input.title, "finding.title", 120),
-      observation: allowIncomplete
-        ? boundedString(
-            input.observation,
-            "finding.observation",
-            1_000,
+        ? boundedUtf8String(
+            input.title,
+            "finding.title",
+            this.auditCase.inputLimits.findingTitleUtf8Bytes,
           )
-        : requiredString(
+        : requiredUtf8String(
+            input.title,
+            "finding.title",
+            this.auditCase.inputLimits.findingTitleUtf8Bytes,
+          ),
+      observation: allowIncomplete
+        ? boundedUtf8String(
             input.observation,
             "finding.observation",
-            1_000,
+            this.auditCase.inputLimits
+              .findingObservationUtf8Bytes,
+          )
+        : requiredUtf8String(
+            input.observation,
+            "finding.observation",
+            this.auditCase.inputLimits
+              .findingObservationUtf8Bytes,
           ),
       severity: input.severity,
       materiality: input.materiality,
@@ -1692,15 +1863,17 @@ export class AuditHostedRunService {
       rootCauseCode,
       recommendationCode,
       recommendation: allowIncomplete
-        ? boundedString(
+        ? boundedUtf8String(
             input.recommendation,
             "finding.recommendation",
-            1_000,
+            this.auditCase.inputLimits
+              .findingRecommendationUtf8Bytes,
           )
-        : requiredString(
+        : requiredUtf8String(
             input.recommendation,
             "finding.recommendation",
-            1_000,
+            this.auditCase.inputLimits
+              .findingRecommendationUtf8Bytes,
           ),
     };
   }
@@ -1722,35 +1895,35 @@ export class AuditHostedRunService {
     }
     return {
       conclusionCategory: input.conclusionCategory,
-      scopeSummary: requiredString(
+      scopeSummary: requiredUtf8String(
         input.scopeSummary,
         "conclusion.scopeSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      materialFindingsSummary: requiredString(
+      materialFindingsSummary: requiredUtf8String(
         input.materialFindingsSummary,
         "conclusion.materialFindingsSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      nonMaterialFindingsSummary: requiredString(
+      nonMaterialFindingsSummary: requiredUtf8String(
         input.nonMaterialFindingsSummary,
         "conclusion.nonMaterialFindingsSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      limitations: requiredString(
+      limitations: requiredUtf8String(
         input.limitations,
         "conclusion.limitations",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      uncertainty: requiredString(
+      uncertainty: requiredUtf8String(
         input.uncertainty,
         "conclusion.uncertainty",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      recommendations: requiredString(
+      recommendations: requiredUtf8String(
         input.recommendations,
         "conclusion.recommendations",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
       confidence: finiteNumber(
         input.confidence,
@@ -1832,35 +2005,35 @@ export class AuditHostedRunService {
     ) as AuditConclusionSubmissionV1["conclusionCategory"];
     return {
       conclusionCategory,
-      scopeSummary: requiredString(
+      scopeSummary: requiredUtf8String(
         value.scopeSummary,
         "conclusion.scopeSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      materialFindingsSummary: requiredString(
+      materialFindingsSummary: requiredUtf8String(
         value.materialFindingsSummary,
         "conclusion.materialFindingsSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      nonMaterialFindingsSummary: requiredString(
+      nonMaterialFindingsSummary: requiredUtf8String(
         value.nonMaterialFindingsSummary,
         "conclusion.nonMaterialFindingsSummary",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      limitations: requiredString(
+      limitations: requiredUtf8String(
         value.limitations,
         "conclusion.limitations",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      uncertainty: requiredString(
+      uncertainty: requiredUtf8String(
         value.uncertainty,
         "conclusion.uncertainty",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
-      recommendations: requiredString(
+      recommendations: requiredUtf8String(
         value.recommendations,
         "conclusion.recommendations",
-        1_000,
+        this.auditCase.inputLimits.conclusionFieldUtf8Bytes,
       ),
       confidence: finiteNumber(
         value.confidence,
@@ -1940,6 +2113,19 @@ export class AuditHostedRunService {
       );
     }
     return policy;
+  }
+
+  private requireHint(hintId: string) {
+    const hint = this.auditCase.hints.find(
+      (candidate) => candidate.hintId === hintId,
+    );
+    if (hint === undefined) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        `Hint ${hintId} is outside this audit case.`,
+      );
+    }
+    return hint;
   }
 
   private requireSourceRecord(sourceRecordId: string) {

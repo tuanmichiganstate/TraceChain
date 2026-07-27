@@ -38,8 +38,8 @@ import {
 } from "./runtime-registry";
 import {
   HostedRunCommandError,
-  HostedStage3RunService,
-} from "./stage3-run-service";
+} from "./run-command-error";
+import { HostedStage3RunService } from "./stage3-run-service";
 import type {
   CompetencyEvidenceProjection,
   HostedStage3Command,

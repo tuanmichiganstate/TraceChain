@@ -43,6 +43,10 @@ const BUSINESS_PRESETS = new Set([
   "challenge",
   "assessment",
 ]);
+const AUDIT_PRESETS = new Set([
+  "audit-guided",
+  "audit-practice",
+]);
 const BUSINESS_FEEDBACK = new Set([
   "IMMEDIATE",
   "STAGE_END",
@@ -85,6 +89,14 @@ const BUSINESS_TOP_LEVEL_FIELDS = new Set([
   "difficulty",
   "scenarioVariation",
   "technicalFeatures",
+]);
+const AUDIT_TOP_LEVEL_FIELDS = new Set([
+  ...COMMON_TOP_LEVEL_FIELDS,
+  "scenarioId",
+  "scenarioVersion",
+  "auditCaseId",
+  "auditCaseVersion",
+  "scenarioSeed",
 ]);
 const LAB_TOP_LEVEL_FIELDS = new Set([
   ...COMMON_TOP_LEVEL_FIELDS,
@@ -679,6 +691,8 @@ function validateDimensions(
       "practice",
       "challenge",
       "assessment",
+      "audit-guided",
+      "audit-practice",
       "technical-lab",
     ].includes(value.presetId)
   ) {
@@ -688,6 +702,8 @@ function validateDimensions(
         | "practice"
         | "challenge"
         | "assessment"
+        | "audit-guided"
+        | "audit-practice"
         | "technical-lab",
     );
     for (const field of [
@@ -962,6 +978,115 @@ function validateTechnicalLabConfiguration(
   }
 }
 
+function validateAuditConfiguration(
+  value: Record<string, unknown>,
+  issue: (path: string, message: string) => void,
+): void {
+  if (value.applicationCompatibilityVersion !== "ta1-v1") {
+    issue(
+      "applicationCompatibilityVersion",
+      "is not compatible with the Audit SCORM player",
+    );
+  }
+  if (!AUDIT_PRESETS.has(String(value.presetId))) {
+    issue("presetId", "is not a shipped Audit preset");
+  }
+  for (const field of [
+    "scenarioId",
+    "scenarioVersion",
+    "auditCaseId",
+    "auditCaseVersion",
+    "scenarioSeed",
+  ] as const) {
+    if (!isPortableIdentifier(value[field])) {
+      issue(field, "must be a bounded portable identifier");
+    }
+  }
+  if (
+    isObject(value.content) &&
+    (value.content.scenarioId !== value.scenarioId ||
+      value.content.scenarioVersion !== value.scenarioVersion)
+  ) {
+    issue(
+      "content.scenarioId",
+      "must identify the exact Audit scenario",
+    );
+  }
+  if (
+    value.presetId === "audit-guided" &&
+    (value.scenarioId !== "SCN_GUIDED_COFFEE_AUDIT" ||
+      value.auditCaseId !== "AUDIT_COFFEE_CONTROLS_001")
+  ) {
+    issue(
+      "scenarioId",
+      "audit-guided requires the reviewed Guided coffee Audit case",
+    );
+  }
+  if (
+    value.presetId === "audit-practice" &&
+    (value.scenarioId !== "SCN_PRACTICE_COFFEE_AUDIT" ||
+      value.auditCaseId !==
+        "AUDIT_COFFEE_CONTROLS_PRACTICE_001")
+  ) {
+    issue(
+      "scenarioId",
+      "audit-practice requires the curated Practice Audit case",
+    );
+  }
+  if (
+    isObject(value.feedback) &&
+    value.feedback.timing !== "IMMEDIATE"
+  ) {
+    issue(
+      "feedback.timing",
+      "Guided and Practice Audit require immediate feedback",
+    );
+  }
+  if (
+    isObject(value.hints) &&
+    value.hints.availability !== "ENABLED"
+  ) {
+    issue(
+      "hints.availability",
+      "Guided and Practice Audit require on-request hints",
+    );
+  }
+  if (
+    isObject(value.scoring) &&
+    (value.scoring.scoringBlueprintId !==
+      "AUDIT_COFFEE_100" ||
+      value.scoring.maximumScore !== 100 ||
+      value.scoring.passScore !== 70 ||
+      value.scoring.official !== false)
+  ) {
+    issue(
+      "scoring",
+      "must use the formative 100-point Audit scoring contract",
+    );
+  }
+  if (
+    isObject(value.reporting) &&
+    (value.reporting.auditReport !== true ||
+      value.reporting.causalReport !== false)
+  ) {
+    issue(
+      "reporting",
+      "Audit delivery requires the Audit report and no Operations causal report",
+    );
+  }
+  if (
+    isObject(value.delivery) &&
+    (value.delivery.channel !== "SCORM" ||
+      value.delivery.persistencePolicyId !==
+        "TA1_COMPACT_WORKPAPER")
+  ) {
+    issue(
+      "delivery",
+      "Audit packages require compact SCORM workpaper persistence",
+    );
+  }
+}
+
 export function validateConfiguration(
   value: unknown,
 ): ConfigurationValidationResult {
@@ -979,12 +1104,14 @@ export function validateConfiguration(
     };
   }
 
-  const isTechnicalLab =
-    value.activityType === "TECHNICAL_LAB";
+  const isTechnicalLab = value.activityType === "TECHNICAL_LAB";
+  const isAudit = value.activityType === "AUDIT";
   exactFields(
     value,
     isTechnicalLab
       ? LAB_TOP_LEVEL_FIELDS
+      : isAudit
+        ? AUDIT_TOP_LEVEL_FIELDS
       : BUSINESS_TOP_LEVEL_FIELDS,
     "",
     issue,
@@ -993,6 +1120,8 @@ export function validateConfiguration(
 
   if (isTechnicalLab) {
     validateTechnicalLabConfiguration(value, issue);
+  } else if (isAudit) {
+    validateAuditConfiguration(value, issue);
   } else {
     if (value.activityType !== "OPERATIONS") {
       issue(

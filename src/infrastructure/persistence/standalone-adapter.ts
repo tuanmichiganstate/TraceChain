@@ -17,6 +17,7 @@ import {
   LessonMode,
   PlatformMode,
 } from "../scorm/learning-platform-adapter";
+import { PersistenceError } from "../../domain/errors";
 
 const SUSPEND_DATA_LIMIT = 4096;
 
@@ -77,7 +78,11 @@ export class StandalonePersistenceAdapter implements LearningPlatformAdapter {
           "character SCORM limit. It would be rejected by a real LMS.",
       );
     }
-    this.write({ ...this.readOrDefault(), encodedState });
+    if (!this.write({ ...this.readOrDefault(), encodedState })) {
+      throw new PersistenceError(
+        "Authoritative standalone progress could not be stored.",
+      );
+    }
   }
 
   async setLocation(location: string): Promise<void> {
@@ -145,12 +150,14 @@ export class StandalonePersistenceAdapter implements LearningPlatformAdapter {
     }
   }
 
-  private write(attempt: StoredAttempt): void {
-    if (this.storage === null) return;
+  private write(attempt: StoredAttempt): boolean {
+    if (this.storage === null) return true;
     try {
       this.storage.setItem(this.storageKey, JSON.stringify(attempt));
+      return true;
     } catch {
       this.diagnostics.push("Could not write progress to localStorage (quota or privacy mode).");
+      return false;
     }
   }
 }

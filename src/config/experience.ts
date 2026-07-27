@@ -17,6 +17,8 @@ export type CurrentExperiencePresetId =
   | "practice"
   | "challenge"
   | "assessment"
+  | "audit-guided"
+  | "audit-practice"
   | "technical-lab"
   | "tutorial"
   | "standard"
@@ -56,6 +58,18 @@ const FIXED_PRESET_DIMENSIONS = {
     // The current reviewed assessment is one fixed case. A curated
     // assessment bank belongs to the later variation phase.
     outcomeStrategy: "FIXED",
+  },
+  "audit-guided": {
+    activityType: "AUDIT",
+    supportProfile: "GUIDED",
+    deliveryPurpose: "FORMATIVE",
+    outcomeStrategy: "FIXED",
+  },
+  "audit-practice": {
+    activityType: "AUDIT",
+    supportProfile: "PRACTICE",
+    deliveryPurpose: "FORMATIVE",
+    outcomeStrategy: "CURATED_VARIANT",
   },
   "technical-lab": {
     activityType: "TECHNICAL_LAB",

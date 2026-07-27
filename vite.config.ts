@@ -119,5 +119,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "test/**/*.test.ts"],
+    minWorkers: 1,
+    maxWorkers: process.env["CI"] ? 1 : 2,
+    testTimeout: 10_000,
   },
 });

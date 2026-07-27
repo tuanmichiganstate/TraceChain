@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.7.0",
+  "schemaVersion": "1.8.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
   "version": "1.11.0",
   "status": "draft",

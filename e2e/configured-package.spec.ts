@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { Activity } from "./support/activity";
 import { installScormApi, peek } from "./scorm-harness";
 import { embedConfiguration, hashConfiguration } from "../src/config/hash";
 import {
   ASSESSMENT_PRESET,
+  AUDIT_PRACTICE_PRESET,
   CHALLENGE_PRESET,
   PRACTICE_PRESET,
 } from "../src/config/presets";
@@ -17,6 +19,73 @@ import { ScenarioStageId } from "../src/domain/types/enums";
 import { selectVariantAssignment } from "../src/domain/scenario/variant-bank";
 import { tc3CodecSchema } from "../src/domain/simulation/command-journal";
 import { encodeTc3Attempt } from "../src/infrastructure/persistence/tc3-codec";
+import {
+  publishScenarioPack,
+} from "../src/platform/scenario-packs/publication";
+import {
+  validateScenarioPack,
+} from "../src/platform/scenario-packs/validation";
+
+const practiceAuditPackJson: unknown = JSON.parse(
+  readFileSync(
+    new URL(
+      "../scenario-packs/practice-coffee-audit/tracechain.pack.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+
+function publishedPracticeAuditPack() {
+  const validation = validateScenarioPack(
+    structuredClone(practiceAuditPackJson),
+  );
+  if (!validation.isValid) {
+    throw new Error(
+      validation.issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
+        .join("\n"),
+    );
+  }
+  return publishScenarioPack(validation.pack, {
+    publishedAt: "2026-07-27T03:00:00.000Z",
+    publishedBy: "TRACECHAIN_BROWSER_ACCEPTANCE",
+  });
+}
+
+async function installPracticeAuditRuntime(page: Page): Promise<void> {
+  const pack = publishedPracticeAuditPack();
+  await page.route("**/tracechain.config.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(embedConfiguration(AUDIT_PRACTICE_PRESET)),
+    });
+  });
+  await page.route("**/audit-scenario-pack.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(pack),
+    });
+  });
+  await page.route("**/build-info.json", async (route) => {
+    const response = await route.fetch();
+    const buildInformation = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    const source = `${JSON.stringify(pack, null, 2)}\n`;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...buildInformation,
+        auditScenarioPackHash: sha256Hex(source),
+        auditScenarioPackContentHash:
+          pack.publication?.contentHash,
+        auditPersistenceSchemaVersion: "TA1",
+      }),
+    });
+  });
+}
 
 async function installChallengeRuntime(page: Page): Promise<void> {
   const mediaManifest = {
@@ -222,6 +291,67 @@ async function installPracticeRuntime(page: Page): Promise<void> {
     });
   });
 }
+
+test("loads Practice Audit, persists a bounded hint action, and resumes it by TA1 replay", async ({
+  page,
+  context,
+}) => {
+  await installScormApi(page);
+  await installPracticeAuditRuntime(page);
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", {
+      name: "Hồ sơ kiểm toán thực hành",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Hãy xác nhận phạm vi ngắn gọn, rồi tự xác định hồ sơ, bằng chứng và chính sách phù hợp. Hồ sơ không được đánh dấu sẵn là bất thường.",
+    ),
+  ).toBeVisible();
+  const reveal = page.getByRole("button", {
+    name: "Mở gợi ý 1",
+  });
+  await reveal.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByText(
+      "Hãy đối chiếu hành động bên ký được phép thực hiện với hành động trong hồ sơ chứng nhận.",
+    ),
+  ).toBeVisible();
+
+  const persisted = await peek(page, "cmi.suspend_data");
+  expect(persisted).toMatch(/^TA1\./u);
+  expect(persisted.length).toBeLessThan(3_800);
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth + 1,
+    ),
+  ).toBe(true);
+
+  const resumed = await context.newPage();
+  await installScormApi(resumed, {
+    initialValues: {
+      "cmi.core.entry": "resume",
+      "cmi.core.lesson_location": "AUDIT_WORKPAPER",
+      "cmi.suspend_data": persisted,
+    },
+  });
+  await installPracticeAuditRuntime(resumed);
+  await resumed.goto("/");
+  await expect(
+    resumed.getByText(
+      "Hãy đối chiếu hành động bên ký được phép thực hiện với hành động trong hồ sơ chứng nhận.",
+    ),
+  ).toBeVisible();
+  await expect(
+    resumed.getByRole("button", { name: "Mở gợi ý 1" }),
+  ).toHaveCount(0);
+  await resumed.close();
+});
 
 test("loads independent Practice with optional support and immediate feedback", async ({
   page,

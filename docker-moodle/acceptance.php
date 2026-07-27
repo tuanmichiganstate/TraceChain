@@ -6,22 +6,28 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/gradelib.php');
 require_once($CFG->libdir.'/enrollib.php');
 
-// These exercise Moodle storage boundaries, not the player decoder. Their
-// framing and sizes represent TC3 while remaining independent of scenario
-// hashes that change between packages.
-$FULL = 'TC3.' . str_repeat('A', 512) . '.00000000';
-$MID  = 'TC3.' . str_repeat('B', 220) . '.00000000';
-
 $mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
 $activitynames = [
     'guided' => 'TraceChain Guided',
     'practice' => 'TraceChain Practice',
     'challenge' => 'TraceChain Challenge',
     'assessment' => 'TraceChain Assessment',
+    'audit-guided' => 'TraceChain Audit Guided',
+    'audit-practice' => 'TraceChain Audit Practice',
 ];
 if (!isset($activitynames[$mode])) {
     throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
 }
+$isaudit = str_starts_with($mode, 'audit-');
+// These exercise Moodle storage boundaries, not the player decoder. Their
+// framing and sizes represent the package's compact codec while remaining
+// independent of content hashes that change between packages.
+$prefix = $isaudit ? 'TA1.' : 'TC3.';
+$FULL = $prefix . str_repeat('A', 512) . '.00000000';
+$MID  = $prefix . str_repeat('B', 220) . '.00000000';
+$midlocation = $isaudit
+    ? 'AUDIT_WORKPAPER'
+    : 'STG_03_ANCHOR_CERTIFICATE';
 $scorm = $DB->get_record(
     'scorm',
     ['name' => $activitynames[$mode]],
@@ -67,12 +73,12 @@ function readback($scoid,$userid,$attempt,$el){
 echo "--- 1. mid-attempt save ---\n";
 track($user->id,$scorm->id,$sco->id,1,'cmi.core.lesson_status','incomplete');
 track($user->id,$scorm->id,$sco->id,1,'cmi.suspend_data',$MID);
-track($user->id,$scorm->id,$sco->id,1,'cmi.core.lesson_location','STG_03_ANCHOR_CERTIFICATE');
+track($user->id,$scorm->id,$sco->id,1,'cmi.core.lesson_location',$midlocation);
 $got = readback($sco->id,$user->id,1,'cmi.suspend_data');
 printf("  suspend_data round trip: %s (len %d)\n", $got === $MID ? 'BYTE-IDENTICAL' : 'MISMATCH', strlen((string)$got));
 printf("  lesson_location: %s\n", readback($sco->id,$user->id,1,'cmi.core.lesson_location'));
 require_true($got === $MID, 'mid-attempt suspend_data did not round-trip byte-identically');
-require_true(readback($sco->id,$user->id,1,'cmi.core.lesson_location') === 'STG_03_ANCHOR_CERTIFICATE', 'lesson_location did not persist');
+require_true(readback($sco->id,$user->id,1,'cmi.core.lesson_location') === $midlocation, 'lesson_location did not persist');
 
 echo "--- 2. resume: overwrite with a completed attempt ---\n";
 track($user->id,$scorm->id,$sco->id,1,'cmi.suspend_data',$FULL);

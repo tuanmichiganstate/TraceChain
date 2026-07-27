@@ -20,3 +20,11 @@ export { challengeVariantBank } from "../src/scenarios/challenge-a/variant-bank"
 export { coffeeCryptographicRuntime } from "../src/scenarios/coffee-traceability/cryptographic-runtime";
 export { validateCryptographicRuntime } from "../src/crypto/signatures/validation";
 export { NobleEd25519Provider } from "../src/crypto/signatures/noble-ed25519-provider";
+export {
+  publishScenarioPack,
+} from "../src/platform/scenario-packs/publication";
+export {
+  validateScenarioPack,
+} from "../src/platform/scenario-packs/validation";
+export { default as guidedAuditPack } from "../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+export { default as practiceAuditPack } from "../scenario-packs/practice-coffee-audit/tracechain.pack.json";

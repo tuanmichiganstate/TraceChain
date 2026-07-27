@@ -479,7 +479,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.7.0";
+  readonly schemaVersion: "1.8.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

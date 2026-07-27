@@ -75,7 +75,10 @@ const hostedPackages = [];
 for (const artifact of packageCatalog.packages) {
   if (
     artifact.configurationSchemaVersion !== "2" ||
-    artifact.activityType !== "OPERATIONS" ||
+    !["OPERATIONS", "AUDIT"].includes(artifact.activityType) ||
+    (artifact.presetId.startsWith("audit-")
+      ? artifact.activityType !== "AUDIT"
+      : artifact.activityType !== "OPERATIONS") ||
     typeof artifact.supportProfile !== "string" ||
     typeof artifact.deliveryPurpose !== "string" ||
     typeof artifact.outcomeStrategy !== "string" ||

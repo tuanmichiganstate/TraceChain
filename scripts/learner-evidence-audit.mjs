@@ -36,6 +36,7 @@ const hostedPackPaths = [
   "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
   "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
   "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+  "scenario-packs/practice-coffee-audit/tracechain.pack.json",
 ];
 const latentCertificateChecks = new Set([
   "INT_CERTIFICATE_STORAGE_CHOICE",

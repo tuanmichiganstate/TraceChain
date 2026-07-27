@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import packJson from "../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import auditPackJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import practiceAuditPackJson from "../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
 import type {
   ScenarioPackV1,
 } from "../platform/contracts/scenario-pack";
@@ -9,6 +10,8 @@ import {
 } from "../platform/runs/experience-configuration";
 import {
   ASSESSMENT_PRESET,
+  AUDIT_GUIDED_PRESET,
+  AUDIT_PRACTICE_PRESET,
   CHALLENGE_PRESET,
   GUIDED_PRESET,
   PRACTICE_PRESET,
@@ -25,8 +28,14 @@ const pack = packJson as ScenarioPackV1;
 const scenario = pack.scenarios[0];
 const auditPack = auditPackJson as ScenarioPackV1;
 const auditScenario = auditPack.scenarios[0];
+const practiceAuditPack = practiceAuditPackJson as ScenarioPackV1;
+const practiceAuditScenario = practiceAuditPack.scenarios[0];
 
-if (scenario === undefined || auditScenario === undefined) {
+if (
+  scenario === undefined ||
+  auditScenario === undefined ||
+  practiceAuditScenario === undefined
+) {
   throw new Error("Expected the hosted coffee and Audit scenarios.");
 }
 
@@ -55,6 +64,18 @@ describe("Configuration Schema V2 product dimensions", () => {
       supportProfile: "CHALLENGE",
       deliveryPurpose: "ASSESSMENT",
       outcomeStrategy: "FIXED",
+    });
+    expect(resolveProductDimensions("audit-guided")).toEqual({
+      activityType: "AUDIT",
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+    });
+    expect(resolveProductDimensions("audit-practice")).toEqual({
+      activityType: "AUDIT",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
     });
     expect(resolveProductDimensions("technical-lab")).toEqual({
       activityType: "TECHNICAL_LAB",
@@ -106,6 +127,21 @@ describe("Configuration Schema V2 product dimensions", () => {
       feedback: { timing: "FINAL" },
       hints: { availability: "DISABLED" },
       scoring: { official: true },
+    });
+    expect(AUDIT_GUIDED_PRESET).toMatchObject({
+      applicationCompatibilityVersion: "ta1-v1",
+      activityType: "AUDIT",
+      supportProfile: "GUIDED",
+      scenarioId: "SCN_GUIDED_COFFEE_AUDIT",
+      scenarioVersion: "2.0.0",
+    });
+    expect(AUDIT_PRACTICE_PRESET).toMatchObject({
+      applicationCompatibilityVersion: "ta1-v1",
+      activityType: "AUDIT",
+      supportProfile: "PRACTICE",
+      outcomeStrategy: "CURATED_VARIANT",
+      scenarioId: "SCN_PRACTICE_COFFEE_AUDIT",
+      scenarioVersion: "1.0.0",
     });
   });
 
@@ -243,7 +279,7 @@ describe("Configuration Schema V2 product dimensions", () => {
         allowDrafts: true,
       },
       scoring: {
-        scoringBlueprintId: "GUIDED_AUDIT_100",
+        scoringBlueprintId: "AUDIT_COFFEE_100",
         maximumScore: 100,
         passScore: 70,
         official: false,
@@ -262,5 +298,50 @@ describe("Configuration Schema V2 product dimensions", () => {
     expect(
       experienceConfigurationHash(resolved.configuration),
     ).toBe(resolved.configurationHash);
+  });
+
+  it("resolves Practice Audit with reduced support and stable identity", () => {
+    const runtimeConfiguration =
+      practiceAuditScenario.modeConfigurations[0];
+    if (runtimeConfiguration === undefined) {
+      throw new Error("Expected the Practice Audit runtime profile.");
+    }
+    const resolved = resolveHostedExperienceConfiguration({
+      packId: practiceAuditPack.packId,
+      packVersion: practiceAuditPack.version,
+      scenario: practiceAuditScenario,
+      runtimeConfiguration,
+      locale: "vi",
+    });
+
+    expect(resolved.configuration).toMatchObject({
+      presetId: "hosted-audit-practice",
+      activityType: "AUDIT",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
+      guidance: {
+        missionDetail: "CONCISE",
+        evidenceGuidance: "SUGGESTED",
+        policyGuidance: "SUGGESTED",
+        nextActionGuidance: "GOAL_ONLY",
+        showWorkedExamples: false,
+      },
+      hints: {
+        availability: "ENABLED",
+        proactiveOffer: "AVAILABLE_ON_REQUEST",
+      },
+      scoring: {
+        scoringBlueprintId: "AUDIT_COFFEE_100",
+        maximumScore: 100,
+        official: false,
+      },
+    });
+    expect(
+      experienceConfigurationHash(resolved.configuration),
+    ).toBe(resolved.configurationHash);
+    expect(resolved.configurationHash).not.toBe(
+      experienceConfigurationHash(AUDIT_GUIDED_PRESET),
+    );
   });
 });

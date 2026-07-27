@@ -55,16 +55,17 @@ function isEmbeddedConfiguration(value: unknown): value is EmbeddedTraceChainCon
   );
 }
 
-export async function loadRuntimePackage(
+export async function loadEmbeddedConfiguration(
   fetcher: RuntimeFetch,
-): Promise<RuntimePackage> {
+): Promise<EmbeddedTraceChainConfiguration> {
   const configurationFile = await loadJson(
     fetcher,
     "./tracechain.config.json",
   );
-
   if (!isEmbeddedConfiguration(configurationFile)) {
-    throw new ScenarioConfigurationError("tracechain.config.json has an invalid envelope");
+    throw new ScenarioConfigurationError(
+      "tracechain.config.json has an invalid envelope",
+    );
   }
   assertValidConfiguration(configurationFile.configuration);
   if (
@@ -72,8 +73,17 @@ export async function loadRuntimePackage(
     hashConfiguration(configurationFile.configuration) !==
       configurationFile.configurationHash
   ) {
-    throw new IncompatibleAttemptError("Embedded configuration hash does not match its content");
+    throw new IncompatibleAttemptError(
+      "Embedded configuration hash does not match its content",
+    );
   }
+  return configurationFile;
+}
+
+export async function loadRuntimePackage(
+  fetcher: RuntimeFetch,
+): Promise<RuntimePackage> {
+  const configurationFile = await loadEmbeddedConfiguration(fetcher);
   const configuration = configurationFile.configuration;
   if (!isBusinessSimulationConfiguration(configuration)) {
     throw new ScenarioConfigurationError(

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.7",
+  "title": "TraceChain Scenario Pack V1.8",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -21,7 +21,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.7.0" },
+    "schemaVersion": { "const": "1.8.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -1312,6 +1312,7 @@
         "entities",
         "rootCauses",
         "recommendations",
+        "hints",
         "conclusionCategories",
         "expectedConclusionCategory",
         "sourceRecords",
@@ -1321,10 +1322,11 @@
         "decoyDefinitions",
         "scoringBlueprint",
         "supportProfiles",
+        "inputLimits",
         "completionDefinition"
       ],
       "properties": {
-        "schemaVersion": { "const": "1.0.0" },
+        "schemaVersion": { "const": "2.0.0" },
         "auditCaseId": { "$ref": "#/$defs/identifier" },
         "version": { "$ref": "#/$defs/version" },
         "sourceProcessId": { "$ref": "#/$defs/identifier" },
@@ -1377,6 +1379,20 @@
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/auditChoice" }
+        },
+        "hints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hintId", "text"],
+            "properties": {
+              "hintId": { "$ref": "#/$defs/identifier" },
+              "text": { "$ref": "#/$defs/localizedText" }
+            }
+          }
         },
         "conclusionCategories": {
           "type": "array",
@@ -1437,7 +1453,67 @@
           "$ref": "#/$defs/auditScoringBlueprint"
         },
         "supportProfiles": {
-          "const": ["GUIDED"]
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["GUIDED", "PRACTICE"]
+          }
+        },
+        "inputLimits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maximumDrafts",
+            "maximumDraftRecords",
+            "maximumFindingRecords",
+            "findingTitleUtf8Bytes",
+            "findingObservationUtf8Bytes",
+            "findingRecommendationUtf8Bytes",
+            "conclusionFieldUtf8Bytes",
+            "maximumEvidenceCitationsPerFinding",
+            "maximumPolicyCitationsPerFinding"
+          ],
+          "properties": {
+            "maximumDrafts": { "const": 1 },
+            "maximumDraftRecords": { "const": 1 },
+            "maximumFindingRecords": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "findingTitleUtf8Bytes": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 120
+            },
+            "findingObservationUtf8Bytes": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 500
+            },
+            "findingRecommendationUtf8Bytes": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 500
+            },
+            "conclusionFieldUtf8Bytes": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 500
+            },
+            "maximumEvidenceCitationsPerFinding": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "maximumPolicyCitationsPerFinding": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            }
+          }
         },
         "completionDefinition": {
           "type": "object",

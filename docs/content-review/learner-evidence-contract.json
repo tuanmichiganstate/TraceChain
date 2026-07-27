@@ -387,6 +387,25 @@
         "hostedAudit.conclusion.help",
         "hostedAudit.scopeGuidance"
       ]
+    },
+    {
+      "sourceId": "SRC_PRACTICE_AUDIT_CASE_EVIDENCE",
+      "label": "Practice-case source records, cryptographic evidence, policies, scope, and role-visible process history",
+      "sourceType": "AUDIT_CASE",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-run-service.ts",
+        "src/platform/audit/hosted-audit-workspace.tsx"
+      ],
+      "localeKeys": [
+        "platformPack.practiceAudit.objective",
+        "platformPack.practiceAudit.scope",
+        "platformPack.practiceAudit.evidence.certificate",
+        "platformPack.practiceAudit.hint.authorization"
+      ],
+      "localizedInPack": true
     }
   ],
   "coverageRules": [
@@ -938,6 +957,77 @@
       ],
       "answerAuthority": [
         "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-scoring.ts",
+        "src/platform/audit/audit-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_PRACTICE_AUDIT_FINDING",
+      "match": {
+        "surfaces": [
+          "HOSTED"
+        ],
+        "scenarioIds": [
+          "SCN_PRACTICE_COFFEE_AUDIT"
+        ],
+        "decisionIds": [
+          "AUDIT_FINDING_SUBMISSION"
+        ],
+        "fieldIds": [
+          "categoryId",
+          "entityId",
+          "title",
+          "observation",
+          "severity",
+          "materiality",
+          "confidence",
+          "evidenceIds",
+          "policyIds",
+          "rootCauseCode",
+          "recommendationCode",
+          "recommendation"
+        ]
+      },
+      "sourceIds": [
+        "SRC_PRACTICE_AUDIT_CASE_EVIDENCE"
+      ],
+      "answerAuthority": [
+        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-scoring.ts",
+        "src/platform/audit/audit-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_PRACTICE_AUDIT_CONCLUSION",
+      "match": {
+        "surfaces": [
+          "HOSTED"
+        ],
+        "scenarioIds": [
+          "SCN_PRACTICE_COFFEE_AUDIT"
+        ],
+        "decisionIds": [
+          "AUDIT_CONCLUSION_SUBMISSION"
+        ],
+        "fieldIds": [
+          "conclusionCategory",
+          "scopeSummary",
+          "materialFindingsSummary",
+          "nonMaterialFindingsSummary",
+          "limitations",
+          "uncertainty",
+          "recommendations",
+          "confidence"
+        ]
+      },
+      "sourceIds": [
+        "SRC_PRACTICE_AUDIT_CASE_EVIDENCE",
+        "SRC_GUIDED_AUDIT_WORKPAPER"
+      ],
+      "answerAuthority": [
+        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
         "src/platform/audit/audit-scoring.ts",
         "src/platform/audit/audit-run-service.ts"
       ],

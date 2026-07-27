@@ -330,6 +330,13 @@ export function AuditFindingBuilder({
   policyOptions,
   rootCauseOptions,
   recommendationOptions,
+  inputLimits = {
+    findingTitleUtf8Bytes: 120,
+    findingObservationUtf8Bytes: 500,
+    findingRecommendationUtf8Bytes: 500,
+    maximumEvidenceCitationsPerFinding: Number.MAX_SAFE_INTEGER,
+    maximumPolicyCitationsPerFinding: Number.MAX_SAFE_INTEGER,
+  },
   draft,
   disabled = false,
   onChange,
@@ -367,6 +374,13 @@ export function AuditFindingBuilder({
   readonly policyOptions: readonly AuditEvidenceOption[];
   readonly rootCauseOptions: readonly AuditChoiceOption[];
   readonly recommendationOptions: readonly AuditChoiceOption[];
+  readonly inputLimits?: {
+    readonly findingTitleUtf8Bytes: number;
+    readonly findingObservationUtf8Bytes: number;
+    readonly findingRecommendationUtf8Bytes: number;
+    readonly maximumEvidenceCitationsPerFinding: number;
+    readonly maximumPolicyCitationsPerFinding: number;
+  };
   readonly draft: AuditFindingDraft;
   readonly disabled?: boolean;
   readonly onChange: (draft: AuditFindingDraft) => void;
@@ -445,7 +459,7 @@ export function AuditFindingBuilder({
           <span>{labels.findingTitle}</span>
           <input
             value={draft.title}
-            maxLength={120}
+            maxLength={inputLimits.findingTitleUtf8Bytes}
             disabled={disabled}
             onChange={(event) =>
               onChange({ ...draft, title: event.target.value })
@@ -456,7 +470,7 @@ export function AuditFindingBuilder({
           <span>{labels.observation}</span>
           <textarea
             value={draft.observation}
-            maxLength={500}
+            maxLength={inputLimits.findingObservationUtf8Bytes}
             rows={4}
             disabled={disabled}
             onChange={(event) =>
@@ -535,6 +549,12 @@ export function AuditFindingBuilder({
                 <input
                   type="checkbox"
                   checked={draft.evidenceIds.includes(option.evidenceId)}
+                  disabled={
+                    disabled ||
+                    (!draft.evidenceIds.includes(option.evidenceId) &&
+                      draft.evidenceIds.length >=
+                        inputLimits.maximumEvidenceCitationsPerFinding)
+                  }
                   onChange={(event) =>
                     setEvidence(option.evidenceId, event.target.checked)
                   }
@@ -552,6 +572,12 @@ export function AuditFindingBuilder({
                 <input
                   type="checkbox"
                   checked={draft.policyIds.includes(option.evidenceId)}
+                  disabled={
+                    disabled ||
+                    (!draft.policyIds.includes(option.evidenceId) &&
+                      draft.policyIds.length >=
+                        inputLimits.maximumPolicyCitationsPerFinding)
+                  }
                   onChange={(event) =>
                     setPolicy(option.evidenceId, event.target.checked)
                   }
@@ -605,7 +631,9 @@ export function AuditFindingBuilder({
           <span>{labels.recommendation}</span>
           <textarea
             value={draft.recommendation}
-            maxLength={500}
+            maxLength={
+              inputLimits.findingRecommendationUtf8Bytes
+            }
             rows={3}
             disabled={disabled}
             onChange={(event) =>

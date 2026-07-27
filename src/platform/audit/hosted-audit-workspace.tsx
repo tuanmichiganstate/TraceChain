@@ -35,9 +35,10 @@ function newFindingId(): string {
 
 function blankDraft(
   audit: AuditLearnerProjectionV1,
+  createFindingId: () => string = newFindingId,
 ): AuditFindingDraft {
   return {
-    findingId: newFindingId(),
+    findingId: createFindingId(),
     categoryId: audit.categories[0]?.choiceId ?? "",
     entityId: audit.entities[0]?.choiceId ?? "",
     title: "",
@@ -56,10 +57,11 @@ function blankDraft(
 
 function initialDraft(
   audit: AuditLearnerProjectionV1,
+  createFindingId: () => string,
 ): AuditFindingDraft {
   const restored = audit.drafts[0];
   return restored === undefined
-    ? blankDraft(audit)
+    ? blankDraft(audit, createFindingId)
     : {
         findingId: restored.findingId,
         categoryId: restored.categoryId,
@@ -110,6 +112,7 @@ export function HostedAuditWorkspace({
   completed,
   busy,
   onSubmit,
+  createFindingId = newFindingId,
 }: {
   readonly audit: AuditLearnerProjectionV1;
   readonly completed: boolean;
@@ -117,15 +120,17 @@ export function HostedAuditWorkspace({
   readonly onSubmit: (
     input: Readonly<Record<string, unknown>>,
   ) => Promise<void>;
+  readonly createFindingId?: () => string;
 }): ReactNode {
   const t = useTranslator();
   const [draft, setDraft] = useState<AuditFindingDraft>(() =>
-    initialDraft(audit),
+    initialDraft(audit, createFindingId),
   );
   const [amending, setAmending] = useState(false);
   const [conclusion, setConclusion] =
     useState<AuditConclusionDraft>(() => initialConclusion(audit));
   const [recordFilter, setRecordFilter] = useState("");
+  const isPractice = audit.supportProfile === "PRACTICE";
 
   const activeFindings = audit.findings.filter(
     (finding) => finding.status === "SUBMITTED",
@@ -155,7 +160,7 @@ export function HostedAuditWorkspace({
         : "SUBMIT_AUDIT_FINDING",
       finding: draft,
     });
-    setDraft(blankDraft(audit));
+    setDraft(blankDraft(audit, createFindingId));
     setAmending(false);
   };
 
@@ -197,7 +202,7 @@ export function HostedAuditWorkspace({
             <button
               type="button"
               className="button button--secondary"
-              disabled={busy || completed}
+              disabled={busy || completed || evidence.inspected}
               onClick={() =>
                 void onSubmit({
                   commandType: "INSPECT_AUDIT_EVIDENCE",
@@ -413,7 +418,11 @@ export function HostedAuditWorkspace({
               ? "hostedAudit.amendFinding"
               : "hostedAudit.newFinding",
           )}
-          description={t("hostedAudit.findingHelp")}
+          description={t(
+            isPractice
+              ? "hostedAudit.findingHelp.practice"
+              : "hostedAudit.findingHelp",
+          )}
           labels={{
             category: t("hostedAudit.category"),
             entity: t("hostedAudit.entity"),
@@ -474,15 +483,22 @@ export function HostedAuditWorkspace({
               label: localized(choice.label, t),
             }),
           )}
+          inputLimits={audit.inputLimits}
           draft={draft}
           disabled={busy}
           onChange={setDraft}
-          onSaveDraft={() =>
-            void onSubmit({
-              commandType: "SAVE_AUDIT_FINDING_DRAFT",
-              finding: draft,
-            })
-          }
+          {...(!amending &&
+          audit.drafts.length <
+            audit.inputLimits.maximumDraftRecords
+            ? {
+                onSaveDraft: () =>
+                  void onSubmit({
+                    commandType:
+                      "SAVE_AUDIT_FINDING_DRAFT",
+                    finding: draft,
+                  }),
+              }
+            : {})}
           onSubmit={() => void submitFinding()}
         />
       )}
@@ -492,7 +508,10 @@ export function HostedAuditWorkspace({
   const conclusionTab = (
     <div className="stack">
       {audit.report === undefined ? null : (
-        <HostedAuditReport report={audit.report} />
+        <HostedAuditReport
+          report={audit.report}
+          supportProfile={audit.supportProfile}
+        />
       )}
       {completed ? null : (
         <AuditConclusionForm
@@ -513,8 +532,16 @@ export function HostedAuditWorkspace({
 
   return (
     <AuditWorkbenchShell
-      eyebrow={t("hostedAudit.eyebrow")}
-      title={t("hostedAudit.title")}
+      eyebrow={t(
+        isPractice
+          ? "hostedAudit.eyebrow.practice"
+          : "hostedAudit.eyebrow",
+      )}
+      title={t(
+        isPractice
+          ? "hostedAudit.title.practice"
+          : "hostedAudit.title",
+      )}
       description={localized(audit.objective, t)}
       context={[
         {
@@ -555,11 +582,17 @@ export function HostedAuditWorkspace({
                   end: audit.scope.periodEnd,
                 })}
               </p>
-              <p>{t("hostedAudit.scopeGuidance")}</p>
+              <p>
+                {t(
+                  isPractice
+                    ? "hostedAudit.scopeGuidance.practice"
+                    : "hostedAudit.scopeGuidance",
+                )}
+              </p>
               <button
                 type="button"
                 className="button button--secondary"
-                disabled={busy || completed}
+                disabled={busy || completed || audit.scopeViewed}
                 onClick={() =>
                   void onSubmit({
                     commandType: "VIEW_AUDIT_SCOPE",
@@ -568,6 +601,45 @@ export function HostedAuditWorkspace({
               >
                 {t("hostedAudit.confirmScopeReview")}
               </button>
+              <section
+                className="card card--reference stack"
+                aria-labelledby="audit-hints-heading"
+              >
+                <h4 id="audit-hints-heading">
+                  {t("hostedAudit.hints.title")}
+                </h4>
+                <p>{t("hostedAudit.hints.help")}</p>
+                {audit.hints.map((hint, index) => (
+                  <div key={hint.hintId} className="stack stack--tight">
+                    {hint.viewed ? (
+                      <p>
+                        <strong>
+                          {t("hostedAudit.hints.number", {
+                            number: index + 1,
+                          })}
+                        </strong>{" "}
+                        {localized(hint.text, t)}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        disabled={busy || completed}
+                        onClick={() =>
+                          void onSubmit({
+                            commandType: "VIEW_AUDIT_HINT",
+                            hintId: hint.hintId,
+                          })
+                        }
+                      >
+                        {t("hostedAudit.hints.reveal", {
+                          number: index + 1,
+                        })}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </section>
             </section>
           ),
         },
@@ -677,7 +749,7 @@ function AuditConclusionForm({
           <span>{t(key)}</span>
           <textarea
             rows={3}
-            maxLength={1_000}
+            maxLength={audit.inputLimits.conclusionFieldUtf8Bytes}
             required
             value={draft[field]}
             disabled={busy}
@@ -719,8 +791,10 @@ function AuditConclusionForm({
 
 export function HostedAuditReport({
   report,
+  supportProfile = "GUIDED",
 }: {
   readonly report: NonNullable<AuditLearnerProjectionV1["report"]>;
+  readonly supportProfile?: "GUIDED" | "PRACTICE";
 }): ReactNode {
   const t = useTranslator();
   return (
@@ -731,7 +805,11 @@ export function HostedAuditReport({
           ? "hostedAudit.report.passed"
           : "hostedAudit.report.notPassed",
       )}
-      title={t("hostedAudit.report.title")}
+      title={t(
+        supportProfile === "PRACTICE"
+          ? "hostedAudit.report.title.practice"
+          : "hostedAudit.report.title",
+      )}
       summary={t("hostedAudit.report.summary", {
         score: report.score,
         maximum: report.maximumScore,

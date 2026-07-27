@@ -145,7 +145,13 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
 
   async saveAttemptState(encodedState: string): Promise<void> {
     if (this.isSuppressed()) return;
-    this.setValue(ELEMENT.SUSPEND_DATA, encodedState);
+    if (!this.setValue(ELEMENT.SUSPEND_DATA, encodedState)) {
+      throw new ScormCommunicationError(
+        "LMSSetValue rejected authoritative suspend data",
+        this.api?.LMSGetLastError() ?? null,
+        "LMSSetValue",
+      );
+    }
   }
 
   async setLocation(location: string): Promise<void> {
@@ -247,8 +253,8 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     return value;
   }
 
-  private setValue(element: string, value: string): void {
-    if (this.api === null) return;
+  private setValue(element: string, value: string): boolean {
+    if (this.api === null) return false;
     const result = this.call("LMSSetValue", () => this.api?.LMSSetValue(element, value));
     if (result !== "true") {
       const code = this.api.LMSGetLastError();
@@ -258,7 +264,9 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
             ? ` -- value length ${value.length} may exceed the element's limit.`
             : "."),
       );
+      return false;
     }
+    return true;
   }
 
   /** Run an LMS call, converting any thrown error into a diagnostic. */

@@ -144,9 +144,14 @@ function validateArtifact(
   artifact: HostedScormPackageArtifactV1,
 ): void {
   if (
-    !["guided", "practice", "challenge", "assessment"].includes(
-      artifact.presetId,
-    ) ||
+    ![
+      "guided",
+      "practice",
+      "challenge",
+      "assessment",
+      "audit-guided",
+      "audit-practice",
+    ].includes(artifact.presetId) ||
     artifact.title.length < 1 ||
     artifact.title.length > 120 ||
     !artifact.filename.endsWith(".zip") ||
@@ -157,7 +162,10 @@ function validateArtifact(
     artifact.sizeBytes < 1 ||
     !artifact.downloadPath.startsWith("/scorm-packages/") ||
     artifact.configurationSchemaVersion !== "2" ||
-    artifact.activityType !== "OPERATIONS" ||
+    !["OPERATIONS", "AUDIT"].includes(artifact.activityType) ||
+    (artifact.presetId.startsWith("audit-")
+      ? artifact.activityType !== "AUDIT"
+      : artifact.activityType !== "OPERATIONS") ||
     !["GUIDED", "PRACTICE", "CHALLENGE"].includes(
       artifact.supportProfile,
     ) ||

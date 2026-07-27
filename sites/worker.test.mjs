@@ -425,6 +425,18 @@ async function guidedCoffeeAuditPack() {
   );
 }
 
+async function practiceCoffeeAuditPack() {
+  return JSON.parse(
+    await readFile(
+      new URL(
+        "../scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+}
+
 test("serves the application shell at the root without relying on Accept", async () => {
   const { env, requestedPaths } = createAssetEnvironment();
   const response = await worker.fetch(
@@ -2991,6 +3003,167 @@ test("runs the fixed Guided Audit through published assignment, D1, and replay A
     assert.equal(
       (await replay.json()).replay.projection.audit.auditCaseId,
       "AUDIT_COFFEE_CONTROLS_001",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runs the bounded Practice Audit with on-request hints through D1 and replay APIs", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  try {
+    const initialize = await worker.fetch(
+      apiRequest("/api/v1/session"),
+      env,
+    );
+    assert.equal(initialize.status, 401);
+    seedUser(
+      database,
+      "USER_INSTRUCTOR_PRACTICE_AUDIT",
+      "practice-audit-instructor@example.edu",
+      ["instructor", "scenario-author"],
+    );
+    seedUser(
+      database,
+      "USER_LEARNER_PRACTICE_AUDIT",
+      "practice-audit-learner@example.edu",
+      ["learner"],
+    );
+
+    const pack = await practiceCoffeeAuditPack();
+    const publish = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/publish", {
+        method: "POST",
+        email: "practice-audit-instructor@example.edu",
+        body: { pack },
+      }),
+      env,
+    );
+    assert.equal(publish.status, 201, await publish.clone().text());
+
+    const assignmentId = "ASSIGNMENT_PRACTICE_AUDIT_SITE";
+    const createAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "practice-audit-instructor@example.edu",
+        body: {
+          commandId: "COMMAND_CREATE_PRACTICE_AUDIT_ASSIGNMENT",
+          assignmentId,
+          title: "Practice coffee controls audit",
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenarioId: pack.scenarios[0].scenarioId,
+          scenarioVersion: pack.scenarios[0].version,
+          mode: "standard",
+          counterfactualReplay: disabledCounterfactualReplay,
+          research: { enabled: false },
+          availableFrom: "2020-01-01T00:00:00.000Z",
+          availableUntil: "2999-01-01T00:00:00.000Z",
+          learnerUserIds: ["USER_LEARNER_PRACTICE_AUDIT"],
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      createAssignment.status,
+      201,
+      await createAssignment.clone().text(),
+    );
+
+    const runId = "RUN_PRACTICE_AUDIT_SITE";
+    const start = await worker.fetch(
+      apiRequest(
+        `/api/v1/assignments/${assignmentId}/start-run`,
+        {
+          method: "POST",
+          email: "practice-audit-learner@example.edu",
+          body: {
+            commandId: "COMMAND_START_PRACTICE_AUDIT_SITE",
+            runId,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(start.status, 201, await start.clone().text());
+    assert.equal((await start.json()).version, 2);
+
+    const loaded = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}`, {
+        email: "practice-audit-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(loaded.status, 200, await loaded.clone().text());
+    const initialProjection = (await loaded.json()).projection;
+    assert.equal(
+      initialProjection.audit.auditCaseId,
+      "AUDIT_COFFEE_CONTROLS_PRACTICE_001",
+    );
+    assert.equal(initialProjection.audit.supportProfile, "PRACTICE");
+    assert.equal(
+      initialProjection.audit.inputLimits.maximumDraftRecords,
+      1,
+    );
+    assert.equal(initialProjection.audit.hints.length, 3);
+    assert.equal(
+      initialProjection.audit.sourceRecords.some(
+        (record) =>
+          record.sourceRecordId === "TX_CUSTODY_204" &&
+          record.recordKind === "ATTEMPT_AUDIT",
+      ),
+      true,
+    );
+    assert.equal(
+      initialProjection.ledgerState.transactions.some(
+        (transaction) =>
+          transaction.transactionId === "TX_CUSTODY_204",
+      ),
+      false,
+    );
+
+    const hint = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "practice-audit-learner@example.edu",
+        body: {
+          commandType: "VIEW_AUDIT_HINT",
+          commandId: "COMMAND_VIEW_PRACTICE_AUDIT_HINT",
+          runId,
+          expectedRunVersion: 2,
+          hintId: "HINT_AUTHORIZATION_COMPARISON",
+        },
+      }),
+      env,
+    );
+    assert.equal(hint.status, 200, await hint.clone().text());
+    const hintedProjection = (await hint.json()).projection;
+    assert.equal(hintedProjection.version, 3);
+    assert.equal(
+      hintedProjection.audit.hints.find(
+        (item) =>
+          item.hintId === "HINT_AUTHORIZATION_COMPARISON",
+      ).viewed,
+      true,
+    );
+
+    const replay = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=3`, {
+        email: "practice-audit-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(replay.status, 200, await replay.clone().text());
+    const replayedProjection = (await replay.json()).replay.projection;
+    assert.equal(replayedProjection.audit.supportProfile, "PRACTICE");
+    assert.equal(
+      replayedProjection.audit.hints.find(
+        (item) =>
+          item.hintId === "HINT_AUTHORIZATION_COMPARISON",
+      ).viewed,
+      true,
     );
   } finally {
     database.close();

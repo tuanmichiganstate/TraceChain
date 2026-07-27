@@ -76,7 +76,7 @@ import type {
   SubmitGenericDecisionCommand,
 } from "./generic-run-types";
 import { isGenericHostedRuntimeScenario } from "./runtime-registry";
-import { HostedRunCommandError } from "./stage3-run-service";
+import { HostedRunCommandError } from "./run-command-error";
 import type {
   CompetencyEvidenceProjection,
   HostedCompetencyEvidence,

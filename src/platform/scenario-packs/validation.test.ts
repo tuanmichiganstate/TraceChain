@@ -1,6 +1,7 @@
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import practiceAuditPackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
@@ -51,6 +52,31 @@ describe("scenario-pack validation", () => {
           code: "INSUFFICIENT_AUDIT_FINDING_EVIDENCE",
         }),
       );
+    }
+  });
+
+  it("accepts the bounded Practice Audit case", () => {
+    const result = validateScenarioPack(
+      structuredClone(practiceAuditPackJson),
+    );
+
+    expect(
+      result.isValid,
+      result.isValid ? "" : JSON.stringify(result.issues, null, 2),
+    ).toBe(true);
+    if (result.isValid) {
+      const scenario = result.pack.scenarios[0]!;
+      expect(scenario.scenarioId).toBe(
+        "SCN_PRACTICE_COFFEE_AUDIT",
+      );
+      expect(scenario.auditCase?.supportProfiles).toEqual([
+        "PRACTICE",
+      ]);
+      expect(scenario.auditCase?.inputLimits).toMatchObject({
+        maximumDrafts: 1,
+        maximumDraftRecords: 1,
+        maximumFindingRecords: 6,
+      });
     }
   });
   it("validates the bilingual native coffee pack", () => {

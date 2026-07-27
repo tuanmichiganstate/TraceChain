@@ -61,9 +61,7 @@ import {
   SystemUtcClock,
   WebCryptoIdGenerator,
 } from "../src/platform/hosted/server-environment";
-import {
-  HostedRunCommandError,
-} from "../src/platform/hosted/stage3-run-service";
+import { HostedRunCommandError } from "../src/platform/hosted/run-command-error";
 import type {
   HostedRuntimeCommand,
   HostedRuntimeService,

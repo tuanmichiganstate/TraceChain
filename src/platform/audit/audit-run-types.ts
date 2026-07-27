@@ -41,6 +41,7 @@ export interface AuditHostedRunStateV1 {
   readonly inspectedEvidenceIds: readonly string[];
   readonly bookmarkedEvidenceIds: readonly string[];
   readonly inspectedSourceRecordIds: readonly string[];
+  readonly viewedHintIds: readonly string[];
   readonly drafts: Readonly<Record<string, AuditFindingDraftV1>>;
   readonly findings: readonly AuditFindingSubmissionV1[];
   readonly competencyEvidence: readonly HostedCompetencyEvidence[];
@@ -81,6 +82,12 @@ export interface InspectAuditSourceRecordCommand
   extends AuditHostedCommandBase {
   readonly commandType: "INSPECT_AUDIT_SOURCE_RECORD";
   readonly sourceRecordId: string;
+}
+
+export interface ViewAuditHintCommand
+  extends AuditHostedCommandBase {
+  readonly commandType: "VIEW_AUDIT_HINT";
+  readonly hintId: string;
 }
 
 export interface AuditFindingInputV1 {
@@ -141,6 +148,7 @@ export type AuditHostedCommand =
   | InspectAuditEvidenceCommand
   | BookmarkAuditEvidenceCommand
   | InspectAuditSourceRecordCommand
+  | ViewAuditHintCommand
   | SaveAuditFindingDraftCommand
   | SubmitAuditFindingCommand
   | AmendAuditFindingCommand

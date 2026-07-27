@@ -3483,6 +3483,7 @@ function validateAuditCase(
       "entities",
       "rootCauses",
       "recommendations",
+      "hints",
       "conclusionCategories",
       "expectedConclusionCategory",
       "sourceRecords",
@@ -3492,15 +3493,16 @@ function validateAuditCase(
       "decoyDefinitions",
       "scoringBlueprint",
       "supportProfiles",
+      "inputLimits",
       "completionDefinition",
     ],
     casePath,
   );
   context.check(
-    auditCase.schemaVersion === "1.0.0",
+    auditCase.schemaVersion === "2.0.0",
     "INVALID_AUDIT_CASE_SCHEMA",
     `${casePath}.schemaVersion`,
-    "must equal 1.0.0",
+    "must equal 2.0.0",
   );
   for (const key of ["auditCaseId", "sourceProcessId"] as const) {
     context.string(auditCase[key], `${casePath}.${key}`, {
@@ -3620,6 +3622,45 @@ function validateAuditCase(
         context,
         choice.label,
         `${choicePath}.label`,
+        supportedLocales,
+      );
+    });
+  }
+  const hintIds = new Set<string>();
+  const hints = context.array(
+    auditCase.hints,
+    `${casePath}.hints`,
+  );
+  if (hints !== null) {
+    context.check(
+      hints.length > 0 && hints.length <= 6,
+      "INVALID_AUDIT_HINTS",
+      `${casePath}.hints`,
+      "must contain from one to six authored hints",
+    );
+    hints.forEach((value, index) => {
+      const hintPath = `${casePath}.hints[${String(index)}]`;
+      const hint = context.object(value, hintPath);
+      if (hint === null) return;
+      context.allowedKeys(hint, ["hintId", "text"], hintPath);
+      const hintId = context.string(
+        hint.hintId,
+        `${hintPath}.hintId`,
+        { identifier: true },
+      );
+      if (hintId !== null) {
+        context.check(
+          !hintIds.has(hintId),
+          "DUPLICATE_AUDIT_HINT",
+          `${hintPath}.hintId`,
+          "must be unique",
+        );
+        hintIds.add(hintId);
+      }
+      validateLocalizedText(
+        context,
+        hint.text,
+        `${hintPath}.text`,
         supportedLocales,
       );
     });
@@ -4187,11 +4228,73 @@ function validateAuditCase(
   );
   context.check(
     supportProfiles.length === 1 &&
-      supportProfiles[0] === "GUIDED",
+      (supportProfiles[0] === "GUIDED" ||
+        supportProfiles[0] === "PRACTICE"),
     "INVALID_AUDIT_SUPPORT_PROFILE",
     `${casePath}.supportProfiles`,
-    "Phase 4 permits only the Guided Audit profile",
+    "must contain exactly one Guided or Practice Audit profile",
   );
+  const inputLimits = context.object(
+    auditCase.inputLimits,
+    `${casePath}.inputLimits`,
+  );
+  if (inputLimits !== null) {
+    context.allowedKeys(
+      inputLimits,
+      [
+        "maximumDrafts",
+        "maximumDraftRecords",
+        "maximumFindingRecords",
+        "findingTitleUtf8Bytes",
+        "findingObservationUtf8Bytes",
+        "findingRecommendationUtf8Bytes",
+        "conclusionFieldUtf8Bytes",
+        "maximumEvidenceCitationsPerFinding",
+        "maximumPolicyCitationsPerFinding",
+      ],
+      `${casePath}.inputLimits`,
+    );
+    context.check(
+      inputLimits.maximumDrafts === 1,
+      "INVALID_AUDIT_INPUT_LIMIT",
+      `${casePath}.inputLimits.maximumDrafts`,
+      "must equal one compact active draft",
+    );
+    context.check(
+      inputLimits.maximumDraftRecords === 1,
+      "INVALID_AUDIT_INPUT_LIMIT",
+      `${casePath}.inputLimits.maximumDraftRecords`,
+      "must equal one bounded persisted draft record",
+    );
+    for (const key of [
+      "maximumFindingRecords",
+      "findingTitleUtf8Bytes",
+      "findingObservationUtf8Bytes",
+      "findingRecommendationUtf8Bytes",
+      "conclusionFieldUtf8Bytes",
+      "maximumEvidenceCitationsPerFinding",
+      "maximumPolicyCitationsPerFinding",
+    ] as const) {
+      context.number(
+        inputLimits[key],
+        `${casePath}.inputLimits.${key}`,
+        {
+          integer: true,
+          minimum:
+            key === "maximumFindingRecords" ||
+            key.startsWith("maximum")
+              ? 1
+              : 16,
+          maximum:
+            key === "maximumFindingRecords"
+              ? 12
+              : key.startsWith("maximum")
+                ? 8
+                : 500,
+        },
+      );
+    }
+  }
   const completion = context.object(
     auditCase.completionDefinition,
     `${casePath}.completionDefinition`,
@@ -4224,10 +4327,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.7.0",
+    schemaVersion === "1.8.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.7.0",
+    "requires scenario-pack schema version 1.8.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -4433,10 +4536,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.7.0",
+      pack.schemaVersion === "1.8.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.7.0",
+      "must equal 1.8.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

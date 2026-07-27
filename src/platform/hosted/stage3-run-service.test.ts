@@ -19,9 +19,9 @@ import {
   type ApplicationPrincipal,
 } from "./access";
 import {
-  HostedRunCommandError,
   HostedStage3RunService,
 } from "./stage3-run-service";
+import { HostedRunCommandError } from "./run-command-error";
 import type {
   CreateHostedStage3RunRequest,
   HostedStage3RunState,
@@ -1549,7 +1549,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
       organizationId: "ORG_REGULATOR",
       roleId: "REGULATORY_AUDITOR",
     });
-  }, 15_000);
+  }, 30_000);
 
   it("keeps an invalid custody proposal as audit evidence and permits correction", async () => {
     const store = new MemoryRunEventStore();

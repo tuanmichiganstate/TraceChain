@@ -82,7 +82,7 @@ export interface AuditScoringBlueprintV1 {
 }
 
 export interface AuditCaseDefinitionV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly auditCaseId: string;
   readonly version: string;
   readonly sourceProcessId: string;
@@ -99,6 +99,10 @@ export interface AuditCaseDefinitionV1 {
   readonly entities: readonly AuditChoiceDefinitionV1[];
   readonly rootCauses: readonly AuditChoiceDefinitionV1[];
   readonly recommendations: readonly AuditChoiceDefinitionV1[];
+  readonly hints: readonly {
+    readonly hintId: string;
+    readonly text: LocalizedText;
+  }[];
   readonly conclusionCategories: readonly {
     readonly conclusionCategory:
       AuditConclusionCategoryV1;
@@ -112,7 +116,18 @@ export interface AuditCaseDefinitionV1 {
   readonly findingDefinitions: readonly AuditFindingDefinitionV1[];
   readonly decoyDefinitions: readonly AuditDecoyDefinitionV1[];
   readonly scoringBlueprint: AuditScoringBlueprintV1;
-  readonly supportProfiles: readonly "GUIDED"[];
+  readonly supportProfiles: readonly ("GUIDED" | "PRACTICE")[];
+  readonly inputLimits: {
+    readonly maximumDrafts: 1;
+    readonly maximumDraftRecords: 1;
+    readonly maximumFindingRecords: number;
+    readonly findingTitleUtf8Bytes: number;
+    readonly findingObservationUtf8Bytes: number;
+    readonly findingRecommendationUtf8Bytes: number;
+    readonly conclusionFieldUtf8Bytes: number;
+    readonly maximumEvidenceCitationsPerFinding: number;
+    readonly maximumPolicyCitationsPerFinding: number;
+  };
   readonly completionDefinition: {
     readonly maximumSubmittedFindings: number;
     readonly conclusionRequired: true;
@@ -189,6 +204,8 @@ export interface AuditLearnerProjectionV1 {
   readonly sourceProcessId: string;
   readonly sourceProcessVersion: string;
   readonly sourceStateHash: string;
+  readonly supportProfile: "GUIDED" | "PRACTICE";
+  readonly scopeViewed: boolean;
   readonly objective: LearnerRunLocalizedTextV1;
   readonly scope: {
     readonly title: LearnerRunLocalizedTextV1;
@@ -212,6 +229,11 @@ export interface AuditLearnerProjectionV1 {
   readonly recommendations: readonly {
     readonly choiceId: string;
     readonly label: LearnerRunLocalizedTextV1;
+  }[];
+  readonly hints: readonly {
+    readonly hintId: string;
+    readonly text: LearnerRunLocalizedTextV1;
+    readonly viewed: boolean;
   }[];
   readonly conclusionCategories: readonly {
     readonly conclusionCategory:
@@ -261,5 +283,6 @@ export interface AuditLearnerProjectionV1 {
   })[];
   readonly conclusion?: AuditConclusionSubmissionV1;
   readonly maximumSubmittedFindings: number;
+  readonly inputLimits: AuditCaseDefinitionV1["inputLimits"];
   readonly report?: AuditReportV1;
 }

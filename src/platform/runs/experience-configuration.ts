@@ -72,30 +72,40 @@ export function resolveHostedExperienceConfiguration(options: {
 }): HostedExperienceConfigurationIdentityV2 {
   if (options.scenario.hostedRuntime?.runtimeId === "tracechain-audit-v1") {
     const auditCase = options.scenario.auditCase;
+    const supportProfile = auditCase?.supportProfiles[0];
+    const expectedMode =
+      supportProfile === "PRACTICE" ? "standard" : "tutorial";
     if (
       auditCase === undefined ||
-      options.runtimeConfiguration.mode !== "tutorial"
+      (supportProfile !== "GUIDED" &&
+        supportProfile !== "PRACTICE") ||
+      options.runtimeConfiguration.mode !== expectedMode
     ) {
       throw new Error(
-        "The Phase 4 audit runtime requires one Guided Audit case in tutorial mode.",
+        "The Audit runtime configuration does not match the authored support profile.",
       );
     }
+    const dimensions = resolveProductDimensions(
+      supportProfile === "PRACTICE"
+        ? "audit-practice"
+        : "audit-guided",
+    );
     const configuration: TraceChainExperienceConfigurationV2 = {
       configurationSchemaVersion: "2",
-      presetId: "hosted-audit-guided",
-      activityType: "AUDIT",
-      supportProfile: "GUIDED",
-      deliveryPurpose: "FORMATIVE",
-      outcomeStrategy: "FIXED",
+      presetId:
+        supportProfile === "PRACTICE"
+          ? "hosted-audit-practice"
+          : "hosted-audit-guided",
+      ...dimensions,
       content: {
         packId: options.packId,
         packVersion: options.packVersion,
         scenarioId: options.scenario.scenarioId,
         scenarioVersion: options.scenario.version,
       },
-      guidance: guidancePolicyFor("GUIDED"),
+      guidance: guidancePolicyFor(supportProfile),
       feedback: feedbackPolicyFor("IMMEDIATE"),
-      hints: hintPolicyFor("ENABLED", "GUIDED"),
+      hints: hintPolicyFor("ENABLED", supportProfile),
       retries: {
         knowledgeRetry: "DISABLED",
         professionalDecisionRevision: "FREE_REVISION",

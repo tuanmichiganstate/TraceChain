@@ -38,6 +38,7 @@ const applicationVersion = packageJson.version;
 const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
   "tracechain.config.json",
+  "audit-scenario-pack.json",
   "scenario.json",
   "scenario-variant-bank.json",
   "media-manifest.json",
@@ -60,7 +61,7 @@ function usage() {
   return [
     "Usage:",
     "  npm run package:scorm -- --preset guided",
-    "  npm run package:scorm -- --preset guided,practice,challenge,assessment",
+    "  npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice",
     "  npm run package:scorm -- --config configs/package.json",
     "",
     "Options:",
@@ -312,6 +313,73 @@ function scenarioMap(definitions) {
   ]);
 }
 
+function auditPackMap(definitions) {
+  return new Map([
+    [definitions.guidedAuditPack.packId, definitions.guidedAuditPack],
+    [definitions.practiceAuditPack.packId, definitions.practiceAuditPack],
+  ]);
+}
+
+function scenarioVersionOf(scenario) {
+  return scenario.scenarioVersion ?? scenario.version;
+}
+
+function validateAuditPackageInput(
+  configuration,
+  draftPack,
+  definitions,
+  provenance,
+) {
+  const configurationValidation =
+    definitions.validateConfiguration(configuration);
+  if (!configurationValidation.isValid) {
+    throw new Error(
+      `Resolved Audit configuration is invalid:\n${configurationValidation.issues
+        .map((issue) => `  ${issue.path}: ${issue.message}`)
+        .join("\n")}`,
+    );
+  }
+  const validation = definitions.validateScenarioPack(
+    structuredClone(draftPack),
+  );
+  if (!validation.isValid) {
+    throw new Error(
+      `Audit pack ${draftPack.packId} is invalid:\n${validation.issues
+        .map((issue) => `  ${issue.path}: ${issue.message}`)
+        .join("\n")}`,
+    );
+  }
+  const pack = definitions.publishScenarioPack(validation.pack, {
+    publishedAt: provenance.generatedAt,
+    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+  });
+  const scenario = pack.scenarios.find(
+    (candidate) =>
+      candidate.scenarioId === configuration.scenarioId &&
+      candidate.version === configuration.scenarioVersion,
+  );
+  if (
+    pack.packId !== configuration.content.packId ||
+    pack.version !== configuration.content.packVersion ||
+    scenario?.auditCase === undefined ||
+    scenario.auditCase.auditCaseId !== configuration.auditCaseId ||
+    scenario.auditCase.version !== configuration.auditCaseVersion ||
+    scenario.auditCase.scoringBlueprint.scoringBlueprintId !==
+      configuration.scoring.scoringBlueprintId ||
+    scenario.auditCase.scoringBlueprint.version !==
+      configuration.scoring.scoringBlueprintVersion ||
+    scenario.auditCase.scoringBlueprint.maximumScore !==
+      configuration.scoring.maximumScore ||
+    scenario.auditCase.scoringBlueprint.passScore !==
+      configuration.scoring.passScore
+  ) {
+    throw new Error(
+      "Audit pack, scenario, case, or scoring identity does not match the resolved configuration",
+    );
+  }
+  return { pack, scenario };
+}
+
 function variantBankForConfiguration(configuration, definitions) {
   if (configuration.scenarioVariation.strategy !== "SEEDED_VARIANT_BANK") {
     return null;
@@ -404,10 +472,24 @@ function safeFileSegment(value) {
     .slice(0, 48);
 }
 
+function safeDirectorySegment(value) {
+  return value
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9._-]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
+    .slice(0, 64);
+}
+
 function defaultScenarioLabel(configuration) {
   if (configuration.scenarioId === "SCN_COFFEE_001") return "StandardCoffee";
   if (configuration.scenarioId === "SCN_COFFEE_PRACTICE") return "PracticeCase";
   if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE") return "ChallengeBank";
+  if (configuration.scenarioId === "SCN_GUIDED_COFFEE_AUDIT") {
+    return "GuidedCoffeeAudit";
+  }
+  if (configuration.scenarioId === "SCN_PRACTICE_COFFEE_AUDIT") {
+    return "PracticeCoffeeAudit";
+  }
   return safeFileSegment(configuration.scenarioId);
 }
 
@@ -441,6 +523,7 @@ function resolvePackageText(configuration, scenario, titleOverride) {
       titleOverride ??
       locale[modeTitleKey] ??
       locale[scenario.titleKey] ??
+      locale[scenario.title?.localizationKey] ??
       `TraceChain ${configuration.presetId}`,
     description:
       locale[modeDescriptionKey] ??
@@ -451,7 +534,7 @@ function resolvePackageText(configuration, scenario, titleOverride) {
 }
 
 function printPackageSummary({ configuration, scenario, text }) {
-  const inspections = Object.entries(configuration.technicalFeatures)
+  const inspections = Object.entries(configuration.technicalFeatures ?? {})
     .filter(([, enabled]) => enabled)
     .map(([feature]) => feature)
     .join(", ");
@@ -464,7 +547,7 @@ function printPackageSummary({ configuration, scenario, text }) {
       `  support: ${configuration.supportProfile}`,
       `  purpose: ${configuration.deliveryPurpose}`,
       `  outcome: ${configuration.outcomeStrategy}`,
-      `  scenario: ${scenario.scenarioId} v${scenario.scenarioVersion}`,
+      `  scenario: ${scenario.scenarioId} v${scenarioVersionOf(scenario)}`,
       `  feedback: ${configuration.feedback.timing}`,
       `  hints: ${configuration.hints.availability}`,
       `  reference workspace: ${configuration.guidance.referenceWorkspace ? "enabled" : "disabled"}`,
@@ -540,6 +623,7 @@ function addFilesToZip(packageDirectory, zipPath) {
 }
 
 function packageOne({
+  auditPack,
   configuration,
   cryptographicRuntime,
   sourceLabel,
@@ -554,12 +638,17 @@ function packageOne({
   const packageDirectory = join(
     projectRoot,
     "dist-scorm",
-    safeFileSegment(sourceLabel) ||
+    safeDirectorySegment(sourceLabel) ||
       safeFileSegment(configuration.presetId),
   );
   rmSync(packageDirectory, { recursive: true, force: true });
   mkdirSync(packageDirectory, { recursive: true });
   cpSync(distDirectory, packageDirectory, { recursive: true });
+  for (const runtimeFileName of runtimeFileNames) {
+    rmSync(join(packageDirectory, runtimeFileName), {
+      force: true,
+    });
+  }
 
   const embeddedConfiguration = definitions.embedConfiguration(configuration);
   writeFileSync(
@@ -567,18 +656,37 @@ function packageOne({
     `${JSON.stringify(embeddedConfiguration, null, 2)}\n`,
     "utf8",
   );
-  const scenarioContent = `${JSON.stringify(scenario, null, 2)}\n`;
-  writeFileSync(
-    join(packageDirectory, "scenario.json"),
-    scenarioContent,
-    "utf8",
-  );
-  const scenarioHash = createHash("sha256")
-    .update(scenarioContent, "utf8")
-    .digest("hex");
+  let scenarioHash = null;
+  let auditScenarioPackHash = null;
+  let auditScenarioPackContentHash = null;
   let variantBankHash = null;
   const variantContentHashes = {};
-  if (variantBank !== null) {
+  let mediaManifestContent = null;
+  const portraitMediaHashes = {};
+  if (auditPack !== null) {
+    const auditPackContent = `${JSON.stringify(auditPack, null, 2)}\n`;
+    writeFileSync(
+      join(packageDirectory, "audit-scenario-pack.json"),
+      auditPackContent,
+      "utf8",
+    );
+    auditScenarioPackHash = createHash("sha256")
+      .update(auditPackContent, "utf8")
+      .digest("hex");
+    auditScenarioPackContentHash =
+      auditPack.publication.contentHash;
+  } else {
+    const scenarioContent = `${JSON.stringify(scenario, null, 2)}\n`;
+    writeFileSync(
+      join(packageDirectory, "scenario.json"),
+      scenarioContent,
+      "utf8",
+    );
+    scenarioHash = createHash("sha256")
+      .update(scenarioContent, "utf8")
+      .digest("hex");
+  }
+  if (auditPack === null && variantBank !== null) {
     const variantBankContent = `${JSON.stringify(variantBank, null, 2)}\n`;
     writeFileSync(
       join(packageDirectory, "scenario-variant-bank.json"),
@@ -593,35 +701,39 @@ function packageOne({
         variant.metadata.contentHash;
     }
   }
-  const mediaManifest = {
-    schemaVersion: "1",
-    scenarioId: scenario.scenarioId,
-    scenarioVersion: scenario.scenarioVersion,
-    assets: scenario.portraitAssets,
-  };
-  const mediaManifestContent = `${JSON.stringify(mediaManifest, null, 2)}\n`;
-  writeFileSync(
-    join(packageDirectory, "media-manifest.json"),
-    mediaManifestContent,
-    "utf8",
-  );
-  const portraitMediaHashes = {};
-  for (const asset of scenario.portraitAssets) {
-    const assetPath = join(packageDirectory, ...asset.filePath.split("/"));
-    if (!existsSync(assetPath)) {
-      throw new Error(
-        `Portrait asset "${asset.assetId}" is missing at ${asset.filePath}`,
+  if (auditPack === null) {
+    const mediaManifest = {
+      schemaVersion: "1",
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.scenarioVersion,
+      assets: scenario.portraitAssets,
+    };
+    mediaManifestContent = `${JSON.stringify(mediaManifest, null, 2)}\n`;
+    writeFileSync(
+      join(packageDirectory, "media-manifest.json"),
+      mediaManifestContent,
+      "utf8",
+    );
+    for (const asset of scenario.portraitAssets) {
+      const assetPath = join(
+        packageDirectory,
+        ...asset.filePath.split("/"),
       );
+      if (!existsSync(assetPath)) {
+        throw new Error(
+          `Portrait asset "${asset.assetId}" is missing at ${asset.filePath}`,
+        );
+      }
+      const digest = createHash("sha256")
+        .update(readFileSync(assetPath))
+        .digest("hex");
+      if (digest !== asset.sha256) {
+        throw new Error(
+          `Portrait asset "${asset.assetId}" does not match its authored SHA-256`,
+        );
+      }
+      portraitMediaHashes[asset.filePath] = digest;
     }
-    const digest = createHash("sha256")
-      .update(readFileSync(assetPath))
-      .digest("hex");
-    if (digest !== asset.sha256) {
-      throw new Error(
-        `Portrait asset "${asset.assetId}" does not match its authored SHA-256`,
-      );
-    }
-    portraitMediaHashes[asset.filePath] = digest;
   }
   const cryptographicRuntimeHashes = {};
   if (cryptographicRuntime !== null) {
@@ -678,8 +790,12 @@ function packageOne({
     scoringBlueprintVersion:
       configuration.scoring.scoringBlueprintVersion,
     scenarioId: scenario.scenarioId,
-    scenarioVersion: scenario.scenarioVersion,
+    scenarioVersion: scenarioVersionOf(scenario),
     scenarioHash,
+    auditScenarioPackHash,
+    auditScenarioPackContentHash,
+    auditPersistenceSchemaVersion:
+      auditPack === null ? null : "TA1",
     variantBankId: variantBank?.bankId ?? null,
     variantBankVersion: variantBank?.bankVersion ?? null,
     variantBankHash,
@@ -698,10 +814,14 @@ function packageOne({
           ? "2"
           : "1",
     cryptographicRuntimeHashes,
-    portraitMediaSchemaVersion: "1",
-    portraitMediaManifestHash: createHash("sha256")
-      .update(mediaManifestContent, "utf8")
-      .digest("hex"),
+    portraitMediaSchemaVersion:
+      auditPack === null ? "1" : null,
+    portraitMediaManifestHash:
+      mediaManifestContent === null
+        ? null
+        : createHash("sha256")
+            .update(mediaManifestContent, "utf8")
+            .digest("hex"),
     portraitMediaHashes,
     cryptographicMechanisms:
       cryptographicRuntime === null
@@ -736,6 +856,7 @@ function packageOne({
         name: "tracechain",
         version: applicationVersion,
         scenarioId: scenario.scenarioId,
+        scenarioVersion: scenarioVersionOf(scenario),
         scormVersion: "1.2",
         packageFormatVersion: 2,
         reproducibleBuild: provenance.releaseBuild,
@@ -765,7 +886,7 @@ function packageOne({
       `SUPPORT PROFILE    ${configuration.supportProfile}`,
       `DELIVERY PURPOSE   ${configuration.deliveryPurpose}`,
       `OUTCOME STRATEGY   ${configuration.outcomeStrategy}`,
-      `SCENARIO           ${scenario.scenarioId} v${scenario.scenarioVersion}`,
+      `SCENARIO           ${scenario.scenarioId} v${scenarioVersionOf(scenario)}`,
       `CONFIGURATION      ${embeddedConfiguration.configurationHash}`,
       `PASSING SCORE      ${configuration.scoring.passScore} of 100`,
       `LANGUAGE           ${configuration.locale}`,
@@ -817,6 +938,7 @@ async function main() {
   const provenance = inspectRepository(options);
   const definitions = await loadPackageDefinitions();
   const scenarios = scenarioMap(definitions);
+  const auditPacks = auditPackMap(definitions);
   const requested = [];
   const seenPresetIds = new Set();
 
@@ -843,6 +965,35 @@ async function main() {
   }
 
   const resolvedInputs = await Promise.all(requested.map(async ({ configuration, sourceLabel }) => {
+    if (configuration.activityType === "AUDIT") {
+      const draftPack = auditPacks.get(
+        configuration.content.packId,
+      );
+      if (draftPack === undefined) {
+        throw new Error(
+          `No authored Audit pack is available for ${configuration.content.packId}`,
+        );
+      }
+      const { pack, scenario } = validateAuditPackageInput(
+        configuration,
+        draftPack,
+        definitions,
+        provenance,
+      );
+      return {
+        auditPack: pack,
+        configuration,
+        sourceLabel,
+        scenario,
+        variantBank: null,
+        cryptographicRuntime: null,
+        text: resolvePackageText(
+          configuration,
+          scenario,
+          options.title,
+        ),
+      };
+    }
     const scenario = scenarios.get(configuration.scenarioId);
     if (scenario === undefined) {
       throw new Error(
@@ -888,6 +1039,7 @@ async function main() {
     }
     const text = resolvePackageText(configuration, scenario, options.title);
     return {
+      auditPack: null,
       configuration,
       sourceLabel,
       scenario,
@@ -921,6 +1073,7 @@ async function main() {
 
   const results = resolvedInputs.map(
     ({
+      auditPack,
       configuration,
       sourceLabel,
       scenario,
@@ -929,6 +1082,7 @@ async function main() {
       text,
     }) =>
       packageOne({
+        auditPack,
         configuration,
         cryptographicRuntime,
         sourceLabel,

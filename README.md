@@ -45,9 +45,10 @@ simulation engine or scoring contract; see `docs/PRODUCT_MODES_PHASE_3.md`.
 Phase 4 adds one fixed hosted Guided Audit case over an immutable completed
 coffee process. Audit findings, decoys, workpapers, scoring, conclusions, and
 reports use the shared event, replay, assignment, competency, and persistence
-boundaries while remaining outside the operational ledger; see
-`docs/PRODUCT_MODES_PHASE_4.md`. Practice Audit and Audit SCORM delivery remain
-Phase 5 work.
+boundaries while remaining outside the operational ledger. Phase 5 adds one
+curated Practice Audit case plus Guided and Practice Audit SCORM packages with
+bounded TA1 replay; see `docs/PRODUCT_MODES_PHASE_4.md` and
+`docs/PRODUCT_MODES_PHASE_5.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -143,7 +144,7 @@ second score or a generic game currency.
 | Stages playable | all 9 in the browser and in deterministic replay |
 | Contract audit | schema validation plus executable cross-layer contracts |
 | Content review | deterministic bilingual pack; human Vietnamese review remains open |
-| SCORM package | one-build guided/practice/challenge/assessment generation with cross-package byte verification |
+| SCORM package | one-build Operations and Audit Guided/Practice generation with cross-package byte verification |
 | Moodle | Docker acceptance covers storage, grading, forced failure, and cleanup |
 
 Stage order, trusted contexts, role handoffs, completion conditions, knowledge
@@ -169,7 +170,7 @@ For a clean release tree:
 
 ```bash
 npm run package:scorm -- --preset guided
-npm run package:scorm -- --preset guided,practice,challenge,assessment
+npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice
 ```
 
 For local verification of all accepted presets from an existing build:
@@ -184,10 +185,12 @@ Strict release generation produces
 `TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip`,
 `TraceChain_Practice_PracticeCase_vi_v1.0.0.zip`,
 `TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
-`TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`. The local command appends
-`_NON_RELEASE` to every archive name. The Docker demo selects the current
-Guided, Practice, Challenge, and Assessment archives by their embedded build metadata,
-deploys them into separate reset activities, and ignores stale ZIPs.
+`TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`,
+`TraceChain_AuditGuided_GuidedCoffeeAudit_vi_v2.0.0.zip`, and
+`TraceChain_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`. The local command
+appends `_NON_RELEASE` to every archive name. The Docker demo selects the
+current six archives by their embedded build metadata, deploys them into
+separate reset activities, and ignores stale ZIPs.
 Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
 
@@ -270,8 +273,8 @@ schemas/               published versioned JSON Schemas
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
-| `npm run build:scorm` | Build all four local non-release preset packages |
-| `npm run verify:scorm` | Validate all four packages and their shared static build |
+| `npm run build:scorm` | Build all six local non-release preset packages |
+| `npm run verify:scorm` | Validate all six packages and their shared static build |
 | `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 
@@ -289,9 +292,11 @@ schemas/               published versioned JSON Schemas
   point B roadmap for the hosted instructor-ready platform
 - `docs/PRODUCT_MODES_PHASE_3.md` — the implemented Operations support
   profiles, curated Practice case, persistence contract, and acceptance gates
+- `docs/PRODUCT_MODES_PHASE_5.md` — Practice Audit, bounded TA1 workpaper
+  replay, six-package generation, and the Phase 5 acceptance boundary
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.7 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.8 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure

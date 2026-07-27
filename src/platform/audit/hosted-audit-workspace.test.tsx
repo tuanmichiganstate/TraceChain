@@ -26,6 +26,8 @@ function auditProjection(): AuditLearnerProjectionV1 {
     sourceProcessId: "COFFEE_PROCESS_COMPLETED_001",
     sourceProcessVersion: "1.0.0",
     sourceStateHash: "a".repeat(64),
+    supportProfile: "GUIDED",
+    scopeViewed: false,
     objective: text(
       "platformPack.guidedAudit.objective",
       "Review certificate, correction, and recall controls.",
@@ -74,6 +76,19 @@ function auditProjection(): AuditLearnerProjectionV1 {
           "platformPack.guidedAudit.recommend.hold",
           "Hold the lot",
         ),
+      },
+    ],
+    hints: [
+      {
+        hintId: "HINT_CERTIFICATE_REVIEW",
+        text: {
+          localizationKey:
+            "platformPack.guidedAudit.hint.certificate",
+          valuesByLocale: {
+            en: "Compare the certificate dates.",
+          },
+        },
+        viewed: false,
       },
     ],
     conclusionCategories: [
@@ -129,6 +144,17 @@ function auditProjection(): AuditLearnerProjectionV1 {
     drafts: [],
     findings: [],
     maximumSubmittedFindings: 5,
+    inputLimits: {
+      maximumDrafts: 1,
+      maximumDraftRecords: 1,
+      maximumFindingRecords: 6,
+      findingTitleUtf8Bytes: 48,
+      findingObservationUtf8Bytes: 120,
+      findingRecommendationUtf8Bytes: 120,
+      conclusionFieldUtf8Bytes: 96,
+      maximumEvidenceCitationsPerFinding: 4,
+      maximumPolicyCitationsPerFinding: 2,
+    },
   };
 }
 
@@ -209,6 +235,50 @@ describe("HostedAuditWorkspace", () => {
     expect(
       screen.getByText("Policy citations"),
     ).toBeInTheDocument();
+  });
+
+  it("removes the draft action after the authored draft-record limit is reached", async () => {
+    const user = userEvent.setup();
+    const projection = auditProjection();
+    render(
+      <LocaleProvider locale="en">
+        <HostedAuditWorkspace
+          audit={{
+            ...projection,
+            drafts: [
+              {
+                findingId: "F1",
+                categoryId: "CATEGORY_CERTIFICATE_CONTROL",
+                entityId: "ENTITY_LOT_CERTIFICATE",
+                title: "",
+                observation: "",
+                severity: "MODERATE",
+                materiality: "NON_MATERIAL",
+                confidence: 50,
+                evidenceIds: [],
+                policyIds: [],
+                rootCauseCode: "ROOT_EXPIRY_REVIEW",
+                recommendationCode: "REC_HOLD_FOR_VALIDATION",
+                recommendation: "",
+                savedAt: "2026-07-27T03:00:00.000Z",
+              },
+            ],
+          }}
+          completed={false}
+          busy={false}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+        />
+      </LocaleProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("tab", { name: /^Findings,/iu }),
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: "Save workpaper draft",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the same evidence-linked report for learner and instructor replay", () => {

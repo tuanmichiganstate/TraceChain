@@ -188,11 +188,15 @@ describe("Scorm12Adapter", () => {
      * ever outgrows the data model, a real LMS rejects the write, and the
      * adapter must notice rather than believe it saved.
      */
-    it("records a diagnostic when the LMS rejects oversized suspend data", async () => {
+    it("rejects the authoritative save when the LMS rejects oversized suspend data", async () => {
       const adapter = makeAdapter();
       await adapter.initialize();
 
-      await adapter.saveAttemptState("x".repeat(5000));
+      await expect(
+        adapter.saveAttemptState("x".repeat(5000)),
+      ).rejects.toThrow(
+        "LMSSetValue rejected authoritative suspend data",
+      );
 
       expect(api.peek("cmi.suspend_data")).toBe("");
       expect(adapter.getDiagnostics().join(" ")).toMatch(/rejected with error 405/);

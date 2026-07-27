@@ -134,7 +134,7 @@ leaderboard.
 ## Current-schema upgrade policy
 
 This development repository uses direct upgrades and no migration adapters.
-Scenario packs older than `1.7.0`, assignments without the `1.2.0` research
+Scenario packs older than `1.8.0`, assignments without the `1.2.0` research
 configuration, and assignment exports older than `1.5.0` are not current
 contracts.
 

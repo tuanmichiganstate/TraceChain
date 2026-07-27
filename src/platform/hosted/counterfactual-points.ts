@@ -9,7 +9,7 @@ import type {
   ScenarioPackV1,
 } from "../contracts/scenario-pack";
 import type { HostedRuntimeCommand } from "./hosted-runtime-service";
-import { HostedRunCommandError } from "./stage3-run-service";
+import { HostedRunCommandError } from "./run-command-error";
 
 function decisionIdForEvent(event: RunEventV1): string | null {
   if (

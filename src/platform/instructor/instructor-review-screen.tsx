@@ -882,6 +882,12 @@ function ScormPackageBuilder({
             <option value="assessment">
               {t("instructorReview.packagePreset.assessment")}
             </option>
+            <option value="audit-guided">
+              {t("instructorReview.packagePreset.audit-guided")}
+            </option>
+            <option value="audit-practice">
+              {t("instructorReview.packagePreset.audit-practice")}
+            </option>
           </select>
           <span className="field__hint">
             {t(`instructorReview.packagePresetHelp.${presetId}`)}

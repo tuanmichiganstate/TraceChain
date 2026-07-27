@@ -1,4 +1,5 @@
 import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import practicePackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
 import { describe, expect, it } from "vitest";
 import {
   FixedClock,
@@ -23,8 +24,11 @@ const learner: ApplicationPrincipal = {
   roles: ["learner"],
 };
 
-function fixture() {
-  const result = validateScenarioPack(structuredClone(packJson));
+function fixture(
+  sourcePack: unknown = packJson,
+  scenarioId = "SCN_GUIDED_COFFEE_AUDIT",
+) {
+  const result = validateScenarioPack(structuredClone(sourcePack));
   if (!result.isValid) {
     throw new Error(
       result.issues
@@ -41,8 +45,11 @@ function fixture() {
     store,
     service: createHostedRuntimeService({
       pack,
-      scenarioId: "SCN_GUIDED_COFFEE_AUDIT",
-      scenarioVersion: "1.0.0",
+      scenarioId,
+      scenarioVersion:
+        pack.scenarios.find(
+          (scenario) => scenario.scenarioId === scenarioId,
+        )?.version ?? "",
       eventStore: store,
       clock: new FixedClock(NOW),
       ids: new SequenceIdGenerator(1),
@@ -50,7 +57,7 @@ function fixture() {
   };
 }
 
-describe("hosted runtime registry for Guided Audit", () => {
+describe("hosted runtime registry for Audit", () => {
   it("runs Audit through the shared hosted service boundary", async () => {
     const { service, store } = fixture();
     expect(service.runtimeKind).toBe("audit-v1");
@@ -97,6 +104,59 @@ describe("hosted runtime registry for Guided Audit", () => {
       "RUN_CREATED",
       "AUDIT_CASE_OPENED",
       "AUDIT_EVIDENCE_INSPECTED",
+    ]);
+  });
+
+  it("runs Practice Audit with on-request hints and reduced support", async () => {
+    const { service, store } = fixture(
+      practicePackJson,
+      "SCN_PRACTICE_COFFEE_AUDIT",
+    );
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_PRACTICE_AUDIT",
+      runId: "RUN_PRACTICE_AUDIT_FACTORY",
+      assignmentId: "ASSIGNMENT_PRACTICE_AUDIT",
+      learnerUserId: learner.userId,
+      mode: "standard",
+    });
+    const hinted = await service.submit(learner, {
+      commandType: "VIEW_AUDIT_HINT",
+      commandId: "COMMAND_VIEW_PRACTICE_HINT",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+      hintId: "HINT_AUTHORIZATION_COMPARISON",
+    });
+    const projection = await service.learnerProjection(
+      learner,
+      hinted.state.runId,
+    );
+
+    expect(projection.audit).toMatchObject({
+      auditCaseId: "AUDIT_COFFEE_CONTROLS_PRACTICE_001",
+      supportProfile: "PRACTICE",
+      hints: [
+        {
+          hintId: "HINT_AUTHORIZATION_COMPARISON",
+          viewed: true,
+        },
+        {
+          hintId: "HINT_CUSTODY_ENDORSEMENT",
+          viewed: false,
+        },
+        {
+          hintId: "HINT_PROPOSAL_DIGEST",
+          viewed: false,
+        },
+      ],
+    });
+    expect(
+      (await store.load(hinted.state.runId)).map(
+        (event) => event.eventType,
+      ),
+    ).toEqual([
+      "RUN_CREATED",
+      "AUDIT_CASE_OPENED",
+      "AUDIT_HINT_VIEWED",
     ]);
   });
 });

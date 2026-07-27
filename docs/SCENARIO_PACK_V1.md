@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.7
+# TraceChain scenario-pack V1.8
 
-The V1.7 scenario-pack format is the active contract for the hosted
+The V1.8 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -17,6 +17,7 @@ The repository packs are:
 scenario-packs/standard-coffee-stage3/tracechain.pack.json
 scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json
 scenario-packs/guided-coffee-audit/tracechain.pack.json
+scenario-packs/practice-coffee-audit/tracechain.pack.json
 ```
 
 Validate it with:
@@ -87,7 +88,7 @@ files. Generation validates the authored hashes against the source bytes;
 package verification repeats that check, validates dimensions and localization,
 and rejects missing, remote, unapproved, or placeholder media. Portrait media
 is package-specific runtime content, while the JavaScript and CSS remain one
-shared static application build across Guided and Challenge.
+shared static application build across all Operations and Audit packages.
 
 Every scenario must provide `modeConfigurations`, `outcomeModels`,
 `instructorIncidents`, `counterfactualComparisonDimensions`, and
@@ -200,7 +201,7 @@ the 39/61 operational/knowledge split.
 
 ## Audit cases
 
-V1.7 adds an Audit-specific hosted runtime without creating a second
+V1.8 carries the Audit-specific hosted and SCORM runtime without creating a second
 application or transaction system. A scenario selects
 `tracechain-audit-v1` and references one bounded `auditCase`.
 
@@ -208,23 +209,30 @@ The case owns an immutable source process, role-visible evidence and policies,
 authored true findings, defensible decoys, supported conclusion categories,
 and an exact 100-point scoring blueprint. Learner evidence inspection,
 bookmarks, drafts, submitted findings, amendments, withdrawals, and the final
-conclusion are append-only hosted run events. They never enter the source
-ledger or asset-state projection.
+conclusion are append-only run events. Hosted delivery stores those events in
+the server event store. SCORM delivery stores bounded replay commands in TA1
+and regenerates the same events. Neither path enters the source ledger or
+asset-state projection.
 
 Only source records explicitly authored as `LEDGER_TRANSACTION` appear in the
 ledger projection. Rejected attempts remain available as audit evidence while
 remaining outside ledger history. Finding ground truth and decoy explanations
 are withheld until the Guided feedback boundary.
 
-The first Audit case is a fixed Guided coffee-control review. Its hosted
-workbench, scoring, report, competency evidence, and exact replay use the same
-scenario-pack, event-store, assignment, and instructor-replay infrastructure
-as other hosted activities. Practice Audit content and Audit SCORM persistence
-remain Phase 5 work.
+The fixed Guided coffee-control review and curated Practice review use the same
+workbench, scoring blueprint, report, competency evidence, and exact replay
+services. Practice removes direct anomaly highlighting, requires the learner
+to request hints, and preserves immediate finding feedback. The source pack
+owns every string and interaction limit required by the compact SCORM codec.
+
+Audit-case schema `2.0.0` adds one Guided or Practice support profile,
+scenario-authored hints, and explicit UTF-8, draft, finding, citation, and
+conclusion limits. The TA1 codec rejects duplicate interactions and any
+unbounded or over-limit value before persistence.
 
 ## Curriculum ownership boundary
 
-V1.7 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.8 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 
