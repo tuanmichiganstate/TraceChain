@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
 import type { HostedAssignmentV1 } from "../contracts/assessment";
 import { assignmentStartAvailability } from "./assignment-availability";
+import { hostedExperienceFixture } from "./experience-configuration.test-fixture";
 
+const runtimeConfiguration = {
+  mode: "standard",
+  allowHints: false,
+  allowRetry: false,
+  allowBacktracking: false,
+  feedbackTiming: "final",
+  showScores: false,
+  outcomeStrategy: "forced",
+  seedPolicy: "supplied",
+  allowCommunication: false,
+  allowEvidenceRequests: true,
+} as const;
+const experience = hostedExperienceFixture({
+  packId: "PACK_STANDARD_COFFEE_STAGE3",
+  packVersion: "1.7.0",
+  scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+  scenarioVersion: "1.7.0",
+  runtimeConfiguration,
+});
 const assignment: HostedAssignmentV1 = {
-  schemaVersion: "1.3.0",
+  schemaVersion: "2.0.0",
   assignmentId: "ASSIGNMENT_AVAILABILITY_001",
   title: "Availability cohort",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -11,18 +31,10 @@ const assignment: HostedAssignmentV1 = {
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
   scenarioVersion: "1.7.0",
   mode: "standard",
-  runConfiguration: {
-    mode: "standard",
-    allowHints: false,
-    allowRetry: false,
-    allowBacktracking: false,
-    feedbackTiming: "final",
-    showScores: false,
-    outcomeStrategy: "forced",
-    seedPolicy: "supplied",
-    allowCommunication: false,
-    allowEvidenceRequests: true,
-  },
+  runConfiguration: runtimeConfiguration,
+  experienceConfiguration: experience.configuration,
+  experienceConfigurationHash:
+    experience.configurationHash,
   counterfactualReplay: {
     enabled: false,
     allowedDecisionNodeIds: [],

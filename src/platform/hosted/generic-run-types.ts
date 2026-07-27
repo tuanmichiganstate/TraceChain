@@ -6,6 +6,7 @@ import type {
 } from "../contracts/scenario-pack";
 import type { StochasticOutcomeResolutionV1 } from "../runs/stochastic-outcomes";
 import type { HostedCompetencyEvidence } from "./stage3-types";
+import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
 
 export interface GenericDecisionSubmission {
   readonly decisionId: string;
@@ -33,6 +34,9 @@ export interface GenericHostedRunState {
   readonly scenarioVersion: string;
   readonly mode: HostedRunMode;
   readonly modeConfiguration: HostedRunModeConfigurationV1;
+  readonly experienceConfiguration:
+    TraceChainExperienceConfigurationV2;
+  readonly experienceConfigurationHash: string;
   readonly scenarioSeed: string;
   readonly outcomeResolution: StochasticOutcomeResolutionV1 | null;
   readonly activeTrustedContext: TrustedExecutionContext;

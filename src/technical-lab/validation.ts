@@ -909,8 +909,11 @@ export function validateTechnicalLabConfigurationAgainstPack(
       "must match the exact bundled laboratory pack version",
     );
   }
-  if (configuration.presetId !== bundle.pack.presetId) {
-    add("presetId", "must match the bundled laboratory preset");
+  if (configuration.laboratoryPresetId !== bundle.pack.presetId) {
+    add(
+      "laboratoryPresetId",
+      "must match the bundled laboratory preset",
+    );
   }
   if (
     !sameValues(

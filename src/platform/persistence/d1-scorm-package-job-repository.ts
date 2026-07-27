@@ -33,6 +33,15 @@ const INSERT_COMPLETED = `INSERT INTO scorm_package_jobs (
     size_bytes,
     release_build,
     configuration_hash,
+    configuration_schema_version,
+    activity_type,
+    support_profile,
+    delivery_purpose,
+    outcome_strategy,
+    content_pack_id,
+    content_pack_version,
+    scoring_blueprint_id,
+    scoring_blueprint_version,
     scenario_id,
     scenario_version,
     application_build_hash,
@@ -40,7 +49,10 @@ const INSERT_COMPLETED = `INSERT INTO scorm_package_jobs (
     requested_at_utc,
     completed_at_utc,
     requested_by_user_id
-  ) VALUES (?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  ) VALUES (
+    ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+  )`;
 
 interface JobRow {
   readonly job_id: string;
@@ -54,6 +66,15 @@ interface JobRow {
   readonly size_bytes: number;
   readonly release_build: number;
   readonly configuration_hash: string;
+  readonly configuration_schema_version: "2";
+  readonly activity_type: ScormPackageJobV1["activityType"];
+  readonly support_profile: ScormPackageJobV1["supportProfile"];
+  readonly delivery_purpose: ScormPackageJobV1["deliveryPurpose"];
+  readonly outcome_strategy: ScormPackageJobV1["outcomeStrategy"];
+  readonly content_pack_id: string;
+  readonly content_pack_version: string;
+  readonly scoring_blueprint_id: string;
+  readonly scoring_blueprint_version: string;
   readonly scenario_id: string;
   readonly scenario_version: string;
   readonly application_build_hash: string;
@@ -65,9 +86,20 @@ interface JobRow {
 
 function toJob(row: JobRow): ScormPackageJobV1 {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     jobId: row.job_id,
     presetId: row.preset_id,
+    configurationSchemaVersion:
+      row.configuration_schema_version,
+    activityType: row.activity_type,
+    supportProfile: row.support_profile,
+    deliveryPurpose: row.delivery_purpose,
+    outcomeStrategy: row.outcome_strategy,
+    contentPackId: row.content_pack_id,
+    contentPackVersion: row.content_pack_version,
+    scoringBlueprintId: row.scoring_blueprint_id,
+    scoringBlueprintVersion:
+      row.scoring_blueprint_version,
     status: row.lifecycle_status,
     title: row.title,
     filename: row.filename,
@@ -117,7 +149,22 @@ function validateArtifact(
     !/^[a-f0-9]{64}$/u.test(artifact.applicationBuildHash) ||
     !Number.isSafeInteger(artifact.sizeBytes) ||
     artifact.sizeBytes < 1 ||
-    !artifact.downloadPath.startsWith("/scorm-packages/")
+    !artifact.downloadPath.startsWith("/scorm-packages/") ||
+    artifact.configurationSchemaVersion !== "2" ||
+    artifact.activityType !== "OPERATIONS" ||
+    !["GUIDED", "CHALLENGE"].includes(
+      artifact.supportProfile,
+    ) ||
+    !["FORMATIVE", "ASSESSMENT"].includes(
+      artifact.deliveryPurpose,
+    ) ||
+    !["FIXED", "CURATED_VARIANT"].includes(
+      artifact.outcomeStrategy,
+    ) ||
+    !validIdentifier(artifact.contentPackId) ||
+    !validIdentifier(artifact.contentPackVersion) ||
+    !validIdentifier(artifact.scoringBlueprintId) ||
+    !validIdentifier(artifact.scoringBlueprintVersion)
   ) {
     throw new ScormPackageJobRepositoryError(
       "INVALID_PACKAGE_JOB",
@@ -180,6 +227,15 @@ export class D1ScormPackageJobRepository {
         artifact.sizeBytes,
         artifact.release ? 1 : 0,
         artifact.configurationHash,
+        artifact.configurationSchemaVersion,
+        artifact.activityType,
+        artifact.supportProfile,
+        artifact.deliveryPurpose,
+        artifact.outcomeStrategy,
+        artifact.contentPackId,
+        artifact.contentPackVersion,
+        artifact.scoringBlueprintId,
+        artifact.scoringBlueprintVersion,
         artifact.scenarioId,
         artifact.scenarioVersion,
         artifact.applicationBuildHash,

@@ -314,7 +314,8 @@ validation-rule IDs, with a command-type fallback for rejected decisions that
 have no rule ID. A single rejected attempt may contribute multiple findings.
 They remain diagnostic evidence rather than another grade or a technical
 failure. Active-run report duration stops at the latest recorded event and
-is stable across reads. The report response schema is `1.3.0`. Its live-status
+is stable across reads. The report response schema is `2.0.0` and carries the
+complete Configuration Schema V2 identity. Its live-status
 panel is a refreshable projection of the same authoritative replay used by run
 review. Current stage and pending actions are limited to the active trusted
 role. A replay failure is reported as a technical status requiring attention;

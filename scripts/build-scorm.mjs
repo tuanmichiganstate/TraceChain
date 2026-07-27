@@ -404,14 +404,14 @@ function defaultScenarioLabel(configuration) {
 }
 
 function packageFileName(configuration, releaseBuild) {
-  const mode =
-    configuration.mode.slice(0, 1).toUpperCase() +
-    configuration.mode.slice(1).replace(/-([a-z])/gu, (_, letter) =>
+  const preset =
+    configuration.presetId.slice(0, 1).toUpperCase() +
+    configuration.presetId.slice(1).replace(/-([a-z])/gu, (_, letter) =>
       letter.toUpperCase(),
     );
   const releaseFileName = [
     "TraceChain",
-    safeFileSegment(mode),
+    safeFileSegment(preset),
     defaultScenarioLabel(configuration),
     configuration.locale,
     `v${configuration.scenarioVersion.replace(/[^A-Za-z0-9.-]/gu, "")}`,
@@ -426,14 +426,14 @@ function resolvePackageText(configuration, scenario, titleOverride) {
       "utf8",
     ),
   );
-  const modeTitleKey = `package.${configuration.mode}.title`;
-  const modeDescriptionKey = `package.${configuration.mode}.description`;
+  const modeTitleKey = `package.${configuration.presetId}.title`;
+  const modeDescriptionKey = `package.${configuration.presetId}.description`;
   return {
     title:
       titleOverride ??
       locale[modeTitleKey] ??
       locale[scenario.titleKey] ??
-      `TraceChain ${configuration.mode}`,
+      `TraceChain ${configuration.presetId}`,
     description:
       locale[modeDescriptionKey] ??
       locale[scenario.descriptionKey] ??
@@ -451,11 +451,15 @@ function printPackageSummary({ configuration, scenario, text }) {
     [
       "Resolved package:",
       `  package title: ${text.title}`,
-      `  mode: ${configuration.mode}`,
+      `  preset: ${configuration.presetId}`,
+      `  activity: ${configuration.activityType}`,
+      `  support: ${configuration.supportProfile}`,
+      `  purpose: ${configuration.deliveryPurpose}`,
+      `  outcome: ${configuration.outcomeStrategy}`,
       `  scenario: ${scenario.scenarioId} v${scenario.scenarioVersion}`,
-      `  feedback: ${configuration.feedbackTiming}`,
-      `  hints: ${configuration.hints}`,
-      `  reference workspace: ${configuration.referenceWorkspace}`,
+      `  feedback: ${configuration.feedback.timing}`,
+      `  hints: ${configuration.hints.availability}`,
+      `  reference workspace: ${configuration.guidance.referenceWorkspace ? "enabled" : "disabled"}`,
       `  technical inspection: ${inspections || "none"}`,
       `  pass score: ${configuration.scoring.passScore}`,
       `  language: ${configuration.locale}`,
@@ -542,7 +546,8 @@ function packageOne({
   const packageDirectory = join(
     projectRoot,
     "dist-scorm",
-    safeFileSegment(sourceLabel) || safeFileSegment(configuration.mode),
+    safeFileSegment(sourceLabel) ||
+      safeFileSegment(configuration.presetId),
   );
   rmSync(packageDirectory, { recursive: true, force: true });
   mkdirSync(packageDirectory, { recursive: true });
@@ -652,6 +657,18 @@ function packageOne({
     sourceCommit: provenance.sourceCommit,
     packageGeneratorVersion,
     configurationHash: embeddedConfiguration.configurationHash,
+    configurationSchemaVersion:
+      configuration.configurationSchemaVersion,
+    presetId: configuration.presetId,
+    activityType: configuration.activityType,
+    supportProfile: configuration.supportProfile,
+    deliveryPurpose: configuration.deliveryPurpose,
+    outcomeStrategy: configuration.outcomeStrategy,
+    contentPackId: configuration.content.packId,
+    contentPackVersion: configuration.content.packVersion,
+    scoringBlueprintId: configuration.scoring.scoringBlueprintId,
+    scoringBlueprintVersion:
+      configuration.scoring.scoringBlueprintVersion,
     scenarioId: scenario.scenarioId,
     scenarioVersion: scenario.scenarioVersion,
     scenarioHash,
@@ -735,7 +752,11 @@ function packageOne({
       "  Configure availability, attempts, access restrictions, gradebook",
       "  aggregation, and completion handling in the LMS.",
       "",
-      `PACKAGE MODE       ${configuration.mode}`,
+      `PACKAGE PRESET     ${configuration.presetId}`,
+      `ACTIVITY TYPE      ${configuration.activityType}`,
+      `SUPPORT PROFILE    ${configuration.supportProfile}`,
+      `DELIVERY PURPOSE   ${configuration.deliveryPurpose}`,
+      `OUTCOME STRATEGY   ${configuration.outcomeStrategy}`,
       `SCENARIO           ${scenario.scenarioId} v${scenario.scenarioVersion}`,
       `CONFIGURATION      ${embeddedConfiguration.configurationHash}`,
       `PASSING SCORE      ${configuration.scoring.passScore} of 100`,
@@ -918,7 +939,7 @@ async function main() {
       [
         `SCORM package written: ${result.outputName}`,
         `  title: ${result.title}`,
-        `  mode: ${result.configuration.mode}`,
+        `  preset: ${result.configuration.presetId}`,
         `  scenario: ${result.configuration.scenarioId} v${result.configuration.scenarioVersion}`,
         `  configuration: ${result.configurationHash}`,
         `  application build: ${staticBuild.hash}`,
@@ -928,7 +949,7 @@ async function main() {
     );
   }
   const artifactCatalog = {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     generatedAt: provenance.generatedAt,
     sourceCommit: provenance.sourceCommit,
     applicationBuildHash: staticBuild.hash,
@@ -942,7 +963,20 @@ async function main() {
         ),
       );
       return {
-        presetId: result.configuration.mode,
+        presetId: result.configuration.presetId,
+        configurationSchemaVersion:
+          result.configuration.configurationSchemaVersion,
+        activityType: result.configuration.activityType,
+        supportProfile: result.configuration.supportProfile,
+        deliveryPurpose: result.configuration.deliveryPurpose,
+        outcomeStrategy: result.configuration.outcomeStrategy,
+        contentPackId: result.configuration.content.packId,
+        contentPackVersion:
+          result.configuration.content.packVersion,
+        scoringBlueprintId:
+          result.configuration.scoring.scoringBlueprintId,
+        scoringBlueprintVersion:
+          result.configuration.scoring.scoringBlueprintVersion,
         title: result.title,
         filename: result.outputName,
         sha256: createHash("sha256").update(bytes).digest("hex"),

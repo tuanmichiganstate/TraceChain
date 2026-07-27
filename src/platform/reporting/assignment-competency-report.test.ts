@@ -7,6 +7,7 @@ import {
   createAssignmentCompetencyReport,
   createLearnerCompetencyProfile,
 } from "./assignment-competency-report";
+import { resolveHostedExperienceConfiguration } from "../runs/experience-configuration";
 
 const pack = packJson as ScenarioPackV1;
 const scenario = pack.scenarios[0];
@@ -14,11 +15,25 @@ const scenario = pack.scenarios[0];
 if (scenario === undefined) {
   throw new Error("Expected the standard coffee hosted scenario.");
 }
+const runtimeConfiguration =
+  scenario.modeConfigurations.find(
+    (configuration) => configuration.mode === "standard",
+  ) ??
+  (() => {
+    throw new Error("Expected the standard run configuration.");
+  })();
+const experience = resolveHostedExperienceConfiguration({
+  packId: pack.packId,
+  packVersion: pack.version,
+  scenario,
+  runtimeConfiguration,
+  locale: "vi",
+});
 
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.3.0",
+  schemaVersion: "2.0.0",
   assignment: {
-    schemaVersion: "1.3.0",
+    schemaVersion: "2.0.0",
     assignmentId: "ASSIGNMENT_COMPETENCY_001",
     title: "Coffee competency cohort",
     packId: pack.packId,
@@ -26,13 +41,10 @@ const assignmentReport: HostedAssignmentReportV1 = {
     scenarioId: scenario.scenarioId,
     scenarioVersion: scenario.version,
     mode: "standard",
-    runConfiguration:
-      scenario.modeConfigurations?.find(
-        (configuration) => configuration.mode === "standard",
-      ) ??
-      (() => {
-        throw new Error("Expected the standard run configuration.");
-      })(),
+    runConfiguration: runtimeConfiguration,
+    experienceConfiguration: experience.configuration,
+    experienceConfigurationHash:
+      experience.configurationHash,
     counterfactualReplay: {
       enabled: false,
       allowedDecisionNodeIds: [],

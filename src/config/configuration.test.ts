@@ -104,14 +104,24 @@ describe("TraceChain configuration", () => {
 
   it("fixes assessment feedback, hints, seed, and scoring", () => {
     expect(ASSESSMENT_PRESET).toMatchObject({
-      mode: "assessment",
+      configurationSchemaVersion: "2",
+      presetId: "assessment",
+      activityType: "OPERATIONS",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "ASSESSMENT",
+      outcomeStrategy: "FIXED",
       scenarioId: coffeeScenario.scenarioId,
       scenarioVersion: coffeeScenario.scenarioVersion,
-      feedbackTiming: "final",
-      hints: "disabled",
+      feedback: {
+        timing: "FINAL",
+      },
+      hints: {
+        availability: "DISABLED",
+      },
       scoring: {
         maximumScore: 100,
         passScore: 70,
+        official: true,
       },
     });
     expect(ASSESSMENT_PRESET.scenarioSeed).toBe(
@@ -124,16 +134,27 @@ describe("TraceChain configuration", () => {
       ...ASSESSMENT_PRESET,
       scenarioId: CHALLENGE_PRESET.scenarioId,
       scenarioVersion: CHALLENGE_PRESET.scenarioVersion,
-      feedbackTiming: "immediate",
-      hints: "limited",
+      content: {
+        ...ASSESSMENT_PRESET.content,
+        scenarioId: CHALLENGE_PRESET.scenarioId,
+        scenarioVersion: CHALLENGE_PRESET.scenarioVersion,
+      },
+      feedback: {
+        ...ASSESSMENT_PRESET.feedback,
+        timing: "IMMEDIATE",
+      },
+      hints: {
+        ...ASSESSMENT_PRESET.hints,
+        availability: "LIMITED",
+      },
     });
 
     expect(result.isValid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(
       expect.arrayContaining([
         "scenarioId",
-        "feedbackTiming",
-        "hints",
+        "feedback.timing",
+        "hints.availability",
       ]),
     );
   });

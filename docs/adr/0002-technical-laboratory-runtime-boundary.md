@@ -30,7 +30,7 @@ upgraded directly; no migration readers or dual-format paths are required.
 
 ### Use one discriminated package configuration
 
-Configuration schema 3 is a union:
+Configuration Schema V2, introduced by ADR 0003, is a union:
 
 - business simulation modes use the existing `tc3-v2` compatibility boundary;
 - Technical Laboratory uses `tl1-v1`, an exact lab-pack identity, the accepted

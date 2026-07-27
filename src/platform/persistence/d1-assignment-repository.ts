@@ -17,18 +17,16 @@ import type {
 import { isJsonObject } from "../contracts/json";
 import type { ApplicationPrincipal } from "../hosted/access";
 import {
-  HostedModeConfigurationError,
   validateHostedModeConfiguration,
 } from "../runs/mode-configuration";
 import {
-  AssignmentCounterfactualConfigurationError,
   validateAssignmentCounterfactualConfiguration,
 } from "../runs/counterfactual-assignment";
 import {
-  AssignmentResearchConfigurationError,
   validateAssignmentResearchConfiguration,
 } from "../runs/research-configuration";
 import { assignmentStartAvailability } from "../runs/assignment-availability";
+import { assertHostedExperienceIdentity } from "../runs/experience-configuration";
 import type { LtiLearningContextV1 } from "../contracts/lti";
 import type { D1DatabaseLike } from "./d1-types";
 
@@ -42,6 +40,8 @@ interface AssignmentRow {
   readonly scenario_version: string;
   readonly run_mode: string;
   readonly mode_configuration_json: string;
+  readonly experience_configuration_json: string;
+  readonly experience_configuration_hash: string;
   readonly counterfactual_configuration_json: string;
   readonly research_configuration_json: string;
   readonly learning_platform_issuer: string | null;
@@ -130,6 +130,8 @@ const FIND_ASSIGNMENT = `SELECT
   scenario_version,
   run_mode,
   mode_configuration_json,
+  experience_configuration_json,
+  experience_configuration_hash,
   counterfactual_configuration_json,
   research_configuration_json,
   learning_platform_issuer,
@@ -172,6 +174,8 @@ const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.scenario_version,
   assignments.run_mode,
   assignments.mode_configuration_json,
+  assignments.experience_configuration_json,
+  assignments.experience_configuration_hash,
   assignments.counterfactual_configuration_json,
   assignments.research_configuration_json,
   assignments.learning_platform_issuer,
@@ -222,6 +226,8 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   scenario_version,
   run_mode,
   mode_configuration_json,
+  experience_configuration_json,
+  experience_configuration_hash,
   counterfactual_configuration_json,
   research_configuration_json,
   learning_platform_issuer,
@@ -237,7 +243,11 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   feedback_release_status,
   created_at_utc,
   created_by_user_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'withheld', ?, ?)`;
+) VALUES (
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  'active', ?, ?, 'withheld', ?, ?
+)`;
 
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
@@ -801,6 +811,8 @@ function normalizeRequest(
     );
   }
   let runConfiguration;
+  let experienceConfiguration;
+  let experienceConfigurationHash;
   let counterfactualReplay;
   let research;
   try {
@@ -808,6 +820,30 @@ function normalizeRequest(
       request.runConfiguration,
       assignmentMode(request.mode),
     );
+    assertHostedExperienceIdentity({
+      configuration: request.experienceConfiguration,
+      configurationHash:
+        request.experienceConfigurationHash,
+    });
+    experienceConfiguration = structuredClone(
+      request.experienceConfiguration,
+    );
+    experienceConfigurationHash =
+      request.experienceConfigurationHash;
+    if (
+      experienceConfiguration.delivery.channel !== "HOSTED" ||
+      experienceConfiguration.content.packId !== request.packId ||
+      experienceConfiguration.content.packVersion !==
+        request.packVersion ||
+      experienceConfiguration.content.scenarioId !==
+        request.scenarioId ||
+      experienceConfiguration.content.scenarioVersion !==
+        request.scenarioVersion
+    ) {
+      throw new Error(
+        "Hosted experience configuration must identify the exact assignment content.",
+      );
+    }
     counterfactualReplay =
       validateAssignmentCounterfactualConfiguration(
         request.counterfactualReplay,
@@ -818,11 +854,7 @@ function normalizeRequest(
       runConfiguration,
     );
   } catch (error) {
-    if (
-      error instanceof HostedModeConfigurationError ||
-      error instanceof AssignmentCounterfactualConfigurationError ||
-      error instanceof AssignmentResearchConfigurationError
-    ) {
+    if (error instanceof Error) {
       throw new AssignmentRepositoryError(
         "INVALID_ASSIGNMENT",
         error.message,
@@ -865,6 +897,8 @@ function normalizeRequest(
     ),
     mode: runConfiguration.mode,
     runConfiguration,
+    experienceConfiguration,
+    experienceConfigurationHash,
     counterfactualReplay,
     research,
     ...(learningContext === undefined ? {} : { learningContext }),
@@ -1139,6 +1173,10 @@ function isSameAssignment(
     existing.mode === request.mode &&
     JSON.stringify(existing.runConfiguration) ===
       JSON.stringify(request.runConfiguration) &&
+    existing.experienceConfigurationHash ===
+      request.experienceConfigurationHash &&
+    JSON.stringify(existing.experienceConfiguration) ===
+      JSON.stringify(request.experienceConfiguration) &&
     JSON.stringify(existing.counterfactualReplay) ===
       JSON.stringify(request.counterfactualReplay) &&
     JSON.stringify(existing.research) ===
@@ -1248,6 +1286,8 @@ function assignmentFrom(
     );
   }
   let runConfiguration;
+  let experienceConfiguration;
+  let experienceConfigurationHash;
   let counterfactualReplay;
   let research;
   try {
@@ -1255,6 +1295,15 @@ function assignmentFrom(
       JSON.parse(row.mode_configuration_json) as unknown,
       row.run_mode as AssignmentRunMode,
     );
+    experienceConfiguration = JSON.parse(
+      row.experience_configuration_json,
+    ) as HostedAssignmentV1["experienceConfiguration"];
+    experienceConfigurationHash =
+      row.experience_configuration_hash;
+    assertHostedExperienceIdentity({
+      configuration: experienceConfiguration,
+      configurationHash: experienceConfigurationHash,
+    });
     counterfactualReplay =
       validateAssignmentCounterfactualConfiguration(
         JSON.parse(
@@ -1275,7 +1324,7 @@ function assignmentFrom(
     );
   }
   return {
-    schemaVersion: "1.3.0",
+    schemaVersion: "2.0.0",
     assignmentId: row.assignment_id,
     title: row.title,
     packId: row.pack_id,
@@ -1284,6 +1333,8 @@ function assignmentFrom(
     scenarioVersion: row.scenario_version,
     mode: row.run_mode as AssignmentRunMode,
     runConfiguration,
+    experienceConfiguration,
+    experienceConfigurationHash,
     counterfactualReplay,
     research,
     ...(learningContext === undefined ? {} : { learningContext }),
@@ -1376,6 +1427,10 @@ export class D1AssignmentRepository {
           normalized.scenarioVersion,
           normalized.mode,
           JSON.stringify(normalized.runConfiguration),
+          JSON.stringify(
+            normalized.experienceConfiguration,
+          ),
+          normalized.experienceConfigurationHash,
           JSON.stringify(normalized.counterfactualReplay),
           JSON.stringify(normalized.research),
           normalized.learningContext?.issuer ?? null,
@@ -2080,7 +2135,7 @@ export class D1AssignmentRepository {
       });
     }
     return {
-      schemaVersion: "1.3.0",
+      schemaVersion: "2.0.0",
       assignment,
       learners: assignment.learnerUserIds.map((learnerUserId) => ({
         learnerUserId,

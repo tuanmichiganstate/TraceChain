@@ -164,6 +164,10 @@ import {
   repositoryCurriculumOverlays,
 } from "../src/platform/curriculum-overlays/repository-overlays";
 import { modeConfigurationFor } from "../src/platform/runs/mode-configuration";
+import {
+  assertHostedExperienceIdentity,
+  resolveHostedExperienceConfiguration,
+} from "../src/platform/runs/experience-configuration";
 import { assignmentStartAvailability } from "../src/platform/runs/assignment-availability";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
 import {
@@ -959,7 +963,7 @@ async function loadScormPackageCatalog(
   }
   const catalog = (await response.json()) as HostedScormPackageCatalogV1;
   if (
-    catalog.schemaVersion !== "1.0.0" ||
+    catalog.schemaVersion !== "2.0.0" ||
     !Array.isArray(catalog.packages)
   ) {
     throw new ScormPackageJobRepositoryError(
@@ -1931,8 +1935,12 @@ async function apiResponse(
                       node.title.localizationKey,
                     ]),
                   );
+                const modeConfigurations =
+                  scenario.supportedModes.map((mode) =>
+                    modeConfigurationFor(scenario, mode),
+                  );
                 return {
-                  schemaVersion: "1.1.0" as const,
+                  schemaVersion: "2.0.0" as const,
                   packId: pack.packId,
                   packVersion: pack.version,
                   scenarioId: scenario.scenarioId,
@@ -1948,9 +1956,23 @@ async function apiResponse(
                     counterfactualDecisionTitles,
                   ),
                   supportedModes: scenario.supportedModes,
-                  modeConfigurations:
-                    scenario.supportedModes.map((mode) =>
-                      modeConfigurationFor(scenario, mode),
+                  modeConfigurations,
+                  experienceConfigurations:
+                    modeConfigurations.map(
+                      (runtimeConfiguration) => ({
+                        mode: runtimeConfiguration.mode,
+                        ...resolveHostedExperienceConfiguration({
+                          packId: pack.packId,
+                          packVersion: pack.version,
+                          scenario,
+                          runtimeConfiguration,
+                          locale: pack.supportedLocales.includes(
+                            "vi",
+                          )
+                            ? "vi"
+                            : "en",
+                        }),
+                      }),
                     ),
                   counterfactualDecisionPoints:
                     counterfactualNodes.map((node) => ({
@@ -2075,6 +2097,19 @@ async function apiResponse(
       body.mode,
       "mode",
     ) as CreateHostedAssignmentRequest["mode"];
+    const runtimeConfiguration = modeConfigurationFor(
+      scenario,
+      mode,
+    );
+    const experience = resolveHostedExperienceConfiguration({
+      packId: publishedPack.packId,
+      packVersion: publishedPack.version,
+      scenario,
+      runtimeConfiguration,
+      locale: publishedPack.supportedLocales.includes("vi")
+        ? "vi"
+        : "en",
+    });
     let counterfactualReplay;
     let research;
     try {
@@ -2085,7 +2120,7 @@ async function apiResponse(
         );
       research = validateAssignmentResearchConfiguration(
         body.research,
-        modeConfigurationFor(scenario, mode),
+        runtimeConfiguration,
       );
     } catch (error) {
       if (
@@ -2131,7 +2166,10 @@ async function apiResponse(
           ),
         ) as unknown as CreateHostedAssignmentRequest),
         mode,
-        runConfiguration: modeConfigurationFor(scenario, mode),
+        runConfiguration: runtimeConfiguration,
+        experienceConfiguration: experience.configuration,
+        experienceConfigurationHash:
+          experience.configurationHash,
         counterfactualReplay,
         research,
         ...(principal.learningContext === undefined
@@ -2279,6 +2317,31 @@ async function apiResponse(
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",
         "The assignment's exact published scenario is unavailable.",
+      );
+    }
+    const expectedExperience =
+      resolveHostedExperienceConfiguration({
+        packId: pack.packId,
+        packVersion: pack.version,
+        scenario,
+        runtimeConfiguration: assignment.runConfiguration,
+        locale: pack.supportedLocales.includes("vi")
+          ? "vi"
+          : "en",
+      });
+    try {
+      assertHostedExperienceIdentity({
+        configuration: assignment.experienceConfiguration,
+        configurationHash:
+          assignment.experienceConfigurationHash,
+        expected: expectedExperience,
+      });
+    } catch (error) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        error instanceof Error
+          ? error.message
+          : "Assignment experience configuration is invalid.",
       );
     }
     const service = createHostedRuntimeService({

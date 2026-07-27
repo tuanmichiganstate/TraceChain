@@ -23,6 +23,7 @@ import {
 } from "../../domain/scenario/runtime";
 import type { RecallBatchCommand } from "../../domain/commands/commands";
 import recallInvestigationImage from "../../assets/illustrations/recall-investigation.webp";
+import { simulationFeedbackTiming } from "../../config/experience";
 import { buildCausalReport } from "../../domain/reporting/causal-report";
 import { useOptionalConfiguration } from "../../app/providers/configuration-provider";
 import { shouldRevealDetailedFeedback } from "../../app/feedback-visibility";
@@ -113,7 +114,11 @@ export function RecallAndDebriefStage(): ReactNode {
   });
   const revealDetailedFeedback = shouldRevealDetailedFeedback({
     timing:
-      packageConfiguration?.configuration.feedbackTiming ?? "immediate",
+      packageConfiguration == null
+        ? "immediate"
+        : simulationFeedbackTiming(
+            packageConfiguration.configuration.feedback.timing,
+          ),
     stageId: ScenarioStageId.RECALL_AND_DEBRIEF,
     completedStageIds: state.completedStageIds,
     simulationCompleted: isCompleted,
@@ -202,7 +207,7 @@ export function RecallAndDebriefStage(): ReactNode {
           (context) => context.contextId === guidedHandoff.toContextId,
         );
   const handoffPortraitPanel =
-    packageConfiguration?.configuration.mode === "guided" &&
+    packageConfiguration?.configuration.supportProfile === "GUIDED" &&
     guidedHandoffFrom !== undefined &&
     guidedHandoffTo !== undefined ? (
       <RoleHandoffPanel

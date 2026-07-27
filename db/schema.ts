@@ -5,7 +5,8 @@
  * statements independently. Development environments install this current
  * schema from scratch; obsolete database shapes are not upgraded.
  */
-export const currentD1SchemaVersion = "2026-07-26-lti-1";
+export const currentD1SchemaVersion =
+  "2026-07-27-experience-configuration-v2";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -95,6 +96,13 @@ export const schemaStatements = [
       )),
     mode_configuration_json TEXT NOT NULL
       CHECK (json_valid(mode_configuration_json)),
+    experience_configuration_json TEXT NOT NULL
+      CHECK (json_valid(experience_configuration_json)),
+    experience_configuration_hash TEXT NOT NULL
+      CHECK (
+        length(experience_configuration_hash) = 64
+        AND experience_configuration_hash NOT GLOB '*[^0-9a-f]*'
+      ),
     counterfactual_configuration_json TEXT NOT NULL
       CHECK (json_valid(counterfactual_configuration_json)),
     research_configuration_json TEXT NOT NULL
@@ -370,6 +378,25 @@ export const schemaStatements = [
     size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
     release_build INTEGER NOT NULL CHECK (release_build IN (0, 1)),
     configuration_hash TEXT NOT NULL CHECK (length(configuration_hash) = 64),
+    configuration_schema_version TEXT NOT NULL
+      CHECK (configuration_schema_version = '2'),
+    activity_type TEXT NOT NULL
+      CHECK (activity_type IN ('OPERATIONS', 'AUDIT', 'TECHNICAL_LAB')),
+    support_profile TEXT NOT NULL
+      CHECK (support_profile IN ('GUIDED', 'PRACTICE', 'CHALLENGE')),
+    delivery_purpose TEXT NOT NULL
+      CHECK (delivery_purpose IN ('FORMATIVE', 'ASSESSMENT', 'SANDBOX')),
+    outcome_strategy TEXT NOT NULL
+      CHECK (outcome_strategy IN (
+        'FIXED',
+        'CURATED_VARIANT',
+        'SEEDED_STOCHASTIC',
+        'FORCED_CONDITION'
+      )),
+    content_pack_id TEXT NOT NULL,
+    content_pack_version TEXT NOT NULL,
+    scoring_blueprint_id TEXT NOT NULL,
+    scoring_blueprint_version TEXT NOT NULL,
     scenario_id TEXT NOT NULL,
     scenario_version TEXT NOT NULL,
     application_build_hash TEXT NOT NULL

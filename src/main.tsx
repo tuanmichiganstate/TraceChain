@@ -35,6 +35,25 @@ function hostedInterfaceLocale(): LocaleCode {
 }
 
 if (
+  import.meta.env.DEV &&
+  /^\/workspace-prototypes\/?$/u.test(window.location.pathname)
+) {
+  const locale = hostedInterfaceLocale();
+  document.documentElement.lang = locale;
+  void import("./prototypes/workspace-architecture-prototype-screen").then(
+    ({ WorkspaceArchitecturePrototypeScreen }) => {
+      root.render(
+        <StrictMode>
+          <LocaleProvider locale={locale}>
+            <NotificationProvider>
+              <WorkspaceArchitecturePrototypeScreen />
+            </NotificationProvider>
+          </LocaleProvider>
+        </StrictMode>,
+      );
+    },
+  );
+} else if (
   /^\/(?:platform|instructor|author|learner|admin)\/?$/u.test(
     window.location.pathname,
   )

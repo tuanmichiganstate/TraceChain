@@ -468,6 +468,16 @@ describe("server-authoritative hosted Stage 3 run", () => {
     expect(second.state.scenarioSeed).toBe(first.state.scenarioSeed);
     expect(first.state.outcomeResolution.strategy).toBe("forced");
     expect(first.state.outcomeResolution).not.toHaveProperty("draw");
+    expect(first.state.experienceConfiguration).toMatchObject({
+      configurationSchemaVersion: "2",
+      activityType: "OPERATIONS",
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+    });
+    expect(first.state.experienceConfigurationHash).toMatch(
+      /^[a-f0-9]{64}$/u,
+    );
   });
 
   it("accepts commands before the authored deadline and audits the first command at the deadline", async () => {

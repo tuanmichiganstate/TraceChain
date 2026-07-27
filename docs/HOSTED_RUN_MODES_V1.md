@@ -1,8 +1,30 @@
-# Hosted run modes and deterministic outcomes V1
+# Hosted runtime profiles and deterministic outcomes
 
 Status: implemented for the hosted single-learner platform.
 
-## Authored mode behavior
+## Runtime profile versus product configuration
+
+`tutorial`, `standard`, `sandbox`, and `configured` remain immutable authored
+runtime profiles. They control engine-level behavior; they are not the
+learner-facing product taxonomy.
+
+At assignment creation, the authoritative resolver combines the selected
+profile with the exact pack and scenario to produce Configuration Schema V2:
+
+```text
+activity type
+support profile
+delivery purpose
+outcome strategy
+guidance, feedback, hints, retries, and decision policy
+scoring, reporting, delivery, and content identity
+```
+
+The assignment stores that complete configuration and its canonical SHA-256.
+Run creation repeats both in the first server event, and replay rejects a value
+that differs from the exact published scenario profile.
+
+## Authored profile behavior
 
 Every supported hosted mode has one validated
 `HostedRunModeConfigurationV1` in the exact published scenario version:
@@ -22,9 +44,9 @@ outcomeModelId
 forcedOutcomeCode
 ```
 
-An assignment stores the fully resolved configuration rather than only the mode
-name. A run event stores that assignment configuration and replay rejects a
-configuration that differs from the immutable scenario version.
+An assignment also stores the fully resolved low-level profile rather than only
+its name. Configuration Schema V2 and the profile serve different purposes and
+are both exact replay inputs.
 
 Every scenario declares one configuration for every supported mode. The
 repository accepts only the current contract; development assignments and run

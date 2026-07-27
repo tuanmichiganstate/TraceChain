@@ -16,6 +16,7 @@ import { useOptionalConfiguration } from "../app/providers/configuration-provide
 import { useScenario } from "../app/providers/scenario-provider";
 import { shouldRevealDetailedFeedback } from "../app/feedback-visibility";
 import { MAX_ATTEMPT_COUNT } from "../infrastructure/persistence/attempt-state";
+import { simulationFeedbackTiming } from "../config/experience";
 
 /**
  * Renders any knowledge check from its definition (specification section 20).
@@ -79,7 +80,11 @@ export function KnowledgeCheckPanel({
     ),
   )?.stageId;
   const feedbackTiming =
-    packageConfiguration?.configuration.feedbackTiming ?? "immediate";
+    packageConfiguration == null
+      ? "immediate"
+      : simulationFeedbackTiming(
+          packageConfiguration.configuration.feedback.timing,
+        );
   const revealDetailedFeedback = shouldRevealDetailedFeedback({
     timing: feedbackTiming,
     stageId,

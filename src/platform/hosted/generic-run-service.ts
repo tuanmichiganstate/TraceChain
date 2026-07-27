@@ -48,6 +48,10 @@ import {
   modeConfigurationFor,
   validateHostedModeConfiguration,
 } from "../runs/mode-configuration";
+import {
+  assertHostedExperienceIdentity,
+  resolveHostedExperienceConfiguration,
+} from "../runs/experience-configuration";
 import { projectRunStateForRole } from "../runs/projection";
 import {
   hashReplayState,
@@ -372,6 +376,10 @@ export class GenericHostedRunService {
         mode: request.mode,
         modeConfiguration:
           resolved.modeConfiguration as unknown as JsonObject,
+        experienceConfiguration:
+          resolved.experience.configuration as unknown as JsonObject,
+        experienceConfigurationHash:
+          resolved.experience.configurationHash,
         scenarioSeed: resolved.scenarioSeed,
         packContentHash: this.packContentHash(),
       },
@@ -1554,6 +1562,24 @@ export class GenericHostedRunService {
           ),
         };
         const resolved = this.resolveModeAndOutcome(request);
+        try {
+          assertHostedExperienceIdentity({
+            configuration:
+              event.payload.experienceConfiguration,
+            configurationHash: requiredString(
+              event.payload.experienceConfigurationHash,
+              "experienceConfigurationHash",
+            ),
+            expected: resolved.experience,
+          });
+        } catch (error) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            error instanceof Error
+              ? error.message
+              : "Run experience evidence is invalid.",
+          );
+        }
         if (
           resolved.scenarioSeed !== request.scenarioSeed ||
           requiredString(
@@ -1590,6 +1616,10 @@ export class GenericHostedRunService {
           scenarioVersion: event.scenarioVersion,
           mode,
           modeConfiguration: resolved.modeConfiguration,
+          experienceConfiguration:
+            resolved.experience.configuration,
+          experienceConfigurationHash:
+            resolved.experience.configurationHash,
           scenarioSeed: resolved.scenarioSeed,
           outcomeResolution: resolved.outcomeResolution,
           activeTrustedContext: context,
@@ -2332,6 +2362,9 @@ export class GenericHostedRunService {
     >;
     readonly scenarioSeed: string;
     readonly outcomeResolution: StochasticOutcomeResolutionV1 | null;
+    readonly experience: ReturnType<
+      typeof resolveHostedExperienceConfiguration
+    >;
   } {
     const authored = modeConfigurationFor(
       this.scenario,
@@ -2352,6 +2385,16 @@ export class GenericHostedRunService {
         "Run mode behavior must match the exact published scenario.",
       );
     }
+    const experience =
+      resolveHostedExperienceConfiguration({
+        packId: this.pack.packId,
+        packVersion: this.pack.version,
+        scenario: this.scenario,
+        runtimeConfiguration: modeConfiguration,
+        locale: this.pack.supportedLocales.includes("vi")
+          ? "vi"
+          : "en",
+      });
     const scenarioSeed =
       modeConfiguration.seedPolicy === "generated"
         ? `generated:${sha256Hex(
@@ -2375,6 +2418,7 @@ export class GenericHostedRunService {
         modeConfiguration,
         scenarioSeed,
         outcomeResolution: null,
+        experience,
       };
     }
     const model = (this.scenario.outcomeModels ?? []).find(
@@ -2391,6 +2435,7 @@ export class GenericHostedRunService {
     return {
       modeConfiguration,
       scenarioSeed,
+      experience,
       outcomeResolution: resolveStochasticOutcome({
         model,
         scenarioVersion: this.scenario.version,

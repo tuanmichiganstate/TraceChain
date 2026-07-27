@@ -171,7 +171,9 @@ export function ActiveRolePresence({
     <StaffIdentityCard
       staffProfileId={profile.staffProfileId}
       size="briefing"
-      showResponsibility={configuration?.mode === "guided"}
+      showResponsibility={
+        configuration?.supportProfile === "GUIDED"
+      }
     />
   );
 }
@@ -209,7 +211,8 @@ export function RoleHandoffPanel({
 }): ReactNode {
   const t = useTranslator();
   const { scenario } = useScenario();
-  const mode = useOptionalConfiguration()?.configuration.mode;
+  const supportProfile =
+    useOptionalConfiguration()?.configuration.supportProfile;
   const fromProfile = scenario.staffProfiles.find(
     (candidate) => candidate.actorId === fromActorId,
   );
@@ -222,7 +225,8 @@ export function RoleHandoffPanel({
     <section className="role-handoff card card--reference">
       <div className="role-handoff__heading">
         <p className="eyebrow">{t("staff.handoff")}</p>
-        {mode === "guided" && explanatoryTextKey !== undefined ? (
+        {supportProfile === "GUIDED" &&
+        explanatoryTextKey !== undefined ? (
           <p>{t(explanatoryTextKey)}</p>
         ) : null}
       </div>

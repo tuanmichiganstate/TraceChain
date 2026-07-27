@@ -79,9 +79,9 @@ function safeFileSegment(value) {
 }
 
 function packageFileName(configuration, releaseBuild) {
-  const mode =
-    configuration.mode.slice(0, 1).toUpperCase() +
-    configuration.mode.slice(1).replace(/-([a-z])/gu, (_, letter) =>
+  const preset =
+    configuration.presetId.slice(0, 1).toUpperCase() +
+    configuration.presetId.slice(1).replace(/-([a-z])/gu, (_, letter) =>
       letter.toUpperCase(),
     );
   const scenarioLabel =
@@ -92,7 +92,7 @@ function packageFileName(configuration, releaseBuild) {
         : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
     "TraceChain",
-    safeFileSegment(mode),
+    safeFileSegment(preset),
     scenarioLabel,
     configuration.locale,
     `v${configuration.scenarioVersion.replace(/[^A-Za-z0-9.-]/gu, "")}`,
@@ -996,7 +996,25 @@ function verifyPackage(zipPath) {
     buildInformation?.applicationVersion === packageJson.version &&
       buildInformation?.configurationHash === envelope?.configurationHash &&
       buildInformation?.scenarioId === scenario?.scenarioId &&
-      buildInformation?.scenarioVersion === scenario?.scenarioVersion,
+      buildInformation?.scenarioVersion === scenario?.scenarioVersion &&
+      buildInformation?.configurationSchemaVersion ===
+        configuration?.configurationSchemaVersion &&
+      buildInformation?.presetId === configuration?.presetId &&
+      buildInformation?.activityType === configuration?.activityType &&
+      buildInformation?.supportProfile ===
+        configuration?.supportProfile &&
+      buildInformation?.deliveryPurpose ===
+        configuration?.deliveryPurpose &&
+      buildInformation?.outcomeStrategy ===
+        configuration?.outcomeStrategy &&
+      buildInformation?.contentPackId ===
+        configuration?.content?.packId &&
+      buildInformation?.contentPackVersion ===
+        configuration?.content?.packVersion &&
+      buildInformation?.scoringBlueprintId ===
+        configuration?.scoring?.scoringBlueprintId &&
+      buildInformation?.scoringBlueprintVersion ===
+        configuration?.scoring?.scoringBlueprintVersion,
   );
   check(
     "Build metadata has deterministic provenance fields",
@@ -1204,9 +1222,11 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 
 const defaultInvocation = process.argv.length === 2;
 if (defaultInvocation && results.length === 3) {
-  const modes = results.map((result) => result.configuration?.mode).sort();
+  const presetIds = results
+    .map((result) => result.configuration?.presetId)
+    .sort();
   if (
-    JSON.stringify(modes) !==
+    JSON.stringify(presetIds) !==
     JSON.stringify(["assessment", "challenge", "guided"])
   ) {
     crossPackageErrors.push(

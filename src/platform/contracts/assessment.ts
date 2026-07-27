@@ -1,5 +1,6 @@
 import type { LtiLearningContextV1 } from "./lti";
 import type { HostedRunModeConfigurationV1 } from "./scenario-pack";
+import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
 
 export type AssignmentRunMode =
   | "tutorial"
@@ -50,7 +51,7 @@ export type AssignmentResearchConfigurationV1 =
     };
 
 export interface HostedAssignmentV1 {
-  readonly schemaVersion: "1.3.0";
+  readonly schemaVersion: "2.0.0";
   readonly assignmentId: string;
   readonly title: string;
   readonly packId: string;
@@ -59,6 +60,9 @@ export interface HostedAssignmentV1 {
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
+  readonly experienceConfiguration:
+    TraceChainExperienceConfigurationV2;
+  readonly experienceConfigurationHash: string;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
   readonly research: AssignmentResearchConfigurationV1;
@@ -86,6 +90,9 @@ export interface CreateHostedAssignmentRequest {
   readonly scenarioVersion: string;
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
+  readonly experienceConfiguration:
+    TraceChainExperienceConfigurationV2;
+  readonly experienceConfigurationHash: string;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
   readonly research: AssignmentResearchConfigurationV1;
@@ -100,7 +107,7 @@ export interface CreateHostedAssignmentRequest {
 }
 
 export interface HostedAssignmentScenarioOptionV1 {
-  readonly schemaVersion: "1.1.0";
+  readonly schemaVersion: "2.0.0";
   readonly packId: string;
   readonly packVersion: string;
   readonly scenarioId: string;
@@ -121,6 +128,12 @@ export interface HostedAssignmentScenarioOptionV1 {
   readonly supportedModes: readonly AssignmentRunMode[];
   readonly modeConfigurations:
     readonly HostedRunModeConfigurationV1[];
+  readonly experienceConfigurations: readonly {
+    readonly mode: AssignmentRunMode;
+    readonly configuration:
+      TraceChainExperienceConfigurationV2;
+    readonly configurationHash: string;
+  }[];
   readonly counterfactualDecisionPoints: readonly {
     readonly nodeId: string;
     readonly decisionId: string;
@@ -251,7 +264,7 @@ export interface HostedAssignmentLearnerReport {
 }
 
 export interface HostedAssignmentReportV1 {
-  readonly schemaVersion: "1.3.0";
+  readonly schemaVersion: "2.0.0";
   readonly assignment: HostedAssignmentV1;
   readonly learners: readonly HostedAssignmentLearnerReport[];
 }

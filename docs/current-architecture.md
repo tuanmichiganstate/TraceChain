@@ -11,6 +11,10 @@ Implementation progress after this baseline is documented in
 `docs/HOSTED_STAGE3_API.md`; this audit remains intentionally fixed to its
 starting commit.
 
+The later multidimensional configuration audit and Phase 1 implementation are
+documented in `docs/PRODUCT_MODES_PHASE_1.md` and ADR 0003. This file remains a
+fixed record of the earlier hosted-platform baseline.
+
 ## Product surfaces
 
 TraceChain currently has three delivery surfaces and no application backend:

@@ -58,7 +58,7 @@ const packageCatalog = JSON.parse(
   await readFile(packageCatalogPath, "utf8"),
 );
 if (
-  packageCatalog?.schemaVersion !== "1.0.0" ||
+  packageCatalog?.schemaVersion !== "2.0.0" ||
   !Array.isArray(packageCatalog.packages) ||
   packageCatalog.packages.length === 0
 ) {
@@ -73,6 +73,21 @@ const hostedPackageDirectory = join(
 await mkdir(hostedPackageDirectory, { recursive: true });
 const hostedPackages = [];
 for (const artifact of packageCatalog.packages) {
+  if (
+    artifact.configurationSchemaVersion !== "2" ||
+    artifact.activityType !== "OPERATIONS" ||
+    typeof artifact.supportProfile !== "string" ||
+    typeof artifact.deliveryPurpose !== "string" ||
+    typeof artifact.outcomeStrategy !== "string" ||
+    typeof artifact.contentPackId !== "string" ||
+    typeof artifact.contentPackVersion !== "string" ||
+    typeof artifact.scoringBlueprintId !== "string" ||
+    typeof artifact.scoringBlueprintVersion !== "string"
+  ) {
+    throw new Error(
+      `SCORM artifact lacks Configuration Schema V2 metadata: ${artifact.filename}`,
+    );
+  }
   const source = join(repositoryRoot, artifact.filename);
   const bytes = await readFile(source);
   if (bytes.byteLength !== artifact.sizeBytes) {

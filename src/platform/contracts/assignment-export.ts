@@ -49,13 +49,13 @@ export interface ExportDatasetDefinitionV1 {
 }
 
 export interface AssignmentExportDataDictionaryV1 {
-  readonly schemaVersion: "1.5.0";
-  readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1";
+  readonly schemaVersion: "2.0.0";
+  readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2";
   readonly datasets: readonly ExportDatasetDefinitionV1[];
 }
 
 export interface AssignmentEvidenceExportV1 {
-  readonly schemaVersion: "1.5.0";
+  readonly schemaVersion: "2.0.0";
   readonly exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE";
   readonly identityMode: AssignmentExportIdentityMode;
   readonly researchMetadata:

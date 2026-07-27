@@ -20,7 +20,7 @@ const disabledCounterfactualReplay = {
 } as const;
 
 const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
-  schemaVersion: "1.1.0",
+  schemaVersion: "2.0.0",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
   packVersion: "1.7.0",
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
@@ -98,6 +98,7 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
       allowEvidenceRequests: true,
     },
   ],
+  experienceConfigurations: [],
   counterfactualDecisionPoints: [
     {
       nodeId: "NODE_CERTIFICATE_DECISION",

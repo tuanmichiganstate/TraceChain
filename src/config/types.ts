@@ -1,12 +1,150 @@
 import type { LocaleCode } from "../localization/i18n";
 
-export type LearningMode = "guided" | "challenge" | "assessment" | "technical-lab";
-export type BusinessLearningMode = Exclude<LearningMode, "technical-lab">;
+export type ActivityType =
+  | "OPERATIONS"
+  | "AUDIT"
+  | "TECHNICAL_LAB";
+export type SupportProfile =
+  | "GUIDED"
+  | "PRACTICE"
+  | "CHALLENGE";
+export type DeliveryPurpose =
+  | "FORMATIVE"
+  | "ASSESSMENT"
+  | "SANDBOX";
+export type OutcomeStrategy =
+  | "FIXED"
+  | "CURATED_VARIANT"
+  | "SEEDED_STOCHASTIC"
+  | "FORCED_CONDITION";
+
+export type LearningPresetId =
+  | "guided"
+  | "challenge"
+  | "assessment"
+  | "technical-lab";
+export type BusinessPresetId = Exclude<
+  LearningPresetId,
+  "technical-lab"
+>;
 export type Difficulty = "introductory" | "intermediate";
-export type FeedbackTiming = "immediate" | "stage-end" | "final";
-export type TechnicalLabFeedbackTiming = "immediate" | "module-end" | "final";
-export type HintMode = "enabled" | "limited" | "disabled";
-export type FeatureState = "enabled" | "disabled";
+export type FeedbackTiming =
+  | "IMMEDIATE"
+  | "STAGE_END"
+  | "MODULE_END"
+  | "FINAL";
+export type HintAvailability =
+  | "ENABLED"
+  | "LIMITED"
+  | "DISABLED";
+export type DeliveryChannel = "HOSTED" | "SCORM";
+
+export interface ExperienceContentReference {
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly scenarioId?: string;
+  readonly scenarioVersion?: string;
+  readonly variantBankId?: string;
+  readonly variantBankVersion?: string;
+  readonly laboratoryPackId?: string;
+  readonly laboratoryPackVersion?: string;
+}
+
+export interface GuidancePolicy {
+  readonly missionDetail: "FULL" | "CONCISE" | "MINIMAL";
+  readonly evidenceGuidance: "DIRECT" | "SUGGESTED" | "NONE";
+  readonly policyGuidance: "DIRECT" | "SUGGESTED" | "NONE";
+  readonly nextActionGuidance:
+    | "EXPLICIT"
+    | "GOAL_ONLY"
+    | "NONE";
+  readonly fadeByProgress: boolean;
+  readonly showWorkedExamples: boolean;
+  readonly referenceWorkspace: boolean;
+}
+
+export interface FeedbackPolicy {
+  readonly timing: FeedbackTiming;
+  readonly showCorrectness: boolean;
+  readonly showCausalConsequences: boolean;
+  readonly showWorkedExplanation: boolean;
+  readonly releaseRuleId?: string;
+}
+
+export interface HintPolicy {
+  readonly availability: HintAvailability;
+  readonly proactiveOffer:
+    | "OFFERED"
+    | "AVAILABLE_ON_REQUEST"
+    | "NOT_AVAILABLE";
+  readonly itemScoped: true;
+  readonly disclosureRequired: boolean;
+  readonly maximumHintsPerRun?: number;
+}
+
+export interface RetryPolicy {
+  readonly knowledgeRetry: "ENABLED" | "LIMITED" | "DISABLED";
+  readonly professionalDecisionRevision:
+    | "APPEND_ONLY_MITIGATION"
+    | "ONE_SHOT"
+    | "FREE_REVISION";
+  readonly maximumKnowledgeAttempts?: number;
+  readonly maximumMitigationActions?: number;
+}
+
+export interface DecisionPolicy {
+  readonly requireRationale: boolean;
+  readonly requireEvidenceCitations: boolean;
+  readonly requirePolicyCitations: boolean;
+  readonly requireConfidence: boolean;
+  readonly requireRiskEstimate: boolean;
+  readonly allowDrafts: boolean;
+}
+
+export interface ExperienceScoringConfiguration {
+  readonly scoringBlueprintId: string;
+  readonly scoringBlueprintVersion: string;
+  readonly maximumScore: number;
+  readonly passScore: number;
+  readonly official: boolean;
+  readonly competencyEvidenceEnabled: boolean;
+  readonly reportDiagnosticDimensions: boolean;
+}
+
+export interface ReportingConfiguration {
+  readonly causalReport: boolean;
+  readonly auditReport: boolean;
+  readonly competencyReport: boolean;
+  readonly activitySummary: boolean;
+  readonly showTechnicalMetadataToLearner: boolean;
+}
+
+export interface DeliveryConfiguration {
+  readonly channel: DeliveryChannel;
+  readonly persistencePolicyId: string;
+  readonly attemptPolicyId: string;
+  readonly timeLimitMinutes?: number;
+  readonly availabilityRuleId?: string;
+}
+
+export interface TraceChainExperienceConfigurationV2 {
+  readonly configurationSchemaVersion: "2";
+  readonly presetId: string;
+  readonly activityType: ActivityType;
+  readonly supportProfile: SupportProfile;
+  readonly deliveryPurpose: DeliveryPurpose;
+  readonly outcomeStrategy: OutcomeStrategy;
+  readonly content: ExperienceContentReference;
+  readonly guidance: GuidancePolicy;
+  readonly feedback: FeedbackPolicy;
+  readonly hints: HintPolicy;
+  readonly retries: RetryPolicy;
+  readonly decisions: DecisionPolicy;
+  readonly scoring: ExperienceScoringConfiguration;
+  readonly reporting: ReportingConfiguration;
+  readonly delivery: DeliveryConfiguration;
+  readonly locale: LocaleCode;
+}
 
 export type ScenarioVariationConfiguration =
   | {
@@ -25,30 +163,20 @@ export type ScenarioVariationConfiguration =
       readonly displayCaseReferenceToLearner: boolean;
     };
 
-interface ConfigurationScoring {
-  readonly maximumScore: 100;
-  readonly passScore: number;
-  readonly reportDiagnosticDimensions: boolean;
-}
-
-interface TraceChainConfigurationBase {
-  readonly configurationVersion: "3";
-  readonly mode: LearningMode;
-  readonly hints: HintMode;
-  readonly referenceWorkspace: FeatureState;
-  readonly scoring: ConfigurationScoring;
-  readonly locale: LocaleCode;
+interface TraceChainConfigurationBase
+  extends TraceChainExperienceConfigurationV2 {
+  readonly presetId: LearningPresetId;
 }
 
 export interface BusinessSimulationConfiguration
   extends TraceChainConfigurationBase {
   readonly applicationCompatibilityVersion: "tc3-v2";
-  readonly mode: BusinessLearningMode;
+  readonly presetId: BusinessPresetId;
+  readonly activityType: "OPERATIONS";
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly scenarioSeed: string;
   readonly difficulty: Difficulty;
-  readonly feedbackTiming: FeedbackTiming;
   readonly scenarioVariation: ScenarioVariationConfiguration;
   readonly technicalFeatures: {
     readonly hashInspection: boolean;
@@ -63,12 +191,13 @@ export interface BusinessSimulationConfiguration
 export interface TechnicalLabConfiguration
   extends TraceChainConfigurationBase {
   readonly applicationCompatibilityVersion: "tl1-v1";
-  readonly mode: "technical-lab";
+  readonly presetId: "technical-lab";
+  readonly activityType: "TECHNICAL_LAB";
   readonly labPackId: string;
   readonly labPackVersion: string;
-  readonly presetId: "permissioned-blockchain-foundations";
+  readonly laboratoryPresetId:
+    "permissioned-blockchain-foundations";
   readonly includedModuleIds: readonly string[];
-  readonly feedbackTiming: TechnicalLabFeedbackTiming;
   readonly scoringMode: "graded";
 }
 
@@ -84,11 +213,11 @@ export interface EmbeddedTraceChainConfiguration {
 export function isBusinessSimulationConfiguration(
   configuration: TraceChainConfiguration,
 ): configuration is BusinessSimulationConfiguration {
-  return configuration.mode !== "technical-lab";
+  return configuration.activityType === "OPERATIONS";
 }
 
 export function isTechnicalLabConfiguration(
   configuration: TraceChainConfiguration,
 ): configuration is TechnicalLabConfiguration {
-  return configuration.mode === "technical-lab";
+  return configuration.activityType === "TECHNICAL_LAB";
 }

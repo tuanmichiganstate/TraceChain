@@ -96,6 +96,16 @@ describe("GenericHostedRunService", () => {
       learnerUserId: learner.userId,
       mode: "sandbox",
     });
+    expect(created.state.experienceConfiguration).toMatchObject({
+      configurationSchemaVersion: "2",
+      activityType: "OPERATIONS",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "SANDBOX",
+      outcomeStrategy: "SEEDED_STOCHASTIC",
+    });
+    expect(created.state.experienceConfigurationHash).toMatch(
+      /^[a-f0-9]{64}$/u,
+    );
     const advanced = await service.submit(learner, {
       commandType: "ADVANCE_WORKFLOW",
       commandId: "COMMAND_ADVANCE_PHARMA_COUNTERFACTUAL",

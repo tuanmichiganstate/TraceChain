@@ -509,8 +509,8 @@ export function EndorsedTransactionAction({
         <section className="endorsement-actions">
           <p className="muted">
             {t(
-              configuration?.configuration.mode ===
-                "challenge"
+              configuration?.configuration.supportProfile ===
+                "CHALLENGE"
                 ? "endorsement.handoffChallengePrompt"
                 : "endorsement.handoffGuidedPrompt",
             )}
@@ -537,8 +537,8 @@ export function EndorsedTransactionAction({
             {t(
               isHandoffPending
                 ? "action.processing"
-                : configuration?.configuration.mode ===
-                    "challenge"
+                : configuration?.configuration.supportProfile ===
+                    "CHALLENGE"
                   ? "endorsement.handoffChallenge"
                   : availableHandoff.labelKey,
             )}

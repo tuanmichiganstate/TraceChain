@@ -29,6 +29,17 @@ are integrated into custody transfer and append-only quantity correction.
 Organizational identity and key custody remain explicitly educational
 simulations.
 
+Hosted and SCORM delivery now resolve the same Configuration Schema V2:
+professional activity, support profile, delivery purpose, outcome strategy,
+content identity, learning policies, scoring, reporting, and persistence.
+Preset and hosted-profile names remain selectors rather than overloaded product
+modes; the Phase 1 audit is in `docs/PRODUCT_MODES_PHASE_1.md`.
+Phase 2 adds development-only coded benchmarks for the shared Learning,
+Operations, Audit, Blockchain Inspector, professional-decision, finding, and
+persistent-result workspace architecture. The prototypes are intentionally not
+rolled into every learner screen until their recognition review is complete;
+see `docs/PRODUCT_MODES_PHASE_2.md`.
+
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
 role-projection contracts. The server-authoritative coffee service now carries
@@ -273,7 +284,11 @@ schemas/               published versioned JSON Schemas
   role boundaries, and bootstrap procedure
 - `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md` — administrator-only user and
   role provisioning, idempotency, audit, and self-protection boundaries
-- `docs/ASSIGNMENT_EXPORT_V1.md` — the stable assignment JSON/CSV evidence
+- `docs/PRODUCT_MODES_PHASE_1.md` and ADR 0003 — the multidimensional
+  configuration audit, compatibility map, persistence, and Phase 1 boundary
+- `docs/PRODUCT_MODES_PHASE_2.md` — the development-only shared workspace
+  primitives, eight coded benchmarks, and review gate before broad rollout
+- `docs/ASSIGNMENT_EXPORT_V2.md` — the stable assignment JSON/CSV evidence
   contract and data dictionary
 - `docs/DECISION_OUTCOME_REPORT_V1.md` — replay-derived completed decision
   evidence, realized outcomes, and active-run concealment

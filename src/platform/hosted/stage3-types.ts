@@ -8,6 +8,7 @@ import type {
   HostedRunMode,
   HostedRunModeConfigurationV1,
 } from "../contracts/scenario-pack";
+import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
 import type { StochasticOutcomeResolutionV1 } from "../runs/stochastic-outcomes";
 
 export type Stage3CaseVariant =
@@ -153,6 +154,9 @@ export interface HostedStage3RunState {
   readonly scenarioVersion: string;
   readonly mode: HostedRunMode;
   readonly modeConfiguration: HostedRunModeConfigurationV1;
+  readonly experienceConfiguration:
+    TraceChainExperienceConfigurationV2;
+  readonly experienceConfigurationHash: string;
   readonly scenarioSeed: string;
   readonly caseVariant: Stage3CaseVariant;
   readonly outcomeResolution: StochasticOutcomeResolutionV1;

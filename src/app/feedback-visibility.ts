@@ -1,9 +1,9 @@
-import type { FeedbackTiming } from "../config/types";
+import type { SimulationFeedbackTiming } from "../config/experience";
 import type { ScenarioStageId } from "../domain/types/enums";
 
 /** One disclosure rule shared by knowledge and consequential feedback. */
 export function shouldRevealDetailedFeedback(options: {
-  readonly timing: FeedbackTiming;
+  readonly timing: SimulationFeedbackTiming;
   readonly stageId: ScenarioStageId | undefined;
   readonly completedStageIds: readonly ScenarioStageId[];
   readonly simulationCompleted: boolean;

@@ -22,6 +22,7 @@ import { buildEffectiveValueView } from "../../domain/scenario/effective-value-v
 import { commandContext, runtimeCommand } from "../../domain/scenario/runtime";
 import { formatCorrectionValueLabel } from "../../localization/format-correction-value";
 import manifestDiscrepancyImage from "../../assets/illustrations/manifest-discrepancy.webp";
+import { simulationFeedbackTiming } from "../../config/experience";
 import {
   evaluateDiscrepancyDecision,
   expandDiscrepancyDecision,
@@ -110,7 +111,11 @@ export function ReceiveAndCorrectStage(): ReactNode {
     (evaluation.isScorableCorrect || investigationRecorded);
   const revealDetailedFeedback = shouldRevealDetailedFeedback({
     timing:
-      packageConfiguration?.configuration.feedbackTiming ?? "immediate",
+      packageConfiguration == null
+        ? "immediate"
+        : simulationFeedbackTiming(
+            packageConfiguration.configuration.feedback.timing,
+          ),
     stageId: ScenarioStageId.RECEIVE_AND_CORRECT,
     completedStageIds: state.completedStageIds,
     simulationCompleted: isCompleted,

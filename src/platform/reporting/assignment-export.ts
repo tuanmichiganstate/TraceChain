@@ -28,13 +28,13 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "1.5.0",
-  csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1",
+  schemaVersion: "2.0.0",
+  csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2",
   datasets: [
     {
       id: "assignment",
       description:
-        "Exact assignment, scenario-pack, scenario, mode, and feedback-release metadata.",
+        "Exact assignment, scenario-pack, scenario, resolved experience, runtime profile, and feedback-release metadata.",
       fields: [
         {
           name: "assignmentId",
@@ -65,6 +65,37 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           type: "string",
           required: true,
           description: "Exact scenario version interpreted by this assignment.",
+        },
+        {
+          name: "experienceConfigurationHash",
+          type: "string",
+          required: true,
+          description:
+            "SHA-256 of the canonical resolved Configuration Schema V2 object.",
+        },
+        {
+          name: "activityType",
+          type: "string",
+          required: true,
+          description: "Professional activity selected for the run.",
+        },
+        {
+          name: "supportProfile",
+          type: "string",
+          required: true,
+          description: "Resolved degree of learner support.",
+        },
+        {
+          name: "deliveryPurpose",
+          type: "string",
+          required: true,
+          description: "Formative, assessment, or sandbox use.",
+        },
+        {
+          name: "outcomeStrategy",
+          type: "string",
+          required: true,
+          description: "Resolved case and outcome-selection strategy.",
         },
       ],
     },
@@ -451,7 +482,7 @@ export function createAssignmentEvidenceExport(
   };
 
   return {
-    schemaVersion: "1.5.0",
+    schemaVersion: "2.0.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     identityMode,
     researchMetadata:
@@ -547,7 +578,16 @@ const CSV_COLUMNS = [
   "pack_version",
   "scenario_id",
   "scenario_version",
-  "mode",
+  "runtime_profile",
+  "configuration_schema_version",
+  "experience_configuration_hash",
+  "preset_id",
+  "activity_type",
+  "support_profile",
+  "delivery_purpose",
+  "outcome_strategy",
+  "scoring_blueprint_id",
+  "scoring_blueprint_version",
   "status",
   "event_count",
   "rating_id",
@@ -595,7 +635,28 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
       pack_version: assignment.packVersion,
       scenario_id: assignment.scenarioId,
       scenario_version: assignment.scenarioVersion,
-      mode: assignment.mode,
+      runtime_profile: assignment.mode,
+      configuration_schema_version:
+        assignment.experienceConfiguration
+          .configurationSchemaVersion,
+      experience_configuration_hash:
+        assignment.experienceConfigurationHash,
+      preset_id:
+        assignment.experienceConfiguration.presetId,
+      activity_type:
+        assignment.experienceConfiguration.activityType,
+      support_profile:
+        assignment.experienceConfiguration.supportProfile,
+      delivery_purpose:
+        assignment.experienceConfiguration.deliveryPurpose,
+      outcome_strategy:
+        assignment.experienceConfiguration.outcomeStrategy,
+      scoring_blueprint_id:
+        assignment.experienceConfiguration.scoring
+          .scoringBlueprintId,
+      scoring_blueprint_version:
+        assignment.experienceConfiguration.scoring
+          .scoringBlueprintVersion,
       status: assignment.status,
       recorded_at: assignment.createdAt,
       authenticated_user_id: assignment.createdByUserId,
@@ -730,5 +791,5 @@ export function assignmentEvidenceFilename(
   );
   const identityLabel =
     identityMode === "pseudonymous" ? "_pseudonymous" : "";
-  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v1.${extension}`;
+  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v2.${extension}`;
 }

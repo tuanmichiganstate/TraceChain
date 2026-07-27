@@ -79,7 +79,10 @@ export interface InstructorRunReview {
 
 export type CreateInstructorAssignmentInput = Omit<
   CreateHostedAssignmentRequest,
-  "commandId" | "runConfiguration"
+  | "commandId"
+  | "runConfiguration"
+  | "experienceConfiguration"
+  | "experienceConfigurationHash"
 >;
 
 export interface SaveInstructorRatingInput {
@@ -959,6 +962,8 @@ interface AssignmentScenarioOption {
   readonly supportedModes: readonly AssignmentRunMode[];
   readonly modeConfigurations:
     readonly HostedRunModeConfigurationV1[];
+  readonly experienceConfigurations:
+    HostedAssignmentScenarioOptionV1["experienceConfigurations"];
   readonly counterfactualDecisionPoints: readonly {
     readonly nodeId: string;
     readonly decisionId: string;
@@ -1031,6 +1036,8 @@ function assignmentScenarioOptions(
       scenarioVersion: option.scenarioVersion,
       supportedModes: option.supportedModes,
       modeConfigurations: option.modeConfigurations,
+      experienceConfigurations:
+        option.experienceConfigurations,
       counterfactualDecisionPoints:
         option.counterfactualDecisionPoints.map((point) => ({
           nodeId: point.nodeId,

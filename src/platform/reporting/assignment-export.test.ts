@@ -9,11 +9,33 @@ import {
   serializeAssignmentEvidenceCsv,
   serializeAssignmentEvidenceJson,
 } from "./assignment-export";
+import { hostedExperienceFixture } from "../runs/experience-configuration.test-fixture";
 
+const runtimeConfiguration = {
+  mode: "standard",
+  allowHints: false,
+  allowRetry: false,
+  allowBacktracking: false,
+  feedbackTiming: "final",
+  showScores: false,
+  outcomeStrategy: "forced",
+  seedPolicy: "supplied",
+  timeLimitMinutes: 30,
+  allowCommunication: false,
+  allowEvidenceRequests: true,
+  outcomeModelId: "CERTIFICATE_CASE",
+} as const;
+const experience = hostedExperienceFixture({
+  packId: "PACK_STANDARD_COFFEE_STAGE3",
+  packVersion: "1.4.0",
+  scenarioId: "SCN_COFFEE_001",
+  scenarioVersion: "2.2.0",
+  runtimeConfiguration,
+});
 const assignmentReport: HostedAssignmentReportV1 = {
-  schemaVersion: "1.3.0",
+  schemaVersion: "2.0.0",
   assignment: {
-    schemaVersion: "1.3.0",
+    schemaVersion: "2.0.0",
     assignmentId: "ASSIGNMENT_EXPORT_001",
     title: "Coffee export cohort",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
@@ -21,20 +43,10 @@ const assignmentReport: HostedAssignmentReportV1 = {
     scenarioId: "SCN_COFFEE_001",
     scenarioVersion: "2.2.0",
     mode: "standard",
-    runConfiguration: {
-      mode: "standard",
-      allowHints: false,
-      allowRetry: false,
-      allowBacktracking: false,
-      feedbackTiming: "final",
-      showScores: false,
-      outcomeStrategy: "forced",
-      seedPolicy: "supplied",
-      timeLimitMinutes: 30,
-      allowCommunication: false,
-      allowEvidenceRequests: true,
-      outcomeModelId: "CERTIFICATE_CASE",
-    },
+    runConfiguration: runtimeConfiguration,
+    experienceConfiguration: experience.configuration,
+    experienceConfigurationHash:
+      experience.configurationHash,
     counterfactualReplay: {
       enabled: false,
       allowedDecisionNodeIds: [],
@@ -141,7 +153,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "1.5.0",
+      schemaVersion: "2.0.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       identityMode: "identified",
       generatedAt: "2026-07-24T09:00:00.000Z",
@@ -197,7 +209,7 @@ describe("assignment evidence export", () => {
         "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("1.5.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("2.0.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;

@@ -1,4 +1,11 @@
 import type { BusinessSimulationConfiguration } from "./types";
+import {
+  feedbackPolicyFor,
+  guidancePolicyFor,
+  hintPolicyFor,
+  resolveProductDimensions,
+  retryPolicyFor,
+} from "./experience";
 
 export type LecturerPresetId =
   | "guided"
@@ -6,9 +13,8 @@ export type LecturerPresetId =
   | "assessment";
 
 const COMMON = {
-  configurationVersion: "3",
+  configurationSchemaVersion: "2",
   applicationCompatibilityVersion: "tc3-v2",
-  referenceWorkspace: "enabled",
   technicalFeatures: {
     hashInspection: true,
     digitalSignatures: true,
@@ -18,22 +24,60 @@ const COMMON = {
     proofOfWorkLab: false,
   },
   scoring: {
+    scoringBlueprintId: "SCORING_COFFEE_100",
+    scoringBlueprintVersion: "1.0.0",
     maximumScore: 100,
     passScore: 70,
+    official: false,
+    competencyEvidenceEnabled: true,
     reportDiagnosticDimensions: true,
+  },
+  reporting: {
+    causalReport: true,
+    auditReport: false,
+    competencyReport: true,
+    activitySummary: true,
+    showTechnicalMetadataToLearner: false,
+  },
+  decisions: {
+    requireRationale: false,
+    requireEvidenceCitations: false,
+    requirePolicyCitations: false,
+    requireConfidence: false,
+    requireRiskEstimate: false,
+    allowDrafts: false,
   },
   locale: "vi",
 } as const;
 
+const GUIDED_DIMENSIONS = resolveProductDimensions("guided");
+
 export const GUIDED_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
-  mode: "guided",
+  presetId: "guided",
+  ...GUIDED_DIMENSIONS,
+  content: {
+    packId: "PACK_SCORM_STANDARD_COFFEE",
+    packVersion: "2.3.0",
+    scenarioId: "SCN_COFFEE_001",
+    scenarioVersion: "2.3.0",
+  },
+  guidance: guidancePolicyFor(GUIDED_DIMENSIONS.supportProfile),
+  feedback: feedbackPolicyFor("IMMEDIATE"),
+  hints: hintPolicyFor("ENABLED", GUIDED_DIMENSIONS.supportProfile),
+  retries: retryPolicyFor(
+    GUIDED_DIMENSIONS.supportProfile,
+    GUIDED_DIMENSIONS.deliveryPurpose,
+  ),
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    attemptPolicyId: "LMS_MANAGED",
+  },
   scenarioId: "SCN_COFFEE_001",
   scenarioVersion: "2.3.0",
   scenarioSeed: "guided-standard-v1",
   difficulty: "introductory",
-  feedbackTiming: "immediate",
-  hints: "enabled",
   scenarioVariation: {
     strategy: "FIXED",
     optionOrdering: "FIXED",
@@ -42,15 +86,42 @@ export const GUIDED_PRESET: BusinessSimulationConfiguration = {
   },
 };
 
+const CHALLENGE_DIMENSIONS =
+  resolveProductDimensions("challenge");
+
 export const CHALLENGE_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
-  mode: "challenge",
+  presetId: "challenge",
+  ...CHALLENGE_DIMENSIONS,
+  content: {
+    packId: "PACK_SCORM_CHALLENGE_COFFEE",
+    packVersion: "2.0.0",
+    scenarioId: "SCN_COFFEE_CHALLENGE",
+    scenarioVersion: "2.0.0",
+    variantBankId: "BANK_COFFEE_CHALLENGE_V1",
+    variantBankVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor(
+    CHALLENGE_DIMENSIONS.supportProfile,
+  ),
+  feedback: feedbackPolicyFor("STAGE_END"),
+  hints: hintPolicyFor(
+    "LIMITED",
+    CHALLENGE_DIMENSIONS.supportProfile,
+  ),
+  retries: retryPolicyFor(
+    CHALLENGE_DIMENSIONS.supportProfile,
+    CHALLENGE_DIMENSIONS.deliveryPurpose,
+  ),
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    attemptPolicyId: "LMS_MANAGED",
+  },
   scenarioId: "SCN_COFFEE_CHALLENGE",
   scenarioVersion: "2.0.0",
   scenarioSeed: "challenge-bank-v1",
   difficulty: "intermediate",
-  feedbackTiming: "stage-end",
-  hints: "limited",
   scenarioVariation: {
     strategy: "SEEDED_VARIANT_BANK",
     bankId: "BANK_COFFEE_CHALLENGE_V1",
@@ -62,15 +133,44 @@ export const CHALLENGE_PRESET: BusinessSimulationConfiguration = {
   },
 };
 
+const ASSESSMENT_DIMENSIONS =
+  resolveProductDimensions("assessment");
+
 export const ASSESSMENT_PRESET: BusinessSimulationConfiguration = {
   ...COMMON,
-  mode: "assessment",
+  presetId: "assessment",
+  ...ASSESSMENT_DIMENSIONS,
+  content: {
+    packId: "PACK_SCORM_STANDARD_COFFEE",
+    packVersion: "2.3.0",
+    scenarioId: "SCN_COFFEE_001",
+    scenarioVersion: "2.3.0",
+  },
+  guidance: guidancePolicyFor(
+    ASSESSMENT_DIMENSIONS.supportProfile,
+  ),
+  feedback: feedbackPolicyFor("FINAL"),
+  hints: hintPolicyFor(
+    "DISABLED",
+    ASSESSMENT_DIMENSIONS.supportProfile,
+  ),
+  retries: retryPolicyFor(
+    ASSESSMENT_DIMENSIONS.supportProfile,
+    ASSESSMENT_DIMENSIONS.deliveryPurpose,
+  ),
+  scoring: {
+    ...COMMON.scoring,
+    official: true,
+  },
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    attemptPolicyId: "LMS_MANAGED",
+  },
   scenarioId: "SCN_COFFEE_001",
   scenarioVersion: "2.3.0",
   scenarioSeed: "assessment-standard-v1",
   difficulty: "intermediate",
-  feedbackTiming: "final",
-  hints: "disabled",
   scenarioVariation: {
     strategy: "FIXED",
     optionOrdering: "FIXED",

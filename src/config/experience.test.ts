@@ -1,0 +1,162 @@
+import { describe, expect, it } from "vitest";
+import packJson from "../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import type {
+  ScenarioPackV1,
+} from "../platform/contracts/scenario-pack";
+import {
+  resolveHostedExperienceConfiguration,
+} from "../platform/runs/experience-configuration";
+import {
+  ASSESSMENT_PRESET,
+  CHALLENGE_PRESET,
+  GUIDED_PRESET,
+} from "./presets";
+import {
+  experienceConfigurationHash,
+  isAllowedExperienceCombination,
+  resolveProductDimensions,
+  validateExperienceConfiguration,
+} from "./experience";
+import { validateConfiguration } from "./validation";
+
+const pack = packJson as ScenarioPackV1;
+const scenario = pack.scenarios[0];
+
+if (scenario === undefined) {
+  throw new Error("Expected the hosted coffee scenario.");
+}
+
+describe("Configuration Schema V2 product dimensions", () => {
+  it("maps every current SCORM selector through one resolver", () => {
+    expect(resolveProductDimensions("guided")).toEqual({
+      activityType: "OPERATIONS",
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+    });
+    expect(resolveProductDimensions("challenge")).toEqual({
+      activityType: "OPERATIONS",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "CURATED_VARIANT",
+    });
+    expect(resolveProductDimensions("assessment")).toEqual({
+      activityType: "OPERATIONS",
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "ASSESSMENT",
+      outcomeStrategy: "FIXED",
+    });
+    expect(resolveProductDimensions("technical-lab")).toEqual({
+      activityType: "TECHNICAL_LAB",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+    });
+  });
+
+  it("preserves the accepted Guided, Challenge, and Assessment behavior", () => {
+    expect(GUIDED_PRESET).toMatchObject({
+      configurationSchemaVersion: "2",
+      scenarioId: "SCN_COFFEE_001",
+      scenarioVersion: "2.3.0",
+      feedback: { timing: "IMMEDIATE" },
+      hints: { availability: "ENABLED" },
+      scoring: { maximumScore: 100, passScore: 70 },
+    });
+    expect(CHALLENGE_PRESET).toMatchObject({
+      scenarioId: "SCN_COFFEE_CHALLENGE",
+      scenarioVersion: "2.0.0",
+      feedback: { timing: "STAGE_END" },
+      hints: { availability: "LIMITED" },
+      scenarioVariation: {
+        strategy: "SEEDED_VARIANT_BANK",
+      },
+    });
+    expect(ASSESSMENT_PRESET).toMatchObject({
+      scenarioId: "SCN_COFFEE_001",
+      scenarioVersion: "2.3.0",
+      feedback: { timing: "FINAL" },
+      hints: { availability: "DISABLED" },
+      scoring: { official: true },
+    });
+  });
+
+  it("rejects invalid dimension combinations and preset drift", () => {
+    expect(
+      isAllowedExperienceCombination({
+        activityType: "OPERATIONS",
+        supportProfile: "GUIDED",
+        deliveryPurpose: "ASSESSMENT",
+        outcomeStrategy: "FIXED",
+      }),
+    ).toBe(false);
+    const invalid = validateConfiguration({
+      ...GUIDED_PRESET,
+      deliveryPurpose: "ASSESSMENT",
+    });
+    expect(invalid.isValid).toBe(false);
+    expect(invalid.issues.map((entry) => entry.path)).toContain(
+      "deliveryPurpose",
+    );
+    const incompleteHostedConfiguration = structuredClone(
+      GUIDED_PRESET,
+    ) as unknown as {
+      guidance: Record<string, unknown>;
+    };
+    delete incompleteHostedConfiguration.guidance.referenceWorkspace;
+    expect(
+      validateExperienceConfiguration(
+        incompleteHostedConfiguration,
+      ).map((entry) => entry.path),
+    ).toContain("guidance.referenceWorkspace");
+  });
+
+  it("resolves every hosted behavior profile into stable product metadata", () => {
+    const configurations = scenario.modeConfigurations.map(
+      (runtimeConfiguration) =>
+        resolveHostedExperienceConfiguration({
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenario,
+          runtimeConfiguration,
+          locale: "vi",
+        }),
+    );
+    expect(configurations).toHaveLength(
+      scenario.supportedModes.length,
+    );
+    expect(
+      configurations.map(
+        (entry) => entry.configuration.presetId,
+      ),
+    ).toEqual([
+      "hosted-tutorial",
+      "hosted-standard",
+      "hosted-sandbox",
+      "hosted-configured",
+    ]);
+    for (const entry of configurations) {
+      expect(validateExperienceConfiguration(entry.configuration)).toEqual(
+        [],
+      );
+      expect(
+        experienceConfigurationHash(entry.configuration),
+      ).toBe(entry.configurationHash);
+    }
+    expect(configurations[0]?.configuration).toMatchObject({
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+    });
+    expect(configurations[1]?.configuration).toMatchObject({
+      supportProfile: "CHALLENGE",
+      deliveryPurpose: "ASSESSMENT",
+      outcomeStrategy: "FIXED",
+    });
+    expect(configurations[2]?.configuration).toMatchObject({
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "SANDBOX",
+      outcomeStrategy: "SEEDED_STOCHASTIC",
+    });
+  });
+});

@@ -72,8 +72,8 @@ export function App(): ReactNode {
 
       <main className="workspace" id="main-content">
         <StageRouter stageId={state.viewedStageId} />
-        {packageConfiguration?.configuration.referenceWorkspace !==
-        "disabled" ? (
+        {packageConfiguration?.configuration.guidance
+          .referenceWorkspace !== false ? (
           <WorkspaceTabs />
         ) : null}
       </main>

@@ -65,6 +65,10 @@ import {
   validateHostedModeConfiguration,
 } from "../runs/mode-configuration";
 import {
+  assertHostedExperienceIdentity,
+  resolveHostedExperienceConfiguration,
+} from "../runs/experience-configuration";
+import {
   resolveStochasticOutcome,
   type StochasticOutcomeResolutionV1,
 } from "../runs/stochastic-outcomes";
@@ -988,6 +992,7 @@ export class HostedStage3RunService {
       modeConfiguration,
       outcomeResolution,
       scenarioSeed,
+      experience,
     } =
       this.resolveModeAndOutcome(request);
     if (!isCaseVariant(outcomeResolution.outcomeCode)) {
@@ -1050,6 +1055,10 @@ export class HostedStage3RunService {
         caseVariant: effectiveRequest.caseVariant,
         modeConfiguration:
           modeConfiguration as unknown as JsonObject,
+        experienceConfiguration:
+          experience.configuration as unknown as JsonObject,
+        experienceConfigurationHash:
+          experience.configurationHash,
         packContentHash: this.packContentHash(),
       },
     });
@@ -3227,8 +3236,27 @@ export class HostedStage3RunService {
           modeConfiguration,
           outcomeResolution,
           scenarioSeed,
+          experience,
         } =
           this.resolveModeAndOutcome(request);
+        try {
+          assertHostedExperienceIdentity({
+            configuration:
+              event.payload.experienceConfiguration,
+            configurationHash: requiredString(
+              event.payload.experienceConfigurationHash,
+              "experienceConfigurationHash",
+            ),
+            expected: experience,
+          });
+        } catch (error) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            error instanceof Error
+              ? error.message
+              : "Run experience evidence is invalid.",
+          );
+        }
         if (
           outcomeResolution.outcomeCode !== caseVariant ||
           scenarioSeed !== request.scenarioSeed
@@ -3261,6 +3289,10 @@ export class HostedStage3RunService {
           scenarioVersion: event.scenarioVersion,
           mode: request.mode,
           modeConfiguration,
+          experienceConfiguration:
+            experience.configuration,
+          experienceConfigurationHash:
+            experience.configurationHash,
           scenarioSeed,
           caseVariant,
           outcomeResolution,
@@ -5022,6 +5054,9 @@ export class HostedStage3RunService {
     >;
     readonly outcomeResolution: StochasticOutcomeResolutionV1;
     readonly scenarioSeed: string;
+    readonly experience: ReturnType<
+      typeof resolveHostedExperienceConfiguration
+    >;
   } {
     const scenario = this.hostedScenario();
     const authoredConfiguration = modeConfigurationFor(
@@ -5044,6 +5079,16 @@ export class HostedStage3RunService {
         "Run mode behavior must match the exact published scenario configuration.",
       );
     }
+    const experience =
+      resolveHostedExperienceConfiguration({
+        packId: this.pack.packId,
+        packVersion: this.pack.version,
+        scenario,
+        runtimeConfiguration: modeConfiguration,
+        locale: this.pack.supportedLocales.includes("vi")
+          ? "vi"
+          : "en",
+      });
     const outcomeModelId = modeConfiguration.outcomeModelId;
     const model = (scenario.outcomeModels ?? []).find(
       (candidate) =>
@@ -5070,6 +5115,7 @@ export class HostedStage3RunService {
     return {
       modeConfiguration,
       scenarioSeed,
+      experience,
       outcomeResolution: resolveStochasticOutcome({
         model,
         scenarioVersion: scenario.version,

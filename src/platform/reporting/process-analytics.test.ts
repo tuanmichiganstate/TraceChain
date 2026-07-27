@@ -7,11 +7,31 @@ import type {
   RunEventV1,
 } from "../contracts/run-events";
 import { createAssignmentProcessAnalytics } from "./process-analytics";
+import { hostedExperienceFixture } from "../runs/experience-configuration.test-fixture";
 
+const runtimeConfiguration = {
+  mode: "standard",
+  allowHints: false,
+  allowRetry: false,
+  allowBacktracking: false,
+  feedbackTiming: "final",
+  showScores: false,
+  outcomeStrategy: "forced",
+  seedPolicy: "supplied",
+  allowCommunication: false,
+  allowEvidenceRequests: true,
+} as const;
+const experience = hostedExperienceFixture({
+  packId: "PACK_ANALYTICS",
+  packVersion: "1.0.0",
+  scenarioId: "SCENARIO_ANALYTICS",
+  scenarioVersion: "1.0.0",
+  runtimeConfiguration,
+});
 const report: HostedAssignmentReportV1 = {
-  schemaVersion: "1.3.0",
+  schemaVersion: "2.0.0",
   assignment: {
-    schemaVersion: "1.3.0",
+    schemaVersion: "2.0.0",
     assignmentId: "ASSIGNMENT_ANALYTICS_001",
     title: "Analytics cohort",
     packId: "PACK_ANALYTICS",
@@ -19,18 +39,10 @@ const report: HostedAssignmentReportV1 = {
     scenarioId: "SCENARIO_ANALYTICS",
     scenarioVersion: "1.0.0",
     mode: "standard",
-    runConfiguration: {
-      mode: "standard",
-      allowHints: false,
-      allowRetry: false,
-      allowBacktracking: false,
-      feedbackTiming: "final",
-      showScores: false,
-      outcomeStrategy: "forced",
-      seedPolicy: "supplied",
-      allowCommunication: false,
-      allowEvidenceRequests: true,
-    },
+    runConfiguration: runtimeConfiguration,
+    experienceConfiguration: experience.configuration,
+    experienceConfigurationHash:
+      experience.configurationHash,
     counterfactualReplay: {
       enabled: false,
       allowedDecisionNodeIds: [],

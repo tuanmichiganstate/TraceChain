@@ -23,6 +23,7 @@ import {
   evaluateCertificateDecision,
 } from "../../domain/simulation/consequential-decisions";
 import { JournalOpcode } from "../../domain/simulation/command-journal";
+import { simulationFeedbackTiming } from "../../config/experience";
 import type {
   CertificateAssessment,
   CertificateStorageChoice,
@@ -120,7 +121,11 @@ export function AnchorCertificateStage(): ReactNode {
     issuerResolved && storageResolved && dispositionResolved;
   const revealDetailedFeedback = shouldRevealDetailedFeedback({
     timing:
-      packageConfiguration?.configuration.feedbackTiming ?? "immediate",
+      packageConfiguration == null
+        ? "immediate"
+        : simulationFeedbackTiming(
+            packageConfiguration.configuration.feedback.timing,
+          ),
     stageId: ScenarioStageId.ANCHOR_CERTIFICATE,
     completedStageIds: state.completedStageIds,
     simulationCompleted: isCompleted,

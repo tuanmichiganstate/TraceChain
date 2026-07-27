@@ -1,4 +1,4 @@
-# Assignment evidence export V1
+# Assignment evidence export V2
 
 Status: implemented for the hosted instructor platform.
 
@@ -35,10 +35,10 @@ GET /api/v1/assignments/{assignmentId}/export.csv?identity=pseudonymous
 Both responses use `Cache-Control: no-store` and an attachment filename:
 
 ```text
-TraceChain_{assignmentId}_evidence_v1.json
-TraceChain_{assignmentId}_evidence_v1.csv
-TraceChain_{assignmentId}_pseudonymous_evidence_v1.json
-TraceChain_{assignmentId}_pseudonymous_evidence_v1.csv
+TraceChain_{assignmentId}_evidence_v2.json
+TraceChain_{assignmentId}_evidence_v2.csv
+TraceChain_{assignmentId}_pseudonymous_evidence_v2.json
+TraceChain_{assignmentId}_pseudonymous_evidence_v2.csv
 ```
 
 Learners cannot call these routes.
@@ -48,7 +48,7 @@ Learners cannot call these routes.
 The JSON document has:
 
 ```text
-schemaVersion       1.5.0
+schemaVersion       2.0.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
 identityMode        identified or pseudonymous
 researchMetadata    null or bounded controlled-study metadata
@@ -62,7 +62,9 @@ moderationResolutions complete RubricModerationResolutionV1 history
 dataDictionary      versioned dataset and field definitions
 ```
 
-The assignment carries the exact pack and scenario identity, optional immutable
+The assignment carries Configuration Schema V2, its canonical hash, the exact
+activity, support, delivery, outcome, content, and scoring-blueprint identity,
+the exact pack and scenario identity, optional immutable
 UTC `availableFrom` and `availableUntil` boundaries, active or closed status,
 and trusted closure time and performer when lifecycle audit metadata is
 available. Every event
@@ -104,7 +106,7 @@ different content versions.
 The CSV layout identifier is:
 
 ```text
-TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V1
+TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2
 ```
 
 CSV uses RFC 4180 quoting and CRLF line endings. It is one normalized table so
@@ -142,7 +144,16 @@ pack_id
 pack_version
 scenario_id
 scenario_version
-mode
+runtime_profile
+configuration_schema_version
+experience_configuration_hash
+preset_id
+activity_type
+support_profile
+delivery_purpose
+outcome_strategy
+scoring_blueprint_id
+scoring_blueprint_version
 status
 event_count
 rating_id
@@ -195,7 +206,7 @@ the event-derived `activity` object.
   assessment records.
 - All authoritative run, rating, and moderation timestamps are UTC.
 - A newer export may contain later events, rating revisions, or resolutions.
-- The JSON data dictionary and this document define export schema V1.
+- The JSON data dictionary and this document define export schema V2.
 - Export access does not imply that learners may see withheld feedback.
 
 Changing column meaning, record types, or required JSON fields requires a new

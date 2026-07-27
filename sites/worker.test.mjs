@@ -47,6 +47,108 @@ const instructorCounterfactualReplay = {
   requireReflection: true,
 };
 
+function canonicalJson(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  }
+  return `{${Object.keys(value)
+    .sort()
+    .filter((key) => value[key] !== undefined)
+    .map(
+      (key) =>
+        `${JSON.stringify(key)}:${canonicalJson(value[key])}`,
+    )
+    .join(",")}}`;
+}
+
+function standardHostedExperienceFixture({
+  packId,
+  packVersion,
+  scenarioId,
+  scenarioVersion,
+}) {
+  const configuration = {
+    configurationSchemaVersion: "2",
+    presetId: "hosted-standard",
+    activityType: "OPERATIONS",
+    supportProfile: "CHALLENGE",
+    deliveryPurpose: "ASSESSMENT",
+    outcomeStrategy: "FIXED",
+    content: {
+      packId,
+      packVersion,
+      scenarioId,
+      scenarioVersion,
+    },
+    guidance: {
+      missionDetail: "MINIMAL",
+      evidenceGuidance: "NONE",
+      policyGuidance: "NONE",
+      nextActionGuidance: "NONE",
+      fadeByProgress: false,
+      showWorkedExamples: false,
+      referenceWorkspace: true,
+    },
+    feedback: {
+      timing: "FINAL",
+      showCorrectness: true,
+      showCausalConsequences: true,
+      showWorkedExplanation: false,
+    },
+    hints: {
+      availability: "DISABLED",
+      proactiveOffer: "NOT_AVAILABLE",
+      itemScoped: true,
+      disclosureRequired: false,
+    },
+    retries: {
+      knowledgeRetry: "DISABLED",
+      professionalDecisionRevision: "APPEND_ONLY_MITIGATION",
+      maximumKnowledgeAttempts: 1,
+      maximumMitigationActions: 1,
+    },
+    decisions: {
+      requireRationale: false,
+      requireEvidenceCitations: false,
+      requirePolicyCitations: false,
+      requireConfidence: false,
+      requireRiskEstimate: false,
+      allowDrafts: false,
+    },
+    scoring: {
+      scoringBlueprintId: "HOSTED_RUBRIC_EVIDENCE_100",
+      scoringBlueprintVersion: "1.0.0",
+      maximumScore: 100,
+      passScore: 70,
+      official: true,
+      competencyEvidenceEnabled: true,
+      reportDiagnosticDimensions: true,
+    },
+    reporting: {
+      causalReport: true,
+      auditReport: false,
+      competencyReport: true,
+      activitySummary: true,
+      showTechnicalMetadataToLearner: false,
+    },
+    delivery: {
+      channel: "HOSTED",
+      persistencePolicyId: "SERVER_APPEND_ONLY_EVENT_STREAM",
+      attemptPolicyId: "ASSIGNMENT_MANAGED",
+    },
+    locale: "vi",
+  };
+  return {
+    configuration,
+    configurationHash: createHash("sha256")
+      .update(canonicalJson(configuration))
+      .digest("hex"),
+  };
+}
+
 function createAssetEnvironment(
   files = {},
   { redirectNavigationToRoot = false } = {},
@@ -587,6 +689,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     ).scenarios[0].modeConfigurations.find(
       (configuration) => configuration.mode === "standard",
     );
+    const experience = standardHostedExperienceFixture({
+      packId: "PACK",
+      packVersion: "1.0.0",
+      scenarioId: "SCENARIO",
+      scenarioVersion: "1.0.0",
+    });
     database.sqlite
       .prepare(
         `INSERT INTO scenario_pack_versions (
@@ -613,6 +721,8 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         scenario_version,
         run_mode,
         mode_configuration_json,
+        experience_configuration_json,
+        experience_configuration_hash,
         counterfactual_configuration_json,
         research_configuration_json,
         learning_platform_issuer,
@@ -626,12 +736,14 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         created_by_user_id
       ) VALUES (
         ?, ?, ?, 'PACK', '1.0.0', 'SCENARIO', '1.0.0',
-        'standard', ?, ?, ?, ?, ?, ?, ?, ?,
+        'standard', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         'active', 'withheld', ?, ?
       )`,
     );
     const assignmentArguments = [
       JSON.stringify(modeConfiguration),
+      JSON.stringify(experience.configuration),
+      experience.configurationHash,
       JSON.stringify(disabledCounterfactualReplay),
       JSON.stringify({ enabled: false }),
       issuer,
@@ -1898,6 +2010,15 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
     .digest("hex");
   const artifact = {
     presetId: "assessment",
+    configurationSchemaVersion: "2",
+    activityType: "OPERATIONS",
+    supportProfile: "CHALLENGE",
+    deliveryPurpose: "ASSESSMENT",
+    outcomeStrategy: "FIXED",
+    contentPackId: "PACK_SCORM_STANDARD_COFFEE",
+    contentPackVersion: "2.3.0",
+    scoringBlueprintId: "SCORING_COFFEE_100",
+    scoringBlueprintVersion: "1.0.0",
     title: "TraceChain Assessment",
     filename: "TraceChain_Assessment_NON_RELEASE.zip",
     downloadPath: `/scorm-packages/${sha256}.zip`,
@@ -1915,7 +2036,7 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
   const { env } = createAssetEnvironment({
     "/scorm-packages/catalog.json": {
       body: JSON.stringify({
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         generatedAt: artifact.generatedAt,
         sourceCommit: artifact.sourceCommit,
         applicationBuildHash: artifact.applicationBuildHash,
@@ -2203,8 +2324,34 @@ test("creates an exact published assignment for a provisioned learner", async ()
     );
     assert.equal(create.status, 201, await create.clone().text());
     const created = await create.json();
+    assert.deepEqual(
+      {
+        configurationSchemaVersion:
+          created.assignment.experienceConfiguration
+            .configurationSchemaVersion,
+        activityType:
+          created.assignment.experienceConfiguration.activityType,
+        supportProfile:
+          created.assignment.experienceConfiguration.supportProfile,
+        deliveryPurpose:
+          created.assignment.experienceConfiguration.deliveryPurpose,
+        outcomeStrategy:
+          created.assignment.experienceConfiguration.outcomeStrategy,
+      },
+      {
+        configurationSchemaVersion: "2",
+        activityType: "OPERATIONS",
+        supportProfile: "CHALLENGE",
+        deliveryPurpose: "ASSESSMENT",
+        outcomeStrategy: "FIXED",
+      },
+    );
+    assert.match(
+      created.assignment.experienceConfigurationHash,
+      /^[a-f0-9]{64}$/u,
+    );
     assert.deepEqual(created.assignment, {
-      schemaVersion: "1.3.0",
+      schemaVersion: "2.0.0",
       assignmentId: "ASSIGNMENT_COFFEE_001",
       title: "Coffee governance cohort",
       packId: pack.packId,
@@ -2213,6 +2360,10 @@ test("creates an exact published assignment for a provisioned learner", async ()
       scenarioVersion: pack.scenarios[0].version,
       mode: "standard",
       runConfiguration: assignmentBody.runConfiguration,
+      experienceConfiguration:
+        created.assignment.experienceConfiguration,
+      experienceConfigurationHash:
+        created.assignment.experienceConfigurationHash,
       counterfactualReplay: disabledCounterfactualReplay,
       research: { enabled: false },
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
@@ -2663,7 +2814,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       await researchExportResponse.clone().text(),
     );
     const researchExport = await researchExportResponse.json();
-    assert.equal(researchExport.schemaVersion, "1.5.0");
+    assert.equal(researchExport.schemaVersion, "2.0.0");
     assert.equal(
       researchExport.researchMetadata.experimentalConditionId,
       "CONDITION_STANDARD",
@@ -4370,7 +4521,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(report.status, 200, await report.clone().text());
     const classReport = (await report.json()).report;
-    assert.equal(classReport.schemaVersion, "1.3.0");
+    assert.equal(classReport.schemaVersion, "2.0.0");
     assert.equal(classReport.learners.length, 1);
     const reportedRun = classReport.learners[0].runs[0];
     assert.deepEqual(
@@ -4593,11 +4744,11 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       jsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.json"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v2.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "1.5.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "1.5.0");
+    assert.equal(exportedEvidence.schemaVersion, "2.0.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "2.0.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",
@@ -4677,7 +4828,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousJsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v1.json"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v2.json"',
     );
     const pseudonymousJsonText =
       await pseudonymousJsonExport.text();
@@ -4711,7 +4862,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousCsvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v1.csv"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v2.csv"',
     );
     const pseudonymousCsvText = await pseudonymousCsvExport.text();
     assert.doesNotMatch(
@@ -4753,7 +4904,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       csvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v1.csv"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v2.csv"',
     );
     const exportedCsv = await csvExport.text();
     assert.match(

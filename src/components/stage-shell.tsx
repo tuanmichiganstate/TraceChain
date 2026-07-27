@@ -81,7 +81,8 @@ export function StageShell({
           </section>
         ) : null}
 
-        {packageConfiguration?.configuration.hints !== "disabled"
+        {packageConfiguration?.configuration.hints.availability !==
+        "DISABLED"
           ? definition.availableHints.map((hint) => (
               <HintPanel key={hint.hintId} hint={hint} />
             ))
