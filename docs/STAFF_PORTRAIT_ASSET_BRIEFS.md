@@ -14,6 +14,60 @@ portrait crop, soft available light, and uncluttered backgrounds. Private-key
 material, cryptographic symbols, stereotypes, uniforms implying public
 authority, and exaggerated industrial grime are excluded.
 
+## Runtime placement
+
+Portraits provide role, organizational, evidentiary, or narrative context.
+They are deliberately limited to consequential points where professional
+identity matters:
+
+- Stage 2: farm production manager;
+- Stage 3: certification officer;
+- Stage 4: producer-to-logistics custody handoff;
+- Stage 5: receiving manager and the clerk who prepared the manifest;
+- Stage 9: retailer context and the regulator after the authored handoff;
+- hosted learner runs: the role reconstructed from the exact scenario version;
+- instructor replay: the historical professional identity at the replayed
+  node.
+
+Orientation, routine knowledge checks, ledger rows, generic report tables,
+final causal reports, instructor lists, and administration screens do not use
+portraits. The final report is not a staff gallery.
+
+## Model and trust boundary
+
+`ScenarioStaffProfile` links a fictional person to an existing actor, role,
+organization, optional location, localized text, and one approved portrait
+asset. `ScenarioPortraitAsset` records source type, approval reference,
+fictional status, local path, SHA-256, dimensions, format, and placeholder
+status. Evidence attribution is a separate scenario relationship.
+
+The visible human profile never supplies trusted command metadata. The
+orchestrator derives actor, organization, and role from the scenario's active
+trusted context. Signature validity, key identity, authorization, and
+endorsement remain in the cryptographic evidence components. A portrait is
+not proof of any of them.
+
+## Runtime, packaging, and accessibility
+
+Portraits live under `media/staff/` and are copied into the offline build.
+`media-manifest.json` binds a selected scenario to the exact portrait paths and
+digests. Packaging and verification enforce safe local paths, approved
+fictional sources, exact file presence and SHA-256, WebP encoding, intrinsic
+dimensions, staff-to-asset references, evidence-to-staff references, and
+bilingual localization keys.
+
+Portraits are scenario runtime content rather than static application assets.
+Guided and Challenge packages can therefore carry different versioned media
+while sharing identical JavaScript and CSS.
+
+Adjacent text provides each person's name, role, organization, and relevant
+responsibility. Images are decorative in that context and use empty alternative
+text to avoid duplicate announcements. Intrinsic dimensions reserve layout
+space. At narrow widths, cards and handoffs stack without hiding controls. A
+missing runtime image falls back to an initials tile while preserving the full
+textual identity; package verification treats a missing source asset as a
+failure.
+
 | Staff profile | Runtime asset | SHA-256 |
 |---|---|---|
 | Nguyễn Thị Mai — Farm Production Manager | `media/staff/producer-manager.webp` | `e12d002f111b56d9f8209db549c8fd58bc183e4f68f8478b182cbff3a853f616` |

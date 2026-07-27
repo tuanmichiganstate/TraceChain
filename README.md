@@ -33,15 +33,17 @@ Hosted and SCORM delivery now resolve the same Configuration Schema V2:
 professional activity, support profile, delivery purpose, outcome strategy,
 content identity, learning policies, scoring, reporting, and persistence.
 Preset and hosted-profile names remain selectors rather than overloaded product
-modes; the Phase 1 audit is in `docs/PRODUCT_MODES_PHASE_1.md`.
-Phase 2 adds development-only coded benchmarks for the shared Learning,
+modes; the Phase 1 audit is archived in
+`docs/archive/phases/PRODUCT_MODES_PHASE_1.md`.
+Phase 2 added development-only coded benchmarks for the shared Learning,
 Operations, Audit, Blockchain Inspector, professional-decision, finding, and
 persistent-result workspace architecture. The prototypes are intentionally not
 rolled into every learner screen until their recognition review is complete;
-see `docs/PRODUCT_MODES_PHASE_2.md`.
-Phase 3 makes Guided, Practice, and Challenge explicit Operations support
-profiles and adds one curated Practice bridge case without introducing another
-simulation engine or scoring contract; see `docs/PRODUCT_MODES_PHASE_3.md`.
+see `docs/archive/phases/PRODUCT_MODES_PHASE_2.md`.
+Phase 3 made Guided, Practice, and Challenge explicit Operations support
+profiles and added one curated Practice bridge case without introducing another
+simulation engine or scoring contract; see
+`docs/archive/phases/PRODUCT_MODES_PHASE_3.md`.
 Phase 4 adds one fixed hosted Guided Audit case over an immutable completed
 coffee process. Audit findings, decoys, workpapers, scoring, conclusions, and
 reports use the shared event, replay, assignment, competency, and persistence
@@ -59,9 +61,11 @@ calibration views. Phase 8 now has a frozen technical candidate, proposed
 concept, Audit, usability, rater, accessibility, and Vietnamese-review
 instruments, plus an execution record that keeps automated readiness separate
 from still-unapproved participant evidence; see
-`docs/PRODUCT_MODES_PHASE_4.md`,
-`docs/PRODUCT_MODES_PHASE_5.md`, `docs/PRODUCT_MODES_PHASE_6.md`, and
-`docs/PRODUCT_MODES_PHASE_7.md`, and `docs/PRODUCT_MODES_PHASE_8.md`.
+`docs/archive/phases/PRODUCT_MODES_PHASE_4.md`,
+`docs/archive/phases/PRODUCT_MODES_PHASE_5.md`,
+`docs/archive/phases/PRODUCT_MODES_PHASE_6.md`,
+`docs/archive/phases/PRODUCT_MODES_PHASE_7.md`, and
+`docs/pilot/PRODUCT_MODES_PHASE_8.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -300,98 +304,19 @@ schemas/               published versioned JSON Schemas
 
 ## Documentation
 
-- `AGENTS.md` — how to verify a change here, and the conventions one follows
-- `docs/CANONICAL_CONFIGURABLE_SCORM_PLAN.md` — the approved configurable
-  simulation boundary, exact scoring allocation, TC3 budget, and delivery gates
-- `docs/CONTROLLED_SEEDED_SCENARIO_VARIATION.md` — the implemented Challenge
-  bank, deterministic assignment, TC3, packaging, and honest SCORM limits
-- `docs/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md` — the approved,
-  two-increment follow-on plan for genuine Ed25519 signatures, authorization,
-  and endorsement policies
-- `docs/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md` — the approved stopping
-  point B roadmap for the hosted instructor-ready platform
-- `docs/PRODUCT_MODES_PHASE_3.md` — the implemented Operations support
-  profiles, curated Practice case, persistence contract, and acceptance gates
-- `docs/PRODUCT_MODES_PHASE_5.md` — the historical Practice Audit and TA1
-  boundary, superseded by the direct TA2 upgrade in Phase 6
-- `docs/PRODUCT_MODES_PHASE_6.md` — Audit Challenge and Assessment candidate
-  bank, TA2 assignment, hosted allocation, calibration, and remaining human
-  review gate
-- `docs/PRODUCT_MODES_PHASE_7.md` — eight-preset graphical selection, Audit
-  case-bank authoring, class reports, finding replay, and calibration views
-- `docs/PRODUCT_MODES_PHASE_8.md` — technical pilot readiness, proposed human
-  instruments, evidence sources, and the binding approval and participant gate
-- `docs/PHASE_8_PILOT_INSTRUMENTS_V1.md` — parallel concept forms, Audit
-  observations, usability tasks, rater records, accessibility, and Vietnamese
-  review instruments
-- `docs/PHASE_8_TECHNICAL_BASELINE_2026-07-27.md` — exact source, CI, browser,
-  SCORM, hosted, and Moodle evidence for the current pilot candidate
-- `docs/current-architecture.md` / `docs/target-architecture.md` — the
-  repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.9 pack schema, validation, publication,
-  native-runtime, generic-workflow, and security contract
-- `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
-  role boundaries, and bootstrap procedure
-- `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md` — administrator-only user and
-  role provisioning, idempotency, audit, and self-protection boundaries
-- `docs/PRODUCT_MODES_PHASE_1.md` and ADR 0003 — the multidimensional
-  configuration audit, compatibility map, persistence, and Phase 1 boundary
-- `docs/PRODUCT_MODES_PHASE_2.md` — the development-only shared workspace
-  primitives, eight coded benchmarks, and review gate before broad rollout
-- `docs/ASSIGNMENT_EXPORT_V2.md` — the stable assignment JSON/CSV evidence
-  contract and data dictionary
-- `docs/DECISION_OUTCOME_REPORT_V1.md` — replay-derived completed decision
-  evidence, realized outcomes, and active-run concealment
-- `docs/COMPETENCY_REPORT_V1.md` — versioned learner and class competency
-  evidence aggregation and its no-inference boundary
-- `docs/CURRICULUM_OVERLAY_V2.md` — independently owned versioned
-  external-outcome mappings, evidence provenance, validation, and the
-  no-attainment boundary
-- `docs/RUN_REPLAY_V1.md` — exact sequence-bounded instructor replay and the
-  hidden-state boundary
-- `docs/RUBRIC_MODERATION_V1.md` — append-only rubric score resolution and its
-  separation from simulation scoring
-- `docs/HOSTED_RUN_MODES_V1.md` — published Tutorial, Standard, Sandbox, and
-  Configured behavior plus deterministic outcome replay
-- `docs/COUNTERFACTUAL_BRANCH_FOUNDATION_V1.md` — hosted-only authored
-  eligibility, copy-on-write replay, decision and constrained-condition
-  comparison, and ungraded reflection
-- `docs/COUNTERFACTUAL_EXPORT_V1.md` — stable branch JSON/CSV and
-  assignment-level counterfactual reporting
-- `docs/POST_PLATFORM_ROADMAP.md` — ranked learning, adoption, collaboration,
-  and ecosystem priorities after the instructor-ready boundary
-- `docs/POST_PLATFORM_BASELINE_V1.md` — candidate release identity and the
-  boundary between automated readiness and human acceptance
-- `docs/POST_PLATFORM_PRIORITIES_5_6_7_8_11_V1.md` — the bounded
-  implementation and remaining external gates for Simulation Director,
-  assignment deep linking, process analytics, controlled-study metadata, and
-  professional consequences
-- `docs/PILOT_VALIDATION_PROTOCOL_V1.md` — operational pilot measures,
-  accessibility and content review, reliability, calibration, and exit gates
-- `docs/PILOT_EXECUTION_RECORD_V1.md` — immutable pilot baseline, approvals,
-  cohorts, evidence, and product-decision record
-- `docs/PHARMACEUTICAL_TRANSFER_ACCEPTANCE_V1.md` — transfer-case technical
-  evidence and still-open subject, calibration, accessibility, and pilot gates
-- `docs/ROADMAP_RERANKING_REVIEW_V1.md` — evidence inventory and the current
-  decision to defer re-ranking until pilot findings exist
-- `docs/SCENARIO_AUTHORING_V1.md` — self-localized pack import, visual draft
-  editing, validation, preview, comparison, publication, and retirement
-- `docs/SCORM_PACKAGE_JOBS_V1.md` — hosted package identity, object storage,
-  shared-build verification, and exact download behavior
-- `docs/HOSTED_ROLE_WORKSPACES_V1.md` — authenticated learner, instructor,
-  rater, author, and administrator route boundaries
-- `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md` — Moodle LTI 1.3 instructor
-  launch, course-context scope, manual registration, and deferred services
-- `docs/ARCHITECTURE.md` — layering, invariants, and every deviation from the
-  specification with its reasoning
-- `docs/DOMAIN_MODEL.md` — entities, the transaction lifecycle, hashing, time
-- `docs/SCENARIO_FLOW.md` — the nine stages and the non-obvious design calls
-- `docs/SCORING_MODEL.md` — allocation, the deduction ladder, recall precision
-- `docs/CONTENT_AUTHORING.md` — changing the activity, or writing a new one
-- `docs/LOCALIZATION_GUIDE.md` — Vietnamese conventions and the audit rules
-- `docs/FUTURE_LEDGER_ADAPTERS.md` — what Tier 2 and Tier 3 would take
-- `docs/MOODLE_TESTING.md` — the Moodle acceptance checklist
-- `CHANGELOG.md`
+Start with [`docs/README.md`](docs/README.md). It separates current
+implementation contracts, active pilot evidence, architecture decisions,
+generated review material, and historical records.
+
+The most frequently used references are:
+
+- [`AGENTS.md`](AGENTS.md) — verification and repository conventions
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime boundaries
+- [`docs/SCENARIO_FLOW.md`](docs/SCENARIO_FLOW.md) — learner journey
+- [`docs/SCORING_MODEL.md`](docs/SCORING_MODEL.md) — scoring contract
+- [`docs/CONTENT_AUTHORING.md`](docs/CONTENT_AUTHORING.md) — content changes
+- [`docs/MOODLE_TESTING.md`](docs/MOODLE_TESTING.md) — Moodle acceptance
+- [`CHANGELOG.md`](CHANGELOG.md) — release history
 
 ## Constraints worth knowing before you change anything
 

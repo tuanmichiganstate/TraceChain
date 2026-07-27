@@ -191,7 +191,7 @@ This report is generated from the compiled SCORM scenarios, all hosted scenario 
 | EVID-002 | HIGH | CLOSED | Stage 5 asked for the most likely cause when only the numerical mismatch was visible. | Added scenario-specific pre-decision investigation evidence: the standard case supports a typing error; Challenge explicitly leaves the cause unknown. |
 | EVID-003 | HIGH | CLOSED | Stage 8 required six governance classifications without stating the consortium's handling criteria. | Added the four scenario-specific criteria immediately before the classification in SCORM and hosted runs. |
 | EVID-004 | MEDIUM | CLOSED | Generic hosted pharmaceutical evidence is accurate but still displayed as compact structured data rather than domain-specific prose. | Added localized professional summaries for sensor, custody, calibration, and stability evidence while preserving the authored values and role visibility. |
-| EVID-005 | MEDIUM | OPEN | Automated accessibility checks do not replace a real screen-reader evidence-discovery review. | Follow docs/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot. |
+| EVID-005 | MEDIUM | OPEN | Automated accessibility checks do not replace a real screen-reader evidence-discovery review. | Follow docs/pilot/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot. |
 | EVID-006 | MEDIUM | OPEN | Vietnamese evidence wording has not been reviewed by a Vietnamese supply-chain subject expert. | Use the regenerated bilingual content-review pack for subject-expert sign-off. |
 
 ## Exclusions

@@ -1068,7 +1068,7 @@
       "severity": "MEDIUM",
       "status": "OPEN",
       "summary": "Automated accessibility checks do not replace a real screen-reader evidence-discovery review.",
-      "disposition": "Follow docs/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot."
+      "disposition": "Follow docs/pilot/ACCESSIBILITY_SCREEN_READER_REVIEW_PROTOCOL.md during the next human pilot."
     },
     {
       "findingId": "EVID-006",

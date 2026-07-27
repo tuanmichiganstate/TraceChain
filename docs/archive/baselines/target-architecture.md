@@ -1,7 +1,8 @@
 # Target architecture
 
 Status: Phase 0 target for the instructor-ready configurable platform
-Canonical roadmap: `docs/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md`
+Canonical roadmap:
+[`CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md`](../plans/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md)
 
 ## Architectural objective
 
