@@ -3004,6 +3004,31 @@ test("runs the fixed Guided Audit through published assignment, D1, and replay A
       (await replay.json()).replay.projection.audit.auditCaseId,
       "AUDIT_COFFEE_CONTROLS_001",
     );
+
+    const classAuditReport = await worker.fetch(
+      apiRequest(
+        `/api/v1/assignments/${assignmentId}/audit-report`,
+        {
+          email: "guided-audit-instructor@example.edu",
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      classAuditReport.status,
+      200,
+      await classAuditReport.clone().text(),
+    );
+    const auditReport = (await classAuditReport.json()).auditReport;
+    assert.equal(
+      auditReport.reportType,
+      "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
+    );
+    assert.equal(auditReport.reviewOnly, true);
+    assert.equal(auditReport.officialScoresUnchanged, true);
+    assert.equal(auditReport.summary.runCount, 1);
+    assert.equal(auditReport.runs[0].auditCaseId, "AUDIT_COFFEE_CONTROLS_001");
+    assert.equal(auditReport.calibration, null);
   } finally {
     database.close();
   }

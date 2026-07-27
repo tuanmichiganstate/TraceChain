@@ -1365,6 +1365,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     }
     if (
       pathname ===
+      `/api/v1/assignments/${assignmentId}/audit-report`
+    ) {
+      await route.fulfill({ json: { auditReport: null } });
+      return;
+    }
+    if (
+      pathname ===
       `/api/v1/assignments/${assignmentId}/decision-outcomes`
     ) {
       await route.fulfill({

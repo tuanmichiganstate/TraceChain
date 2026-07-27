@@ -105,6 +105,76 @@ describe("scenario author workspace", () => {
     ).toBeInTheDocument();
   });
 
+  it("loads a complete Audit case bank and exposes its validation contract", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 3_000,
+      issues: [],
+      packId: "PACK_CHALLENGE_COFFEE_AUDIT",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Load Audit case-bank starter",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Audit authoring contract",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "BANK_COFFEE_AUDIT_CHALLENGE_V1@1.0.0",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Material findings 2–3/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/requires expert review and pilot calibration/),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    expect(validatePack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packId: "PACK_CHALLENGE_COFFEE_AUDIT",
+        auditVariantBanks: [
+          expect.objectContaining({
+            bankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+          }),
+        ],
+      }),
+    );
+  });
+
   it("keeps the default API stable while local library controls rerender", async () => {
     const sessionRequests: string[] = [];
     const libraryRequests: string[] = [];

@@ -227,9 +227,23 @@ describe("instructor review screen", () => {
     if (builder === null) throw new Error("Expected package builder.");
     const user = userEvent.setup();
     await user.selectOptions(
-      within(builder).getByLabelText("Package preset"),
-      "assessment",
+      within(builder).getByLabelText("How much support?"),
+      "CHALLENGE",
     );
+    await user.selectOptions(
+      within(builder).getByLabelText("How will it be used?"),
+      "ASSESSMENT",
+    );
+    expect(
+      within(builder).getByRole("heading", {
+        name: "Resolved preset preview",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(builder).getByText(
+        "Vietnamese fixed assessment with no hints and feedback reserved for the final report.",
+      ),
+    ).toBeInTheDocument();
     await user.click(
       within(builder).getByRole("button", {
         name: "Generate package",
@@ -797,6 +811,75 @@ describe("instructor review screen", () => {
           "NO_AUTOMATED_HIGH_STAKES_DECISION",
         ],
       }),
+      loadAssignmentAuditReport: vi.fn().mockResolvedValue({
+        schemaVersion: "1.0.0",
+        reportType: "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        packId: "PACK_COFFEE_AUDIT_CHALLENGE",
+        packVersion: "1.0.0",
+        scenarioId: "SCN_COFFEE_AUDIT_CHALLENGE_A",
+        scenarioVersion: "1.0.0",
+        reviewOnly: true,
+        officialScoresUnchanged: true,
+        summary: {
+          runCount: 1,
+          completedRunCount: 1,
+          meanCompletedScore: 80,
+          confirmedFindingCount: 1,
+          unsupportedFindingCount: 0,
+          missedFindingCount: 1,
+        },
+        runs: [
+          {
+            runId: "RUN_EXPORT_001",
+            learnerUserId: "USER_LEARNER_001",
+            auditCaseId: "AUDIT_COFFEE_CHALLENGE_A",
+            auditCaseVersion: "1.0.0",
+            sourceStateHash: "a".repeat(64),
+            status: "completed",
+            elapsedSeconds: 1_800,
+            score: 80,
+            maximumScore: 100,
+            passed: true,
+            confirmedFindingCount: 1,
+            unsupportedFindingCount: 0,
+            missedFindingCount: 1,
+            evidenceCitationCount: 1,
+            policyCitationCount: 1,
+            variant: {
+              variantId: "AUDIT_CHALLENGE_A",
+              variantVersion: "1.0.0",
+              variantContentHash: "b".repeat(64),
+              caseReference: "AC-01",
+            },
+            findings: [
+              {
+                findingId: "FINDING_001",
+                revision: 1,
+                title: "Expired certificate accepted",
+                severity: "HIGH",
+                materiality: "MATERIAL",
+                evidenceIds: ["EVID_CERTIFICATE"],
+                policyIds: ["POLICY_CERTIFICATE"],
+                classification: "CONFIRMED",
+                eventId: "HEVT_EXPORT_002",
+                sequenceNumber: 2,
+                eventType: "AUDIT_FINDING_SUBMITTED",
+              },
+            ],
+          },
+        ],
+        variantDistribution: [
+          {
+            variantId: "AUDIT_CHALLENGE_A",
+            variantVersion: "1.0.0",
+            caseReference: "AC-01",
+            runCount: 1,
+            completedRunCount: 1,
+          },
+        ],
+        calibration: null,
+      }),
       loadAssignmentReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.3.0",
         assignment,
@@ -958,6 +1041,21 @@ describe("instructor review screen", () => {
     expect(
       report.getByRole("heading", {
         name: "Decision-process observations",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Class Audit report",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("button", {
+        name: "Review source event for finding FINDING_001",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Variant distribution",
       }),
     ).toBeInTheDocument();
     expect(
@@ -1579,6 +1677,8 @@ describe("instructor review screen", () => {
             ? { timeline: [] }
           : path.endsWith("/monitor")
               ? { monitor: { schemaVersion: "1.0.0" } }
+            : path.endsWith("/audit-report")
+              ? { auditReport: null }
             : path.endsWith("/curriculum-crosswalks")
               ? {
                   curriculumCrosswalks: {
@@ -1650,6 +1750,9 @@ describe("instructor review screen", () => {
     await api.loadAssignmentProcessAnalytics?.(
       "ASSIGNMENT / 001",
     );
+    await api.loadAssignmentAuditReport?.(
+      "ASSIGNMENT / 001",
+    );
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
@@ -1665,6 +1768,7 @@ describe("instructor review screen", () => {
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/monitor",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/curriculum-crosswalks",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/process-analytics",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/audit-report",
     ]);
   });
 });

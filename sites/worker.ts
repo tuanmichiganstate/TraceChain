@@ -27,6 +27,7 @@ import type {
 import type {
   ApplicationUserStatus,
 } from "../src/platform/contracts/access-administration";
+import type { AuditVariantAssignmentV1 } from "../src/platform/contracts/audit";
 import type { ApplicationRole } from "../src/platform/contracts/run-events";
 import en from "../src/locales/en.json";
 import vi from "../src/locales/vi.json";
@@ -158,6 +159,7 @@ import {
   serializeAssignmentCurriculumCrosswalkReportJson,
 } from "../src/platform/reporting/curriculum-crosswalk-report";
 import { createAssignmentProcessAnalytics } from "../src/platform/reporting/process-analytics";
+import { createAuditAssignmentReport } from "../src/platform/reporting/audit-assignment-report";
 import {
   repositoryCurriculumOverlays,
 } from "../src/platform/curriculum-overlays/repository-overlays";
@@ -353,6 +355,57 @@ function requiredText(
     );
   }
   return value;
+}
+
+function storedAuditVariantAssignment(
+  value: unknown,
+): AuditVariantAssignmentV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Stored Audit variant identity is invalid.",
+    );
+  }
+  const textFields = [
+    "bankId",
+    "bankVersion",
+    "variantId",
+    "variantVersion",
+    "variantContentHash",
+    "attemptSeed",
+    "caseReference",
+  ] as const;
+  if (
+    textFields.some(
+      (field) =>
+        typeof value[field] !== "string" ||
+        (value[field] as string).trim().length === 0,
+    ) ||
+    !Number.isSafeInteger(value.variantIndex) ||
+    (value.variantIndex as number) < 0 ||
+    value.selectionAlgorithmVersion !== "1" ||
+    (value.assignmentSource !== "SCORM_ATTEMPT" &&
+      value.assignmentSource !== "STANDALONE_ATTEMPT" &&
+      value.assignmentSource !== "HOSTED_ASSIGNMENT")
+  ) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Stored Audit variant identity is invalid.",
+    );
+  }
+  return {
+    bankId: value.bankId as string,
+    bankVersion: value.bankVersion as string,
+    variantIndex: value.variantIndex as number,
+    variantId: value.variantId as string,
+    variantVersion: value.variantVersion as string,
+    variantContentHash: value.variantContentHash as string,
+    attemptSeed: value.attemptSeed as string,
+    selectionAlgorithmVersion: "1",
+    caseReference: value.caseReference as string,
+    assignmentSource: value.assignmentSource,
+  };
 }
 
 async function readJson(
@@ -1007,6 +1060,10 @@ async function hostedServiceForRun(
       "The run's exact published scenario pack is unavailable.",
     );
   }
+  const auditVariantAssignment =
+    storedAuditVariantAssignment(
+      first.payload.variantAssignment,
+    );
   return {
     pack,
     service: createHostedRuntimeService({
@@ -1020,6 +1077,9 @@ async function hostedServiceForRun(
         store,
         counterfactualRepository,
       ),
+      ...(auditVariantAssignment === undefined
+        ? {}
+        : { auditVariantAssignment }),
     }),
   };
 }
@@ -2405,6 +2465,108 @@ async function apiResponse(
       new SystemUtcClock(),
     ).report(reportAssignmentId);
     return jsonResponse(200, { report });
+  }
+
+  const auditReportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "audit-report",
+  );
+  if (
+    request.method === "GET" &&
+    auditReportAssignmentId !== null
+  ) {
+    const reportActor = requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    );
+    const report = await repository.report(
+      auditReportAssignmentId,
+    );
+    if (
+      reportActor.roles.includes("instructor") &&
+      !reportActor.roles.includes("administrator") &&
+      report.assignment.createdByUserId !== reportActor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The assignment is outside the instructor's scope.",
+      );
+    }
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      clock,
+      reportActor.userId,
+    ).find(report.assignment.packId, report.assignment.packVersion);
+    const assignmentScenario = pack?.scenarios.find(
+      (scenario) =>
+        scenario.scenarioId === report.assignment.scenarioId &&
+        scenario.version === report.assignment.scenarioVersion,
+    );
+    if (
+      pack === null ||
+      pack.status !== "published" ||
+      assignmentScenario === undefined
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Audit reporting requires the assignment's exact published pack.",
+      );
+    }
+    if (assignmentScenario.auditCase === undefined) {
+      return jsonResponse(200, { auditReport: null });
+    }
+    const bank = pack.auditVariantBanks.find((candidate) =>
+      candidate.variants.some(
+        (variant) =>
+          variant.scenarioId === assignmentScenario.scenarioId &&
+          variant.scenarioVersion === assignmentScenario.version,
+      ),
+    );
+    const sources = await Promise.all(
+      report.learners.flatMap((learner) =>
+        learner.runs.map(async (summary) => {
+          const { service } = await hostedServiceForRun(
+            environment,
+            reportActor.userId,
+            summary.runId,
+          );
+          const [replay, timeline] = await Promise.all([
+            service.instructorReplay(
+              reportActor,
+              summary.runId,
+            ),
+            service.instructorTimeline(
+              reportActor,
+              summary.runId,
+            ),
+          ]);
+          if (replay.projection.audit === undefined) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "An Audit assignment contains a non-Audit run.",
+            );
+          }
+          return {
+            summary,
+            projection: replay.projection.audit,
+            timeline,
+          };
+        }),
+      ),
+    );
+    return jsonResponse(200, {
+      auditReport: createAuditAssignmentReport({
+        assignmentReport: report,
+        runs: sources,
+        ...(bank === undefined ? {} : { bank }),
+      }),
+    });
   }
 
   const decisionOutcomeAssignmentId = pathAssignmentId(

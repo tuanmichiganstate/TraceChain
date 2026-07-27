@@ -1,5 +1,6 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { JSON_SCHEMA, load as loadYaml } from "js-yaml";
+import auditPackTemplate from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import pharmaceuticalPackTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import {
   useEffect,
@@ -381,6 +382,13 @@ export function ScenarioAuthorScreen({
     setMessageKey(null);
   }
 
+  function loadAuditStarter() {
+    setCandidate(structuredClone(auditPackTemplate));
+    setFileName(t("scenarioAuthor.template.auditCaseBank"));
+    setReport(null);
+    setMessageKey(null);
+  }
+
   async function validate() {
     if (candidate === undefined) return;
     setBusy(true);
@@ -525,6 +533,14 @@ export function ScenarioAuthorScreen({
               >
                 {t("scenarioAuthor.loadTemplate")}
               </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={busy}
+                onClick={loadAuditStarter}
+              >
+                {t("scenarioAuthor.loadAuditTemplate")}
+              </button>
             </div>
             <div className="field">
               <label className="field__label" htmlFor="scenario-pack-file">
@@ -540,13 +556,16 @@ export function ScenarioAuthorScreen({
               {fileName.length === 0 ? null : <span>{fileName}</span>}
             </div>
             {isEditableScenarioPack(candidate) ? (
-              <ScenarioDraftEditor
-                pack={candidate}
-                onChange={(updated) => {
-                  setCandidate(updated);
-                  setReport(null);
-                }}
-              />
+              <>
+                <ScenarioDraftEditor
+                  pack={candidate}
+                  onChange={(updated) => {
+                    setCandidate(updated);
+                    setReport(null);
+                  }}
+                />
+                <AuditAuthoringSummary pack={candidate} />
+              </>
             ) : null}
             <div className="start__actions">
               <button
@@ -780,6 +799,138 @@ export function ScenarioAuthorScreen({
         )}
       </div>
     </main>
+  );
+}
+
+function AuditAuthoringSummary({
+  pack,
+}: {
+  readonly pack: ScenarioPackV1;
+}): ReactNode {
+  const t = useTranslator();
+  const cases = pack.scenarios.flatMap((scenario) =>
+    scenario.auditCase === undefined
+      ? []
+      : [
+          {
+            scenarioId: scenario.scenarioId,
+            auditCase: scenario.auditCase,
+          },
+        ],
+  );
+  if (cases.length === 0 && pack.auditVariantBanks.length === 0) {
+    return null;
+  }
+  return (
+    <section
+      className="instructor-review__mode-settings"
+      aria-labelledby="audit-authoring-summary-heading"
+    >
+      <h3 id="audit-authoring-summary-heading">
+        {t("scenarioAuthor.auditSummaryHeading")}
+      </h3>
+      <p>{t("scenarioAuthor.auditSummaryHelp")}</p>
+      {cases.length === 0 ? null : (
+        <>
+          <h4>{t("scenarioAuthor.auditCasesHeading")}</h4>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("scenarioAuthor.auditCase")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditSupport")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditFindings")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditDecoys")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditEvidence")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditPolicies")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditScoring")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cases.map(({ scenarioId, auditCase }) => (
+                  <tr key={`${scenarioId}:${auditCase.auditCaseId}`}>
+                    <td>
+                      <code>
+                        {auditCase.auditCaseId}@{auditCase.version}
+                      </code>
+                      <br />
+                      <code>{scenarioId}</code>
+                    </td>
+                    <td>{auditCase.supportProfiles.join(", ")}</td>
+                    <td>{auditCase.findingDefinitions.length}</td>
+                    <td>{auditCase.decoyDefinitions.length}</td>
+                    <td>{auditCase.evidenceItemIds.length}</td>
+                    <td>{auditCase.policyIds.length}</td>
+                    <td>
+                      <code>
+                        {auditCase.scoringBlueprint.scoringBlueprintId}
+                      </code>
+                      <br />
+                      {t("scenarioAuthor.auditScoreValue", {
+                        maximum:
+                          auditCase.scoringBlueprint.maximumScore,
+                        pass: auditCase.scoringBlueprint.passScore,
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {pack.auditVariantBanks.length === 0 ? (
+        <p>{t("scenarioAuthor.auditNoVariantBank")}</p>
+      ) : (
+        <>
+          <h4>{t("scenarioAuthor.auditBanksHeading")}</h4>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("scenarioAuthor.auditBank")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditBankStatus")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditVariants")}</th>
+                  <th scope="col">{t("scenarioAuthor.auditBlueprint")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pack.auditVariantBanks.map((bank) => (
+                  <tr key={`${bank.bankId}:${bank.bankVersion}`}>
+                    <td>
+                      <code>
+                        {bank.bankId}@{bank.bankVersion}
+                      </code>
+                    </td>
+                    <td>{bank.status}</td>
+                    <td>{bank.variants.length}</td>
+                    <td>
+                      {t("scenarioAuthor.auditBlueprintValue", {
+                        findings:
+                          `${bank.blueprint.materialFindingCount.minimum}–${bank.blueprint.materialFindingCount.maximum}`,
+                        decoys:
+                          `${bank.blueprint.decoyCount.minimum}–${bank.blueprint.decoyCount.maximum}`,
+                        evidence:
+                          `${bank.blueprint.evidenceItemCount.minimum}–${bank.blueprint.evidenceItemCount.maximum}`,
+                        policies:
+                          `${bank.blueprint.policyCount.minimum}–${bank.blueprint.policyCount.maximum}`,
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {pack.auditVariantBanks.some(
+            (bank) => bank.status === "DRAFT",
+          ) ? (
+            <p className="notice notice--standalone">
+              {t("scenarioAuthor.auditCalibrationWarning")}
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
   );
 }
 

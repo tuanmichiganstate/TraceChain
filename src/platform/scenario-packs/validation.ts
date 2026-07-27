@@ -3884,6 +3884,7 @@ function validateAuditCase(
     });
   }
 
+  const findingDefinitionIds = new Set<string>();
   const findingKeys = new Set<string>();
   const findingDefinitions = context.array(
     auditCase.findingDefinitions,
@@ -3919,11 +3920,20 @@ function validateAuditCase(
         ],
         findingPath,
       );
-      context.string(
+      const findingDefinitionId = context.string(
         finding.findingDefinitionId,
         `${findingPath}.findingDefinitionId`,
         { identifier: true },
       );
+      if (findingDefinitionId !== null) {
+        context.check(
+          !findingDefinitionIds.has(findingDefinitionId),
+          "DUPLICATE_AUDIT_FINDING_ID",
+          `${findingPath}.findingDefinitionId`,
+          "must be unique within the Audit case",
+        );
+        findingDefinitionIds.add(findingDefinitionId);
+      }
       const categoryId = context.string(
         finding.categoryId,
         `${findingPath}.categoryId`,
@@ -4054,6 +4064,7 @@ function validateAuditCase(
     });
   }
 
+  const decoyDefinitionIds = new Set<string>();
   const decoyDefinitions = context.array(
     auditCase.decoyDefinitions,
     `${casePath}.decoyDefinitions`,
@@ -4080,11 +4091,20 @@ function validateAuditCase(
         ],
         decoyPath,
       );
-      context.string(
+      const decoyDefinitionId = context.string(
         decoy.decoyDefinitionId,
         `${decoyPath}.decoyDefinitionId`,
         { identifier: true },
       );
+      if (decoyDefinitionId !== null) {
+        context.check(
+          !decoyDefinitionIds.has(decoyDefinitionId),
+          "DUPLICATE_AUDIT_DECOY_ID",
+          `${decoyPath}.decoyDefinitionId`,
+          "must be unique within the Audit case",
+        );
+        decoyDefinitionIds.add(decoyDefinitionId);
+      }
       const categoryId = context.string(
         decoy.categoryId,
         `${decoyPath}.categoryId`,

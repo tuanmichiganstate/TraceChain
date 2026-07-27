@@ -8,6 +8,17 @@ import {
 import { useTranslator } from "../../app/providers/locale-provider";
 import { StatusPill } from "../../components/status-pill";
 import type { Translator } from "../../localization/i18n";
+import {
+  SCORM_PACKAGE_PRESET_PREVIEWS,
+  scormPackagePresetPreview,
+  type ScormPackagePresetPreview,
+} from "../../config/scorm-package-builder";
+import type {
+  ActivityType,
+  DeliveryPurpose,
+  OutcomeStrategy,
+  SupportProfile,
+} from "../../config/types";
 import type { ApplicationRole } from "../contracts/run-events";
 import type { LtiLearningContextV1 } from "../contracts/lti";
 import type {
@@ -57,6 +68,7 @@ import {
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedRunActionControls } from "../learner/hosted-learner-screen";
 import { HostedAuditReport } from "../audit/hosted-audit-workspace";
+import type { AuditAssignmentReportV1 } from "../reporting/audit-assignment-report";
 
 export interface InstructorSession {
   readonly userId: string;
@@ -144,6 +156,9 @@ export interface InstructorReviewApi {
   loadAssignmentProcessAnalytics?(
     assignmentId: string,
   ): Promise<AssignmentProcessAnalyticsV1>;
+  loadAssignmentAuditReport?(
+    assignmentId: string,
+  ): Promise<AuditAssignmentReportV1 | null>;
   saveRating(
     runId: string,
     input: SaveInstructorRatingInput,
@@ -409,6 +424,15 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/process-analytics`,
       );
       return result.analytics;
+    },
+    async loadAssignmentAuditReport(assignmentId) {
+      const result = await responseJson<{
+        readonly auditReport: AuditAssignmentReportV1 | null;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/audit-report`,
+      );
+      return result.auditReport;
     },
     async saveRating(runId, input) {
       const result = await mutationJson<{
@@ -809,6 +833,7 @@ function ScormPackageBuilder({
   >([]);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const preview = scormPackagePresetPreview(presetId);
 
   if (
     api.loadScormPackageJobs === undefined ||
@@ -818,6 +843,56 @@ function ScormPackageBuilder({
   }
   const loadJobs = api.loadScormPackageJobs;
   const createJob = api.createScormPackageJob;
+
+  function selectClosest(
+    candidates: readonly ScormPackagePresetPreview[],
+  ): void {
+    const selected =
+      candidates.find(
+        (candidate) =>
+          candidate.supportProfile === preview.supportProfile &&
+          candidate.deliveryPurpose === preview.deliveryPurpose &&
+          candidate.outcomeStrategy === preview.outcomeStrategy,
+      ) ??
+      candidates.find(
+        (candidate) =>
+          candidate.supportProfile === preview.supportProfile &&
+          candidate.deliveryPurpose === preview.deliveryPurpose,
+      ) ??
+      candidates.find(
+        (candidate) =>
+          candidate.supportProfile === preview.supportProfile,
+      ) ??
+      candidates[0];
+    if (selected !== undefined) setPresetId(selected.presetId);
+  }
+
+  const activityOptions = uniquePackageDimensions(
+    SCORM_PACKAGE_PRESET_PREVIEWS.map(
+      (candidate) => candidate.activityType,
+    ),
+  );
+  const supportOptions = uniquePackageDimensions(
+    SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+      (candidate) =>
+        candidate.activityType === preview.activityType,
+    ).map((candidate) => candidate.supportProfile),
+  );
+  const purposeOptions = uniquePackageDimensions(
+    SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+      (candidate) =>
+        candidate.activityType === preview.activityType &&
+        candidate.supportProfile === preview.supportProfile,
+    ).map((candidate) => candidate.deliveryPurpose),
+  );
+  const outcomeOptions = uniquePackageDimensions(
+    SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+      (candidate) =>
+        candidate.activityType === preview.activityType &&
+        candidate.supportProfile === preview.supportProfile &&
+        candidate.deliveryPurpose === preview.deliveryPurpose,
+    ).map((candidate) => candidate.outcomeStrategy),
+  );
 
   async function refresh() {
     setLoading(true);
@@ -853,46 +928,140 @@ function ScormPackageBuilder({
       <h2>{t("instructorReview.packageBuilderHeading")}</h2>
       <p>{t("instructorReview.packageBuilderHelp")}</p>
       <form
-        className="instructor-review__inline-form"
+        className="instructor-review__form-grid"
         onSubmit={(event) => void generate(event)}
       >
         <div className="field">
-          <label className="field__label" htmlFor="scorm-package-preset">
-            {t("instructorReview.packagePreset")}
+          <label className="field__label" htmlFor="scorm-activity-type">
+            {t("instructorReview.packageActivityType")}
           </label>
           <select
             className="field__control"
-            id="scorm-package-preset"
-            value={presetId}
-            onChange={(event) =>
-              setPresetId(
-                event.target.value as ScormPackagePresetId,
-              )
-            }
+            id="scorm-activity-type"
+            value={preview.activityType}
+            onChange={(event) => {
+              const activityType =
+                event.target.value as ActivityType;
+              selectClosest(
+                SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+                  (candidate) =>
+                    candidate.activityType === activityType,
+                ),
+              );
+            }}
           >
-            <option value="guided">
-              {t("instructorReview.packagePreset.guided")}
-            </option>
-            <option value="practice">
-              {t("instructorReview.packagePreset.practice")}
-            </option>
-            <option value="challenge">
-              {t("instructorReview.packagePreset.challenge")}
-            </option>
-            <option value="assessment">
-              {t("instructorReview.packagePreset.assessment")}
-            </option>
-            <option value="audit-guided">
-              {t("instructorReview.packagePreset.audit-guided")}
-            </option>
-            <option value="audit-practice">
-              {t("instructorReview.packagePreset.audit-practice")}
+            {activityOptions.map((activityType) => (
+              <option key={activityType} value={activityType}>
+                {t(
+                  `instructorReview.packageActivityType.${activityType}`,
+                )}
+              </option>
+            ))}
+            <option value="TECHNICAL_LAB" disabled>
+              {t(
+                "instructorReview.packageActivityType.TECHNICAL_LAB",
+              )}
             </option>
           </select>
-          <span className="field__hint">
-            {t(`instructorReview.packagePresetHelp.${presetId}`)}
-          </span>
         </div>
+        <div className="field">
+          <label className="field__label" htmlFor="scorm-support-profile">
+            {t("instructorReview.packageSupportProfile")}
+          </label>
+          <select
+            className="field__control"
+            id="scorm-support-profile"
+            value={preview.supportProfile}
+            onChange={(event) => {
+              const supportProfile =
+                event.target.value as SupportProfile;
+              selectClosest(
+                SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+                  (candidate) =>
+                    candidate.activityType ===
+                      preview.activityType &&
+                    candidate.supportProfile === supportProfile,
+                ),
+              );
+            }}
+          >
+            {supportOptions.map((supportProfile) => (
+              <option key={supportProfile} value={supportProfile}>
+                {t(
+                  `instructorReview.packageSupportProfile.${supportProfile}`,
+                )}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="scorm-delivery-purpose">
+            {t("instructorReview.packageDeliveryPurpose")}
+          </label>
+          <select
+            className="field__control"
+            id="scorm-delivery-purpose"
+            value={preview.deliveryPurpose}
+            onChange={(event) => {
+              const deliveryPurpose =
+                event.target.value as DeliveryPurpose;
+              selectClosest(
+                SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+                  (candidate) =>
+                    candidate.activityType ===
+                      preview.activityType &&
+                    candidate.supportProfile ===
+                      preview.supportProfile &&
+                    candidate.deliveryPurpose === deliveryPurpose,
+                ),
+              );
+            }}
+          >
+            {purposeOptions.map((deliveryPurpose) => (
+              <option key={deliveryPurpose} value={deliveryPurpose}>
+                {t(
+                  `instructorReview.packageDeliveryPurpose.${deliveryPurpose}`,
+                )}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="scorm-outcome-strategy">
+            {t("instructorReview.packageOutcomeStrategy")}
+          </label>
+          <select
+            className="field__control"
+            id="scorm-outcome-strategy"
+            value={preview.outcomeStrategy}
+            onChange={(event) => {
+              const outcomeStrategy =
+                event.target.value as OutcomeStrategy;
+              selectClosest(
+                SCORM_PACKAGE_PRESET_PREVIEWS.filter(
+                  (candidate) =>
+                    candidate.activityType ===
+                      preview.activityType &&
+                    candidate.supportProfile ===
+                      preview.supportProfile &&
+                    candidate.deliveryPurpose ===
+                      preview.deliveryPurpose &&
+                    candidate.outcomeStrategy === outcomeStrategy,
+                ),
+              );
+            }}
+          >
+            {outcomeOptions.map((outcomeStrategy) => (
+              <option key={outcomeStrategy} value={outcomeStrategy}>
+                {t(
+                  `instructorReview.packageOutcomeStrategy.${outcomeStrategy}`,
+                )}
+              </option>
+            ))}
+          </select>
+        </div>
+        <PackagePresetPreview preview={preview} />
+        <div className="instructor-review__form-actions">
         <button
           className="button button--primary"
           type="submit"
@@ -910,6 +1079,7 @@ function ScormPackageBuilder({
         >
           {t("instructorReview.packageHistory")}
         </button>
+        </div>
       </form>
       {error ? (
         <p className="notice notice--standalone" role="alert">
@@ -958,6 +1128,90 @@ function ScormPackageBuilder({
           </table>
         </div>
       )}
+    </section>
+  );
+}
+
+function uniquePackageDimensions<Value extends string>(
+  values: readonly Value[],
+): readonly Value[] {
+  return [...new Set(values)];
+}
+
+function PackagePresetPreview({
+  preview,
+}: {
+  readonly preview: ScormPackagePresetPreview;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section
+      className="instructor-review__mode-settings"
+      aria-labelledby="scorm-preset-preview-heading"
+    >
+      <h3 id="scorm-preset-preview-heading">
+        {t("instructorReview.packagePreviewHeading")}
+      </h3>
+      <p>{t(`instructorReview.packagePresetHelp.${preview.presetId}`)}</p>
+      <dl className="instructor-review__facts">
+        <div>
+          <dt>{t("instructorReview.packagePreset")}</dt>
+          <dd>
+            {t(
+              `instructorReview.packagePreset.${preview.presetId}`,
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.packageFeedback")}</dt>
+          <dd>
+            {t(
+              `instructorReview.packageFeedback.${preview.feedbackTiming}`,
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.packageHints")}</dt>
+          <dd>
+            {t(
+              `instructorReview.packageHints.${preview.hintAvailability}`,
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.packageContent")}</dt>
+          <dd>
+            <code>
+              {preview.packId}@{preview.packVersion}
+            </code>
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.packageScoring")}</dt>
+          <dd>
+            {t("instructorReview.packageScoringValue", {
+              maximum: preview.maximumScore,
+              pass: preview.passScore,
+            })}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.packageGradeUse")}</dt>
+          <dd>
+            {t(
+              preview.official
+                ? "instructorReview.packageGradeUse.official"
+                : "instructorReview.packageGradeUse.formative",
+            )}
+          </dd>
+        </div>
+      </dl>
+      {preview.presetId === "audit-challenge" ||
+      preview.presetId === "audit-assessment" ? (
+        <p className="notice notice--standalone">
+          {t("instructorReview.packageCalibrationPending")}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -1969,6 +2223,8 @@ function AssignmentReport({
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [processAnalytics, setProcessAnalytics] =
     useState<AssignmentProcessAnalyticsV1 | null>(null);
+  const [auditReport, setAuditReport] =
+    useState<AuditAssignmentReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isMonitorLoading, setMonitorLoading] = useState(false);
   const [isClosing, setClosing] = useState(false);
@@ -1983,6 +2239,7 @@ function AssignmentReport({
     setCurriculumCrosswalks(null);
     setDecisionOutcomes(null);
     setProcessAnalytics(null);
+    setAuditReport(null);
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
@@ -1993,6 +2250,7 @@ function AssignmentReport({
         loadedCurriculumCrosswalks,
         loadedDecisionOutcomes,
         loadedProcessAnalytics,
+        loadedAuditReport,
       ] =
         await Promise.all([
           api.loadAssignmentReport(requestedAssignmentId),
@@ -2007,6 +2265,9 @@ function AssignmentReport({
           api.loadAssignmentProcessAnalytics?.(
             requestedAssignmentId,
           ) ?? Promise.resolve(null),
+          api.loadAssignmentAuditReport?.(
+            requestedAssignmentId,
+          ) ?? Promise.resolve(null),
         ]);
       setReport(loadedReport);
       setMonitor(loadedMonitor);
@@ -2014,6 +2275,7 @@ function AssignmentReport({
       setCurriculumCrosswalks(loadedCurriculumCrosswalks);
       setDecisionOutcomes(loadedDecisionOutcomes);
       setProcessAnalytics(loadedProcessAnalytics);
+      setAuditReport(loadedAuditReport);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -2407,6 +2669,12 @@ function AssignmentReport({
           {decisionOutcomes === null ? null : (
             <ClassDecisionOutcomeReport report={decisionOutcomes} />
           )}
+          {auditReport === null ? null : (
+            <ClassAuditReport
+              report={auditReport}
+              onReviewEvent={onReviewEvent}
+            />
+          )}
           {processAnalytics === null ? null : (
             <ClassProcessAnalyticsReport
               report={processAnalytics}
@@ -2425,6 +2693,256 @@ function AssignmentReport({
             />
           )}
         </div>
+      )}
+    </section>
+  );
+}
+
+function reportNumber(
+  value: number | null,
+  locale: string,
+): string {
+  return value === null
+    ? "—"
+    : new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 2,
+        useGrouping: false,
+      }).format(value);
+}
+
+function ClassAuditReport({
+  report,
+  onReviewEvent,
+}: {
+  readonly report: AuditAssignmentReportV1;
+  readonly onReviewEvent: (
+    runId: string,
+    eventId: string,
+  ) => Promise<void>;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="instructor-review__audit-report">
+      <h3>{t("instructorReview.auditClassHeading")}</h3>
+      <p>{t("instructorReview.auditClassHelp")}</p>
+      <p className="notice notice--standalone">
+        {t("instructorReview.auditReviewOnly")}
+      </p>
+      <dl className="instructor-review__facts">
+        <div>
+          <dt>{t("instructorReview.auditRuns")}</dt>
+          <dd>{report.summary.runCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditCompletedRuns")}</dt>
+          <dd>{report.summary.completedRunCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditMeanScore")}</dt>
+          <dd>
+            {reportNumber(
+              report.summary.meanCompletedScore,
+              t.locale,
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditConfirmed")}</dt>
+          <dd>{report.summary.confirmedFindingCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditUnsupported")}</dt>
+          <dd>{report.summary.unsupportedFindingCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditMissed")}</dt>
+          <dd>{report.summary.missedFindingCount}</dd>
+        </div>
+      </dl>
+      <h4>{t("instructorReview.auditLearnerRuns")}</h4>
+      {report.runs.length === 0 ? (
+        <p>{t("instructorReview.auditNoRuns")}</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">{t("instructorReview.learner")}</th>
+                <th scope="col">{t("instructorReview.runId")}</th>
+                <th scope="col">{t("instructorReview.auditCase")}</th>
+                <th scope="col">{t("instructorReview.auditVariant")}</th>
+                <th scope="col">{t("instructorReview.auditScore")}</th>
+                <th scope="col">{t("instructorReview.auditFindings")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.runs.map((run) => (
+                <tr key={run.runId}>
+                  <td><code>{run.learnerUserId}</code></td>
+                  <td><code>{run.runId}</code></td>
+                  <td>
+                    <code>
+                      {run.auditCaseId}@{run.auditCaseVersion}
+                    </code>
+                  </td>
+                  <td>
+                    {run.variant === null ? (
+                      t("instructorReview.none")
+                    ) : (
+                      <>
+                        <code>{run.variant.variantId}</code>
+                        <br />
+                        {run.variant.caseReference}
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    {run.score === null
+                      ? t("instructorReview.none")
+                      : `${reportNumber(run.score, t.locale)}/${reportNumber(run.maximumScore, t.locale)}`}
+                  </td>
+                  <td>
+                    {run.findings.length === 0 ? (
+                      t("instructorReview.auditNoFindings")
+                    ) : (
+                      <ul className="instructor-review__evidence-list">
+                        {run.findings.map((finding) => (
+                          <li key={finding.findingId}>
+                            <span>
+                              <strong>{finding.title}</strong>
+                              <br />
+                              <code>{finding.findingId}</code>
+                              {" — "}
+                              {t(
+                                `instructorReview.auditClassification.${finding.classification}`,
+                              )}
+                              <br />
+                              {t("instructorReview.auditCitationSummary", {
+                                evidence: finding.evidenceIds.length,
+                                policies: finding.policyIds.length,
+                              })}
+                            </span>
+                            <button
+                              aria-label={t(
+                                "instructorReview.auditReviewFindingEventLabel",
+                                { findingId: finding.findingId },
+                              )}
+                              className="button button--secondary"
+                              type="button"
+                              onClick={() =>
+                                void onReviewEvent(
+                                  run.runId,
+                                  finding.eventId,
+                                )
+                              }
+                            >
+                              {t(
+                                "instructorReview.auditReviewFindingEvent",
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {report.variantDistribution.length === 0 ? null : (
+        <>
+          <h4>{t("instructorReview.auditDistributionHeading")}</h4>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("instructorReview.auditVariant")}</th>
+                  <th scope="col">{t("instructorReview.auditCaseReference")}</th>
+                  <th scope="col">{t("instructorReview.auditRuns")}</th>
+                  <th scope="col">{t("instructorReview.auditCompletedRuns")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.variantDistribution.map((variant) => (
+                  <tr key={variant.variantId}>
+                    <td>
+                      <code>
+                        {variant.variantId}@{variant.variantVersion}
+                      </code>
+                    </td>
+                    <td>{variant.caseReference}</td>
+                    <td>{variant.runCount}</td>
+                    <td>{variant.completedRunCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {report.calibration === null ? null : (
+        <>
+          <h4>{t("instructorReview.auditCalibrationHeading")}</h4>
+          <p>
+            {t("instructorReview.auditCalibrationHelp", {
+              bankId: report.calibration.bankId,
+              status: report.calibration.bankStatus,
+              minimum:
+                report.calibration
+                  .minimumRecommendedPilotSamplePerVariant,
+            })}
+          </p>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("instructorReview.auditVariant")}</th>
+                  <th scope="col">{t("instructorReview.auditSample")}</th>
+                  <th scope="col">{t("instructorReview.auditMeanScore")}</th>
+                  <th scope="col">{t("instructorReview.auditPassRate")}</th>
+                  <th scope="col">{t("instructorReview.auditMeanTime")}</th>
+                  <th scope="col">{t("instructorReview.auditUnsupported")}</th>
+                  <th scope="col">{t("instructorReview.auditMissed")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.calibration.variants.map((variant) => (
+                  <tr key={variant.variantId}>
+                    <td><code>{variant.variantId}</code></td>
+                    <td>{variant.sampleSize}</td>
+                    <td>{reportNumber(variant.meanScore, t.locale)}</td>
+                    <td>
+                      {reportNumber(
+                        variant.passRatePercent,
+                        t.locale,
+                      )}
+                    </td>
+                    <td>
+                      {reportNumber(
+                        variant.meanCompletionSeconds,
+                        t.locale,
+                      )}
+                    </td>
+                    <td>
+                      {reportNumber(
+                        variant.meanFalsePositiveCount,
+                        t.locale,
+                      )}
+                    </td>
+                    <td>
+                      {reportNumber(
+                        variant.meanMissedFindingCount,
+                        t.locale,
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </section>
   );
@@ -3622,6 +4140,10 @@ function RunReview({
                 report={replay.projection.audit.report}
               />
             )}
+            <AuditFindingReplay
+              replay={replay}
+              timeline={review.timeline}
+            />
             <DecisionTimeReview
               replay={replay}
               timeline={review.timeline}
@@ -3703,6 +4225,106 @@ function RunReview({
         </div>
       </section>
     </div>
+  );
+}
+
+function AuditFindingReplay({
+  replay,
+  timeline,
+}: {
+  readonly replay: InstructorRunReplayV1;
+  readonly timeline: readonly InstructorTimelineItem[];
+}): ReactNode {
+  const t = useTranslator();
+  const selected = timeline.find(
+    (event) => event.eventId === replay.selectedEvent.eventId,
+  );
+  if (
+    selected === undefined ||
+    (selected.eventType !== "AUDIT_FINDING_SUBMITTED" &&
+      selected.eventType !== "AUDIT_FINDING_AMENDED" &&
+      selected.eventType !== "AUDIT_FINDING_WITHDRAWN")
+  ) {
+    return null;
+  }
+  const payloadFinding = instructorRecord(selected.payload.finding);
+  const findingId =
+    typeof payloadFinding?.findingId === "string"
+      ? payloadFinding.findingId
+      : typeof selected.payload.findingId === "string"
+        ? selected.payload.findingId
+        : null;
+  const finding =
+    findingId === null
+      ? undefined
+      : replay.projection.audit?.findings.find(
+          (candidate) => candidate.findingId === findingId,
+        );
+  const evidenceIds =
+    finding?.evidenceIds ??
+    stringList(payloadFinding?.evidenceIds);
+  const policyIds =
+    finding?.policyIds ??
+    stringList(payloadFinding?.policyIds);
+  return (
+    <section className="instructor-review__finding-replay">
+      <h4>{t("instructorReview.auditFindingReplayHeading")}</h4>
+      <p>{t("instructorReview.auditFindingReplayHelp")}</p>
+      <dl className="instructor-review__facts">
+        <div>
+          <dt>{t("instructorReview.auditFindingId")}</dt>
+          <dd><code>{findingId ?? replay.selectedEvent.eventId}</code></dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.event")}</dt>
+          <dd><code>{selected.eventType}</code></dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditFindingRevision")}</dt>
+          <dd>
+            {finding?.revision ??
+              (typeof selected.payload.revision === "number"
+                ? selected.payload.revision
+                : typeof payloadFinding?.revision === "number"
+                  ? payloadFinding.revision
+                  : t("instructorReview.none"))}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditFindingStatus")}</dt>
+          <dd>
+            {finding?.status ??
+              (selected.eventType === "AUDIT_FINDING_WITHDRAWN"
+                ? "WITHDRAWN"
+                : "SUBMITTED")}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditFindingSeverity")}</dt>
+          <dd>{finding?.severity ?? t("instructorReview.none")}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditFindingMateriality")}</dt>
+          <dd>{finding?.materiality ?? t("instructorReview.none")}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditEvidence")}</dt>
+          <dd>
+            {evidenceIds.length === 0
+              ? t("instructorReview.none")
+              : evidenceIds.join(", ")}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.auditPolicies")}</dt>
+          <dd>
+            {policyIds.length === 0
+              ? t("instructorReview.none")
+              : policyIds.join(", ")}
+          </dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 
@@ -3864,6 +4486,27 @@ function DecisionTimeReview({
       )}
     </div>
   );
+}
+
+function instructorRecord(
+  value: unknown,
+): Readonly<Record<string, unknown>> | null {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  )
+    ? (value as Readonly<Record<string, unknown>>)
+    : null;
+}
+
+function stringList(value: unknown): readonly string[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (candidate): candidate is string =>
+          typeof candidate === "string",
+      )
+    : [];
 }
 
 function citedIdsFromPayload(

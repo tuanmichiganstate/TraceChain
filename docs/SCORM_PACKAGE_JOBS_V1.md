@@ -2,13 +2,13 @@
 
 ## Boundary
 
-The `/instructor` graphical builder exposes the accepted Operations presets
-(`guided`, `practice`, `challenge`, and `assessment`) and Audit presets
-(`audit-guided` and `audit-practice`). Phase 6 also publishes verified
-Audit Challenge and Audit Assessment candidate artifacts to the catalogue.
-Adding those two selectors to the graphical instructor workspace belongs to
-the next instructor-tooling phase. The workspace does not reimplement the Node
-package generator.
+The `/instructor` graphical builder exposes all eight accepted Operations and
+Audit presets. Instructors select professional activity, support profile,
+delivery purpose, and outcome strategy; the interface resolves only a complete
+accepted preset and previews its feedback, hints, exact content, scoring, and
+grade use. Audit Challenge and Audit Assessment remain visibly labelled
+calibration candidates. The workspace does not reimplement the Node package
+generator.
 
 One site build:
 
@@ -60,10 +60,11 @@ release artifacts.
 
 ## Current presets
 
-Guided, Practice, Challenge, Assessment, Audit Guided, and Audit Practice remain
-available in the graphical workspace. Audit Challenge and Audit Assessment are
-generated and verified calibration candidates but remain outside that selector
-until the instructor-tooling phase and human review gate. Operations
-Practice uses one curated bridge case. Audit Practice uses one curated,
-reduced-guidance workpaper case. Technical Laboratory remains hidden until its
-content is complete and accepted. No empty or placeholder package is generated.
+Guided, Practice, Challenge, Assessment, Audit Guided, Audit Practice, Audit
+Challenge, and Audit Assessment are available in the graphical workspace.
+Operations Practice uses one curated bridge case. Audit Practice uses one
+curated, reduced-guidance workpaper case. Audit Challenge and Assessment carry
+an explicit calibration warning; exposing their package artifacts is not an
+expert-equivalence or high-stakes-use claim. Technical Laboratory remains
+outside this eight-package builder. No empty or placeholder package is
+generated.

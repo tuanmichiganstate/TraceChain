@@ -55,6 +55,50 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("rejects duplicate Audit finding and decoy identifiers and unexplained decoys", () => {
+    const invalid = structuredClone(auditPackJson) as unknown as {
+      localizationCatalogs: Record<string, Record<string, string>>;
+      scenarios: Array<{
+        auditCase: {
+          findingDefinitions: Array<{
+            findingDefinitionId: string;
+          }>;
+          decoyDefinitions: Array<{
+            decoyDefinitionId: string;
+            explanation: { localizationKey: string };
+          }>;
+        };
+      }>;
+    };
+    const auditCase = invalid.scenarios[0]!.auditCase;
+    auditCase.findingDefinitions[1]!.findingDefinitionId =
+      auditCase.findingDefinitions[0]!.findingDefinitionId;
+    auditCase.decoyDefinitions[1]!.decoyDefinitionId =
+      auditCase.decoyDefinitions[0]!.decoyDefinitionId;
+    const explanationKey =
+      auditCase.decoyDefinitions[0]!.explanation.localizationKey;
+    invalid.localizationCatalogs.en![explanationKey] = "";
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "DUPLICATE_AUDIT_FINDING_ID",
+          }),
+          expect.objectContaining({
+            code: "DUPLICATE_AUDIT_DECOY_ID",
+          }),
+          expect.objectContaining({
+            code: "MISSING_LOCALIZATION_KEY",
+          }),
+        ]),
+      );
+    }
+  });
+
   it("accepts the bounded Practice Audit case", () => {
     const result = validateScenarioPack(
       structuredClone(practiceAuditPackJson),

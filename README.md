@@ -51,8 +51,13 @@ bounded replay. Phase 6 adds three complete Audit Challenge cases, deterministic
 TA2 assignment before reveal, a final-feedback Audit Assessment configuration,
 shared hosted allocation policies, and review-only calibration summaries. The
 new Audit bank remains a calibration candidate rather than a claim of
-high-stakes equivalence; see `docs/PRODUCT_MODES_PHASE_4.md`,
-`docs/PRODUCT_MODES_PHASE_5.md`, and `docs/PRODUCT_MODES_PHASE_6.md`.
+high-stakes equivalence. Phase 7 exposes all eight accepted packages through a
+four-dimension graphical selector and resolved preset preview, adds a validated
+Audit case-bank authoring starter and contract summary, and adds class Audit
+reporting with finding-level replay, variant distribution, and review-only
+calibration views; see `docs/PRODUCT_MODES_PHASE_4.md`,
+`docs/PRODUCT_MODES_PHASE_5.md`, `docs/PRODUCT_MODES_PHASE_6.md`, and
+`docs/PRODUCT_MODES_PHASE_7.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -80,10 +85,11 @@ assignments and runs the complete bounded coffee command path from
 role-filtered server state. The certificate decision now records the
 scenario-required rationale, cited evidence, cited policy, confidence, and
 adverse-event probability estimate as one atomic submission. The `/author`
-route imports bounded JSON, YAML, or
-ZIP packs, provides a compact visual draft editor and pharmaceutical
-cold-chain starter plus a two-decision transfer case, validates and previews
-roles and modes, compares versions, and controls publication and retirement.
+route imports bounded JSON, YAML, or ZIP packs, provides a compact visual draft
+editor, pharmaceutical cold-chain starter, and complete Audit case-bank
+starter with an explicit finding, decoy, evidence, policy, scoring, and
+equivalence summary. It validates and previews roles and modes, compares
+versions, and controls publication and retirement.
 The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and
@@ -93,6 +99,9 @@ reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
 revisions, event-derived learner activity counts, deterministic rejection
 findings, and a data dictionary.
+Audit assignments additionally provide exact-case class summaries, direct
+finding-event replay, curated-variant distribution, and review-only
+calibration measures that never rescale scores or change official grades.
 Instructors may download those records with identified learner IDs or with
 deterministic assignment-scoped pseudonyms; the interface explicitly warns
 that pseudonymized records are not anonymous.
@@ -304,6 +313,8 @@ schemas/               published versioned JSON Schemas
 - `docs/PRODUCT_MODES_PHASE_6.md` — Audit Challenge and Assessment candidate
   bank, TA2 assignment, hosted allocation, calibration, and remaining human
   review gate
+- `docs/PRODUCT_MODES_PHASE_7.md` — eight-preset graphical selection, Audit
+  case-bank authoring, class reports, finding replay, and calibration views
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
 - `docs/SCENARIO_PACK_V1.md` — the V1.9 pack schema, validation, publication,
