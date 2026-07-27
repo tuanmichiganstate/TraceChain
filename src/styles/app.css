@@ -813,7 +813,8 @@
 .workspace__notice { padding-bottom: 0; }
 
 .stage {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   align-items: start;
 }
@@ -824,6 +825,7 @@
 }
 
 .stage__learning {
+  flex: 1 1 18rem;
   padding: var(--space-4);
   background: var(--colour-surface);
   border: 1px solid var(--colour-border);
@@ -842,6 +844,7 @@
 }
 
 .stage__application {
+  flex: 999 1 42rem;
   align-content: start;
 }
 
@@ -1127,6 +1130,10 @@
 
 .certificate-console {
   display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, 28rem), 1fr)
+  );
   gap: var(--space-4);
 }
 
@@ -1140,11 +1147,27 @@
 }
 
 .certificate-console__registry {
-  margin: 0;
   box-shadow: none;
 }
 
+/* The console owns spacing with `gap`; adjacent-card flow spacing would offset
+   the second grid item and make the paired evidence sources look unrelated. */
+.certificate-console > .card + .card {
+  margin-top: 0;
+}
+
+/*
+ * The outer console and the asset grid can both become two columns on a wide
+ * viewport. A third label/value split leaves each value only a few characters
+ * wide at 200% text size. Keep each evidence fact stacked within its own grid
+ * cell so identifiers and Vietnamese prose retain the card's usable width.
+ */
+.certificate-console .asset-card__row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .certificate-console__verification {
+  grid-column: 1 / -1;
   min-width: 0;
   padding: var(--space-5);
   color: var(--colour-text);
@@ -1553,7 +1576,6 @@
 
 @media (min-width: 62rem) {
   .stage {
-    grid-template-columns: minmax(15.5rem, 18rem) minmax(0, 1fr);
     gap: var(--space-6);
   }
 
@@ -1574,15 +1596,6 @@
 }
 
 @media (min-width: 75rem) {
-  .certificate-console {
-    grid-template-columns: minmax(0, 1.12fr) minmax(19rem, 0.88fr);
-    align-items: stretch;
-  }
-
-  .certificate-console__verification {
-    grid-column: 1 / -1;
-  }
-
   .verification-lab__support {
     grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
   }

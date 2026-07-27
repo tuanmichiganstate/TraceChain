@@ -55,8 +55,8 @@ These have each already cost time on this repo.
 ## Deploying to the Moodle demo
 
 ```bash
-./docker-moodle/deploy.sh              # build, verify, deploy, reset both
-./docker-moodle/deploy.sh --no-build   # deploy current packages, reset both
+./docker-moodle/deploy.sh              # build, verify, deploy, reset all
+./docker-moodle/deploy.sh --no-build   # deploy current packages, reset all
 ```
 
 Docker Moodle on <http://localhost:8080>; see `docker-moodle/README.md`. The
@@ -65,9 +65,9 @@ without that the browser keeps serving the previous build and your change looks
 like it silently failed. It verifies every zip entry against what landed in the
 content area, so a half-extracted package fails loudly.
 
-The command manages separate `TraceChain Guided` and `TraceChain Challenge`
-activities. It resets attempts, grades, and completion state for both before
-replacing their packages.
+The command manages separate `TraceChain Guided`, `TraceChain Challenge`, and
+`TraceChain Assessment` activities. It resets attempts, grades, and completion
+state for all three before replacing their packages.
 
 Any PHP run inside the container must use `--user daemon`. Root leaves
 root-owned files in `moodledata` that Apache cannot write.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exercise Moodle storage and gradebook APIs for both managed activities.
+# Exercise Moodle storage and gradebook APIs for all managed activities.
 # Cleanup runs after each mode and on failure, so no fabricated attempt or
 # grade remains in the demo.
 set -euo pipefail
@@ -52,7 +52,7 @@ fi
   /tmp/acceptance.php /tmp/acceptance-cleanup.php
 
 trap cleanup_on_exit EXIT
-for active_mode in guided challenge; do
+for active_mode in guided challenge assessment; do
   echo "--- acceptance $active_mode ---"
   run_as_daemon /tmp/acceptance.php
   echo "--- cleanup $active_mode ---"
@@ -60,4 +60,4 @@ for active_mode in guided challenge; do
   active_mode=""
 done
 trap - EXIT
-echo "MOODLE GUIDED + CHALLENGE ACCEPTANCE PASSED"
+echo "MOODLE GUIDED + CHALLENGE + ASSESSMENT ACCEPTANCE PASSED"

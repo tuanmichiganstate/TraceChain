@@ -1,30 +1,30 @@
 
 ## Deploying to the demo instance
 
-Build both packages and deploy them into separate activities:
+Build all packages and deploy them into separate activities:
 
-    ./docker-moodle/deploy.sh              # build, verify, deploy, reset both
-    ./docker-moodle/deploy.sh --no-build   # deploy current packages, reset both
+    ./docker-moodle/deploy.sh              # build, verify, deploy, reset all
+    ./docker-moodle/deploy.sh --no-build   # deploy current packages, reset all
 
 The first run adopts the existing activity as `TraceChain Guided` and creates
-`TraceChain Challenge` beside it. Later runs update those two stable activities.
-Each deployment clears attempts, grades, and completion state for both
-activities, then goes through `scorm_parse()` to extract each package and bump
-its cache revision. Every ZIP entry is checked against Moodle's content area,
-so partial extraction fails immediately.
+`TraceChain Challenge` and `TraceChain Assessment` beside it. Later runs update
+those three stable activities. Each deployment clears attempts, grades, and
+completion state for all activities, then goes through `scorm_parse()` to
+extract each package and bump its cache revision. Every ZIP entry is checked
+against Moodle's content area, so partial extraction fails immediately.
 
-The deployment only manages those two named activities. It will not guess when
+The deployment only manages those three named activities. It will not guess when
 several unnamed SCORM activities already exist.
 
 ## Moodle acceptance pass
 
-Exercises both activities with TC3-shaped payloads: suspend-data round trip,
+Exercises all activities with TC3-shaped payloads: suspend-data round trip,
 gradebook write, relaunch-without-clobbering, the 4096-character boundary, and
 verified cleanup.
 
     ./docker-moodle/run-acceptance.sh
 
-The cleanup trap removes synthetic attempts and verifies that both the attempt
+The cleanup trap removes synthetic attempts and verifies that the attempt
 table and gradebook are clean. Its forced-failure regression path must exit
 nonzero while still passing cleanup:
 

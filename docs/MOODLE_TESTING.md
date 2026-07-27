@@ -14,8 +14,8 @@ Run the whole list for every release that changes learner-package inputs.
 npm run quality        # must pass end to end
 ```
 
-Produces Guided and Challenge-bank ZIPs in the project root. The Docker demo uses
-the exact selected Guided or Challenge package.
+Produces Guided, Challenge-bank, and Assessment ZIPs in the project root. The
+Docker demo deploys the exact current package for each mode.
 
 **Moodle activity settings to use:**
 

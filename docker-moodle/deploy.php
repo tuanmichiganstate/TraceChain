@@ -1,11 +1,11 @@
 <?php
 /**
- * Deploy the current Guided and Challenge packages into two demo activities.
+ * Deploy the current Guided, Challenge, and Assessment packages.
  *
  * The first run adopts the existing TraceChain activity as Guided and
- * duplicates it once for Challenge. Later runs find both activities by their
- * stable names. Every deployment clears attempts, grades, and completion state
- * before replacing both packages.
+ * duplicates it for Challenge and Assessment. Later runs find all activities
+ * by their stable names. Every deployment clears attempts, grades, and
+ * completion state before replacing all packages.
  *
  * `scorm_parse()` rebuilds the extracted content and bumps `revision`. The
  * revision change prevents Moodle from serving a cached previous build.
@@ -20,6 +20,7 @@ require_once($CFG->libdir.'/completionlib.php');
 
 const TRACECHAIN_ACTIVITY_GUIDED = 'TraceChain Guided';
 const TRACECHAIN_ACTIVITY_CHALLENGE = 'TraceChain Challenge';
+const TRACECHAIN_ACTIVITY_ASSESSMENT = 'TraceChain Assessment';
 
 function fail(string $message): void {
     fwrite(STDERR, "deploy: $message\n");
@@ -69,11 +70,20 @@ function ensure_managed_activities(): array {
         '*',
         IGNORE_MISSING
     );
+    $assessment = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_ASSESSMENT],
+        '*',
+        IGNORE_MISSING
+    );
 
     if ($guided === false) {
         $candidates = [];
         foreach ($DB->get_records('scorm', [], 'id ASC') as $candidate) {
-            if ($candidate->name !== TRACECHAIN_ACTIVITY_CHALLENGE) {
+            if (
+                $candidate->name !== TRACECHAIN_ACTIVITY_CHALLENGE &&
+                $candidate->name !== TRACECHAIN_ACTIVITY_ASSESSMENT
+            ) {
                 $candidates[] = $candidate;
             }
         }
@@ -126,13 +136,50 @@ function ensure_managed_activities(): array {
         echo "created:  cmid={$challengecm->id} as \"".TRACECHAIN_ACTIVITY_CHALLENGE."\"\n";
     }
 
-    if ((int)$guided->course !== (int)$challenge->course) {
-        fail('Guided and Challenge activities must be in the same course');
+    if ($assessment === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Assessment');
+        }
+        $assessment = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $assessment = rename_activity(
+            $assessment,
+            TRACECHAIN_ACTIVITY_ASSESSMENT
+        );
+        $assessmentcm = get_coursemodule_from_instance(
+            'scorm',
+            $assessment->id,
+            $assessment->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$assessmentcm->id} as \"".TRACECHAIN_ACTIVITY_ASSESSMENT."\"\n";
+    }
+
+    if (
+        (int)$guided->course !== (int)$challenge->course ||
+        (int)$guided->course !== (int)$assessment->course
+    ) {
+        fail('Managed TraceChain activities must be in the same course');
     }
 
     return [
         'guided' => $guided,
         'challenge' => $challenge,
+        'assessment' => $assessment,
     ];
 }
 
@@ -287,11 +334,13 @@ function deploy_package(object $scorm, string $zip): void {
 $packages = [
     'guided' => package_from_environment('TRACECHAIN_GUIDED_PACKAGE'),
     'challenge' => package_from_environment('TRACECHAIN_CHALLENGE_PACKAGE'),
+    'assessment' => package_from_environment('TRACECHAIN_ASSESSMENT_PACKAGE'),
 ];
 $activities = ensure_managed_activities();
 
 deploy_package($activities['guided'], $packages['guided']);
 deploy_package($activities['challenge'], $packages['challenge']);
+deploy_package($activities['assessment'], $packages['assessment']);
 
 echo "managed activities are ready and empty:\n";
 foreach ($activities as $mode => $activity) {

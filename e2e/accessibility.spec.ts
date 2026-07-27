@@ -244,6 +244,70 @@ test.describe("reflow", () => {
     expect(report.scrolls).toBe(false);
   });
 
+  test("keeps certificate evidence rows readable at 200% text size", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "layout-only check; one engine suffices");
+    await page.setViewportSize({ width: 1200, height: 1074 });
+    await page.goto("/");
+    const activity = new Activity(page);
+    await activity.start();
+    await activity.answer(/Không\. Blockchain giúp xác định/);
+    await activity.continue();
+    await activity.submitAndSeal("Thông tin lô hàng");
+    await activity.continue();
+    await activity.expectStage(3);
+
+    await page.setViewportSize({ width: 1700, height: 1074 });
+    const cardTops = await page
+      .locator(".certificate-console > .card")
+      .evaluateAll((cards) =>
+        cards.map((card) => Math.round(card.getBoundingClientRect().top)),
+      );
+    expect(cardTops).toHaveLength(2);
+    expect(new Set(cardTops).size).toBe(1);
+
+    await page.setViewportSize({ width: 1200, height: 1074 });
+    await page.addStyleTag({ content: "html { font-size: 200%; }" });
+    const registry = page.getByRole("region", {
+      name: "Sự công nhận và thẩm quyền của đơn vị cấp",
+    });
+
+    const columnCounts = await registry
+      .locator(".asset-card__row")
+      .evaluateAll((rows) =>
+        rows.map(
+          (row) =>
+            getComputedStyle(row).gridTemplateColumns
+              .split(" ")
+              .filter(Boolean).length,
+        ),
+      );
+    expect(columnCounts).toEqual([1, 1, 1, 1]);
+
+    const stageLayout = await page.locator(".stage").evaluate((stage) => {
+      const learning = stage.querySelector(".stage__learning");
+      const application = stage.querySelector(".stage__application");
+      if (!(learning instanceof HTMLElement) || !(application instanceof HTMLElement)) {
+        throw new Error("Stage regions are missing");
+      }
+      const learningBox = learning.getBoundingClientRect();
+      const applicationBox = application.getBoundingClientRect();
+      return {
+        applicationTop: applicationBox.top,
+        learningBottom: learningBox.bottom,
+      };
+    });
+    expect(stageLayout.applicationTop).toBeGreaterThanOrEqual(
+      stageLayout.learningBottom,
+    );
+
+    const report = await measureReflow(page);
+    expect(report.offenders, report.offenders.join(", ")).toEqual([]);
+    expect(report.scrolls).toBe(false);
+  });
+
   /**
    * The recall question is the only check whose options carry asset identifiers,
    * and a fieldset -- uniquely among elements -- refuses to shrink below its

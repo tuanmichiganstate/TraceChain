@@ -164,11 +164,9 @@ Strict release generation produces
 `TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip` and
 `TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
 `TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`. The local command appends
-`_NON_RELEASE` to every archive name. The Docker demo selects the current Guided
-and Challenge archives by their embedded build metadata, deploys them into
-separate reset activities, and ignores stale ZIPs. Assessment is generated and
-verified but is not deployed to the demo unless that deployment workflow is
-explicitly extended.
+`_NON_RELEASE` to every archive name. The Docker demo selects the current
+Guided, Challenge, and Assessment archives by their embedded build metadata,
+deploys them into separate reset activities, and ignores stale ZIPs.
 Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
 

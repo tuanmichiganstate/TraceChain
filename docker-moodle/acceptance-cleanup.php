@@ -9,6 +9,7 @@ $mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
 $activitynames = [
     'guided' => 'TraceChain Guided',
     'challenge' => 'TraceChain Challenge',
+    'assessment' => 'TraceChain Assessment',
 ];
 if (!isset($activitynames[$mode])) {
     throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
