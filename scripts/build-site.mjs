@@ -47,6 +47,7 @@ for (const route of [
   "instructor",
   "author",
   "admin",
+  "technical-lab",
 ]) {
   await writeFile(
     join(clientDirectory, `${route}.html`),
@@ -75,10 +76,14 @@ const hostedPackages = [];
 for (const artifact of packageCatalog.packages) {
   if (
     artifact.configurationSchemaVersion !== "2" ||
-    !["OPERATIONS", "AUDIT"].includes(artifact.activityType) ||
-    (artifact.presetId.startsWith("audit-")
-      ? artifact.activityType !== "AUDIT"
-      : artifact.activityType !== "OPERATIONS") ||
+    !["OPERATIONS", "AUDIT", "TECHNICAL_LAB"].includes(
+      artifact.activityType,
+    ) ||
+    (artifact.presetId === "technical-lab"
+      ? artifact.activityType !== "TECHNICAL_LAB"
+      : artifact.presetId.startsWith("audit-")
+        ? artifact.activityType !== "AUDIT"
+        : artifact.activityType !== "OPERATIONS") ||
     typeof artifact.supportProfile !== "string" ||
     typeof artifact.deliveryPurpose !== "string" ||
     typeof artifact.outcomeStrategy !== "string" ||
@@ -120,6 +125,42 @@ await writeFile(
   )}\n`,
   "utf8",
 );
+
+const technicalLabArtifact = hostedPackages.find(
+  (artifact) => artifact.presetId === "technical-lab",
+);
+if (technicalLabArtifact === undefined) {
+  throw new Error(
+    "The hosted build requires the Technical Laboratory SCORM artifact.",
+  );
+}
+const technicalLabRuntimeDirectory = join(
+  clientDirectory,
+  "technical-lab-runtime",
+);
+await mkdir(technicalLabRuntimeDirectory, { recursive: true });
+for (const fileName of [
+  "tracechain.config.json",
+  "technical-lab-pack.json",
+  "build-info.json",
+  "identity-registry.json",
+  "educational-signing-keys.json",
+  "authorization-policies.json",
+  "endorsement-policies.json",
+]) {
+  const bytes = await readFile(
+    join(
+      repositoryRoot,
+      "dist-scorm",
+      "technical-lab",
+      fileName,
+    ),
+  );
+  await writeFile(
+    join(technicalLabRuntimeDirectory, fileName),
+    bytes,
+  );
+}
 
 await mkdir(serverDirectory, { recursive: true });
 await build({

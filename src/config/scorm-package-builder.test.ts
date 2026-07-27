@@ -6,7 +6,7 @@ import {
 } from "./scorm-package-builder";
 
 describe("SCORM package builder preset catalogue", () => {
-  it("derives all eight accepted package previews from resolved presets", () => {
+  it("derives all nine accepted package previews from resolved presets", () => {
     expect(
       SCORM_PACKAGE_PRESET_PREVIEWS.map(
         (preview) => preview.presetId,
@@ -20,6 +20,7 @@ describe("SCORM package builder preset catalogue", () => {
       "audit-practice",
       "audit-challenge",
       "audit-assessment",
+      "technical-lab",
     ]);
     expect(scormPackagePresetPreview("audit-assessment")).toMatchObject({
       activityType: "AUDIT",
@@ -30,6 +31,16 @@ describe("SCORM package builder preset catalogue", () => {
       hintAvailability: "DISABLED",
       official: true,
       variantBankId: "BANK_COFFEE_AUDIT_CHALLENGE_V1",
+    });
+    expect(scormPackagePresetPreview("technical-lab")).toMatchObject({
+      activityType: "TECHNICAL_LAB",
+      supportProfile: "PRACTICE",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+      feedbackTiming: "IMMEDIATE",
+      hintAvailability: "ENABLED",
+      official: false,
+      scenarioId: null,
     });
   });
 

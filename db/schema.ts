@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-27-experience-configuration-v2";
+  "2026-07-27-technical-lab-hosted-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -174,8 +174,6 @@ export const schemaStatements = [
         AND feedback_released_at_utc IS NOT NULL
         AND feedback_released_by_user_id IS NOT NULL)
     ),
-    FOREIGN KEY (pack_id, pack_version)
-      REFERENCES scenario_pack_versions(pack_id, pack_version),
     FOREIGN KEY (created_by_user_id)
       REFERENCES application_users(user_id),
     FOREIGN KEY (closed_by_user_id)
@@ -368,7 +366,17 @@ export const schemaStatements = [
     job_id TEXT PRIMARY KEY,
     creation_command_id TEXT NOT NULL UNIQUE,
     preset_id TEXT NOT NULL
-      CHECK (preset_id IN ('guided', 'practice', 'challenge', 'assessment')),
+      CHECK (preset_id IN (
+        'guided',
+        'practice',
+        'challenge',
+        'assessment',
+        'audit-guided',
+        'audit-practice',
+        'audit-challenge',
+        'audit-assessment',
+        'technical-lab'
+      )),
     lifecycle_status TEXT NOT NULL
       CHECK (lifecycle_status = 'completed'),
     title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 120),

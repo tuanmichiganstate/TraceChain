@@ -91,11 +91,10 @@ No TC3 migration or compatibility reader will be introduced.
 
 ### Extend the existing package pipeline only after the runtime is complete
 
-The eventual Technical Laboratory package will use the same static application
-build and generator. Its runtime configuration, pack, modules, fixtures, and
-localization remain external files. Hosted package jobs and Moodle deployment
-gain the fourth preset only after all seven modules pass browser, persistence,
-SCORM, and accessibility gates.
+The Technical Laboratory package uses the same static application build and
+generator. Its runtime configuration, pack, modules, fixtures, and localization
+remain external files. Hosted package jobs and Moodle deployment manage it as
+the ninth accepted preset after the eight Operations and Audit packages.
 
 ## Increment boundaries
 
@@ -109,6 +108,10 @@ SCORM, and accessibility gates.
 7. Scoring, hints, report, localization, and content review.
 8. Hosted assignment integration.
 9. SCORM packaging and exact-package Moodle acceptance.
+
+Increments 1 through 8 and the packaging/tooling portion of Increment 9 are
+implemented. Exact-package Moodle browser acceptance remains an operating gate
+for a deployed release rather than evidence supplied by this ADR.
 
 Each increment ends with the repository quality gate. Laboratory packages,
 hosted assignments, and Moodle activities remain unavailable until their

@@ -51,6 +51,10 @@ import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
 import { AuditHostedRunService } from "../audit/audit-run-service";
 import type { AuditHostedCommand } from "../audit/audit-run-types";
 import type { AuditVariantAssignmentV1 } from "../contracts/audit";
+import {
+  HostedTechnicalLabRunService,
+  type HostedTechnicalLabCommand,
+} from "../../technical-lab/hosted-run-service";
 
 export interface CreateHostedRuntimeRunRequest {
   readonly commandId: string;
@@ -66,6 +70,7 @@ export interface CreateHostedRuntimeRunRequest {
 export type HostedRuntimeCommand =
   | GenericHostedCommand
   | AuditHostedCommand
+  | HostedTechnicalLabCommand
   | HostedStage3Command;
 
 export interface HostedRuntimeStateSummary {
@@ -270,6 +275,79 @@ export function createHostedRuntimeService(options: {
         service.learnerCompetencyEvidence(principal, runId),
       learnerAuthoredFeedback: (principal, runId) =>
         service.learnerAuthoredFeedback(principal, runId),
+      rubricEvidence: (principal, runId) =>
+        service.rubricEvidence(principal, runId),
+      loadState: (runId) => service.loadState(runId),
+    };
+  }
+  if (runtimeKind === "technical-lab-v1") {
+    const profile = scenario.hostedRuntime;
+    if (
+      profile?.runtimeId !== "tracechain-technical-lab-v1" ||
+      profile.labPackId !== options.pack.packId ||
+      profile.labPackVersion !== options.pack.version
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The hosted Technical Laboratory adapter does not match its exact lab pack.",
+      );
+    }
+    const service = new HostedTechnicalLabRunService(
+      options.eventStore,
+      options.clock,
+      options.ids,
+    );
+    const unsupported = (): never => {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "This operation is not authored for the Technical Laboratory.",
+      );
+    };
+    return {
+      runtimeKind,
+      createRun: (principal, request) =>
+        service.createRun(principal, request),
+      submit: (principal, command) =>
+        service.submit(
+          principal,
+          command as HostedTechnicalLabCommand,
+        ),
+      instructorIncidents: async () => [],
+      releaseInstructorIncident: async () => unsupported(),
+      createCounterfactualBranch: async () => unsupported(),
+      submitCounterfactual: async () => unsupported(),
+      counterfactualProjection: async () => unsupported(),
+      counterfactualSourceProjection: async () => unsupported(),
+      counterfactualForkProjection: async () => unsupported(),
+      counterfactualMetrics: async (
+        principal,
+        runId,
+      ) => {
+        const projection =
+          await service.learnerProjection(principal, runId);
+        return {
+          ACADEMIC_SCORE:
+            projection.technicalLab?.replay.score.totalScore ?? 0,
+        };
+      },
+      learnerProjection: (principal, runId) =>
+        service.learnerProjection(principal, runId),
+      instructorTimeline: (principal, runId) =>
+        service.instructorTimeline(principal, runId),
+      instructorMonitor: (principal, runId, observedAt) =>
+        service.instructorMonitor(principal, runId, observedAt),
+      instructorReplay: (principal, runId, sequence) =>
+        service.instructorReplay(principal, runId, sequence),
+      instructorDecisionOutcomeEvidence: (principal, runId) =>
+        service.instructorDecisionOutcomeEvidence(
+          principal,
+          runId,
+        ),
+      competencyReport: (principal, runId) =>
+        service.competencyReport(principal, runId),
+      learnerCompetencyEvidence: (principal, runId) =>
+        service.learnerCompetencyEvidence(principal, runId),
+      learnerAuthoredFeedback: async () => [],
       rubricEvidence: (principal, runId) =>
         service.rubricEvidence(principal, runId),
       loadState: (runId) => service.loadState(runId),

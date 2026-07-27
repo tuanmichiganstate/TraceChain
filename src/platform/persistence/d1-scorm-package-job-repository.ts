@@ -153,6 +153,7 @@ function validateArtifact(
       "audit-practice",
       "audit-challenge",
       "audit-assessment",
+      "technical-lab",
     ].includes(artifact.presetId) ||
     artifact.title.length < 1 ||
     artifact.title.length > 120 ||
@@ -164,10 +165,14 @@ function validateArtifact(
     artifact.sizeBytes < 1 ||
     !artifact.downloadPath.startsWith("/scorm-packages/") ||
     artifact.configurationSchemaVersion !== "2" ||
-    !["OPERATIONS", "AUDIT"].includes(artifact.activityType) ||
-    (artifact.presetId.startsWith("audit-")
-      ? artifact.activityType !== "AUDIT"
-      : artifact.activityType !== "OPERATIONS") ||
+    !["OPERATIONS", "AUDIT", "TECHNICAL_LAB"].includes(
+      artifact.activityType,
+    ) ||
+    (artifact.presetId === "technical-lab"
+      ? artifact.activityType !== "TECHNICAL_LAB"
+      : artifact.presetId.startsWith("audit-")
+        ? artifact.activityType !== "AUDIT"
+        : artifact.activityType !== "OPERATIONS") ||
     !["GUIDED", "PRACTICE", "CHALLENGE"].includes(
       artifact.supportProfile,
     ) ||

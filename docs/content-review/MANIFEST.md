@@ -6,10 +6,10 @@
 | Generation command | `npm run generate:content-review` |
 | Generator version | `1.0.0` |
 | Format version | `1` |
-| Source commit | `f9cc45c37b1f693347689b7910b25864dc4f5198` |
-| Source SHA-256 | `71fd1ba05f028dcf659da7de5549398cf093253723dd78e62bcb6d7af512b043` |
-| Locale parity | **2438/2438** strings present, 0 missing |
-| Artifact SHA-256 | `d8b281613d05f387c8e1f9b754e8aa610adfda15cde3cf2a56b5e13d011a213d` |
+| Source commit | `90be7aed63a2d3991fd50a027da869f47f3cf70b` |
+| Source SHA-256 | `fa773ea1c71a981dc1397507f280ab9612bbf5a71283f93cb254459430796174` |
+| Locale parity | **2728/2728** strings present, 0 missing |
+| Artifact SHA-256 | `394feab256b670dd74236a70e4985f9e0bb406bdd933378fd524efe8c00c05f4` |
 | Review status | **Not yet reviewed** — awaiting Vietnamese subject-expert adjudication |
 
 The source commit records the clean committed base used for generation. The
@@ -23,6 +23,7 @@ format version, and exclusions, including any working-tree source changes.
 - `src/scenarios/coffee-traceability/`
 - `src/scenarios/practice-a/`
 - `src/scenarios/challenge-a/`
+- `src/technical-lab/`
 - `src/domain/types/scenario.ts`
 - `src/domain/types/enums.ts`
 - `src/domain/types/scoring.ts`

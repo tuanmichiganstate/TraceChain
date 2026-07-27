@@ -6,6 +6,7 @@ import type {
   HostedAssignmentScenarioOptionV1,
 } from "../contracts/assessment";
 import {
+  ClassTechnicalLabReport,
   createInstructorReviewApi,
   InstructorReviewScreen,
   type InstructorReviewApi,
@@ -121,6 +122,118 @@ function renderScreen(api: InstructorReviewApi) {
 }
 
 describe("instructor review screen", () => {
+  it("presents module-level Technical Laboratory evidence without treating timing as ability", () => {
+    render(
+      <LocaleProvider locale="en">
+        <ClassTechnicalLabReport
+          report={{
+            schemaVersion: "1.0.0",
+            reportType:
+              "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT",
+            assignmentId: "ASSIGNMENT_LAB_001",
+            labPackId:
+              "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+            labPackVersion: "1.0.0",
+            generatedAt: "2026-07-27T12:00:00.000Z",
+            summary: {
+              assignedLearnerCount: 1,
+              runCount: 1,
+              completedRunCount: 1,
+              meanCompletedScore: 92,
+              hintUseCount: 1,
+              incorrectResponseCount: 1,
+              observedVerificationFailureCount: 2,
+            },
+            scoreDistribution: [
+              {
+                minimumInclusive: 90,
+                maximumInclusive: 100,
+                completedRunCount: 1,
+              },
+            ],
+            commonMisconceptions: [
+              {
+                itemId: "TL4_INTERPRETATION",
+                selectedOptionId: "B",
+                count: 1,
+              },
+            ],
+            runs: [
+              {
+                schemaVersion: "1.0.0",
+                runId: "RUN_LAB_001",
+                learnerUserId: "USER_LEARNER_001",
+                status: "completed",
+                labPackId:
+                  "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+                labPackVersion: "1.0.0",
+                configurationHash: "a".repeat(64),
+                currentModuleId: "TL7",
+                completedModuleCount: 7,
+                totalModuleCount: 7,
+                score: {
+                  experimentScore: 40,
+                  interpretationScore: 34,
+                  applicationScore: 18,
+                  totalScore: 92,
+                  maximumScore: 100,
+                  passScore: 70,
+                  passed: true,
+                },
+                hintUseCount: 1,
+                incorrectResponseCount: 1,
+                observedVerificationFailureCount: 2,
+                modules: [
+                  {
+                    moduleId: "TL4",
+                    moduleVersion: "1.0.0",
+                    complete: true,
+                    experimentComplete: true,
+                    score: 12,
+                    maximumScore: 14,
+                    interpretationAttempts: 2,
+                    interpretationCorrect: true,
+                    applicationAttempts: 1,
+                    applicationCorrect: true,
+                    hintOpened: true,
+                    observedVerificationFailureCount: 2,
+                    elapsedSeconds: 90,
+                  },
+                ],
+                misconceptions: [
+                  {
+                    itemId: "TL4_INTERPRETATION",
+                    selectedOptionId: "B",
+                    count: 1,
+                  },
+                ],
+              },
+            ],
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Technical Laboratory report",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("7 of 7 modules")).toBeInTheDocument();
+    expect(screen.getByText("TL4_INTERPRETATION")).toBeInTheDocument();
+    expect(
+      screen.getByText(/not attention, motivation, or ability/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: "Download Technical Laboratory report",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/api/v1/assignments/ASSIGNMENT_LAB_001/technical-lab-report",
+    );
+  });
+
   it("shows the verified Moodle course context without requiring an email claim", async () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
@@ -1679,6 +1792,8 @@ describe("instructor review screen", () => {
               ? { monitor: { schemaVersion: "1.0.0" } }
             : path.endsWith("/audit-report")
               ? { auditReport: null }
+            : path.endsWith("/technical-lab-report")
+              ? { technicalLabReport: null }
             : path.endsWith("/curriculum-crosswalks")
               ? {
                   curriculumCrosswalks: {
@@ -1753,6 +1868,9 @@ describe("instructor review screen", () => {
     await api.loadAssignmentAuditReport?.(
       "ASSIGNMENT / 001",
     );
+    await api.loadAssignmentTechnicalLabReport?.(
+      "ASSIGNMENT / 001",
+    );
 
     expect(requestedPaths).toEqual([
       "/api/v1/session",
@@ -1769,6 +1887,7 @@ describe("instructor review screen", () => {
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/curriculum-crosswalks",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/process-analytics",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/audit-report",
+      "/api/v1/assignments/ASSIGNMENT%20%2F%20001/technical-lab-report",
     ]);
   });
 });

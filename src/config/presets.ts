@@ -1,8 +1,10 @@
 import type {
   AuditSimulationConfiguration,
   BusinessSimulationConfiguration,
+  TechnicalLabConfiguration,
   TraceChainConfiguration,
 } from "./types";
+import { FIRST_TECHNICAL_LAB_MODULE_IDS } from "../technical-lab/contracts";
 import {
   feedbackPolicyFor,
   guidancePolicyFor,
@@ -19,7 +21,8 @@ export type LecturerPresetId =
   | "audit-guided"
   | "audit-practice"
   | "audit-challenge"
-  | "audit-assessment";
+  | "audit-assessment"
+  | "technical-lab";
 
 const COMMON = {
   configurationSchemaVersion: "2",
@@ -428,6 +431,71 @@ export const AUDIT_ASSESSMENT_PRESET: AuditSimulationConfiguration = {
   },
 };
 
+const TECHNICAL_LAB_DIMENSIONS =
+  resolveProductDimensions("technical-lab");
+
+export const TECHNICAL_LAB_PRESET: TechnicalLabConfiguration = {
+  configurationSchemaVersion: "2",
+  applicationCompatibilityVersion: "tl1-v1",
+  presetId: "technical-lab",
+  ...TECHNICAL_LAB_DIMENSIONS,
+  content: {
+    packId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+    packVersion: "1.0.0",
+    laboratoryPackId:
+      "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+    laboratoryPackVersion: "1.0.0",
+  },
+  guidance: guidancePolicyFor(
+    TECHNICAL_LAB_DIMENSIONS.supportProfile,
+  ),
+  feedback: feedbackPolicyFor("IMMEDIATE"),
+  hints: hintPolicyFor(
+    "ENABLED",
+    TECHNICAL_LAB_DIMENSIONS.supportProfile,
+  ),
+  retries: retryPolicyFor(
+    TECHNICAL_LAB_DIMENSIONS.supportProfile,
+    TECHNICAL_LAB_DIMENSIONS.deliveryPurpose,
+  ),
+  decisions: {
+    requireRationale: false,
+    requireEvidenceCitations: false,
+    requirePolicyCitations: false,
+    requireConfidence: false,
+    requireRiskEstimate: false,
+    allowDrafts: false,
+  },
+  labPackId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+  labPackVersion: "1.0.0",
+  laboratoryPresetId:
+    "permissioned-blockchain-foundations",
+  includedModuleIds: FIRST_TECHNICAL_LAB_MODULE_IDS,
+  scoringMode: "graded",
+  scoring: {
+    scoringBlueprintId: "LAB_FOUNDATIONS_100",
+    scoringBlueprintVersion: "1.0.0",
+    maximumScore: 100,
+    passScore: 70,
+    official: false,
+    competencyEvidenceEnabled: true,
+    reportDiagnosticDimensions: true,
+  },
+  reporting: {
+    causalReport: false,
+    auditReport: false,
+    competencyReport: true,
+    activitySummary: true,
+    showTechnicalMetadataToLearner: true,
+  },
+  delivery: {
+    channel: "SCORM",
+    persistencePolicyId: "TL1_COMPACT_JOURNAL",
+    attemptPolicyId: "LMS_MANAGED",
+  },
+  locale: "vi",
+};
+
 export const LECTURER_PRESETS: Readonly<
   Record<LecturerPresetId, TraceChainConfiguration>
 > = {
@@ -439,6 +507,7 @@ export const LECTURER_PRESETS: Readonly<
   "audit-practice": AUDIT_PRACTICE_PRESET,
   "audit-challenge": AUDIT_CHALLENGE_PRESET,
   "audit-assessment": AUDIT_ASSESSMENT_PRESET,
+  "technical-lab": TECHNICAL_LAB_PRESET,
 };
 
 export function resolvePreset(

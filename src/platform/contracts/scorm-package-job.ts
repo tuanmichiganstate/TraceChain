@@ -6,7 +6,8 @@ export type ScormPackagePresetId =
   | "audit-guided"
   | "audit-practice"
   | "audit-challenge"
-  | "audit-assessment";
+  | "audit-assessment"
+  | "technical-lab";
 
 export interface HostedScormPackageArtifactV1 {
   readonly presetId: ScormPackagePresetId;

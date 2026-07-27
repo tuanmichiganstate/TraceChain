@@ -20,6 +20,13 @@ export { challengeVariantBank } from "../src/scenarios/challenge-a/variant-bank"
 export { coffeeCryptographicRuntime } from "../src/scenarios/coffee-traceability/cryptographic-runtime";
 export { validateCryptographicRuntime } from "../src/crypto/signatures/validation";
 export { NobleEd25519Provider } from "../src/crypto/signatures/noble-ed25519-provider";
+export { permissionedFoundationsLabBundle } from "../src/technical-lab/permissioned-foundations-pack";
+export { technicalLabCryptographicRuntime } from "../src/technical-lab/cryptographic-runtime";
+export {
+  validateTechnicalLabConfigurationAgainstPack,
+  validateTechnicalLabPackBundle,
+} from "../src/technical-lab/validation";
+export { verifyTechnicalLabContentHash } from "../src/technical-lab/content-hash";
 export {
   publishScenarioPack,
 } from "../src/platform/scenario-packs/publication";

@@ -2,6 +2,20 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../app/providers/locale-provider";
+import { NotificationProvider } from "../../app/providers/notification-provider";
+import { experienceConfigurationHash } from "../../config/experience";
+import { embedConfiguration } from "../../config/hash";
+import { TECHNICAL_LAB_PRESET } from "../../config/presets";
+import { sha256Hex } from "../../infrastructure/hashing/sha256";
+import { technicalLabCryptographicRuntime } from "../../technical-lab/cryptographic-runtime";
+import {
+  emptyTechnicalLabSnapshot,
+  replayTechnicalLab,
+} from "../../technical-lab/engine";
+import {
+  hostedTechnicalLabConfiguration,
+} from "../../technical-lab/hosted-pack-adapter";
+import { permissionedFoundationsLabBundle } from "../../technical-lab/permissioned-foundations-pack";
 import type { LearnerRunProjectionV1 } from "../contracts/run-events";
 import {
   HostedDecisionEvidenceGuide,
@@ -434,6 +448,195 @@ describe("hosted learner workspace", () => {
         adverseEventProbabilityPercent: 20,
       }),
     );
+  });
+
+  it("resumes a hosted Technical Laboratory with the shared learner shell", async () => {
+    const cryptographicFiles = {
+      "identity-registry.json":
+        technicalLabCryptographicRuntime.identityRegistry,
+      "educational-signing-keys.json":
+        technicalLabCryptographicRuntime.signingKeys,
+      "authorization-policies.json":
+        technicalLabCryptographicRuntime.authorizationPolicies,
+      "endorsement-policies.json":
+        technicalLabCryptographicRuntime.endorsementPolicies,
+    } as const;
+    const runtimeFiles: Readonly<Record<string, unknown>> = {
+      "tracechain.config.json":
+        embedConfiguration(TECHNICAL_LAB_PRESET),
+      "technical-lab-pack.json":
+        permissionedFoundationsLabBundle,
+      ...cryptographicFiles,
+      "build-info.json": {
+        technicalLabPackHash: sha256Hex(
+          `${JSON.stringify(
+            permissionedFoundationsLabBundle,
+            null,
+            2,
+          )}\n`,
+        ),
+        technicalLabPackContentHash:
+          permissionedFoundationsLabBundle.pack.publication
+            ?.contentHash,
+        technicalLabPersistenceSchemaVersion: "TL1",
+        cryptographicEvidenceSchemaVersion: "2",
+        cryptographicRuntimeHashes: Object.fromEntries(
+          Object.entries(cryptographicFiles).map(
+            ([fileName, value]) => [
+              fileName,
+              sha256Hex(`${JSON.stringify(value, null, 2)}\n`),
+            ],
+          ),
+        ),
+      },
+    };
+    const fetchRuntime = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const fileName = String(input).split("/").at(-1) ?? "";
+        const value = runtimeFiles[fileName];
+        return new Response(
+          value === undefined
+            ? "Not found"
+            : JSON.stringify(value),
+          {
+            status: value === undefined ? 404 : 200,
+            headers: {
+              "content-type":
+                value === undefined
+                  ? "text/plain"
+                  : "application/json",
+            },
+          },
+        );
+      });
+    const configuration = hostedTechnicalLabConfiguration("en");
+    const configurationHash =
+      experienceConfigurationHash(configuration);
+    const replay = await replayTechnicalLab(
+      {
+        configurationHash,
+        bundle: permissionedFoundationsLabBundle,
+        cryptographicRuntime: technicalLabCryptographicRuntime,
+      },
+      emptyTechnicalLabSnapshot(),
+    );
+    const technicalProjection: LearnerRunProjectionV1 = {
+      schemaVersion: "1.0.0",
+      runId: "RUN_TECHNICAL_LAB_001",
+      version: 1,
+      roleId: "TECHNICAL_LEARNER",
+      businessState: [],
+      ledgerState: {},
+      informationState: [],
+      policyState: [],
+      workflowState: {
+        currentNodeId: "TL1",
+        completedNodeIds: [],
+        permittedActionIds: [
+          "TECHNICAL_LAB_ACTION:VIEW_INPUT",
+        ],
+      },
+      technicalLab: {
+        schemaVersion: "1.0.0",
+        configurationHash,
+        labPackId:
+          permissionedFoundationsLabBundle.pack.labPackId,
+        labPackVersion:
+          permissionedFoundationsLabBundle.pack.labPackVersion,
+        locale: "en",
+        replay,
+      },
+    };
+    const submit = vi
+      .fn()
+      .mockResolvedValue(technicalProjection);
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_TECHNICAL_LAB_001",
+        email: "lab-learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments: vi.fn().mockResolvedValue([
+        {
+          assignment: {
+            schemaVersion: "2.0.0",
+            assignmentId: "ASSIGNMENT_TECHNICAL_LAB_001",
+            title: "Permissioned blockchain foundations",
+            packId:
+              permissionedFoundationsLabBundle.pack.labPackId,
+            packVersion:
+              permissionedFoundationsLabBundle.pack.labPackVersion,
+            scenarioId:
+              "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+            scenarioVersion: "1.0.0",
+            mode: "tutorial",
+            runConfiguration: {
+              mode: "tutorial",
+              allowHints: true,
+              allowRetry: true,
+              allowBacktracking: true,
+              feedbackTiming: "immediate",
+              showScores: true,
+              outcomeStrategy: "forced",
+              seedPolicy: "supplied",
+              allowCommunication: false,
+              allowEvidenceRequests: false,
+              forcedOutcomeCode: "FIXED_LAB_FIXTURES",
+            },
+            counterfactualReplay:
+              disabledCounterfactualReplay,
+            research: { enabled: false },
+            learnerUserIds: ["USER_TECHNICAL_LAB_001"],
+            status: "active",
+            feedbackReleaseStatus: "withheld",
+            createdAt: "2026-07-27T12:00:00.000Z",
+            createdByUserId: "USER_INSTRUCTOR_001",
+          },
+          startAvailability: availableStart,
+          runs: [
+            {
+              runId: "RUN_TECHNICAL_LAB_001",
+              status: "active",
+            },
+          ],
+        },
+      ]),
+      startRun: vi.fn(),
+      loadRun: vi.fn().mockResolvedValue(technicalProjection),
+      loadFeedback: vi.fn(),
+      submit,
+    };
+    render(
+      <LocaleProvider locale="en">
+        <NotificationProvider>
+          <HostedLearnerScreen api={api} />
+        </NotificationProvider>
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", { name: "Resume" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "Permissioned Blockchain Foundations Laboratory",
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Run: inspect the authored input",
+      }),
+    );
+    expect(submit).toHaveBeenCalledWith(
+      "RUN_TECHNICAL_LAB_001",
+      expect.objectContaining({
+        commandType: "PERFORM_TECHNICAL_LAB_ACTION",
+        actionType: "VIEW_INPUT",
+        expectedRunVersion: 1,
+      }),
+    );
+    fetchRuntime.mockRestore();
   });
 
   it("renders and submits an authored decision from a generic scenario pack", async () => {

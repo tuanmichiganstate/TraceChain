@@ -37,6 +37,7 @@ const packageSpecificFiles = new Set([
   ...packagingFiles,
   "tracechain.config.json",
   "audit-scenario-pack.json",
+  "technical-lab-pack.json",
   "scenario.json",
   "scenario-variant-bank.json",
   "media-manifest.json",
@@ -86,7 +87,9 @@ function packageFileName(configuration, releaseBuild) {
       letter.toUpperCase(),
     );
   const scenarioLabel =
-    configuration.scenarioId === "SCN_COFFEE_001"
+    configuration.activityType === "TECHNICAL_LAB"
+      ? "PermissionedBlockchain"
+      : configuration.scenarioId === "SCN_COFFEE_001"
       ? "StandardCoffee"
       : configuration.scenarioId === "SCN_COFFEE_PRACTICE"
         ? "PracticeCase"
@@ -106,7 +109,11 @@ function packageFileName(configuration, releaseBuild) {
     safeFileSegment(preset),
     scenarioLabel,
     configuration.locale,
-    `v${configuration.scenarioVersion.replace(/[^A-Za-z0-9.-]/gu, "")}`,
+    `v${(
+      configuration.activityType === "TECHNICAL_LAB"
+        ? configuration.labPackVersion
+        : configuration.scenarioVersion
+    ).replace(/[^A-Za-z0-9.-]/gu, "")}`,
   ].join("_") + ".zip";
   return classifyPackageFileName(releaseFileName, releaseBuild);
 }
@@ -121,6 +128,7 @@ function defaultPackagePaths() {
     "audit-practice",
     "audit-challenge",
     "audit-assessment",
+    "technical-lab",
   ].map((presetId) => {
     const configurationPath = join(
       projectRoot,
@@ -340,12 +348,17 @@ function verifyCryptographicRuntime({
   entryNames,
   configuration,
   scenario,
+  technicalLabBundle,
   buildInformation,
   check,
 }) {
+  const isTechnicalLab =
+    configuration?.activityType === "TECHNICAL_LAB";
   const signaturesEnabled =
+    isTechnicalLab ||
     configuration?.technicalFeatures?.digitalSignatures === true;
   const endorsementsEnabled =
+    isTechnicalLab ||
     configuration?.technicalFeatures?.endorsementPolicies === true;
   check(
     "Endorsement policies cannot be enabled without digital signatures",
@@ -482,12 +495,23 @@ function verifyCryptographicRuntime({
   );
 
   const organizationIds = new Set(
-    (scenario?.organizations ?? []).map(
-      (organization) => organization.organizationId,
-    ),
+    isTechnicalLab
+      ? (technicalLabBundle?.fixtures ?? []).flatMap(
+          (fixture) => fixture.identityIds ?? [],
+        )
+      : (scenario?.organizations ?? []).map(
+          (organization) => organization.organizationId,
+        ),
   );
   const roleIds = new Set(
-    (scenario?.actors ?? []).map((actor) => actor.actorRole),
+    isTechnicalLab
+      ? [
+          "PRODUCER_MANAGER",
+          "CERTIFICATION_OFFICER",
+          "LOGISTICS_COORDINATOR",
+          "PROCESSING_MANAGER",
+        ]
+      : (scenario?.actors ?? []).map((actor) => actor.actorRole),
   );
   const identityIds = identityList.map((identity) => identity.organizationId);
   const keyIds = keyList.map((key) => key.keyId);
@@ -567,20 +591,33 @@ function verifyCryptographicRuntime({
     deterministicSignatures,
   );
 
-  const knownCommandTypes = new Set([
-    ...(scenario?.organizations ?? []).flatMap(
-      (organization) => organization.authorizedActions ?? [],
-    ),
-    ...Object.values(
-      scenario?.runtime?.learnerCommandTemplates ?? {},
-    ).map((command) => command.commandType),
-    ...(scenario?.seedTransactions ?? []).map(
-      (seed) => seed.command.commandType,
-    ),
-    ...(scenario?.scriptedTransactions ?? []).map(
-      (script) => script.command.commandType,
-    ),
-  ]);
+  const knownCommandTypes = new Set(
+    isTechnicalLab
+      ? [
+          "LAB_TRANSFER_CUSTODY",
+          "LAB_ISSUE_CERTIFICATE",
+          "LAB_POLICY_DEMO",
+          "LAB_POLICY_ANY",
+          "LAB_POLICY_THRESHOLD",
+          "LAB_QUANTITY_CORRECTION",
+          "LAB_STATE_CHANGE",
+        ]
+      : [
+          ...(scenario?.organizations ?? []).flatMap(
+            (organization) =>
+              organization.authorizedActions ?? [],
+          ),
+          ...Object.values(
+            scenario?.runtime?.learnerCommandTemplates ?? {},
+          ).map((command) => command.commandType),
+          ...(scenario?.seedTransactions ?? []).map(
+            (seed) => seed.command.commandType,
+          ),
+          ...(scenario?.scriptedTransactions ?? []).map(
+            (script) => script.command.commandType,
+          ),
+        ],
+  );
   for (const commandType of [...knownCommandTypes]) {
     knownCommandTypes.add(`ENDORSE:${commandType}`);
   }
@@ -619,9 +656,17 @@ function verifyCryptographicRuntime({
       ),
   );
   const requiredCommandTypes = new Set(
-    Object.values(
-      scenario?.runtime?.learnerCommandTemplates ?? {},
-    ).map((command) => command.commandType),
+    isTechnicalLab
+      ? [
+          "LAB_TRANSFER_CUSTODY",
+          "LAB_ISSUE_CERTIFICATE",
+          "ENDORSE:LAB_POLICY_DEMO",
+          "ENDORSE:LAB_QUANTITY_CORRECTION",
+          "ENDORSE:LAB_STATE_CHANGE",
+        ]
+      : Object.values(
+          scenario?.runtime?.learnerCommandTemplates ?? {},
+        ).map((command) => command.commandType),
   );
   check(
     "Every learner command type has one unambiguous authorization policy",
@@ -722,12 +767,14 @@ function verifyCryptographicRuntime({
         (endorsementCommandCounts.get(commandType) ?? 0) + 1,
       );
       for (const organizationId of organizationsForPolicy ?? []) {
-        const scenarioRoles = (scenario?.runtime?.trustedContexts ?? [])
-          .filter(
-            (context) =>
-              context.organizationId === organizationId,
-          )
-          .map((context) => context.roleId);
+        const scenarioRoles = isTechnicalLab
+          ? [...roleIds]
+          : (scenario?.runtime?.trustedContexts ?? [])
+              .filter(
+                (context) =>
+                  context.organizationId === organizationId,
+              )
+              .map((context) => context.roleId);
         const authorizationAction = `ENDORSE:${commandType}`;
         const satisfiable = policyList.some(
           (authorizationPolicy) =>
@@ -758,8 +805,13 @@ function verifyCryptographicRuntime({
   check(
     "Enabled endorsement content covers custody transfer and quantity correction",
     !endorsementsEnabled ||
-      (endorsementCommandCounts.get("TRANSFER_CUSTODY") === 1 &&
-        endorsementCommandCounts.get("RECORD_CORRECTION") === 1),
+      (isTechnicalLab
+        ? endorsementCommandCounts.get(
+            "LAB_QUANTITY_CORRECTION",
+          ) === 1 &&
+          endorsementCommandCounts.get("LAB_STATE_CHANGE") === 1
+        : endorsementCommandCounts.get("TRANSFER_CUSTODY") === 1 &&
+          endorsementCommandCounts.get("RECORD_CORRECTION") === 1),
   );
 
   const privateKeyValues = keyList
@@ -858,6 +910,7 @@ function verifyPackage(zipPath) {
   let envelope = null;
   let scenario = null;
   let auditPack = null;
+  let technicalLabBundle = null;
   let variantBank = null;
   let buildInformation = null;
   let versionMetadata = null;
@@ -891,9 +944,13 @@ function verifyPackage(zipPath) {
 
   const configuration = envelope?.configuration;
   const isAudit = configuration?.activityType === "AUDIT";
-  const activityRuntimeFiles = isAudit
-    ? ["audit-scenario-pack.json"]
-    : ["scenario.json", "media-manifest.json"];
+  const isTechnicalLab =
+    configuration?.activityType === "TECHNICAL_LAB";
+  const activityRuntimeFiles = isTechnicalLab
+    ? ["technical-lab-pack.json"]
+    : isAudit
+      ? ["audit-scenario-pack.json"]
+      : ["scenario.json", "media-manifest.json"];
   for (const file of activityRuntimeFiles) {
     check(`${file} is present`, entryNames.includes(file));
   }
@@ -910,7 +967,24 @@ function verifyPackage(zipPath) {
       configuration,
     };
   }
-  if (isAudit) {
+  if (isTechnicalLab) {
+    try {
+      technicalLabBundle = JSON.parse(
+        zip.readAsText("technical-lab-pack.json"),
+      );
+      scenario = {
+        scenarioId: technicalLabBundle?.pack?.labPackId,
+        scenarioVersion:
+          technicalLabBundle?.pack?.labPackVersion,
+      };
+    } catch {
+      // Reported below.
+    }
+    check(
+      "technical-lab-pack.json is valid JSON",
+      technicalLabBundle !== null,
+    );
+  } else if (isAudit) {
     try {
       auditPack = JSON.parse(
         zip.readAsText("audit-scenario-pack.json"),
@@ -1060,6 +1134,120 @@ function verifyPackage(zipPath) {
           publication?.contentHash,
     );
   }
+  if (isTechnicalLab && technicalLabBundle !== null) {
+    const labPack = technicalLabBundle.pack;
+    const publication = labPack?.publication;
+    const calculatedContentHash =
+      publication === undefined
+        ? null
+        : createHash("sha256")
+            .update(
+              canonicalize({
+                ...technicalLabBundle,
+                pack: {
+                  ...labPack,
+                  status: "published",
+                  publication: {
+                    contentHash: "",
+                    publishedAt: publication.publishedAt,
+                    publishedBy: publication.publishedBy,
+                  },
+                },
+              }),
+            )
+            .digest("hex");
+    const expectedModuleIds = [
+      "TL1",
+      "TL2",
+      "TL3",
+      "TL4",
+      "TL5",
+      "TL6",
+      "TL7",
+    ];
+    const moduleIds = (technicalLabBundle.modules ?? []).map(
+      (module) => module.moduleId,
+    );
+    const allocation = labPack?.scoringContract?.moduleAllocations ?? [];
+    const scoreTotals = allocation.reduce(
+      (total, item) => ({
+        experiment: total.experiment + item.experimentPoints,
+        interpretation:
+          total.interpretation + item.interpretationPoints,
+        application: total.application + item.applicationPoints,
+      }),
+      { experiment: 0, interpretation: 0, application: 0 },
+    );
+    check(
+      "Technical Laboratory pack is immutable published content",
+      labPack?.schemaVersion === "1.0.0" &&
+        labPack?.evidenceSchemaVersion === "1" &&
+        labPack?.status === "published" &&
+        publication?.contentHash === calculatedContentHash,
+    );
+    check(
+      "Technical Laboratory identity matches configuration",
+      labPack?.labPackId === configuration.labPackId &&
+        labPack?.labPackVersion === configuration.labPackVersion &&
+        configuration.content?.laboratoryPackId ===
+          labPack?.labPackId &&
+        configuration.content?.laboratoryPackVersion ===
+          labPack?.labPackVersion,
+    );
+    check(
+      "Technical Laboratory includes TL1 through TL7 once in order",
+      JSON.stringify(moduleIds) ===
+        JSON.stringify(expectedModuleIds) &&
+        new Set(moduleIds).size === expectedModuleIds.length &&
+        JSON.stringify(configuration.includedModuleIds) ===
+          JSON.stringify(expectedModuleIds),
+    );
+    check(
+      "Technical Laboratory score contract is exactly 40/40/20 and 100 points",
+      labPack?.scoringContract?.maximumScore === 100 &&
+        labPack?.scoringContract?.passScore === 70 &&
+        configuration.scoring?.maximumScore === 100 &&
+        configuration.scoring?.passScore === 70 &&
+        scoreTotals.experiment === 40 &&
+        scoreTotals.interpretation === 40 &&
+        scoreTotals.application === 20,
+    );
+    check(
+      "Technical Laboratory fixtures and bilingual catalogues are complete",
+      technicalLabBundle.fixtures?.length === 7 &&
+        technicalLabBundle.fixtures.every(
+          (fixture) => fixture.educationalOnly === true,
+        ) &&
+        ["en", "vi"].every(
+          (locale) =>
+            typeof technicalLabBundle.localizationCatalogs?.[
+              locale
+            ] === "object",
+        ),
+    );
+    check(
+      "Technical Laboratory package contains only its selected runtime data",
+      !entryNames.includes("scenario.json") &&
+        !entryNames.includes("media-manifest.json") &&
+        !entryNames.includes("audit-scenario-pack.json") &&
+        !entryNames.includes("scenario-variant-bank.json"),
+    );
+    check(
+      "Technical Laboratory runtime bytes and content identity match build metadata",
+      buildInformation?.technicalLabPersistenceSchemaVersion ===
+        "TL1" &&
+        buildInformation?.technicalLabPackHash ===
+          createHash("sha256")
+            .update(
+              zip
+                .getEntry("technical-lab-pack.json")
+                .getData(),
+            )
+            .digest("hex") &&
+        buildInformation?.technicalLabPackContentHash ===
+          publication?.contentHash,
+    );
+  }
   const usesVariantBank =
     configuration?.scenarioVariation?.strategy ===
     "SEEDED_VARIANT_BANK";
@@ -1203,7 +1391,11 @@ function verifyPackage(zipPath) {
   );
   check(
     "Scenario identity matches configuration",
-    isAudit && usesVariantBank
+    isTechnicalLab
+      ? scenario?.scenarioId === configuration?.labPackId &&
+        scenario?.scenarioVersion ===
+          configuration?.labPackVersion
+      : isAudit && usesVariantBank
       ? variantBank?.variants?.some(
           (variant) =>
             variant.scenarioId === scenario?.scenarioId &&
@@ -1217,7 +1409,7 @@ function verifyPackage(zipPath) {
   );
   check(
     "Scenario content matches its recorded hash",
-    isAudit
+    isAudit || isTechnicalLab
       ? buildInformation?.scenarioHash === null
       : buildInformation?.scenarioHash ===
           createHash("sha256")
@@ -1226,7 +1418,10 @@ function verifyPackage(zipPath) {
   );
   check(
     "Scenario scoring matches configuration",
-    isAudit
+    isTechnicalLab
+      ? technicalLabBundle?.pack?.scoringContract
+          ?.maximumScore === configuration?.scoring?.maximumScore
+      : isAudit
       ? scenario?.auditCase?.scoringBlueprint?.maximumScore ===
           configuration?.scoring?.maximumScore
       : scenario?.scoringConfiguration?.maxScore ===
@@ -1409,10 +1604,11 @@ function verifyPackage(zipPath) {
     entryNames,
     configuration,
     scenario,
+    technicalLabBundle,
     buildInformation,
     check,
   });
-  if (!isAudit) {
+  if (!isAudit && !isTechnicalLab) {
     verifyPortraitMedia({
       zip,
       entryNames,
@@ -1467,11 +1663,12 @@ if (results.length > 1 && results.every((result) => result.staticBuild !== null)
 }
 
 const defaultInvocation = process.argv.length === 2;
-if (defaultInvocation && results.length === 8) {
+if (defaultInvocation) {
   const presetIds = results
     .map((result) => result.configuration?.presetId)
     .sort();
   if (
+    results.length !== 9 ||
     JSON.stringify(presetIds) !==
     JSON.stringify([
       "assessment",
@@ -1482,10 +1679,11 @@ if (defaultInvocation && results.length === 8) {
       "challenge",
       "guided",
       "practice",
+      "technical-lab",
     ])
   ) {
     crossPackageErrors.push(
-      "Default verification must cover all Operations and Audit Guided, Practice, Challenge, and Assessment packages",
+      "Default verification must cover all Operations and Audit modes plus the Technical Laboratory package",
     );
   }
 }

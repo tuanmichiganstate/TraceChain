@@ -69,6 +69,9 @@ import { CounterfactualExplorer } from "../counterfactual/counterfactual-explore
 import { HostedRunActionControls } from "../learner/hosted-learner-screen";
 import { HostedAuditReport } from "../audit/hosted-audit-workspace";
 import type { AuditAssignmentReportV1 } from "../reporting/audit-assignment-report";
+import type {
+  TechnicalLabAssignmentReportV1,
+} from "../../technical-lab/hosted-report";
 
 export interface InstructorSession {
   readonly userId: string;
@@ -159,6 +162,9 @@ export interface InstructorReviewApi {
   loadAssignmentAuditReport?(
     assignmentId: string,
   ): Promise<AuditAssignmentReportV1 | null>;
+  loadAssignmentTechnicalLabReport?(
+    assignmentId: string,
+  ): Promise<TechnicalLabAssignmentReportV1 | null>;
   saveRating(
     runId: string,
     input: SaveInstructorRatingInput,
@@ -433,6 +439,16 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/audit-report`,
       );
       return result.auditReport;
+    },
+    async loadAssignmentTechnicalLabReport(assignmentId) {
+      const result = await responseJson<{
+        readonly technicalLabReport:
+          TechnicalLabAssignmentReportV1 | null;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/technical-lab-report`,
+      );
+      return result.technicalLabReport;
     },
     async saveRating(runId, input) {
       const result = await mutationJson<{
@@ -957,11 +973,6 @@ function ScormPackageBuilder({
                 )}
               </option>
             ))}
-            <option value="TECHNICAL_LAB" disabled>
-              {t(
-                "instructorReview.packageActivityType.TECHNICAL_LAB",
-              )}
-            </option>
           </select>
         </div>
         <div className="field">
@@ -2225,6 +2236,8 @@ function AssignmentReport({
     useState<AssignmentProcessAnalyticsV1 | null>(null);
   const [auditReport, setAuditReport] =
     useState<AuditAssignmentReportV1 | null>(null);
+  const [technicalLabReport, setTechnicalLabReport] =
+    useState<TechnicalLabAssignmentReportV1 | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isMonitorLoading, setMonitorLoading] = useState(false);
   const [isClosing, setClosing] = useState(false);
@@ -2240,6 +2253,7 @@ function AssignmentReport({
     setDecisionOutcomes(null);
     setProcessAnalytics(null);
     setAuditReport(null);
+    setTechnicalLabReport(null);
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
@@ -2251,6 +2265,7 @@ function AssignmentReport({
         loadedDecisionOutcomes,
         loadedProcessAnalytics,
         loadedAuditReport,
+        loadedTechnicalLabReport,
       ] =
         await Promise.all([
           api.loadAssignmentReport(requestedAssignmentId),
@@ -2268,6 +2283,9 @@ function AssignmentReport({
           api.loadAssignmentAuditReport?.(
             requestedAssignmentId,
           ) ?? Promise.resolve(null),
+          api.loadAssignmentTechnicalLabReport?.(
+            requestedAssignmentId,
+          ) ?? Promise.resolve(null),
         ]);
       setReport(loadedReport);
       setMonitor(loadedMonitor);
@@ -2276,6 +2294,7 @@ function AssignmentReport({
       setDecisionOutcomes(loadedDecisionOutcomes);
       setProcessAnalytics(loadedProcessAnalytics);
       setAuditReport(loadedAuditReport);
+      setTechnicalLabReport(loadedTechnicalLabReport);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -2675,6 +2694,11 @@ function AssignmentReport({
               onReviewEvent={onReviewEvent}
             />
           )}
+          {technicalLabReport === null ? null : (
+            <ClassTechnicalLabReport
+              report={technicalLabReport}
+            />
+          )}
           {processAnalytics === null ? null : (
             <ClassProcessAnalyticsReport
               report={processAnalytics}
@@ -2692,6 +2716,216 @@ function AssignmentReport({
               report={curriculumCrosswalks}
             />
           )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function ClassTechnicalLabReport({
+  report,
+}: {
+  readonly report: TechnicalLabAssignmentReportV1;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <section className="instructor-review__technical-lab-report">
+      <h3>{t("instructorReview.technicalLab.heading")}</h3>
+      <p>{t("instructorReview.technicalLab.help")}</p>
+      <dl className="instructor-review__facts">
+        <div>
+          <dt>{t("instructorReview.technicalLab.runCount")}</dt>
+          <dd>{report.summary.runCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.technicalLab.completedCount")}</dt>
+          <dd>{report.summary.completedRunCount}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.technicalLab.meanScore")}</dt>
+          <dd>
+            {report.summary.meanCompletedScore === null
+              ? t("instructorReview.none")
+              : `${reportNumber(
+                  report.summary.meanCompletedScore,
+                  t.locale,
+                )}/100`}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.technicalLab.hintUse")}</dt>
+          <dd>{report.summary.hintUseCount}</dd>
+        </div>
+        <div>
+          <dt>
+            {t("instructorReview.technicalLab.incorrectResponses")}
+          </dt>
+          <dd>{report.summary.incorrectResponseCount}</dd>
+        </div>
+        <div>
+          <dt>
+            {t(
+              "instructorReview.technicalLab.verificationFailures",
+            )}
+          </dt>
+          <dd>
+            {report.summary.observedVerificationFailureCount}
+          </dd>
+        </div>
+      </dl>
+      <p className="muted">
+        {t("instructorReview.technicalLab.timingCaution")}
+      </p>
+      <a
+        className="button button--secondary"
+        href={`/api/v1/assignments/${encodeURIComponent(report.assignmentId)}/technical-lab-report`}
+        download={`TraceChain_${report.assignmentId}_technical_lab_report_v1.json`}
+      >
+        {t("instructorReview.technicalLab.export")}
+      </a>
+      <h4>{t("instructorReview.technicalLab.scoreDistribution")}</h4>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th scope="col">
+                {t("instructorReview.technicalLab.scoreRange")}
+              </th>
+              <th scope="col">
+                {t("instructorReview.technicalLab.completedRuns")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.scoreDistribution.map((bucket) => (
+              <tr
+                key={`${String(bucket.minimumInclusive)}-${String(bucket.maximumInclusive)}`}
+              >
+                <td>
+                  {bucket.minimumInclusive}–{bucket.maximumInclusive}
+                </td>
+                <td>{bucket.completedRunCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h4>{t("instructorReview.technicalLab.learnerRuns")}</h4>
+      {report.runs.length === 0 ? (
+        <p>{t("instructorReview.notStarted")}</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">{t("instructorReview.learner")}</th>
+                <th scope="col">{t("instructorReview.runId")}</th>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.progress")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.score")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.hintUse")}
+                </th>
+                <th scope="col">
+                  {t(
+                    "instructorReview.technicalLab.incorrectResponses",
+                  )}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.moduleDetails")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.runs.map((run) => (
+                <tr key={run.runId}>
+                  <td>
+                    <code>{run.learnerUserId}</code>
+                  </td>
+                  <td>
+                    <code>{run.runId}</code>
+                  </td>
+                  <td>
+                    {t("instructorReview.technicalLab.progressValue", {
+                      completed: run.completedModuleCount,
+                      total: run.totalModuleCount,
+                    })}
+                  </td>
+                  <td>{run.score.totalScore}/100</td>
+                  <td>{run.hintUseCount}</td>
+                  <td>{run.incorrectResponseCount}</td>
+                  <td>
+                    <details>
+                      <summary>
+                        {t(
+                          "instructorReview.technicalLab.moduleDetails",
+                        )}
+                      </summary>
+                      <ul>
+                        {run.modules.map((module) => (
+                          <li key={module.moduleId}>
+                            <strong>{module.moduleId}</strong>
+                            {`: ${module.score}/${module.maximumScore} · `}
+                            {t(
+                              "instructorReview.monitorElapsedValue",
+                              {
+                                count: module.elapsedSeconds,
+                              },
+                            )}
+                            {module.hintOpened
+                              ? ` · ${t(
+                                  "instructorReview.technicalLab.hintOpened",
+                                )}`
+                              : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <h4>{t("instructorReview.technicalLab.misconceptions")}</h4>
+      {report.commonMisconceptions.length === 0 ? (
+        <p>{t("instructorReview.technicalLab.noMisconceptions")}</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.checkpointItem")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.technicalLab.selectedOption")}
+                </th>
+                <th scope="col">
+                  {t("instructorReview.rejectionOccurrences")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.commonMisconceptions.map((item) => (
+                <tr
+                  key={`${item.itemId}:${item.selectedOptionId}`}
+                >
+                  <td>
+                    <code>{item.itemId}</code>
+                  </td>
+                  <td>
+                    <code>{item.selectedOptionId}</code>
+                  </td>
+                  <td>{item.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

@@ -45,6 +45,7 @@ current implementation contract.
 - [Staff portrait assets and runtime rules](STAFF_PORTRAIT_ASSET_BRIEFS.md)
 - [Learner evidence sufficiency audit](LEARNER_EVIDENCE_SUFFICIENCY_AUDIT.md)
 - [Controlled seeded scenario variation](CONTROLLED_SEEDED_SCENARIO_VARIATION.md)
+- [Technical Laboratory runtime boundary](adr/0002-technical-laboratory-runtime-boundary.md)
 - [Hosted SCORM package jobs](SCORM_PACKAGE_JOBS_V1.md)
 - [Moodle acceptance testing](MOODLE_TESTING.md)
 

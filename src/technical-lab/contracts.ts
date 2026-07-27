@@ -118,11 +118,35 @@ export interface TechnicalExperimentDefinition {
   readonly evidencePanelIds: readonly string[];
 }
 
+export interface TechnicalLabCheckpointOption {
+  readonly optionId: string;
+  readonly label: LocalizedText;
+}
+
+export interface TechnicalLabCheckpointDefinition {
+  readonly itemId: string;
+  readonly prompt: LocalizedText;
+  readonly options: readonly TechnicalLabCheckpointOption[];
+  readonly correctOptionId: string;
+  readonly explanation: LocalizedText;
+  readonly maximumAttempts: 3;
+}
+
+export interface TechnicalLabHintDefinition {
+  readonly hintId: string;
+  readonly targetItemId: string;
+  readonly body: LocalizedText;
+  readonly maximumAwardFraction: 0.5;
+}
+
 export interface TechnicalLabModuleDefinition {
   readonly moduleId: FirstTechnicalLabModuleId;
   readonly moduleVersion: string;
   readonly title: LocalizedText;
   readonly summary: LocalizedText;
+  readonly concept: LocalizedText;
+  readonly observation: LocalizedText;
+  readonly professionalContext: LocalizedText;
   readonly learningOutcomes: readonly LocalizedText[];
   readonly prerequisiteModuleIds:
     readonly FirstTechnicalLabModuleId[];
@@ -133,6 +157,9 @@ export interface TechnicalLabModuleDefinition {
   readonly scorableItemIds: readonly string[];
   readonly hintIds: readonly string[];
   readonly glossaryTermIds: readonly string[];
+  readonly interpretationItem: TechnicalLabCheckpointDefinition;
+  readonly applicationItem: TechnicalLabCheckpointDefinition;
+  readonly hint: TechnicalLabHintDefinition;
   readonly realMechanismIds:
     readonly GenuineTechnicalMechanismId[];
   readonly simulatedMechanismIds:

@@ -9,8 +9,10 @@ import {
   TECHNICAL_LAB_RENDERER_IDS,
   type TechnicalLabModuleDefinition,
   type TechnicalLabPackBundle,
+  type TechnicalLabCheckpointDefinition,
 } from "./contracts";
 import { rendererPermitsAction } from "./renderer-registry";
+import { verifyTechnicalLabContentHash } from "./content-hash";
 
 export const TECHNICAL_LAB_MAX_MODULES = 7;
 export const TECHNICAL_LAB_MAX_EXPERIMENTS_PER_MODULE = 4;
@@ -370,6 +372,84 @@ function validateFixture(
   return fixtureId;
 }
 
+function validateCheckpoint(
+  value: unknown,
+  path: string,
+  context: ValidationContext,
+): TechnicalLabCheckpointDefinition | null {
+  if (
+    !context.check(
+      isObject(value),
+      "INVALID_CHECKPOINT",
+      path,
+      "must be a bounded checkpoint definition",
+    )
+  ) {
+    return null;
+  }
+  const checkpoint =
+    value as unknown as TechnicalLabCheckpointDefinition;
+  context.identifier(checkpoint.itemId, `${path}.itemId`);
+  context.localizedText(checkpoint.prompt, `${path}.prompt`);
+  context.localizedText(
+    checkpoint.explanation,
+    `${path}.explanation`,
+  );
+  context.check(
+    checkpoint.maximumAttempts === 3,
+    "INVALID_CHECKPOINT_ATTEMPTS",
+    `${path}.maximumAttempts`,
+    "must use the published three-attempt policy",
+  );
+  if (
+    !context.check(
+      Array.isArray(checkpoint.options) &&
+        checkpoint.options.length >= 2 &&
+        checkpoint.options.length <= 4,
+      "INVALID_CHECKPOINT_OPTIONS",
+      `${path}.options`,
+      "must contain two to four bounded options",
+    )
+  ) {
+    return checkpoint;
+  }
+  const optionIds = new Set<string>();
+  checkpoint.options.forEach((option, index) => {
+    const optionPath = `${path}.options.${index}`;
+    if (
+      context.check(
+        isObject(option),
+        "INVALID_CHECKPOINT_OPTION",
+        optionPath,
+        "must be an object",
+      )
+    ) {
+      if (
+        context.identifier(
+          option.optionId,
+          `${optionPath}.optionId`,
+        )
+      ) {
+        context.check(
+          !optionIds.has(option.optionId),
+          "DUPLICATE_CHECKPOINT_OPTION",
+          `${optionPath}.optionId`,
+          "must be unique within the checkpoint",
+        );
+        optionIds.add(option.optionId);
+      }
+      context.localizedText(option.label, `${optionPath}.label`);
+    }
+  });
+  context.check(
+    optionIds.has(checkpoint.correctOptionId),
+    "UNKNOWN_CORRECT_OPTION",
+    `${path}.correctOptionId`,
+    "must reference one authored option",
+  );
+  return checkpoint;
+}
+
 function validateModule(
   value: unknown,
   index: number,
@@ -397,6 +477,15 @@ function validateModule(
   context.semanticVersion(module.moduleVersion, `${path}.moduleVersion`);
   context.localizedText(module.title, `${path}.title`);
   context.localizedText(module.summary, `${path}.summary`);
+  context.localizedText(module.concept, `${path}.concept`);
+  context.localizedText(
+    module.observation,
+    `${path}.observation`,
+  );
+  context.localizedText(
+    module.professionalContext,
+    `${path}.professionalContext`,
+  );
   if (
     context.check(
       Array.isArray(module.learningOutcomes) &&
@@ -641,6 +730,56 @@ function validateModule(
       });
     }
   }
+  const interpretation = validateCheckpoint(
+    module.interpretationItem,
+    `${path}.interpretationItem`,
+    context,
+  );
+  const application = validateCheckpoint(
+    module.applicationItem,
+    `${path}.applicationItem`,
+    context,
+  );
+  const hint = isObject(module.hint) ? module.hint : null;
+  context.check(
+    hint !== null,
+    "INVALID_HINT",
+    `${path}.hint`,
+    "must be a bounded item-scoped hint",
+  );
+  if (hint !== null) {
+    context.identifier(hint.hintId, `${path}.hint.hintId`);
+    context.identifier(
+      hint.targetItemId,
+      `${path}.hint.targetItemId`,
+    );
+    context.localizedText(hint.body, `${path}.hint.body`);
+    context.check(
+      hint.maximumAwardFraction === 0.5,
+      "INVALID_HINT_CEILING",
+      `${path}.hint.maximumAwardFraction`,
+      "must preserve the published one-half item ceiling",
+    );
+  }
+  const expectedScorableIds = [
+    `${module.moduleId}_EXPERIMENT_SCORE`,
+    interpretation?.itemId,
+    application?.itemId,
+  ].filter((itemId): itemId is string => typeof itemId === "string");
+  context.check(
+    sameValues(module.scorableItemIds, expectedScorableIds),
+    "SCORABLE_ITEM_MISMATCH",
+    `${path}.scorableItemIds`,
+    "must identify the experiment, interpretation, and application items",
+  );
+  context.check(
+    module.hintIds.length === 1 &&
+      module.hintIds[0] === hint?.hintId &&
+      hint?.targetItemId === interpretation?.itemId,
+    "HINT_TARGET_MISMATCH",
+    `${path}.hint`,
+    "must target the module interpretation item exactly",
+  );
   return module;
 }
 
@@ -867,6 +1006,19 @@ export function validateTechnicalLabPackBundle(
       bundle.localizationCatalogs,
       locales,
       context,
+    );
+  }
+  if (
+    pack !== null &&
+    (pack.status === "published" || pack.status === "retired")
+  ) {
+    context.check(
+      verifyTechnicalLabContentHash(
+        value as unknown as TechnicalLabPackBundle,
+      ),
+      "CONTENT_HASH_MISMATCH",
+      "pack.publication.contentHash",
+      "must match the complete immutable laboratory content",
     );
   }
   if (context.issues.length > 0) {

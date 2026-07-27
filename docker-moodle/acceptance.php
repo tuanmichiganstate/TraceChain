@@ -14,20 +14,24 @@ $activitynames = [
     'assessment' => 'TraceChain Assessment',
     'audit-guided' => 'TraceChain Audit Guided',
     'audit-practice' => 'TraceChain Audit Practice',
+    'audit-challenge' => 'TraceChain Audit Challenge',
+    'audit-assessment' => 'TraceChain Audit Assessment',
+    'technical-lab' => 'TraceChain Technical Laboratory',
 ];
 if (!isset($activitynames[$mode])) {
     throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
 }
 $isaudit = str_starts_with($mode, 'audit-');
+$istechnicallab = $mode === 'technical-lab';
 // These exercise Moodle storage boundaries, not the player decoder. Their
 // framing and sizes represent the package's compact codec while remaining
 // independent of content hashes that change between packages.
-$prefix = $isaudit ? 'TA1.' : 'TC3.';
+$prefix = $istechnicallab ? 'TL1.' : ($isaudit ? 'TA1.' : 'TC3.');
 $FULL = $prefix . str_repeat('A', 512) . '.00000000';
 $MID  = $prefix . str_repeat('B', 220) . '.00000000';
 $midlocation = $isaudit
     ? 'AUDIT_WORKPAPER'
-    : 'STG_03_ANCHOR_CERTIFICATE';
+    : ($istechnicallab ? 'TL4' : 'STG_03_ANCHOR_CERTIFICATE');
 $scorm = $DB->get_record(
     'scorm',
     ['name' => $activitynames[$mode]],
@@ -112,7 +116,7 @@ require_true((int)$scorm->grademethod === 1, 'SCORM activity is not configured f
 require_true($g && $g->grade !== null && (float)$g->grade === 100.0, 'worse relaunch attempt clobbered the grade');
 
 echo "--- 5. long payload at the boundary ---\n";
-$long = 'TC3.' . str_repeat('a', 4096 - 4);
+$long = $prefix . str_repeat('a', 4096 - strlen($prefix));
 track($user->id,$scorm->id,$sco->id,3,'cmi.suspend_data',$long);
 $got = readback($sco->id,$user->id,3,'cmi.suspend_data');
 printf("  4096 chars stored: %s (len %d)\n", $got === $long ? 'BYTE-IDENTICAL' : 'MISMATCH', strlen((string)$got));

@@ -1392,6 +1392,7 @@ test("imports and previews a self-localized disciplinary pack", async () => {
     assert.deepEqual(
       options.map(({ scenarioId }) => scenarioId),
       [
+        "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
         "SCN_PHARMA_COLD_CHAIN_STARTER",
         "SCN_PHARMA_COLD_CHAIN_TRANSFER",
       ],
@@ -2219,15 +2220,20 @@ test("creates an exact published assignment for a provisioned learner", async ()
       await assignmentOptions.clone().text(),
     );
     const available = (await assignmentOptions.json()).options;
-    assert.equal(available.length, 1);
+    assert.equal(available.length, 2);
+    const coffeeOption = available.find(
+      ({ scenarioId }) =>
+        scenarioId === pack.scenarios[0].scenarioId,
+    );
+    assert.notEqual(coffeeOption, undefined);
     assert.deepEqual(
       {
-        packId: available[0].packId,
-        packVersion: available[0].packVersion,
-        scenarioId: available[0].scenarioId,
-        scenarioVersion: available[0].scenarioVersion,
-        supportedModes: available[0].supportedModes,
-        modeConfigurations: available[0].modeConfigurations,
+        packId: coffeeOption.packId,
+        packVersion: coffeeOption.packVersion,
+        scenarioId: coffeeOption.scenarioId,
+        scenarioVersion: coffeeOption.scenarioVersion,
+        supportedModes: coffeeOption.supportedModes,
+        modeConfigurations: coffeeOption.modeConfigurations,
       },
       {
         packId: pack.packId,
@@ -2239,7 +2245,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       },
     );
     assert.deepEqual(
-      available[0].counterfactualDecisionPoints.map((point) => ({
+      coffeeOption.counterfactualDecisionPoints.map((point) => ({
         nodeId: point.nodeId,
         decisionId: point.decisionId,
       })),
@@ -2258,7 +2264,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
         },
       ],
     );
-    assert.equal(Object.hasOwn(available[0], "initialState"), false);
+    assert.equal(Object.hasOwn(coffeeOption, "initialState"), false);
 
     const learnerOptions = await worker.fetch(
       apiRequest("/api/v1/assignment-learners", {
@@ -2852,6 +2858,214 @@ test("creates an exact published assignment for a provisioned learner", async ()
       JSON.stringify(researchExport).includes(
         "USER_LEARNER_ASSIGNMENT",
       ),
+      false,
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("creates and resumes the built-in Technical Laboratory through hosted D1 APIs", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  try {
+    const initialize = await worker.fetch(
+      apiRequest("/api/v1/session"),
+      env,
+    );
+    assert.equal(initialize.status, 401);
+    seedUser(
+      database,
+      "USER_INSTRUCTOR_TECHNICAL_LAB",
+      "technical-lab-instructor@example.edu",
+      ["instructor"],
+    );
+    seedUser(
+      database,
+      "USER_LEARNER_TECHNICAL_LAB",
+      "technical-lab-learner@example.edu",
+      ["learner"],
+    );
+
+    const optionsResponse = await worker.fetch(
+      apiRequest("/api/v1/assignment-options", {
+        email: "technical-lab-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      optionsResponse.status,
+      200,
+      await optionsResponse.clone().text(),
+    );
+    const technicalOption = (
+      await optionsResponse.json()
+    ).options.find(
+      ({ packId }) =>
+        packId === "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+    );
+    assert.notEqual(technicalOption, undefined);
+    assert.deepEqual(
+      {
+        scenarioId: technicalOption.scenarioId,
+        supportedModes: technicalOption.supportedModes,
+        runtimeId:
+          technicalOption.experienceConfigurations[0]
+            .configuration.activityType,
+      },
+      {
+        scenarioId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+        supportedModes: ["tutorial"],
+        runtimeId: "TECHNICAL_LAB",
+      },
+    );
+
+    const assignmentId = "ASSIGNMENT_TECHNICAL_LAB_SITE";
+    const createAssignment = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "technical-lab-instructor@example.edu",
+        body: {
+          commandId: "COMMAND_CREATE_TECHNICAL_LAB_ASSIGNMENT",
+          assignmentId,
+          title: "Permissioned blockchain foundations",
+          packId: technicalOption.packId,
+          packVersion: technicalOption.packVersion,
+          scenarioId: technicalOption.scenarioId,
+          scenarioVersion: technicalOption.scenarioVersion,
+          mode: "tutorial",
+          counterfactualReplay: disabledCounterfactualReplay,
+          research: { enabled: false },
+          availableFrom: "2020-01-01T00:00:00.000Z",
+          availableUntil: "2999-01-01T00:00:00.000Z",
+          learnerUserIds: ["USER_LEARNER_TECHNICAL_LAB"],
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      createAssignment.status,
+      201,
+      await createAssignment.clone().text(),
+    );
+    const assignment = (await createAssignment.json()).assignment;
+    assert.equal(
+      assignment.experienceConfiguration.activityType,
+      "TECHNICAL_LAB",
+    );
+    assert.equal(
+      assignment.experienceConfiguration.delivery.channel,
+      "HOSTED",
+    );
+
+    const runId = "RUN_TECHNICAL_LAB_SITE";
+    const start = await worker.fetch(
+      apiRequest(
+        `/api/v1/assignments/${assignmentId}/start-run`,
+        {
+          method: "POST",
+          email: "technical-lab-learner@example.edu",
+          body: {
+            commandId: "COMMAND_START_TECHNICAL_LAB_SITE",
+            runId,
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(start.status, 201, await start.clone().text());
+    assert.equal((await start.json()).version, 1);
+
+    const loaded = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}`, {
+        email: "technical-lab-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(loaded.status, 200, await loaded.clone().text());
+    const initialProjection = (await loaded.json()).projection;
+    assert.equal(initialProjection.technicalLab.labPackVersion, "1.0.0");
+    assert.equal(
+      initialProjection.technicalLab.replay.modules[0].module.moduleId,
+      "TL1",
+    );
+    assert.equal(
+      initialProjection.technicalLab.replay.expectedAction.actionType,
+      "VIEW_INPUT",
+    );
+
+    const action = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "technical-lab-learner@example.edu",
+        body: {
+          commandType: "PERFORM_TECHNICAL_LAB_ACTION",
+          commandId: "COMMAND_TECHNICAL_LAB_VIEW_INPUT",
+          runId,
+          expectedRunVersion: 1,
+          actionType: "VIEW_INPUT",
+        },
+      }),
+      env,
+    );
+    assert.equal(action.status, 200, await action.clone().text());
+    const progressedProjection = (await action.json()).projection;
+    assert.equal(progressedProjection.version, 2);
+    assert.equal(
+      progressedProjection.technicalLab.replay.expectedAction
+        .actionType,
+      "HASH",
+    );
+
+    const resumed = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}`, {
+        email: "technical-lab-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(resumed.status, 200, await resumed.clone().text());
+    assert.deepEqual(
+      (await resumed.json()).projection.technicalLab.replay,
+      progressedProjection.technicalLab.replay,
+    );
+
+    const timeline = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/timeline`, {
+        email: "technical-lab-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(timeline.status, 200, await timeline.clone().text());
+    assert.deepEqual(
+      (await timeline.json()).timeline.map(
+        ({ eventType }) => eventType,
+      ),
+      ["RUN_CREATED", "TECHNICAL_LAB_ACTION_PERFORMED"],
+    );
+
+    const report = await worker.fetch(
+      apiRequest(
+        `/api/v1/assignments/${assignmentId}/technical-lab-report`,
+        {
+          email: "technical-lab-instructor@example.edu",
+        },
+      ),
+      env,
+    );
+    assert.equal(report.status, 200, await report.clone().text());
+    const technicalLabReport = (
+      await report.json()
+    ).technicalLabReport;
+    assert.equal(
+      technicalLabReport.reportType,
+      "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT",
+    );
+    assert.equal(technicalLabReport.summary.runCount, 1);
+    assert.equal(technicalLabReport.summary.completedRunCount, 0);
+    assert.equal(technicalLabReport.runs[0].currentModuleId, "TL1");
+    assert.equal(
+      technicalLabReport.runs[0].modules[0].experimentComplete,
       false,
     );
   } finally {

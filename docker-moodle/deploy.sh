@@ -56,6 +56,9 @@ challenge_package="$(find_current_package challenge 'TraceChain_Challenge_*_NON_
 assessment_package="$(find_current_package assessment 'TraceChain_Assessment_*_NON_RELEASE.zip')"
 audit_guided_package="$(find_current_package audit-guided 'TraceChain_AuditGuided_*_NON_RELEASE.zip')"
 audit_practice_package="$(find_current_package audit-practice 'TraceChain_AuditPractice_*_NON_RELEASE.zip')"
+audit_challenge_package="$(find_current_package audit-challenge 'TraceChain_AuditChallenge_*_NON_RELEASE.zip')"
+audit_assessment_package="$(find_current_package audit-assessment 'TraceChain_AuditAssessment_*_NON_RELEASE.zip')"
+technical_lab_package="$(find_current_package technical-lab 'TraceChain_TechnicalLab_*_NON_RELEASE.zip')"
 
 "${compose[@]}" up -d
 
@@ -69,13 +72,16 @@ curl -fsS -o /dev/null http://localhost:8080/login/index.php
 # Clear only temporary deployment inputs. Activity content and learner data are
 # reset through Moodle APIs in deploy.php.
 "${compose[@]}" exec -T --user root moodle sh -c \
-  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/deploy.php'
+  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/TraceChain_AuditChallenge_*_NON_RELEASE.zip /tmp/TraceChain_AuditAssessment_*_NON_RELEASE.zip /tmp/TraceChain_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
 "${compose[@]}" cp "$guided_package" "moodle:/tmp/$(basename "$guided_package")"
 "${compose[@]}" cp "$practice_package" "moodle:/tmp/$(basename "$practice_package")"
 "${compose[@]}" cp "$challenge_package" "moodle:/tmp/$(basename "$challenge_package")"
 "${compose[@]}" cp "$assessment_package" "moodle:/tmp/$(basename "$assessment_package")"
 "${compose[@]}" cp "$audit_guided_package" "moodle:/tmp/$(basename "$audit_guided_package")"
 "${compose[@]}" cp "$audit_practice_package" "moodle:/tmp/$(basename "$audit_practice_package")"
+"${compose[@]}" cp "$audit_challenge_package" "moodle:/tmp/$(basename "$audit_challenge_package")"
+"${compose[@]}" cp "$audit_assessment_package" "moodle:/tmp/$(basename "$audit_assessment_package")"
+"${compose[@]}" cp "$technical_lab_package" "moodle:/tmp/$(basename "$technical_lab_package")"
 "${compose[@]}" cp "$here/deploy.php" moodle:/tmp/deploy.php
 "${compose[@]}" exec -T --user root moodle chmod 644 \
   "/tmp/$(basename "$guided_package")" \
@@ -84,9 +90,12 @@ curl -fsS -o /dev/null http://localhost:8080/login/index.php
   "/tmp/$(basename "$assessment_package")" \
   "/tmp/$(basename "$audit_guided_package")" \
   "/tmp/$(basename "$audit_practice_package")" \
+  "/tmp/$(basename "$audit_challenge_package")" \
+  "/tmp/$(basename "$audit_assessment_package")" \
+  "/tmp/$(basename "$technical_lab_package")" \
   /tmp/deploy.php
 
-echo "--- deploy and reset Operations + Audit Guided/Practice activities ---"
+echo "--- deploy and reset all TraceChain activities ---"
 "${compose[@]}" exec -T --user daemon \
   -e TRACECHAIN_GUIDED_PACKAGE="/tmp/$(basename "$guided_package")" \
   -e TRACECHAIN_PRACTICE_PACKAGE="/tmp/$(basename "$practice_package")" \
@@ -94,8 +103,11 @@ echo "--- deploy and reset Operations + Audit Guided/Practice activities ---"
   -e TRACECHAIN_ASSESSMENT_PACKAGE="/tmp/$(basename "$assessment_package")" \
   -e TRACECHAIN_AUDIT_GUIDED_PACKAGE="/tmp/$(basename "$audit_guided_package")" \
   -e TRACECHAIN_AUDIT_PRACTICE_PACKAGE="/tmp/$(basename "$audit_practice_package")" \
+  -e TRACECHAIN_AUDIT_CHALLENGE_PACKAGE="/tmp/$(basename "$audit_challenge_package")" \
+  -e TRACECHAIN_AUDIT_ASSESSMENT_PACKAGE="/tmp/$(basename "$audit_assessment_package")" \
+  -e TRACECHAIN_TECHNICAL_LAB_PACKAGE="/tmp/$(basename "$technical_lab_package")" \
   moodle /opt/bitnami/php/bin/php /tmp/deploy.php
 
 "${compose[@]}" exec -T --user root moodle sh -c \
-  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/deploy.php'
+  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/TraceChain_AuditChallenge_*_NON_RELEASE.zip /tmp/TraceChain_AuditAssessment_*_NON_RELEASE.zip /tmp/TraceChain_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
 echo "--- done: http://localhost:8080 ---"

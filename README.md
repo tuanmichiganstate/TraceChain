@@ -67,6 +67,16 @@ from still-unapproved participant evidence; see
 `docs/archive/phases/PRODUCT_MODES_PHASE_7.md`, and
 `docs/pilot/PRODUCT_MODES_PHASE_8.md`.
 
+The Technical Laboratory is now a ninth package and a hosted assignment type.
+Its seven ordered modules cover SHA-256 and the avalanche effect, canonical
+serialization, Ed25519 signatures, authorization, endorsement policies,
+state-version conflicts, and end-to-end trust diagnosis. One headless engine
+drives both the TL1 SCORM journal and the server-authoritative hosted run. The
+laboratory retains its own exact 100-point 40/40/20 contract and does not alter
+the Operations or Audit score contracts. In development, open
+`http://localhost:5173/technical-lab` after `npm run dev`; hosted learners enter
+the laboratory through a Technical Laboratory assignment on `/learner`.
+
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
 role-projection contracts. The server-authoritative coffee service now carries
@@ -191,7 +201,7 @@ For a clean release tree:
 
 ```bash
 npm run package:scorm -- --preset guided
-npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment
+npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment,technical-lab
 ```
 
 For local verification of all accepted presets from an existing build:
@@ -211,9 +221,11 @@ Strict release generation produces
 `TraceChain_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`, plus the
 calibration-candidate
 `TraceChain_AuditChallenge_ChallengeCoffeeAuditBank_vi_v1.0.0.zip` and
-`TraceChain_AuditAssessment_ChallengeCoffeeAuditBank_vi_v1.0.0.zip`. The local command
+`TraceChain_AuditAssessment_ChallengeCoffeeAuditBank_vi_v1.0.0.zip`, plus
+`TraceChain_TechnicalLab_PermissionedBlockchainFoundations_vi_v1.0.0.zip`.
+The local command
 appends `_NON_RELEASE` to every archive name. The Docker demo selects the
-current six archives by their embedded build metadata, deploys them into
+current nine archives by their embedded build metadata, deploys them into
 separate reset activities, and ignores stale ZIPs.
 Release packaging fails on a dirty tree;
 `--allow-dirty` output is marked non-release in its filename and metadata.
@@ -264,6 +276,7 @@ src/
 │   ├── coffee-traceability/
 │   ├── practice-a/
 │   └── challenge-a/
+├── technical-lab/     shared TL1–TL7 engine, content, hosted runtime and UI
 ├── features/          one folder per stage + the stage registry
 ├── components/        shared UI
 ├── locales/           vi.json (production), en.json (scaffold)
@@ -297,8 +310,8 @@ schemas/               published versioned JSON Schemas
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
-| `npm run build:scorm` | Build all eight local non-release preset packages |
-| `npm run verify:scorm` | Validate all eight packages and their shared static build |
+| `npm run build:scorm` | Build all nine local non-release preset packages |
+| `npm run verify:scorm` | Validate all nine packages and their shared static build |
 | `npm run verify:signature-evidence -- <bundle.json>` | Independently verify a copied Ed25519 evidence bundle with Node |
 | `npm run quality` | All of the above, in order |
 

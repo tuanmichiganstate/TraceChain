@@ -177,6 +177,15 @@ import {
   scenarioPackValidationReport,
 } from "../src/platform/scenario-packs/authoring";
 import { hasRegisteredHostedRuntime } from "../src/platform/hosted/runtime-registry";
+import {
+  isTechnicalLabHostedContent,
+  resolveHostedTechnicalLabExperience,
+  technicalLabHostedPackAdapter,
+} from "../src/technical-lab/hosted-pack-adapter";
+import {
+  createTechnicalLabAssignmentReport,
+  createTechnicalLabRunReport,
+} from "../src/technical-lab/hosted-report";
 
 interface AssetBinding {
   fetch(request: Request): Promise<Response>;
@@ -1025,6 +1034,22 @@ async function loadScormPackageCatalog(
   return catalog;
 }
 
+async function findHostedContentPack(
+  environment: WorkerEnvironment,
+  principalUserId: string,
+  packId: string,
+  packVersion: string,
+): Promise<ScenarioPackV1 | null> {
+  if (isTechnicalLabHostedContent(packId, packVersion)) {
+    return technicalLabHostedPackAdapter;
+  }
+  return new D1ScenarioPackRepository(
+    environment.DB,
+    new SystemUtcClock(),
+    principalUserId,
+  ).find(packId, packVersion);
+}
+
 async function hostedServiceForRun(
   environment: WorkerEnvironment,
   principalUserId: string,
@@ -1049,11 +1074,12 @@ async function hostedServiceForRun(
     );
   }
   const clock = new SystemUtcClock();
-  const pack = await new D1ScenarioPackRepository(
-    environment.DB,
-    clock,
+  const pack = await findHostedContentPack(
+    environment,
     principalUserId,
-  ).find(first.packId, first.packVersion);
+    first.packId,
+    first.packVersion,
+  );
   if (pack === null) {
     throw new HostedRunCommandError(
       "PACK_CONTRACT_MISMATCH",
@@ -1974,7 +2000,7 @@ async function apiResponse(
         repository.find(pack.packId, pack.version),
       ),
     );
-    const options: HostedAssignmentScenarioOptionV1[] =
+    const scenarioOptions: HostedAssignmentScenarioOptionV1[] =
       publishedPacks.flatMap((pack) =>
         pack === null || pack.status !== "published"
           ? []
@@ -2049,6 +2075,44 @@ async function apiResponse(
                 };
               }),
       );
+    const technicalScenario =
+      technicalLabHostedPackAdapter.scenarios[0]!;
+    const technicalExperience =
+      resolveHostedTechnicalLabExperience(
+        technicalLabHostedPackAdapter.supportedLocales.includes(
+          "vi",
+        )
+          ? "vi"
+          : "en",
+      );
+    const technicalOption: HostedAssignmentScenarioOptionV1 = {
+      schemaVersion: "2.0.0",
+      packId: technicalLabHostedPackAdapter.packId,
+      packVersion: technicalLabHostedPackAdapter.version,
+      scenarioId: technicalScenario.scenarioId,
+      scenarioVersion: technicalScenario.version,
+      packTitleKey:
+        technicalLabHostedPackAdapter.manifest.title
+          .localizationKey,
+      scenarioTitleKey: technicalScenario.title.localizationKey,
+      labelsByLocale: assignmentOptionLabels(
+        technicalLabHostedPackAdapter,
+        technicalLabHostedPackAdapter.manifest.title
+          .localizationKey,
+        technicalScenario.title.localizationKey,
+        {},
+      ),
+      supportedModes: technicalScenario.supportedModes,
+      modeConfigurations: technicalScenario.modeConfigurations,
+      experienceConfigurations: [
+        {
+          mode: "tutorial",
+          ...technicalExperience,
+        },
+      ],
+      counterfactualDecisionPoints: [],
+    };
+    const options = [...scenarioOptions, technicalOption];
     return jsonResponse(200, {
       options: options.sort((left, right) => {
         const leftKey =
@@ -2125,11 +2189,12 @@ async function apiResponse(
       "scenarioVersion",
     );
     const clock = new SystemUtcClock();
-    const publishedPack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const publishedPack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(packId, packVersion);
+      packId,
+      packVersion,
+    );
     const scenario = publishedPack?.scenarios.find(
       (candidate) =>
         candidate.scenarioId === scenarioId &&
@@ -2159,15 +2224,20 @@ async function apiResponse(
       scenario,
       mode,
     );
-    const experience = resolveHostedExperienceConfiguration({
-      packId: publishedPack.packId,
-      packVersion: publishedPack.version,
-      scenario,
-      runtimeConfiguration,
-      locale: publishedPack.supportedLocales.includes("vi")
-        ? "vi"
-        : "en",
-    });
+    const locale = publishedPack.supportedLocales.includes("vi")
+      ? "vi"
+      : "en";
+    const experience =
+      scenario.hostedRuntime?.runtimeId ===
+      "tracechain-technical-lab-v1"
+        ? resolveHostedTechnicalLabExperience(locale)
+        : resolveHostedExperienceConfiguration({
+            packId: publishedPack.packId,
+            packVersion: publishedPack.version,
+            scenario,
+            runtimeConfiguration,
+            locale,
+          });
     let counterfactualReplay;
     let research;
     try {
@@ -2357,11 +2427,12 @@ async function apiResponse(
         `The assignment start status is ${availability.status}.`,
       );
     }
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(assignment.packId, assignment.packVersion);
+      assignment.packId,
+      assignment.packVersion,
+    );
     const scenario = pack?.scenarios.find(
       (candidate) =>
         candidate.scenarioId === assignment.scenarioId &&
@@ -2377,16 +2448,20 @@ async function apiResponse(
         "The assignment's exact published scenario is unavailable.",
       );
     }
+    const locale = pack.supportedLocales.includes("vi")
+      ? "vi"
+      : "en";
     const expectedExperience =
-      resolveHostedExperienceConfiguration({
-        packId: pack.packId,
-        packVersion: pack.version,
-        scenario,
-        runtimeConfiguration: assignment.runConfiguration,
-        locale: pack.supportedLocales.includes("vi")
-          ? "vi"
-          : "en",
-      });
+      scenario.hostedRuntime?.runtimeId ===
+      "tracechain-technical-lab-v1"
+        ? resolveHostedTechnicalLabExperience(locale)
+        : resolveHostedExperienceConfiguration({
+            packId: pack.packId,
+            packVersion: pack.version,
+            scenario,
+            runtimeConfiguration: assignment.runConfiguration,
+            locale,
+          });
     try {
       assertHostedExperienceIdentity({
         configuration: assignment.experienceConfiguration,
@@ -2498,11 +2573,12 @@ async function apiResponse(
         "The assignment is outside the instructor's scope.",
       );
     }
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       reportActor.userId,
-    ).find(report.assignment.packId, report.assignment.packVersion);
+      report.assignment.packId,
+      report.assignment.packVersion,
+    );
     const assignmentScenario = pack?.scenarios.find(
       (scenario) =>
         scenario.scenarioId === report.assignment.scenarioId &&
@@ -2569,6 +2645,84 @@ async function apiResponse(
     });
   }
 
+  const technicalLabReportAssignmentId = pathAssignmentId(
+    url.pathname,
+    "technical-lab-report",
+  );
+  if (
+    request.method === "GET" &&
+    technicalLabReportAssignmentId !== null
+  ) {
+    const reportActor = requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const clock = new SystemUtcClock();
+    const report = await new D1AssignmentRepository(
+      environment.DB,
+      clock,
+    ).report(technicalLabReportAssignmentId);
+    if (
+      reportActor.roles.includes("instructor") &&
+      !reportActor.roles.includes("administrator") &&
+      report.assignment.createdByUserId !== reportActor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The assignment is outside the instructor's scope.",
+      );
+    }
+    if (
+      !isTechnicalLabHostedContent(
+        report.assignment.packId,
+        report.assignment.packVersion,
+      )
+    ) {
+      return jsonResponse(200, { technicalLabReport: null });
+    }
+    const runs = await Promise.all(
+      report.learners.flatMap((learner) =>
+        learner.runs.map(async (summary) => {
+          const { service } = await hostedServiceForRun(
+            environment,
+            reportActor.userId,
+            summary.runId,
+          );
+          const [replay, timeline] = await Promise.all([
+            service.instructorReplay(
+              reportActor,
+              summary.runId,
+            ),
+            service.instructorTimeline(
+              reportActor,
+              summary.runId,
+            ),
+          ]);
+          if (replay.projection.technicalLab === undefined) {
+            throw new HostedRunCommandError(
+              "PACK_CONTRACT_MISMATCH",
+              "A Technical Laboratory assignment contains a non-laboratory run.",
+            );
+          }
+          return createTechnicalLabRunReport({
+            learnerUserId: summary.learnerUserId,
+            status: summary.status,
+            projection: replay.projection,
+            timeline,
+          });
+        }),
+      ),
+    );
+    return jsonResponse(200, {
+      technicalLabReport: createTechnicalLabAssignmentReport({
+        assignmentReport: report,
+        runs,
+        generatedAt: clock.now(),
+      }),
+    });
+  }
+
   const decisionOutcomeAssignmentId = pathAssignmentId(
     url.pathname,
     "decision-outcomes",
@@ -2590,11 +2744,9 @@ async function apiResponse(
     const report = await repository.report(
       decisionOutcomeAssignmentId,
     );
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(
       report.assignment.packId,
       report.assignment.packVersion,
     );
@@ -2723,11 +2875,9 @@ async function apiResponse(
       clock,
     );
     const report = await repository.report(monitorAssignmentId);
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(
       report.assignment.packId,
       report.assignment.packVersion,
     );
@@ -2806,11 +2956,9 @@ async function apiResponse(
       clock,
     );
     const report = await repository.report(competencyAssignmentId);
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(
       report.assignment.packId,
       report.assignment.packVersion,
     );
@@ -2876,11 +3024,9 @@ async function apiResponse(
     const assignmentReport = await repository.report(
       requestedCurriculumCrosswalkAssignmentId,
     );
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      clock,
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(
       assignmentReport.assignment.packId,
       assignmentReport.assignment.packVersion,
     );
@@ -4307,12 +4453,9 @@ async function apiResponse(
         `Run ${commandRunId} does not exist.`,
       );
     }
-    const packRepository = new D1ScenarioPackRepository(
-      environment.DB,
-      new SystemUtcClock(),
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    );
-    const pack = await packRepository.find(
       first.packId,
       first.packVersion,
     );
@@ -4360,11 +4503,12 @@ async function apiResponse(
         `Run ${runId} does not exist.`,
       );
     }
-    const pack = await new D1ScenarioPackRepository(
-      environment.DB,
-      new SystemUtcClock(),
+    const pack = await findHostedContentPack(
+      environment,
       principal.userId,
-    ).find(first.packId, first.packVersion);
+      first.packId,
+      first.packVersion,
+    );
     if (pack === null) {
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",

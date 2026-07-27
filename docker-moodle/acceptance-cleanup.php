@@ -13,6 +13,9 @@ $activitynames = [
     'assessment' => 'TraceChain Assessment',
     'audit-guided' => 'TraceChain Audit Guided',
     'audit-practice' => 'TraceChain Audit Practice',
+    'audit-challenge' => 'TraceChain Audit Challenge',
+    'audit-assessment' => 'TraceChain Audit Assessment',
+    'technical-lab' => 'TraceChain Technical Laboratory',
 ];
 if (!isset($activitynames[$mode])) {
     throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");

@@ -50,6 +50,10 @@ export type PlatformRunEventType =
   | "AUDIT_FINDING_WITHDRAWN"
   | "AUDIT_CONCLUSION_SUBMITTED"
   | "AUDIT_FEEDBACK_VIEWED"
+  | "TECHNICAL_LAB_ACTION_PERFORMED"
+  | "TECHNICAL_LAB_RESPONSE_SUBMITTED"
+  | "TECHNICAL_LAB_HINT_OPENED"
+  | "TECHNICAL_LAB_MODULE_ADVANCED"
   | "RUN_TIME_LIMIT_EXCEEDED"
   | "RUN_COMPLETED";
 
@@ -146,6 +150,16 @@ export interface LearnerRunProjectionV1 {
   };
   readonly presentation?: LearnerRunPresentationV1;
   readonly audit?: AuditLearnerProjectionV1;
+  readonly technicalLab?: HostedTechnicalLabProjectionV1;
+}
+
+export interface HostedTechnicalLabProjectionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly configurationHash: string;
+  readonly labPackId: string;
+  readonly labPackVersion: string;
+  readonly locale: "vi" | "en";
+  readonly replay: import("../../technical-lab/engine").TechnicalLabReplay;
 }
 
 export interface LearnerRunLocalizedTextV1 {

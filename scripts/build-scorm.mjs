@@ -39,6 +39,7 @@ const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
   "tracechain.config.json",
   "audit-scenario-pack.json",
+  "technical-lab-pack.json",
   "scenario.json",
   "scenario-variant-bank.json",
   "media-manifest.json",
@@ -61,7 +62,7 @@ function usage() {
   return [
     "Usage:",
     "  npm run package:scorm -- --preset guided",
-    "  npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment",
+    "  npm run package:scorm -- --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment,technical-lab",
     "  npm run package:scorm -- --config configs/package.json",
     "",
     "Options:",
@@ -532,6 +533,9 @@ function safeDirectorySegment(value) {
 }
 
 function defaultScenarioLabel(configuration) {
+  if (configuration.activityType === "TECHNICAL_LAB") {
+    return "PermissionedBlockchain";
+  }
   if (configuration.scenarioId === "SCN_COFFEE_001") return "StandardCoffee";
   if (configuration.scenarioId === "SCN_COFFEE_PRACTICE") return "PracticeCase";
   if (configuration.scenarioId === "SCN_COFFEE_CHALLENGE") return "ChallengeBank";
@@ -550,6 +554,12 @@ function defaultScenarioLabel(configuration) {
   return safeFileSegment(configuration.scenarioId);
 }
 
+function activityVersion(configuration) {
+  return configuration.activityType === "TECHNICAL_LAB"
+    ? configuration.labPackVersion
+    : configuration.scenarioVersion;
+}
+
 function packageFileName(configuration, releaseBuild) {
   const preset =
     configuration.presetId.slice(0, 1).toUpperCase() +
@@ -561,7 +571,7 @@ function packageFileName(configuration, releaseBuild) {
     safeFileSegment(preset),
     defaultScenarioLabel(configuration),
     configuration.locale,
-    `v${configuration.scenarioVersion.replace(/[^A-Za-z0-9.-]/gu, "")}`,
+    `v${activityVersion(configuration).replace(/[^A-Za-z0-9.-]/gu, "")}`,
   ].join("_") + ".zip";
   return classifyPackageFileName(releaseFileName, releaseBuild);
 }
@@ -685,6 +695,7 @@ function packageOne({
   cryptographicRuntime,
   sourceLabel,
   scenario,
+  technicalLabBundle,
   variantBank,
   definitions,
   provenance,
@@ -716,11 +727,25 @@ function packageOne({
   let scenarioHash = null;
   let auditScenarioPackHash = null;
   let auditScenarioPackContentHash = null;
+  let technicalLabPackHash = null;
+  let technicalLabPackContentHash = null;
   let variantBankHash = null;
   const variantContentHashes = {};
   let mediaManifestContent = null;
   const portraitMediaHashes = {};
-  if (auditPack !== null) {
+  if (technicalLabBundle !== null) {
+    const technicalLabContent = `${JSON.stringify(technicalLabBundle, null, 2)}\n`;
+    writeFileSync(
+      join(packageDirectory, "technical-lab-pack.json"),
+      technicalLabContent,
+      "utf8",
+    );
+    technicalLabPackHash = createHash("sha256")
+      .update(technicalLabContent, "utf8")
+      .digest("hex");
+    technicalLabPackContentHash =
+      technicalLabBundle.pack.publication.contentHash;
+  } else if (auditPack !== null) {
     const auditPackContent = `${JSON.stringify(auditPack, null, 2)}\n`;
     writeFileSync(
       join(packageDirectory, "audit-scenario-pack.json"),
@@ -753,7 +778,11 @@ function packageOne({
       .update(scenarioContent, "utf8")
       .digest("hex");
   }
-  if (auditPack === null && variantBank !== null) {
+  if (
+    technicalLabBundle === null &&
+    auditPack === null &&
+    variantBank !== null
+  ) {
     const variantBankContent = `${JSON.stringify(variantBank, null, 2)}\n`;
     writeFileSync(
       join(packageDirectory, "scenario-variant-bank.json"),
@@ -768,7 +797,7 @@ function packageOne({
         variant.metadata.contentHash;
     }
   }
-  if (auditPack === null) {
+  if (technicalLabBundle === null && auditPack === null) {
     const mediaManifest = {
       schemaVersion: "1",
       scenarioId: scenario.scenarioId,
@@ -861,8 +890,12 @@ function packageOne({
     scenarioHash,
     auditScenarioPackHash,
     auditScenarioPackContentHash,
+    technicalLabPackHash,
+    technicalLabPackContentHash,
     auditPersistenceSchemaVersion:
       auditPack === null ? null : "TA2",
+    technicalLabPersistenceSchemaVersion:
+      technicalLabBundle === null ? null : "TL1",
     variantBankId: variantBank?.bankId ?? null,
     variantBankVersion: variantBank?.bankVersion ?? null,
     variantBankHash,
@@ -875,14 +908,18 @@ function packageOne({
     reproducibleSource: provenance.reproducibleSource,
     normalizedArchiveMetadata: true,
     cryptographicEvidenceSchemaVersion:
-      cryptographicRuntime === null
+      technicalLabBundle !== null
+        ? "2"
+        : cryptographicRuntime === null
         ? null
         : configuration.technicalFeatures.endorsementPolicies
           ? "2"
           : "1",
     cryptographicRuntimeHashes,
     portraitMediaSchemaVersion:
-      auditPack === null ? "1" : null,
+      technicalLabBundle === null && auditPack === null
+        ? "1"
+        : null,
     portraitMediaManifestHash:
       mediaManifestContent === null
         ? null
@@ -898,10 +935,12 @@ function packageOne({
             signatureProvider: "@noble/ed25519@3.1.0",
             signatureComputation: "REAL",
             endorsementSignatureComputation:
+              technicalLabBundle !== null ||
               configuration.technicalFeatures.endorsementPolicies
                 ? "REAL"
                 : "DISABLED",
             endorsementPolicyEvaluation:
+              technicalLabBundle !== null ||
               configuration.technicalFeatures.endorsementPolicies
                 ? "CONSTRAINED_SERIALIZABLE_POLICY_TREE"
                 : "DISABLED",
@@ -992,6 +1031,8 @@ function packageOne({
     outputPath,
     packageDirectory,
     title,
+    scenarioId: scenario.scenarioId,
+    scenarioVersion: scenarioVersionOf(scenario),
   };
 }
 
@@ -1032,6 +1073,59 @@ async function main() {
   }
 
   const resolvedInputs = await Promise.all(requested.map(async ({ configuration, sourceLabel }) => {
+    if (configuration.activityType === "TECHNICAL_LAB") {
+      const bundle =
+        definitions.permissionedFoundationsLabBundle;
+      const validation =
+        definitions.validateTechnicalLabPackBundle(bundle);
+      if (!validation.isValid) {
+        throw new Error(
+          `Technical Laboratory pack is invalid:\n${validation.issues
+            .map((issue) => `  ${issue.path}: ${issue.message}`)
+            .join("\n")}`,
+        );
+      }
+      const configurationIssues =
+        definitions.validateTechnicalLabConfigurationAgainstPack(
+          configuration,
+          validation.bundle,
+        );
+      if (
+        configurationIssues.length > 0 ||
+        !definitions.verifyTechnicalLabContentHash(
+          validation.bundle,
+        )
+      ) {
+        throw new Error(
+          `Technical Laboratory configuration or published content is invalid:\n${configurationIssues
+            .map((issue) => `  ${issue.path}: ${issue.message}`)
+            .join("\n")}`,
+        );
+      }
+      const scenario = {
+        scenarioId: validation.bundle.pack.labPackId,
+        scenarioVersion:
+          validation.bundle.pack.labPackVersion,
+        title: validation.bundle.pack.title,
+        descriptionKey:
+          validation.bundle.pack.description.localizationKey,
+      };
+      return {
+        auditPack: null,
+        configuration,
+        sourceLabel,
+        scenario,
+        technicalLabBundle: validation.bundle,
+        variantBank: null,
+        cryptographicRuntime:
+          definitions.technicalLabCryptographicRuntime,
+        text: resolvePackageText(
+          configuration,
+          scenario,
+          options.title,
+        ),
+      };
+    }
     if (configuration.activityType === "AUDIT") {
       const draftPack = auditPacks.get(
         configuration.content.packId,
@@ -1053,6 +1147,7 @@ async function main() {
         configuration,
         sourceLabel,
         scenario,
+        technicalLabBundle: null,
         variantBank: auditVariantBank,
         cryptographicRuntime: null,
         text: resolvePackageText(
@@ -1111,6 +1206,7 @@ async function main() {
       configuration,
       sourceLabel,
       scenario,
+      technicalLabBundle: null,
       variantBank,
       cryptographicRuntime,
       text,
@@ -1148,6 +1244,7 @@ async function main() {
       variantBank,
       cryptographicRuntime,
       text,
+      technicalLabBundle,
     }) =>
       packageOne({
         auditPack,
@@ -1155,6 +1252,7 @@ async function main() {
         cryptographicRuntime,
         sourceLabel,
         scenario,
+        technicalLabBundle,
         variantBank,
         definitions,
         provenance,
@@ -1170,7 +1268,7 @@ async function main() {
         `SCORM package written: ${result.outputName}`,
         `  title: ${result.title}`,
         `  preset: ${result.configuration.presetId}`,
-        `  scenario: ${result.configuration.scenarioId} v${result.configuration.scenarioVersion}`,
+        `  scenario: ${result.scenarioId} v${result.scenarioVersion}`,
         `  configuration: ${result.configurationHash}`,
         `  application build: ${staticBuild.hash}`,
         `  release: ${provenance.releaseBuild ? "yes" : "no"}`,
@@ -1213,8 +1311,8 @@ async function main() {
         sizeBytes: bytes.byteLength,
         release: provenance.releaseBuild,
         configurationHash: result.configurationHash,
-        scenarioId: result.configuration.scenarioId,
-        scenarioVersion: result.configuration.scenarioVersion,
+        scenarioId: result.scenarioId,
+        scenarioVersion: result.scenarioVersion,
         applicationBuildHash: staticBuild.hash,
         sourceCommit: provenance.sourceCommit,
         generatedAt: provenance.generatedAt,

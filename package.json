@@ -27,7 +27,7 @@
     "test:evidence-audit": "node --test scripts/learner-evidence-audit.test.mjs",
     "test:package-generator": "node --test scripts/scorm-package-policy.test.mjs",
     "package:scorm": "node scripts/build-scorm.mjs",
-    "build:scorm": "node scripts/build-scorm.mjs --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment --no-build --allow-dirty",
+    "build:scorm": "node scripts/build-scorm.mjs --preset guided,practice,challenge,assessment,audit-guided,audit-practice,audit-challenge,audit-assessment,technical-lab --no-build --allow-dirty",
     "verify:scorm": "node scripts/verify-scorm.mjs",
     "verify:signature-evidence": "node scripts/verify-signature-evidence.mjs",
     "quality": "npm run lint && npm run typecheck && npm run test && npm run test:site && npm run validate:locales && npm run validate:scenario && npm run validate:platform-pack && npm run validate:curriculum-overlays && npm run verify:e2e-matrix && npm run test:content-review && npm run test:evidence-audit && npm run test:package-generator && npm run verify:content-review && npm run verify:evidence-audit && npm run build && npm run build:scorm && npm run verify:scorm && npm run build:site:from-artifacts",

@@ -31,6 +31,12 @@ import {
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedStaffIdentity } from "../components/hosted-staff-identity";
 import { HostedAuditWorkspace } from "../audit/hosted-audit-workspace";
+import { TechnicalLabShell } from "../../technical-lab/technical-lab-shell";
+import { hostedTechnicalLabConfiguration } from "../../technical-lab/hosted-pack-adapter";
+import {
+  loadTechnicalLabRuntimePackage,
+  type TechnicalLabRuntimePackage,
+} from "../../config/technical-lab-runtime-loader";
 
 interface LearnerSession {
   readonly userId: string;
@@ -1075,6 +1081,15 @@ function RunWorkspace({
   ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
+  if (projection.technicalLab !== undefined) {
+    return (
+      <HostedTechnicalLabWorkspace
+        technicalLab={projection.technicalLab}
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    );
+  }
   if (projection.audit !== undefined) {
     return (
       <HostedAuditWorkspace
@@ -1287,6 +1302,121 @@ function RunWorkspace({
         )}
       </section>
     </>
+  );
+}
+
+function HostedTechnicalLabWorkspace({
+  technicalLab,
+  busy,
+  onSubmit,
+}: {
+  readonly technicalLab: NonNullable<
+    LearnerRunProjectionV1["technicalLab"]
+  >;
+  readonly busy: boolean;
+  readonly onSubmit: (
+    input: Readonly<Record<string, unknown>>,
+  ) => Promise<void>;
+}): ReactNode {
+  const t = useTranslator();
+  const [loaded, setLoaded] = useState<{
+    readonly configurationHash: string;
+    readonly runtime: TechnicalLabRuntimePackage;
+  } | null>(null);
+  const [loadFailedFor, setLoadFailedFor] =
+    useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadTechnicalLabRuntimePackage((path) =>
+      fetch(
+        `/technical-lab-runtime/${path.replace(/^\.\//u, "")}`,
+      ),
+    ).then(
+      (runtime) => {
+        if (cancelled) return;
+        if (
+          runtime.bundle.pack.labPackId !==
+            technicalLab.labPackId ||
+          runtime.bundle.pack.labPackVersion !==
+            technicalLab.labPackVersion
+        ) {
+          setLoadFailedFor(technicalLab.configurationHash);
+          return;
+        }
+        setLoaded({
+          configurationHash: technicalLab.configurationHash,
+          runtime: {
+            ...runtime,
+            configuration: hostedTechnicalLabConfiguration(
+              technicalLab.locale,
+            ),
+            configurationHash: technicalLab.configurationHash,
+          },
+        });
+      },
+      () => {
+        if (!cancelled) {
+          setLoadFailedFor(technicalLab.configurationHash);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    technicalLab.configurationHash,
+    technicalLab.labPackId,
+    technicalLab.labPackVersion,
+    technicalLab.locale,
+  ]);
+  const runtime =
+    loaded?.configurationHash === technicalLab.configurationHash
+      ? loaded.runtime
+      : null;
+  if (loadFailedFor === technicalLab.configurationHash) {
+    return (
+      <p className="notice notice--standalone" role="alert">
+        {t("technicalLab.hosted.loadFailure")}
+      </p>
+    );
+  }
+  if (runtime === null) {
+    return (
+      <p role="status">{t("technicalLab.hosted.loading")}</p>
+    );
+  }
+  return (
+    <TechnicalLabShell
+      runtime={runtime}
+      replay={technicalLab.replay}
+      busy={busy}
+      readOnly={false}
+      embedded
+      onAction={(actionType, operands) =>
+        onSubmit({
+          commandType: "PERFORM_TECHNICAL_LAB_ACTION",
+          actionType,
+          ...(operands ?? {}),
+        })
+      }
+      onResponse={(kind, optionId) =>
+        onSubmit({
+          commandType: "SUBMIT_TECHNICAL_LAB_RESPONSE",
+          kind,
+          optionId,
+        })
+      }
+      onHint={() =>
+        onSubmit({
+          commandType: "OPEN_TECHNICAL_LAB_HINT",
+        })
+      }
+      onAdvance={() =>
+        onSubmit({
+          commandType: "ADVANCE_TECHNICAL_LAB_MODULE",
+        })
+      }
+    />
   );
 }
 

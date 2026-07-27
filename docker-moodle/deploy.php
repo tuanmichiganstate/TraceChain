@@ -1,6 +1,6 @@
 <?php
 /**
- * Deploy the current Operations and Audit Guided/Practice packages.
+ * Deploy all current Operations, Audit, and Technical Laboratory packages.
  *
  * The first run adopts the existing TraceChain activity as Guided and
  * duplicates it for the other managed presets. Later runs find all activities
@@ -24,6 +24,9 @@ const TRACECHAIN_ACTIVITY_CHALLENGE = 'TraceChain Challenge';
 const TRACECHAIN_ACTIVITY_ASSESSMENT = 'TraceChain Assessment';
 const TRACECHAIN_ACTIVITY_AUDIT_GUIDED = 'TraceChain Audit Guided';
 const TRACECHAIN_ACTIVITY_AUDIT_PRACTICE = 'TraceChain Audit Practice';
+const TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE = 'TraceChain Audit Challenge';
+const TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT = 'TraceChain Audit Assessment';
+const TRACECHAIN_ACTIVITY_TECHNICAL_LAB = 'TraceChain Technical Laboratory';
 
 function fail(string $message): void {
     fwrite(STDERR, "deploy: $message\n");
@@ -97,6 +100,24 @@ function ensure_managed_activities(): array {
         '*',
         IGNORE_MISSING
     );
+    $auditchallenge = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE],
+        '*',
+        IGNORE_MISSING
+    );
+    $auditassessment = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT],
+        '*',
+        IGNORE_MISSING
+    );
+    $technicallab = $DB->get_record(
+        'scorm',
+        ['name' => TRACECHAIN_ACTIVITY_TECHNICAL_LAB],
+        '*',
+        IGNORE_MISSING
+    );
 
     if ($guided === false) {
         $candidates = [];
@@ -106,7 +127,10 @@ function ensure_managed_activities(): array {
                 $candidate->name !== TRACECHAIN_ACTIVITY_PRACTICE &&
                 $candidate->name !== TRACECHAIN_ACTIVITY_ASSESSMENT &&
                 $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_GUIDED &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_PRACTICE
+                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_PRACTICE &&
+                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE &&
+                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT &&
+                $candidate->name !== TRACECHAIN_ACTIVITY_TECHNICAL_LAB
             ) {
                 $candidates[] = $candidate;
             }
@@ -292,12 +316,114 @@ function ensure_managed_activities(): array {
         echo "created:  cmid={$auditpracticecm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_PRACTICE."\"\n";
     }
 
+    if ($auditchallenge === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Audit Challenge');
+        }
+        $auditchallenge = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $auditchallenge = rename_activity(
+            $auditchallenge,
+            TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE
+        );
+        $auditchallengecm = get_coursemodule_from_instance(
+            'scorm',
+            $auditchallenge->id,
+            $auditchallenge->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$auditchallengecm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE."\"\n";
+    }
+
+    if ($auditassessment === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Audit Assessment');
+        }
+        $auditassessment = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $auditassessment = rename_activity(
+            $auditassessment,
+            TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT
+        );
+        $auditassessmentcm = get_coursemodule_from_instance(
+            'scorm',
+            $auditassessment->id,
+            $auditassessment->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$auditassessmentcm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT."\"\n";
+    }
+
+    if ($technicallab === false) {
+        $course = get_course($guided->course);
+        $guidedcm = get_coursemodule_from_instance(
+            'scorm',
+            $guided->id,
+            $guided->course,
+            false,
+            MUST_EXIST
+        );
+        $newcm = duplicate_module($course, $guidedcm, null, false);
+        if ($newcm === null) {
+            fail('Moodle could not duplicate the Guided activity for Technical Laboratory');
+        }
+        $technicallab = $DB->get_record(
+            'scorm',
+            ['id' => $newcm->instance],
+            '*',
+            MUST_EXIST
+        );
+        $technicallab = rename_activity(
+            $technicallab,
+            TRACECHAIN_ACTIVITY_TECHNICAL_LAB
+        );
+        $technicallabcm = get_coursemodule_from_instance(
+            'scorm',
+            $technicallab->id,
+            $technicallab->course,
+            false,
+            MUST_EXIST
+        );
+        echo "created:  cmid={$technicallabcm->id} as \"".TRACECHAIN_ACTIVITY_TECHNICAL_LAB."\"\n";
+    }
+
     if (
         (int)$guided->course !== (int)$practice->course ||
         (int)$guided->course !== (int)$challenge->course ||
         (int)$guided->course !== (int)$assessment->course ||
         (int)$guided->course !== (int)$auditguided->course ||
-        (int)$guided->course !== (int)$auditpractice->course
+        (int)$guided->course !== (int)$auditpractice->course ||
+        (int)$guided->course !== (int)$auditchallenge->course ||
+        (int)$guided->course !== (int)$auditassessment->course ||
+        (int)$guided->course !== (int)$technicallab->course
     ) {
         fail('Managed TraceChain activities must be in the same course');
     }
@@ -309,6 +435,9 @@ function ensure_managed_activities(): array {
         'assessment' => $assessment,
         'audit-guided' => $auditguided,
         'audit-practice' => $auditpractice,
+        'audit-challenge' => $auditchallenge,
+        'audit-assessment' => $auditassessment,
+        'technical-lab' => $technicallab,
     ];
 }
 
@@ -467,6 +596,9 @@ $packages = [
     'assessment' => package_from_environment('TRACECHAIN_ASSESSMENT_PACKAGE'),
     'audit-guided' => package_from_environment('TRACECHAIN_AUDIT_GUIDED_PACKAGE'),
     'audit-practice' => package_from_environment('TRACECHAIN_AUDIT_PRACTICE_PACKAGE'),
+    'audit-challenge' => package_from_environment('TRACECHAIN_AUDIT_CHALLENGE_PACKAGE'),
+    'audit-assessment' => package_from_environment('TRACECHAIN_AUDIT_ASSESSMENT_PACKAGE'),
+    'technical-lab' => package_from_environment('TRACECHAIN_TECHNICAL_LAB_PACKAGE'),
 ];
 $activities = ensure_managed_activities();
 
@@ -476,6 +608,9 @@ deploy_package($activities['challenge'], $packages['challenge']);
 deploy_package($activities['assessment'], $packages['assessment']);
 deploy_package($activities['audit-guided'], $packages['audit-guided']);
 deploy_package($activities['audit-practice'], $packages['audit-practice']);
+deploy_package($activities['audit-challenge'], $packages['audit-challenge']);
+deploy_package($activities['audit-assessment'], $packages['audit-assessment']);
+deploy_package($activities['technical-lab'], $packages['technical-lab']);
 
 echo "managed activities are ready and empty:\n";
 foreach ($activities as $mode => $activity) {

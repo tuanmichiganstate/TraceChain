@@ -14,8 +14,9 @@ Run the whole list for every release that changes learner-package inputs.
 npm run quality        # must pass end to end
 ```
 
-Produces Guided, Challenge-bank, and Assessment ZIPs in the project root. The
-Docker demo deploys the exact current package for each mode.
+Produces all nine Operations, Audit, and Technical Laboratory ZIPs in the
+project root. The Docker demo deploys the exact current package for each
+preset.
 
 **Moodle activity settings to use:**
 
@@ -42,6 +43,8 @@ the browser keeps serving the previous build. See `docker-moodle/README.md`.
 - [ ] The package uploads without a manifest error.
 - [ ] The activity launches and the start screen appears.
 - [ ] Challenge shows one case reference and retains it after suspend/resume.
+- [ ] Technical Laboratory shows the Permissioned Blockchain Foundations title
+      and begins at TL1.
 - [ ] The interface is Vietnamese, with diacritics rendering correctly
       (check `Hợp tác xã Cà phê Cao nguyên` — stacked marks on `ợ` and `ê`).
 - [ ] The **standalone-mode warning does NOT appear**. If it does, SCORM API
@@ -60,6 +63,19 @@ the browser keeps serving the previous build. See `docker-moodle/README.md`.
       hash, and the full 64-character digest wrapping rather than overflowing.
 - [ ] Save status shows *Đã lưu tiến độ*.
 
+For the Technical Laboratory activity:
+
+- [ ] TL1 through TL7 appear exactly once and in order.
+- [ ] Experiment evidence is computed before the interpretation and application
+      checkpoints become available.
+- [ ] SHA-256, canonical serialization, Ed25519 verification, authorization,
+      endorsement, and state-version checks show genuine evidence.
+- [ ] Educational identity, key custody, network, ordering, and consensus are
+      clearly labelled as simulated.
+- [ ] An opened hint discloses its item-scoped ceiling before it is applied.
+- [ ] The final score is exactly 40 experiment / 40 interpretation /
+      20 application points.
+
 ## 3. Suspend and resume — the critical path
 
 - [ ] Reach stage 2, then leave via Moodle's normal exit.
@@ -69,9 +85,11 @@ the browser keeps serving the previous build. See `docker-moodle/README.md`.
 
 **If resume fails, capture `cmi.suspend_data` before doing anything else** —
 Moodle admins can read it from the SCORM report, or `?debug=true` shows the
-decode error. Current saves start with `TC3.` and remain inside the authored
-budget. TC1/TC2 attempts are unsupported and never read or cleared: the
-recovery screen instructs the learner to exit and begin a new LMS attempt.
+decode error. Current Operations saves start with `TC3.`, Audit saves with
+`TA1.`, and Technical Laboratory saves with `TL1.`; each remains inside its
+authored budget. Obsolete development formats are unsupported and never read or
+cleared: the recovery screen instructs the learner to exit and begin a new LMS
+attempt.
 
 ## 4. Score and status reporting
 

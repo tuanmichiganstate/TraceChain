@@ -218,6 +218,9 @@
         "moduleVersion",
         "title",
         "summary",
+        "concept",
+        "observation",
+        "professionalContext",
         "learningOutcomes",
         "prerequisiteModuleIds",
         "estimatedMinutes",
@@ -226,6 +229,9 @@
         "scorableItemIds",
         "hintIds",
         "glossaryTermIds",
+        "interpretationItem",
+        "applicationItem",
+        "hint",
         "realMechanismIds",
         "simulatedMechanismIds"
       ],
@@ -248,6 +254,15 @@
           "$ref": "#/$defs/localizedText"
         },
         "summary": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "concept": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "observation": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "professionalContext": {
           "$ref": "#/$defs/localizedText"
         },
         "learningOutcomes": {
@@ -297,11 +312,97 @@
         "glossaryTermIds": {
           "$ref": "#/$defs/identifierArray"
         },
+        "interpretationItem": {
+          "$ref": "#/$defs/checkpoint"
+        },
+        "applicationItem": {
+          "$ref": "#/$defs/checkpoint"
+        },
+        "hint": {
+          "$ref": "#/$defs/hint"
+        },
         "realMechanismIds": {
           "$ref": "#/$defs/identifierArray"
         },
         "simulatedMechanismIds": {
           "$ref": "#/$defs/identifierArray"
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemId",
+        "prompt",
+        "options",
+        "correctOptionId",
+        "explanation",
+        "maximumAttempts"
+      ],
+      "properties": {
+        "itemId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "prompt": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/checkpointOption"
+          }
+        },
+        "correctOptionId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "explanation": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "maximumAttempts": {
+          "const": 3
+        }
+      }
+    },
+    "checkpointOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "optionId",
+        "label"
+      ],
+      "properties": {
+        "optionId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        }
+      }
+    },
+    "hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hintId",
+        "targetItemId",
+        "body",
+        "maximumAwardFraction"
+      ],
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "targetItemId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "body": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "maximumAwardFraction": {
+          "const": 0.5
         }
       }
     },

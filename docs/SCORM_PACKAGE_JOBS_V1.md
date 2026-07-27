@@ -2,19 +2,19 @@
 
 ## Boundary
 
-The `/instructor` graphical builder exposes all eight accepted Operations and
-Audit presets. Instructors select professional activity, support profile,
-delivery purpose, and outcome strategy; the interface resolves only a complete
-accepted preset and previews its feedback, hints, exact content, scoring, and
-grade use. Audit Challenge and Audit Assessment remain visibly labelled
-calibration candidates. The workspace does not reimplement the Node package
-generator.
+The `/instructor` graphical builder exposes all nine accepted Operations,
+Audit, and Technical Laboratory presets. Instructors select professional
+activity, support profile, delivery purpose, and outcome strategy; the
+interface resolves only a complete accepted preset and previews its feedback,
+hints, exact content, scoring, and grade use. Audit Challenge and Audit
+Assessment remain visibly labelled calibration candidates. The workspace does
+not reimplement the Node package generator.
 
 One site build:
 
 1. builds the static application once;
 2. invokes the existing multi-preset SCORM generator;
-3. verifies all eight ZIPs and their shared application digest;
+3. verifies all nine ZIPs and their shared application digest;
 4. writes a content-addressed package catalogue; and
 5. copies the exact verified ZIP bytes into the hosted static artifact set.
 
@@ -50,7 +50,7 @@ Each job records:
 - ZIP filename, size, and SHA-256; and
 - the content-addressed object key.
 
-All eight Operations and Audit entries must carry the same static
+All nine entries must carry the same static
 application-build hash. Their external runtime configuration and content files
 differ intentionally.
 
@@ -61,10 +61,11 @@ release artifacts.
 ## Current presets
 
 Guided, Practice, Challenge, Assessment, Audit Guided, Audit Practice, Audit
-Challenge, and Audit Assessment are available in the graphical workspace.
+Challenge, Audit Assessment, and Technical Laboratory are available in the
+graphical workspace.
 Operations Practice uses one curated bridge case. Audit Practice uses one
 curated, reduced-guidance workpaper case. Audit Challenge and Assessment carry
 an explicit calibration warning; exposing their package artifacts is not an
-expert-equivalence or high-stakes-use claim. Technical Laboratory remains
-outside this eight-package builder. No empty or placeholder package is
-generated.
+expert-equivalence or high-stakes-use claim. Technical Laboratory resolves to
+the fixed Permissioned Blockchain Foundations tutorial and its separate
+40/40/20 scoring contract. No empty or placeholder package is generated.

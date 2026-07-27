@@ -3,6 +3,7 @@ import type { ScenarioDefinitionV1 } from "../contracts/scenario-pack";
 export type HostedRuntimeKind =
   | "native-coffee-v2"
   | "audit-v1"
+  | "technical-lab-v1"
   | "generic-v1";
 
 const GENERIC_V1_NODE_TYPES = new Set([
@@ -40,6 +41,12 @@ export function isGenericHostedRuntimeScenario(
 export function hostedRuntimeKindFor(
   scenario: ScenarioDefinitionV1,
 ): HostedRuntimeKind | null {
+  if (
+    scenario.hostedRuntime?.runtimeId ===
+      "tracechain-technical-lab-v1"
+  ) {
+    return "technical-lab-v1";
+  }
   if (
     scenario.hostedRuntime?.runtimeId ===
       "tracechain-audit-v1" &&

@@ -30,6 +30,7 @@ const SOURCE_FILES = [
   "src/scenarios/coffee-traceability/",
   "src/scenarios/practice-a/",
   "src/scenarios/challenge-a/",
+  "src/technical-lab/",
   "src/domain/types/scenario.ts",
   "src/domain/types/enums.ts",
   "src/domain/types/scoring.ts",

@@ -8,20 +8,22 @@ Build all packages and deploy them into separate activities:
 
 The first run adopts the existing activity as `TraceChain Guided` and creates
 `TraceChain Practice`, `TraceChain Challenge`, `TraceChain Assessment`,
-`TraceChain Audit Guided`, and `TraceChain Audit Practice` beside it. Later
-runs update those six stable activities. Each deployment clears attempts,
+`TraceChain Audit Guided`, `TraceChain Audit Practice`,
+`TraceChain Audit Challenge`, `TraceChain Audit Assessment`, and
+`TraceChain Technical Laboratory` beside it. Later runs update those nine
+stable activities. Each deployment clears attempts,
 grades, and completion state for all activities, then goes through
 `scorm_parse()` to
 extract each package and bump its cache revision. Every ZIP entry is checked
 against Moodle's content area, so partial extraction fails immediately.
 
-The deployment only manages those six named activities. It will not guess when
+The deployment only manages those nine named activities. It will not guess when
 several unnamed SCORM activities already exist.
 
 ## Moodle acceptance pass
 
-Exercises all activities with codec-shaped payloads (TC3 for Operations and
-TA1 for Audit): suspend-data round trip, gradebook write,
+Exercises all activities with codec-shaped payloads (TC3 for Operations, TA1
+for Audit, and TL1 for Technical Laboratory): suspend-data round trip, gradebook write,
 relaunch-without-clobbering, the 4096-character boundary, and verified cleanup.
 
     ./docker-moodle/run-acceptance.sh

@@ -11,7 +11,11 @@ import {
   loadRuntimePackage,
 } from "./config/runtime-loader";
 import { loadAuditRuntimePackage } from "./config/audit-runtime-loader";
-import { isAuditSimulationConfiguration } from "./config/types";
+import { loadTechnicalLabRuntimePackage } from "./config/technical-lab-runtime-loader";
+import {
+  isAuditSimulationConfiguration,
+  isTechnicalLabConfiguration,
+} from "./config/types";
 import { initializeRuntimeAttempt } from "./config/runtime-bootstrap";
 import {
   createTranslator,
@@ -23,9 +27,14 @@ import { HostedLearnerScreen } from "./platform/learner/hosted-learner-screen";
 import { HostedPortalScreen } from "./platform/portal/hosted-portal-screen";
 import { ApplicationAccessScreen } from "./platform/admin/application-access-screen";
 import { AuditScormApp } from "./platform/audit/audit-scorm-app";
+import { TechnicalLabScormApp } from "./technical-lab/technical-lab-scorm-app";
+import type {
+  TechnicalLabRuntimePackage,
+} from "./config/technical-lab-runtime-loader";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
+import "./styles/technical-lab.css";
 
 const container = document.getElementById("root");
 if (container === null) {
@@ -38,6 +47,21 @@ function hostedInterfaceLocale(): LocaleCode {
   return new URLSearchParams(window.location.search).get("locale") === "en"
     ? "en"
     : "vi";
+}
+
+function renderTechnicalLab(
+  runtime: TechnicalLabRuntimePackage,
+): void {
+  document.documentElement.lang = runtime.configuration.locale;
+  root.render(
+    <StrictMode>
+      <LocaleProvider locale={runtime.configuration.locale}>
+        <NotificationProvider>
+          <TechnicalLabScormApp runtime={runtime} />
+        </NotificationProvider>
+      </LocaleProvider>
+    </StrictMode>,
+  );
 }
 
 if (
@@ -86,28 +110,83 @@ if (
     </StrictMode>,
   );
 } else {
-  const fetchRuntime = (path: string) => fetch(path);
-  void loadEmbeddedConfiguration(fetchRuntime)
-    .then(async (embedded) => {
-      if (isAuditSimulationConfiguration(embedded.configuration)) {
-        const runtime = await loadAuditRuntimePackage(fetchRuntime);
-        document.documentElement.lang = runtime.configuration.locale;
-        root.render(
-          <StrictMode>
-            <LocaleProvider locale={runtime.configuration.locale}>
-              <NotificationProvider>
-                <AuditScormApp runtime={runtime} />
-              </NotificationProvider>
-            </LocaleProvider>
-          </StrictMode>,
-        );
-        return null;
-      }
-      return loadRuntimePackage(fetchRuntime).then((runtime) =>
-        initializeRuntimeAttempt(runtime),
-      );
-    })
-    .then(
+  const technicalLabRoute =
+    /^\/technical-lab\/?$/u.test(window.location.pathname);
+  const fetchRuntime = (path: string) =>
+    fetch(
+      technicalLabRoute
+        ? `/technical-lab-runtime/${path.replace(/^\.\//u, "")}`
+        : path,
+    );
+  const runtimeInitialization =
+    technicalLabRoute && import.meta.env.DEV
+      ? Promise.all([
+          import("./config/presets"),
+          import("./config/hash"),
+          import(
+            "./technical-lab/permissioned-foundations-pack"
+          ),
+          import("./technical-lab/cryptographic-runtime"),
+        ]).then(
+          ([
+            { TECHNICAL_LAB_PRESET },
+            { hashConfiguration },
+            { permissionedFoundationsLabBundle },
+            { technicalLabCryptographicRuntime },
+          ]) => {
+            const configuration = structuredClone(
+              TECHNICAL_LAB_PRESET,
+            );
+            renderTechnicalLab({
+              configuration,
+              configurationHash:
+                hashConfiguration(configuration),
+              bundle: permissionedFoundationsLabBundle,
+              cryptographicRuntime:
+                technicalLabCryptographicRuntime,
+            });
+            return null;
+          },
+        )
+      : loadEmbeddedConfiguration(fetchRuntime)
+          .then(async (embedded) => {
+            if (
+              isAuditSimulationConfiguration(
+                embedded.configuration,
+              )
+            ) {
+              const runtime =
+                await loadAuditRuntimePackage(fetchRuntime);
+              document.documentElement.lang =
+                runtime.configuration.locale;
+              root.render(
+                <StrictMode>
+                  <LocaleProvider
+                    locale={runtime.configuration.locale}
+                  >
+                    <NotificationProvider>
+                      <AuditScormApp runtime={runtime} />
+                    </NotificationProvider>
+                  </LocaleProvider>
+                </StrictMode>,
+              );
+              return null;
+            }
+            if (
+              isTechnicalLabConfiguration(
+                embedded.configuration,
+              )
+            ) {
+              const runtime =
+                await loadTechnicalLabRuntimePackage(fetchRuntime);
+              renderTechnicalLab(runtime);
+              return null;
+            }
+            return loadRuntimePackage(fetchRuntime).then((runtime) =>
+              initializeRuntimeAttempt(runtime),
+            );
+          });
+  void runtimeInitialization.then(
       (runtime) => {
         if (runtime === null) return;
         document.documentElement.lang = runtime.configuration.locale;

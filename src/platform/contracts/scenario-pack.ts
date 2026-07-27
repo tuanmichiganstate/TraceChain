@@ -440,9 +440,16 @@ export interface AuditHostedRuntimeProfileV1 {
   readonly auditCaseId: string;
 }
 
+export interface TechnicalLabHostedRuntimeProfileV1 {
+  readonly runtimeId: "tracechain-technical-lab-v1";
+  readonly labPackId: string;
+  readonly labPackVersion: string;
+}
+
 export type HostedRuntimeProfileV1 =
   | CoffeeHostedRuntimeProfileV1
-  | AuditHostedRuntimeProfileV1;
+  | AuditHostedRuntimeProfileV1
+  | TechnicalLabHostedRuntimeProfileV1;
 
 export interface ScenarioDefinitionV1 {
   readonly scenarioId: string;
