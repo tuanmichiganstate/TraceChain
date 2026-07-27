@@ -2,7 +2,8 @@
 
 **Protocol version:** 1.0.0
 
-**Status:** Draft awaiting product-owner and research-method approval.
+**Status:** Instrumented draft awaiting product-owner and research-method
+approval.
 
 **Data collection authorized:** No. Repository implementation work may prepare
 the platform and instruments, but participant recruitment and data collection
@@ -21,6 +22,9 @@ must not begin until the approval record below is complete.
 The coding agent must not populate an approver, invent a threshold, or mark a
 review complete. Use `PILOT_EXECUTION_RECORD_V1.md` to preserve the exact
 release, participant, instrument, and acceptance evidence once approvals exist.
+The proposed external instruments are versioned in
+`PHASE_8_PILOT_INSTRUMENTS_V1.md`; their presence does not authorize data
+collection.
 
 ## 1. Purpose
 
@@ -264,6 +268,22 @@ Use existing versioned sources:
 Supplement these with pre/post instruments, observed usability tasks, and
 accessibility records. Keep external instrument identifiers in the study
 record rather than embedding responses in simulation state.
+
+The proposed instrument identifiers for protocol version 1.0.0 are:
+
+```text
+P8-CONCEPT-A
+P8-CONCEPT-B
+P8-AUDIT-OBS
+P8-USABILITY
+P8-RATER
+P8-REFLECTION
+P8-AT
+P8-VI
+```
+
+These identifiers and their content must be approved or replaced by a new
+instrument version before participant use.
 
 ## 11. Privacy and ethics
 

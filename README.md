@@ -55,9 +55,13 @@ high-stakes equivalence. Phase 7 exposes all eight accepted packages through a
 four-dimension graphical selector and resolved preset preview, adds a validated
 Audit case-bank authoring starter and contract summary, and adds class Audit
 reporting with finding-level replay, variant distribution, and review-only
-calibration views; see `docs/PRODUCT_MODES_PHASE_4.md`,
+calibration views. Phase 8 now has a frozen technical candidate, proposed
+concept, Audit, usability, rater, accessibility, and Vietnamese-review
+instruments, plus an execution record that keeps automated readiness separate
+from still-unapproved participant evidence; see
+`docs/PRODUCT_MODES_PHASE_4.md`,
 `docs/PRODUCT_MODES_PHASE_5.md`, `docs/PRODUCT_MODES_PHASE_6.md`, and
-`docs/PRODUCT_MODES_PHASE_7.md`.
+`docs/PRODUCT_MODES_PHASE_7.md`, and `docs/PRODUCT_MODES_PHASE_8.md`.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -315,6 +319,13 @@ schemas/               published versioned JSON Schemas
   review gate
 - `docs/PRODUCT_MODES_PHASE_7.md` — eight-preset graphical selection, Audit
   case-bank authoring, class reports, finding replay, and calibration views
+- `docs/PRODUCT_MODES_PHASE_8.md` — technical pilot readiness, proposed human
+  instruments, evidence sources, and the binding approval and participant gate
+- `docs/PHASE_8_PILOT_INSTRUMENTS_V1.md` — parallel concept forms, Audit
+  observations, usability tasks, rater records, accessibility, and Vietnamese
+  review instruments
+- `docs/PHASE_8_TECHNICAL_BASELINE_2026-07-27.md` — exact source, CI, browser,
+  SCORM, hosted, and Moodle evidence for the current pilot candidate
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
 - `docs/SCENARIO_PACK_V1.md` — the V1.9 pack schema, validation, publication,

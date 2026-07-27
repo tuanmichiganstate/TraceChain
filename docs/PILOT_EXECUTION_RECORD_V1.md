@@ -10,13 +10,14 @@ must be completed against one immutable platform baseline.
 Record version: 1.0.0
 Record status: NOT_STARTED
 Protocol version: 1.0.0
-Platform release: Not recorded
-Source commit: Not recorded
-Deployment revision: Not recorded
-Database schema version: Not recorded
-Scenario schema version: Not recorded
-Counterfactual schema version: Not recorded
-Accepted package versions: Not recorded
+Instrument version: 1.0.0 proposed, not approved
+Platform release: 2.0.0 development pilot candidate
+Source commit: 81ba70c8ccdacc6a73300d4a414ca02a514dd91b
+Deployment revision: Sites version 32; Moodle managed activities revision 81
+Database schema version: current fresh-install D1 schema, no release label
+Scenario schema version: scenario-pack 1.9.0; Audit 3.0.0
+Counterfactual schema version: 1.0.0
+Accepted package versions: listed under immutable study inputs
 Pilot opened at: Not recorded
 Pilot closed at: Not recorded
 ```
@@ -56,15 +57,20 @@ this document.
 
 | Input | Exact identifier and version | Content hash | Approval evidence |
 |---|---|---|---|
-| Guided coffee | Not recorded | Not recorded | Not recorded |
-| Challenge coffee | Not recorded | Not recorded | Not recorded |
-| Pharmaceutical transfer | Not recorded | Not recorded | Not recorded |
-| Counterfactual definitions | Not recorded | Not recorded | Not recorded |
-| Rubrics | Not recorded | Not recorded | Not recorded |
-| Competency definitions | Not recorded | Not recorded | Not recorded |
-| Pre-test | Not recorded | Not recorded | Not recorded |
-| Post-test | Not recorded | Not recorded | Not recorded |
-| Reflection rubric | Not recorded | Not recorded | Not recorded |
+| Guided coffee | Standard Coffee 2.3.0 | Recorded in package metadata | Approval pending |
+| Challenge coffee | Challenge Bank 2.0.0 | Recorded in package metadata | Approval pending |
+| Guided Audit | Guided Coffee Audit 2.0.0 | Recorded in package metadata | Approval pending |
+| Practice Audit | Practice Coffee Audit 1.0.0 | Recorded in package metadata | Approval pending |
+| Audit Challenge and Assessment | Challenge Coffee Audit Bank 1.0.0 | Recorded in package metadata | Calibration pending |
+| Pharmaceutical transfer | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.6.0` | Recorded in published pack source | Subject approval pending |
+| Counterfactual definitions | Contract 1.0.0, exact source-pack versions | Recorded in source-pack content | Approval pending |
+| Rubrics | Exact assignment rubric versions | Recorded at assignment creation | Approval pending |
+| Competency definitions | Exact framework and overlay versions | Recorded in evidence exports | Approval pending |
+| Pre-test | `P8-CONCEPT-A@1.0.0` proposed | `PHASE_8_PILOT_INSTRUMENTS_V1.md` | Method approval pending |
+| Post-test | `P8-CONCEPT-B@1.0.0` proposed | `PHASE_8_PILOT_INSTRUMENTS_V1.md` | Method approval pending |
+| Audit observation | `P8-AUDIT-OBS@1.0.0` proposed | `PHASE_8_PILOT_INSTRUMENTS_V1.md` | Method approval pending |
+| Usability observation | `P8-USABILITY@1.0.0` proposed | `PHASE_8_PILOT_INSTRUMENTS_V1.md` | Method approval pending |
+| Reflection rubric | `P8-REFLECTION@1.0.0` proposed | `PHASE_8_PILOT_INSTRUMENTS_V1.md` | Method approval pending |
 
 ## Technical readiness
 
@@ -73,14 +79,16 @@ demonstrate learning effectiveness, content validity, or real accessibility.
 
 | Gate | Result | Exact source or package | Evidence reference |
 |---|---|---|---|
-| Full repository quality gate | Not run for pilot baseline | Not recorded | Not recorded |
-| Hosted deterministic replay | Not run for pilot baseline | Not recorded | Not recorded |
-| Counterfactual source immutability | Not run for pilot baseline | Not recorded | Not recorded |
-| Browser matrix | Not run for pilot baseline | Not recorded | Not recorded |
-| Guided Moodle acceptance | Not run for pilot baseline | Not recorded | Not recorded |
-| Challenge Moodle acceptance | Not run for pilot baseline | Not recorded | Not recorded |
-| Pharmaceutical hosted acceptance | Not run for pilot baseline | Not recorded | Not recorded |
-| Pharmaceutical SCORM acceptance, if supported | Not run for pilot baseline | Not recorded | Not recorded |
+| Full repository quality gate | Passed: 798 Vitest and 16 worker tests plus all validators, builds, and package checks | `81ba70c8ccdacc6a73300d4a414ca02a514dd91b` | `PHASE_8_TECHNICAL_BASELINE_2026-07-27.md` |
+| Hosted deterministic replay | Passed automated unit, worker, and browser coverage | Exact hosted source tree of `81ba70c8ccdacc6a73300d4a414ca02a514dd91b` | Technical baseline |
+| Counterfactual source immutability | Passed automated coverage | Counterfactual contract 1.0.0 | Technical baseline |
+| Browser matrix | 154 passed, 14 documented skips, 0 failed | Chromium, Firefox, WebKit, Mobile Safari | Technical baseline |
+| Guided Moodle acceptance | Passed and synthetic data cleaned | Guided 2.3.0, Moodle revision 81 | Technical baseline |
+| Challenge Moodle acceptance | Passed and synthetic data cleaned | Challenge Bank 2.0.0, Moodle revision 81 | Technical baseline |
+| Practice, Assessment, and Audit Moodle acceptance | Passed for all four managed activities and synthetic data cleaned | Moodle revision 81 | Technical baseline |
+| Hosted production reachability | Passed HTTP check; Sites version 32 | Exact application source tree | Technical baseline |
+| Pharmaceutical hosted acceptance | Automated generic-runtime flow passed; representative-user acceptance pending | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.6.0` | Technical baseline and human pilot required |
+| Pharmaceutical SCORM acceptance | Not applicable; no approved pharmaceutical SCORM preset | Not applicable | `PHARMACEUTICAL_TRANSFER_ACCEPTANCE_V1.md` |
 
 ## Human evidence
 
