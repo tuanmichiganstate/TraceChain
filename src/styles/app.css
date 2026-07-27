@@ -3145,6 +3145,7 @@
 }
 
 .audit-finding-builder input:not([type="radio"]):not([type="checkbox"]),
+.audit-finding-builder select,
 .audit-finding-builder textarea,
 .professional-decision-console textarea {
   width: 100%;
@@ -3159,7 +3160,7 @@
 
 .audit-finding-builder__severity {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -3171,6 +3172,53 @@
 .audit-finding-builder__evidence {
   display: grid;
   gap: var(--space-2);
+}
+
+.audit-finding-builder__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.audit-finding-builder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.audit-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+}
+
+.audit-evidence-grid > .card + .card {
+  margin-top: 0;
+}
+
+.audit-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.audit-json-evidence {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.audit-finding-list {
+  display: grid;
+  gap: var(--space-4);
+  padding-left: var(--space-5);
+}
+
+.audit-finding-list article {
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
 }
 
 .prototype-evidence-grid,
@@ -3358,6 +3406,10 @@
   }
 
   .audit-finding-builder__severity {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-finding-builder__pair {
     grid-template-columns: 1fr;
   }
 

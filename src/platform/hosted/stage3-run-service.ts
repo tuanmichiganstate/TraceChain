@@ -5148,8 +5148,10 @@ export class HostedStage3RunService {
   private hostedScenario() {
     const scenario = this.pack.scenarios.find(
       (candidate) =>
-        candidate.hostedRuntime?.entryStageId ===
-        "STG_03_ANCHOR_CERTIFICATE",
+        candidate.hostedRuntime?.runtimeId ===
+          "tracechain-coffee-v2" &&
+        candidate.hostedRuntime.entryStageId ===
+          "STG_03_ANCHOR_CERTIFICATE",
     );
     if (scenario === undefined) {
       throw new HostedRunCommandError(

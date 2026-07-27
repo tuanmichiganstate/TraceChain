@@ -125,6 +125,37 @@ const COUNTERFACTUAL_CHANGED_VALUE_ATTRIBUTIONS = new Set([
   "STOCHASTIC_OUTCOME_EFFECT",
   "CONDITION_OVERRIDE_EFFECT",
 ]);
+const AUDIT_SEVERITIES = new Set([
+  "LOW",
+  "MODERATE",
+  "HIGH",
+  "CRITICAL",
+]);
+const AUDIT_MATERIALITIES = new Set([
+  "NON_MATERIAL",
+  "MATERIAL",
+]);
+const AUDIT_CONCLUSION_CATEGORIES = new Set([
+  "EFFECTIVE",
+  "QUALIFIED",
+  "ADVERSE",
+  "INSUFFICIENT_EVIDENCE",
+]);
+const AUDIT_SOURCE_RECORD_KINDS = new Set([
+  "LEDGER_TRANSACTION",
+  "SOURCE_DOCUMENT",
+  "ATTEMPT_AUDIT",
+  "PROCESS_EVENT",
+]);
+const AUDIT_SCORABLE_ITEMS = new Map([
+  ["AUD_DETECTION", 25],
+  ["AUD_FALSE_POSITIVE_AVOIDANCE", 15],
+  ["AUD_EVIDENCE", 15],
+  ["AUD_POLICY", 10],
+  ["AUD_CLASSIFICATION", 10],
+  ["AUD_RECOMMENDATION", 10],
+  ["AUD_CONCLUSION", 15],
+]);
 
 const LIFECYCLE_STATUSES = new Set([
   "draft",
@@ -2505,6 +2536,7 @@ function validateScenario(
       "rubricIds",
       "evidenceRuleIds",
       "hostedRuntime",
+      "auditCase",
     ],
     path,
   );
@@ -3410,7 +3442,778 @@ function validateScenario(
     counterfactualDimensionIds,
     counterfactualMetricIds,
   );
+  validateAuditCase(
+    context,
+    scenario,
+    path,
+    supportedLocales,
+    organizationIds,
+    evidenceIds,
+    policyIds,
+    indicatorIds,
+  );
   validateHostedRuntime(context, scenario, path, schemaVersion);
+}
+
+function validateAuditCase(
+  context: ValidationContext,
+  scenario: Readonly<Record<string, unknown>>,
+  path: string,
+  supportedLocales: readonly string[],
+  organizationIds: ReadonlySet<string>,
+  evidenceIds: ReadonlySet<string>,
+  policyIds: ReadonlySet<string>,
+  indicatorIds: ReadonlySet<string>,
+): void {
+  if (scenario.auditCase === undefined) return;
+  const casePath = `${path}.auditCase`;
+  const auditCase = context.object(scenario.auditCase, casePath);
+  if (auditCase === null) return;
+  context.allowedKeys(
+    auditCase,
+    [
+      "schemaVersion",
+      "auditCaseId",
+      "version",
+      "sourceProcessId",
+      "sourceProcessVersion",
+      "auditObjective",
+      "scope",
+      "categories",
+      "entities",
+      "rootCauses",
+      "recommendations",
+      "conclusionCategories",
+      "expectedConclusionCategory",
+      "sourceRecords",
+      "evidenceItemIds",
+      "policyIds",
+      "findingDefinitions",
+      "decoyDefinitions",
+      "scoringBlueprint",
+      "supportProfiles",
+      "completionDefinition",
+    ],
+    casePath,
+  );
+  context.check(
+    auditCase.schemaVersion === "1.0.0",
+    "INVALID_AUDIT_CASE_SCHEMA",
+    `${casePath}.schemaVersion`,
+    "must equal 1.0.0",
+  );
+  for (const key of ["auditCaseId", "sourceProcessId"] as const) {
+    context.string(auditCase[key], `${casePath}.${key}`, {
+      identifier: true,
+    });
+  }
+  for (const key of ["version", "sourceProcessVersion"] as const) {
+    context.string(auditCase[key], `${casePath}.${key}`, {
+      semanticVersion: true,
+    });
+  }
+  validateLocalizedText(
+    context,
+    auditCase.auditObjective,
+    `${casePath}.auditObjective`,
+    supportedLocales,
+  );
+
+  const scope = context.object(auditCase.scope, `${casePath}.scope`);
+  if (scope !== null) {
+    context.allowedKeys(
+      scope,
+      [
+        "title",
+        "periodStart",
+        "periodEnd",
+        "organizationIds",
+        "entityIds",
+      ],
+      `${casePath}.scope`,
+    );
+    validateLocalizedText(
+      context,
+      scope.title,
+      `${casePath}.scope.title`,
+      supportedLocales,
+    );
+    const periodStart = context.string(
+      scope.periodStart,
+      `${casePath}.scope.periodStart`,
+    );
+    const periodEnd = context.string(
+      scope.periodEnd,
+      `${casePath}.scope.periodEnd`,
+    );
+    context.check(
+      periodStart !== null &&
+        periodEnd !== null &&
+        Number.isFinite(Date.parse(periodStart)) &&
+        Number.isFinite(Date.parse(periodEnd)) &&
+        Date.parse(periodStart) <= Date.parse(periodEnd),
+      "INVALID_AUDIT_PERIOD",
+      `${casePath}.scope`,
+      "must contain an ordered pair of ISO timestamps",
+    );
+    validateUniqueStrings(
+      context,
+      scope.organizationIds,
+      `${casePath}.scope.organizationIds`,
+      { minimumItems: 1, identifiers: true },
+    ).forEach((organizationId, index) => {
+      context.check(
+        organizationIds.has(organizationId),
+        "UNKNOWN_ORGANIZATION_REFERENCE",
+        `${casePath}.scope.organizationIds[${String(index)}]`,
+        "must reference an organization in this scenario",
+      );
+    });
+    validateUniqueStrings(
+      context,
+      scope.entityIds,
+      `${casePath}.scope.entityIds`,
+      { minimumItems: 1, identifiers: true },
+    );
+  }
+
+  const choiceIdsByField = new Map<string, Set<string>>();
+  for (const field of [
+    "categories",
+    "entities",
+    "rootCauses",
+    "recommendations",
+  ] as const) {
+    const values = context.array(
+      auditCase[field],
+      `${casePath}.${field}`,
+    );
+    const choiceIds = new Set<string>();
+    choiceIdsByField.set(field, choiceIds);
+    if (values === null) continue;
+    context.check(
+      values.length > 0,
+      "EMPTY_AUDIT_CHOICE_SET",
+      `${casePath}.${field}`,
+      "must contain at least one authored choice",
+    );
+    values.forEach((value, index) => {
+      const choicePath = `${casePath}.${field}[${String(index)}]`;
+      const choice = context.object(value, choicePath);
+      if (choice === null) return;
+      context.allowedKeys(choice, ["choiceId", "label"], choicePath);
+      const choiceId = context.string(
+        choice.choiceId,
+        `${choicePath}.choiceId`,
+        { identifier: true },
+      );
+      if (choiceId !== null) {
+        context.check(
+          !choiceIds.has(choiceId),
+          "DUPLICATE_AUDIT_CHOICE",
+          `${choicePath}.choiceId`,
+          "must be unique within its choice set",
+        );
+        choiceIds.add(choiceId);
+      }
+      validateLocalizedText(
+        context,
+        choice.label,
+        `${choicePath}.label`,
+        supportedLocales,
+      );
+    });
+  }
+
+  const conclusionCategories = context.array(
+    auditCase.conclusionCategories,
+    `${casePath}.conclusionCategories`,
+  );
+  const conclusionCategoryIds = new Set<string>();
+  if (conclusionCategories !== null) {
+    conclusionCategories.forEach((value, index) => {
+      const categoryPath =
+        `${casePath}.conclusionCategories[${String(index)}]`;
+      const category = context.object(value, categoryPath);
+      if (category === null) return;
+      context.allowedKeys(
+        category,
+        ["conclusionCategory", "label"],
+        categoryPath,
+      );
+      const categoryId = context.string(
+        category.conclusionCategory,
+        `${categoryPath}.conclusionCategory`,
+      );
+      if (categoryId !== null) {
+        context.check(
+          AUDIT_CONCLUSION_CATEGORIES.has(categoryId),
+          "INVALID_AUDIT_CONCLUSION_CATEGORY",
+          `${categoryPath}.conclusionCategory`,
+          "must be a supported audit conclusion category",
+        );
+        context.check(
+          !conclusionCategoryIds.has(categoryId),
+          "DUPLICATE_AUDIT_CONCLUSION_CATEGORY",
+          `${categoryPath}.conclusionCategory`,
+          "must be unique",
+        );
+        conclusionCategoryIds.add(categoryId);
+      }
+      validateLocalizedText(
+        context,
+        category.label,
+        `${categoryPath}.label`,
+        supportedLocales,
+      );
+    });
+  }
+  context.check(
+    typeof auditCase.expectedConclusionCategory === "string" &&
+      conclusionCategoryIds.has(
+        auditCase.expectedConclusionCategory,
+      ),
+    "UNKNOWN_EXPECTED_AUDIT_CONCLUSION",
+    `${casePath}.expectedConclusionCategory`,
+    "must reference an authored conclusion category",
+  );
+
+  const authoredEvidenceIds = new Set(
+    validateUniqueStrings(
+      context,
+      auditCase.evidenceItemIds,
+      `${casePath}.evidenceItemIds`,
+      { minimumItems: 1, identifiers: true },
+    ),
+  );
+  for (const evidenceId of authoredEvidenceIds) {
+    context.check(
+      evidenceIds.has(evidenceId),
+      "UNKNOWN_EVIDENCE_REFERENCE",
+      `${casePath}.evidenceItemIds`,
+      `references unknown evidence ${evidenceId}`,
+    );
+  }
+  const authoredPolicyIds = new Set(
+    validateUniqueStrings(
+      context,
+      auditCase.policyIds,
+      `${casePath}.policyIds`,
+      { minimumItems: 1, identifiers: true },
+    ),
+  );
+  for (const policyId of authoredPolicyIds) {
+    context.check(
+      policyIds.has(policyId),
+      "UNKNOWN_POLICY_REFERENCE",
+      `${casePath}.policyIds`,
+      `references unknown policy ${policyId}`,
+    );
+  }
+
+  const sourceRecords = context.array(
+    auditCase.sourceRecords,
+    `${casePath}.sourceRecords`,
+  );
+  const sourceRecordIds = new Set<string>();
+  if (sourceRecords !== null) {
+    context.check(
+      sourceRecords.length > 0,
+      "AUDIT_CASE_WITHOUT_SOURCE_RECORDS",
+      `${casePath}.sourceRecords`,
+      "must contain immutable source records",
+    );
+    sourceRecords.forEach((value, index) => {
+      const recordPath =
+        `${casePath}.sourceRecords[${String(index)}]`;
+      const record = context.object(value, recordPath);
+      if (record === null) return;
+      context.allowedKeys(
+        record,
+        [
+          "sourceRecordId",
+          "recordKind",
+          "title",
+          "occurredAt",
+          "organizationId",
+          "entityIds",
+          "evidenceIds",
+          "policyIds",
+          "details",
+        ],
+        recordPath,
+      );
+      const recordId = context.string(
+        record.sourceRecordId,
+        `${recordPath}.sourceRecordId`,
+        { identifier: true },
+      );
+      if (recordId !== null) {
+        context.check(
+          !sourceRecordIds.has(recordId),
+          "DUPLICATE_AUDIT_SOURCE_RECORD",
+          `${recordPath}.sourceRecordId`,
+          "must be unique",
+        );
+        sourceRecordIds.add(recordId);
+      }
+      context.check(
+        typeof record.recordKind === "string" &&
+          AUDIT_SOURCE_RECORD_KINDS.has(record.recordKind),
+        "INVALID_AUDIT_SOURCE_RECORD_KIND",
+        `${recordPath}.recordKind`,
+        "must be a supported immutable source-record kind",
+      );
+      validateLocalizedText(
+        context,
+        record.title,
+        `${recordPath}.title`,
+        supportedLocales,
+      );
+      const occurredAt = context.string(
+        record.occurredAt,
+        `${recordPath}.occurredAt`,
+      );
+      context.check(
+        occurredAt !== null &&
+          Number.isFinite(Date.parse(occurredAt)),
+        "INVALID_TIMESTAMP",
+        `${recordPath}.occurredAt`,
+        "must be an ISO timestamp",
+      );
+      const organizationId = context.string(
+        record.organizationId,
+        `${recordPath}.organizationId`,
+        { identifier: true },
+      );
+      context.check(
+        organizationId !== null &&
+          organizationIds.has(organizationId),
+        "UNKNOWN_ORGANIZATION_REFERENCE",
+        `${recordPath}.organizationId`,
+        "must reference an organization in this scenario",
+      );
+      validateUniqueStrings(
+        context,
+        record.entityIds,
+        `${recordPath}.entityIds`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((entityId, entityIndex) => {
+        context.check(
+          choiceIdsByField.get("entities")?.has(entityId) ?? false,
+          "UNKNOWN_AUDIT_ENTITY",
+          `${recordPath}.entityIds[${String(entityIndex)}]`,
+          "must reference an authored audit entity",
+        );
+      });
+      validateUniqueStrings(
+        context,
+        record.evidenceIds,
+        `${recordPath}.evidenceIds`,
+        { identifiers: true },
+      ).forEach((evidenceId, evidenceIndex) => {
+        context.check(
+          authoredEvidenceIds.has(evidenceId),
+          "UNKNOWN_EVIDENCE_REFERENCE",
+          `${recordPath}.evidenceIds[${String(evidenceIndex)}]`,
+          "must reference evidence in the audit case",
+        );
+      });
+      validateUniqueStrings(
+        context,
+        record.policyIds,
+        `${recordPath}.policyIds`,
+        { identifiers: true },
+      ).forEach((policyId, policyIndex) => {
+        context.check(
+          authoredPolicyIds.has(policyId),
+          "UNKNOWN_POLICY_REFERENCE",
+          `${recordPath}.policyIds[${String(policyIndex)}]`,
+          "must reference a policy in the audit case",
+        );
+      });
+      context.object(record.details, `${recordPath}.details`);
+    });
+  }
+
+  const findingKeys = new Set<string>();
+  const findingDefinitions = context.array(
+    auditCase.findingDefinitions,
+    `${casePath}.findingDefinitions`,
+  );
+  if (findingDefinitions !== null) {
+    context.check(
+      findingDefinitions.length > 0,
+      "AUDIT_CASE_WITHOUT_FINDINGS",
+      `${casePath}.findingDefinitions`,
+      "must contain at least one authored true finding",
+    );
+    findingDefinitions.forEach((value, index) => {
+      const findingPath =
+        `${casePath}.findingDefinitions[${String(index)}]`;
+      const finding = context.object(value, findingPath);
+      if (finding === null) return;
+      context.allowedKeys(
+        finding,
+        [
+          "findingDefinitionId",
+          "categoryId",
+          "entityId",
+          "title",
+          "explanation",
+          "requiredEvidenceIds",
+          "applicablePolicyIds",
+          "expectedSeverity",
+          "expectedMateriality",
+          "acceptableRootCauseCodes",
+          "acceptableRecommendationCodes",
+          "competencyIndicatorIds",
+        ],
+        findingPath,
+      );
+      context.string(
+        finding.findingDefinitionId,
+        `${findingPath}.findingDefinitionId`,
+        { identifier: true },
+      );
+      const categoryId = context.string(
+        finding.categoryId,
+        `${findingPath}.categoryId`,
+        { identifier: true },
+      );
+      const entityId = context.string(
+        finding.entityId,
+        `${findingPath}.entityId`,
+        { identifier: true },
+      );
+      context.check(
+        categoryId !== null &&
+          (choiceIdsByField.get("categories")?.has(categoryId) ??
+            false),
+        "UNKNOWN_AUDIT_CATEGORY",
+        `${findingPath}.categoryId`,
+        "must reference an authored audit category",
+      );
+      context.check(
+        entityId !== null &&
+          (choiceIdsByField.get("entities")?.has(entityId) ?? false),
+        "UNKNOWN_AUDIT_ENTITY",
+        `${findingPath}.entityId`,
+        "must reference an authored audit entity",
+      );
+      if (categoryId !== null && entityId !== null) {
+        const key = `${categoryId}\u0000${entityId}`;
+        context.check(
+          !findingKeys.has(key),
+          "AMBIGUOUS_AUDIT_FINDING",
+          findingPath,
+          "must use a unique category and entity pair",
+        );
+        findingKeys.add(key);
+      }
+      validateLocalizedText(
+        context,
+        finding.title,
+        `${findingPath}.title`,
+        supportedLocales,
+      );
+      validateLocalizedText(
+        context,
+        finding.explanation,
+        `${findingPath}.explanation`,
+        supportedLocales,
+      );
+      validateUniqueStrings(
+        context,
+        finding.requiredEvidenceIds,
+        `${findingPath}.requiredEvidenceIds`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((evidenceId, evidenceIndex) => {
+        context.check(
+          authoredEvidenceIds.has(evidenceId),
+          "INSUFFICIENT_AUDIT_FINDING_EVIDENCE",
+          `${findingPath}.requiredEvidenceIds[${String(evidenceIndex)}]`,
+          "must reference evidence included in the audit case",
+        );
+      });
+      validateUniqueStrings(
+        context,
+        finding.applicablePolicyIds,
+        `${findingPath}.applicablePolicyIds`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((policyId, policyIndex) => {
+        context.check(
+          authoredPolicyIds.has(policyId),
+          "UNKNOWN_POLICY_REFERENCE",
+          `${findingPath}.applicablePolicyIds[${String(policyIndex)}]`,
+          "must reference a policy included in the audit case",
+        );
+      });
+      context.check(
+        typeof finding.expectedSeverity === "string" &&
+          AUDIT_SEVERITIES.has(finding.expectedSeverity),
+        "INVALID_AUDIT_SEVERITY",
+        `${findingPath}.expectedSeverity`,
+        "must be a supported audit severity",
+      );
+      context.check(
+        typeof finding.expectedMateriality === "string" &&
+          AUDIT_MATERIALITIES.has(finding.expectedMateriality),
+        "INVALID_AUDIT_MATERIALITY",
+        `${findingPath}.expectedMateriality`,
+        "must be a supported audit materiality",
+      );
+      validateUniqueStrings(
+        context,
+        finding.acceptableRootCauseCodes,
+        `${findingPath}.acceptableRootCauseCodes`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((choiceId, choiceIndex) => {
+        context.check(
+          choiceIdsByField.get("rootCauses")?.has(choiceId) ?? false,
+          "UNKNOWN_AUDIT_ROOT_CAUSE",
+          `${findingPath}.acceptableRootCauseCodes[${String(choiceIndex)}]`,
+          "must reference an authored root cause",
+        );
+      });
+      validateUniqueStrings(
+        context,
+        finding.acceptableRecommendationCodes,
+        `${findingPath}.acceptableRecommendationCodes`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((choiceId, choiceIndex) => {
+        context.check(
+          choiceIdsByField.get("recommendations")?.has(choiceId) ??
+            false,
+          "UNKNOWN_AUDIT_RECOMMENDATION",
+          `${findingPath}.acceptableRecommendationCodes[${String(choiceIndex)}]`,
+          "must reference an authored recommendation",
+        );
+      });
+      validateUniqueStrings(
+        context,
+        finding.competencyIndicatorIds,
+        `${findingPath}.competencyIndicatorIds`,
+        { minimumItems: 1, identifiers: true },
+      ).forEach((indicatorId, indicatorIndex) => {
+        context.check(
+          indicatorIds.has(indicatorId),
+          "UNKNOWN_INDICATOR_REFERENCE",
+          `${findingPath}.competencyIndicatorIds[${String(indicatorIndex)}]`,
+          "must reference an indicator defined by this pack",
+        );
+      });
+    });
+  }
+
+  const decoyDefinitions = context.array(
+    auditCase.decoyDefinitions,
+    `${casePath}.decoyDefinitions`,
+  );
+  if (decoyDefinitions !== null) {
+    context.check(
+      decoyDefinitions.length > 0,
+      "AUDIT_CASE_WITHOUT_DECOYS",
+      `${casePath}.decoyDefinitions`,
+      "must include at least one defensible legitimate exception",
+    );
+    decoyDefinitions.forEach((value, index) => {
+      const decoyPath =
+        `${casePath}.decoyDefinitions[${String(index)}]`;
+      const decoy = context.object(value, decoyPath);
+      if (decoy === null) return;
+      context.allowedKeys(
+        decoy,
+        [
+          "decoyDefinitionId",
+          "categoryId",
+          "entityId",
+          "explanation",
+        ],
+        decoyPath,
+      );
+      context.string(
+        decoy.decoyDefinitionId,
+        `${decoyPath}.decoyDefinitionId`,
+        { identifier: true },
+      );
+      const categoryId = context.string(
+        decoy.categoryId,
+        `${decoyPath}.categoryId`,
+        { identifier: true },
+      );
+      const entityId = context.string(
+        decoy.entityId,
+        `${decoyPath}.entityId`,
+        { identifier: true },
+      );
+      context.check(
+        categoryId !== null &&
+          (choiceIdsByField.get("categories")?.has(categoryId) ??
+            false),
+        "UNKNOWN_AUDIT_CATEGORY",
+        `${decoyPath}.categoryId`,
+        "must reference an authored audit category",
+      );
+      context.check(
+        entityId !== null &&
+          (choiceIdsByField.get("entities")?.has(entityId) ?? false),
+        "UNKNOWN_AUDIT_ENTITY",
+        `${decoyPath}.entityId`,
+        "must reference an authored audit entity",
+      );
+      if (categoryId !== null && entityId !== null) {
+        const key = `${categoryId}\u0000${entityId}`;
+        context.check(
+          !findingKeys.has(key),
+          "AMBIGUOUS_AUDIT_FINDING",
+          decoyPath,
+          "must not overlap a true finding",
+        );
+        findingKeys.add(key);
+      }
+      validateLocalizedText(
+        context,
+        decoy.explanation,
+        `${decoyPath}.explanation`,
+        supportedLocales,
+      );
+    });
+  }
+
+  const scoring = context.object(
+    auditCase.scoringBlueprint,
+    `${casePath}.scoringBlueprint`,
+  );
+  if (scoring !== null) {
+    context.allowedKeys(
+      scoring,
+      [
+        "scoringBlueprintId",
+        "version",
+        "maximumScore",
+        "passScore",
+        "items",
+      ],
+      `${casePath}.scoringBlueprint`,
+    );
+    context.string(
+      scoring.scoringBlueprintId,
+      `${casePath}.scoringBlueprint.scoringBlueprintId`,
+      { identifier: true },
+    );
+    context.string(
+      scoring.version,
+      `${casePath}.scoringBlueprint.version`,
+      { semanticVersion: true },
+    );
+    context.check(
+      scoring.maximumScore === 100,
+      "INVALID_AUDIT_SCORE_TOTAL",
+      `${casePath}.scoringBlueprint.maximumScore`,
+      "must equal 100",
+    );
+    context.number(
+      scoring.passScore,
+      `${casePath}.scoringBlueprint.passScore`,
+      { minimum: 0, maximum: 100 },
+    );
+    const items = context.array(
+      scoring.items,
+      `${casePath}.scoringBlueprint.items`,
+    );
+    const itemIds = new Set<string>();
+    let maximumTotal = 0;
+    if (items !== null) {
+      items.forEach((value, index) => {
+        const itemPath =
+          `${casePath}.scoringBlueprint.items[${String(index)}]`;
+        const item = context.object(value, itemPath);
+        if (item === null) return;
+        context.allowedKeys(
+          item,
+          ["scorableItemId", "maximumScore"],
+          itemPath,
+        );
+        const itemId = context.string(
+          item.scorableItemId,
+          `${itemPath}.scorableItemId`,
+          { identifier: true },
+        );
+        const maximum = context.number(
+          item.maximumScore,
+          `${itemPath}.maximumScore`,
+          { integer: true, minimum: 0, maximum: 100 },
+        );
+        if (itemId !== null) {
+          context.check(
+            AUDIT_SCORABLE_ITEMS.has(itemId),
+            "UNKNOWN_AUDIT_SCORABLE_ITEM",
+            `${itemPath}.scorableItemId`,
+            "must use the canonical Guided Audit scoring contract",
+          );
+          context.check(
+            !itemIds.has(itemId),
+            "DUPLICATE_AUDIT_SCORABLE_ITEM",
+            `${itemPath}.scorableItemId`,
+            "must be unique",
+          );
+          itemIds.add(itemId);
+          context.check(
+            maximum !== null &&
+              AUDIT_SCORABLE_ITEMS.get(itemId) === maximum,
+            "INVALID_AUDIT_SCORABLE_MAXIMUM",
+            `${itemPath}.maximumScore`,
+            "must match the canonical Guided Audit allocation",
+          );
+        }
+        if (maximum !== null) maximumTotal += maximum;
+      });
+    }
+    context.check(
+      itemIds.size === AUDIT_SCORABLE_ITEMS.size &&
+        maximumTotal === 100,
+      "INVALID_AUDIT_SCORE_TOTAL",
+      `${casePath}.scoringBlueprint.items`,
+      "must contain every canonical item exactly once and total 100",
+    );
+  }
+
+  const supportProfiles = validateUniqueStrings(
+    context,
+    auditCase.supportProfiles,
+    `${casePath}.supportProfiles`,
+    { minimumItems: 1 },
+  );
+  context.check(
+    supportProfiles.length === 1 &&
+      supportProfiles[0] === "GUIDED",
+    "INVALID_AUDIT_SUPPORT_PROFILE",
+    `${casePath}.supportProfiles`,
+    "Phase 4 permits only the Guided Audit profile",
+  );
+  const completion = context.object(
+    auditCase.completionDefinition,
+    `${casePath}.completionDefinition`,
+  );
+  if (completion !== null) {
+    context.allowedKeys(
+      completion,
+      ["maximumSubmittedFindings", "conclusionRequired"],
+      `${casePath}.completionDefinition`,
+    );
+    context.number(
+      completion.maximumSubmittedFindings,
+      `${casePath}.completionDefinition.maximumSubmittedFindings`,
+      { integer: true, minimum: 1, maximum: 12 },
+    );
+    context.check(
+      completion.conclusionRequired === true,
+      "INVALID_AUDIT_COMPLETION",
+      `${casePath}.completionDefinition.conclusionRequired`,
+      "must require an audit conclusion",
+    );
+  }
 }
 
 function validateHostedRuntime(
@@ -3421,16 +4224,41 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.6.0",
+    schemaVersion === "1.7.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.6.0",
+    "requires scenario-pack schema version 1.7.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
     `${path}.hostedRuntime`,
   );
   if (runtime === null) return;
+  if (runtime.runtimeId === "tracechain-audit-v1") {
+    context.allowedKeys(
+      runtime,
+      ["runtimeId", "auditCaseId"],
+      `${path}.hostedRuntime`,
+    );
+    const auditCase = context.object(
+      scenario.auditCase,
+      `${path}.auditCase`,
+    );
+    const auditCaseId = context.string(
+      runtime.auditCaseId,
+      `${path}.hostedRuntime.auditCaseId`,
+      { identifier: true },
+    );
+    context.check(
+      auditCase !== null &&
+        auditCaseId !== null &&
+        auditCase.auditCaseId === auditCaseId,
+      "AUDIT_RUNTIME_CASE_MISMATCH",
+      `${path}.hostedRuntime.auditCaseId`,
+      "must reference the scenario's exact audit case",
+    );
+    return;
+  }
   context.allowedKeys(
     runtime,
     [
@@ -3605,10 +4433,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.6.0",
+      pack.schemaVersion === "1.7.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.6.0",
+      "must equal 1.7.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

@@ -48,6 +48,8 @@ import type {
   Stage3CaseVariant,
 } from "./stage3-types";
 import type { CounterfactualRuntimeMetrics } from "./counterfactual-metrics";
+import { AuditHostedRunService } from "../audit/audit-run-service";
+import type { AuditHostedCommand } from "../audit/audit-run-types";
 
 export interface CreateHostedRuntimeRunRequest {
   readonly commandId: string;
@@ -62,6 +64,7 @@ export interface CreateHostedRuntimeRunRequest {
 
 export type HostedRuntimeCommand =
   | GenericHostedCommand
+  | AuditHostedCommand
   | HostedStage3Command;
 
 export interface HostedRuntimeStateSummary {
@@ -265,6 +268,70 @@ export function createHostedRuntimeService(options: {
         service.learnerCompetencyEvidence(principal, runId),
       learnerAuthoredFeedback: (principal, runId) =>
         service.learnerAuthoredFeedback(principal, runId),
+      rubricEvidence: (principal, runId) =>
+        service.rubricEvidence(principal, runId),
+      loadState: (runId) => service.loadState(runId),
+    };
+  }
+  if (runtimeKind === "audit-v1") {
+    const service = new AuditHostedRunService(
+      options.pack,
+      options.scenarioId,
+      options.scenarioVersion,
+      options.eventStore,
+      options.clock,
+      options.ids,
+    );
+    const unsupported = (): never => {
+      throw new HostedRunCommandError(
+        "WORKFLOW_PRECONDITION_FAILED",
+        "Counterfactual replay is not authored for Guided Audit.",
+      );
+    };
+    return {
+      runtimeKind,
+      createRun: (principal, request) =>
+        service.createRun(principal, {
+          commandId: request.commandId,
+          runId: request.runId,
+          assignmentId: request.assignmentId,
+          learnerUserId: request.learnerUserId,
+          mode: request.mode,
+          ...(request.modeConfiguration === undefined
+            ? {}
+            : {
+                modeConfiguration:
+                  request.modeConfiguration,
+              }),
+        }),
+      submit: (principal, command) =>
+        service.submit(principal, command as AuditHostedCommand),
+      instructorIncidents: async () => [],
+      releaseInstructorIncident: async () => unsupported(),
+      createCounterfactualBranch: async () => unsupported(),
+      submitCounterfactual: async () => unsupported(),
+      counterfactualProjection: async () => unsupported(),
+      counterfactualSourceProjection: async () => unsupported(),
+      counterfactualForkProjection: async () => unsupported(),
+      counterfactualMetrics: async () => unsupported(),
+      learnerProjection: (principal, runId) =>
+        service.learnerProjection(principal, runId),
+      instructorTimeline: (principal, runId) =>
+        service.instructorTimeline(principal, runId),
+      instructorMonitor: (principal, runId, observedAt) =>
+        service.instructorMonitor(principal, runId, observedAt),
+      instructorReplay: (principal, runId, sequence) =>
+        service.instructorReplay(principal, runId, sequence),
+      instructorDecisionOutcomeEvidence: (principal, runId) =>
+        service.instructorDecisionOutcomeEvidence(
+          principal,
+          runId,
+        ),
+      competencyReport: (principal, runId) =>
+        service.competencyReport(principal, runId),
+      learnerCompetencyEvidence: (principal, runId) =>
+        service.learnerCompetencyEvidence(principal, runId),
+      learnerAuthoredFeedback: async () => [],
       rubricEvidence: (principal, runId) =>
         service.rubricEvidence(principal, runId),
       loadState: (runId) => service.loadState(runId),

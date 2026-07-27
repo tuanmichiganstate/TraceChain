@@ -141,10 +141,18 @@ describe("product-mode workspace primitives", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     let draft: AuditFindingDraft = {
+      findingId: "AUD-F-003",
+      categoryId: "CONTROL",
+      entityId: "TX-018",
       title: "",
       observation: "",
-      severity: "MEDIUM",
+      severity: "MODERATE",
+      materiality: "MATERIAL",
+      confidence: 60,
       evidenceIds: [],
+      policyIds: ["POL-004"],
+      rootCauseCode: "ROOT-001",
+      recommendationCode: "REC-001",
       recommendation: "",
     };
 
@@ -154,20 +162,47 @@ describe("product-mode workspace primitives", () => {
         title="Finding AUD-F-003"
         description="Link the finding to evidence."
         labels={{
+          category: "Finding category",
+          entity: "Affected entity",
           findingTitle: "Finding title",
           observation: "Observation",
           severity: "Severity",
+          materiality: "Materiality",
+          confidence: "Confidence",
           evidence: "Supporting evidence",
+          policy: "Applicable policy",
+          rootCause: "Root cause",
+          recommendationChoice: "Response",
           recommendation: "Recommendation",
           submit: "Record draft finding",
         }}
+        categoryOptions={[
+          { choiceId: "CONTROL", label: "Control exception" },
+        ]}
+        entityOptions={[
+          { choiceId: "TX-018", label: "Transaction TX-018" },
+        ]}
         severityOptions={{
           LOW: "Low",
-          MEDIUM: "Medium",
+          MODERATE: "Moderate",
           HIGH: "High",
+          CRITICAL: "Critical",
+        }}
+        materialityOptions={{
+          NON_MATERIAL: "Non-material",
+          MATERIAL: "Material",
         }}
         evidenceOptions={[
           { evidenceId: "TX-018", label: "Transaction TX-018" },
+        ]}
+        policyOptions={[
+          { evidenceId: "POL-004", label: "Policy POL-004" },
+        ]}
+        rootCauseOptions={[
+          { choiceId: "ROOT-001", label: "Missing review" },
+        ]}
+        recommendationOptions={[
+          { choiceId: "REC-001", label: "Require review" },
         ]}
         draft={draft}
         onChange={(next) => {
@@ -187,6 +222,10 @@ describe("product-mode workspace primitives", () => {
     await user.type(screen.getByRole("textbox", { name: "Observation" }), "The review was not documented.");
     await user.click(
       screen.getByRole("checkbox", { name: "Transaction TX-018" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Recommendation" }),
+      "Require documented review.",
     );
 
     expect(submit).toBeEnabled();

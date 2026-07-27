@@ -9,6 +9,7 @@ import type {
   AutomatedEvidenceRuleV1,
   RubricDefinitionV1,
 } from "./rubric";
+import type { AuditCaseDefinitionV1 } from "./audit";
 
 export type HostedRunMode =
   | "tutorial"
@@ -423,13 +424,22 @@ export interface HostedRuntimeActionBindingV1 {
   readonly domainActionId: string;
 }
 
-export interface HostedRuntimeProfileV1 {
+export interface CoffeeHostedRuntimeProfileV1 {
   readonly runtimeId: "tracechain-coffee-v2";
   readonly domainScenarioId: string;
   readonly domainScenarioVersion: string;
   readonly entryStageId: string;
   readonly actionBindings: readonly HostedRuntimeActionBindingV1[];
 }
+
+export interface AuditHostedRuntimeProfileV1 {
+  readonly runtimeId: "tracechain-audit-v1";
+  readonly auditCaseId: string;
+}
+
+export type HostedRuntimeProfileV1 =
+  | CoffeeHostedRuntimeProfileV1
+  | AuditHostedRuntimeProfileV1;
 
 export interface ScenarioDefinitionV1 {
   readonly scenarioId: string;
@@ -464,11 +474,12 @@ export interface ScenarioDefinitionV1 {
   readonly rubricIds: readonly string[];
   readonly evidenceRuleIds: readonly string[];
   readonly hostedRuntime?: HostedRuntimeProfileV1;
+  readonly auditCase?: AuditCaseDefinitionV1;
 }
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.6.0";
+  readonly schemaVersion: "1.7.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

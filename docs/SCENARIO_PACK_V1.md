@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.6
+# TraceChain scenario-pack V1.7
 
-The V1.6 scenario-pack format is the active contract for the hosted
+The V1.7 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -16,6 +16,7 @@ The repository packs are:
 ```text
 scenario-packs/standard-coffee-stage3/tracechain.pack.json
 scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json
+scenario-packs/guided-coffee-audit/tracechain.pack.json
 ```
 
 Validate it with:
@@ -197,9 +198,33 @@ This hosted competency layer is separate from the current 100-point SCORM score.
 The foundation does not change existing items, hints, mitigation ceilings, or
 the 39/61 operational/knowledge split.
 
+## Audit cases
+
+V1.7 adds an Audit-specific hosted runtime without creating a second
+application or transaction system. A scenario selects
+`tracechain-audit-v1` and references one bounded `auditCase`.
+
+The case owns an immutable source process, role-visible evidence and policies,
+authored true findings, defensible decoys, supported conclusion categories,
+and an exact 100-point scoring blueprint. Learner evidence inspection,
+bookmarks, drafts, submitted findings, amendments, withdrawals, and the final
+conclusion are append-only hosted run events. They never enter the source
+ledger or asset-state projection.
+
+Only source records explicitly authored as `LEDGER_TRANSACTION` appear in the
+ledger projection. Rejected attempts remain available as audit evidence while
+remaining outside ledger history. Finding ground truth and decoy explanations
+are withheld until the Guided feedback boundary.
+
+The first Audit case is a fixed Guided coffee-control review. Its hosted
+workbench, scoring, report, competency evidence, and exact replay use the same
+scenario-pack, event-store, assignment, and instructor-replay infrastructure
+as other hosted activities. Practice Audit content and Audit SCORM persistence
+remain Phase 5 work.
+
 ## Curriculum ownership boundary
 
-V1.6 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.7 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 
@@ -253,7 +278,10 @@ mutation, tamper detection, recall, scoring, mitigation, scripted manifest, and
 audit-event rules.
 
 The generic hosted runtime remains separate and is used only by packs whose
-workflow is fully expressed by its supported declarative node set.
+workflow is fully expressed by its supported declarative node set. The Audit
+runtime is another hosted adapter over the shared event, replay, assignment,
+competency, and reporting contracts; it does not mutate the operational source
+process.
 
 ## Hosted run authority
 
@@ -291,6 +319,10 @@ The first hosted vertical slice now provides:
 - deployment-authenticated identity mapped to server-owned application roles;
 - a D1 schema plus event, pack, and principal repositories;
 - a server-authoritative, single-learner run through Stages 3 through 9;
+- a fixed Guided Audit run over immutable coffee-process evidence, with
+  append-only workpapers, finding and decoy classification, an audit
+  conclusion, exact scoring, and replay-derived learner and instructor
+  reports;
 - role-filtered evidence, atomic decision submission, a real signed
   authorization check, real custody and correction endorsements, accepted or
   rejected transaction history, deterministic tamper evidence, a scoped recall

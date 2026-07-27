@@ -350,6 +350,43 @@
       "localeKeys": [
         "counterfactual.reflection.evidenceThatMattered"
       ]
+    },
+    {
+      "sourceId": "SRC_GUIDED_AUDIT_CASE_EVIDENCE",
+      "label": "Immutable source records, off-chain evidence, policies, scope, and role-visible process history",
+      "sourceType": "AUDIT_CASE",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-run-service.ts",
+        "src/platform/audit/hosted-audit-workspace.tsx"
+      ],
+      "localeKeys": [
+        "platformPack.guidedAudit.objective",
+        "platformPack.guidedAudit.scope",
+        "platformPack.guidedAudit.evidence.certificate",
+        "platformPack.guidedAudit.policy.certificate"
+      ],
+      "localizedInPack": true
+    },
+    {
+      "sourceId": "SRC_GUIDED_AUDIT_WORKPAPER",
+      "label": "Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance",
+      "sourceType": "WORKPAPER",
+      "timing": "PRE_SUBMISSION",
+      "roleVisibility": "DECISION_ROLE",
+      "locations": [
+        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-run-service.ts",
+        "src/platform/audit/hosted-audit-workspace.tsx",
+        "src/locales/en.json",
+        "src/locales/vi.json"
+      ],
+      "localeKeys": [
+        "hostedAudit.conclusion.help",
+        "hostedAudit.scopeGuidance"
+      ]
     }
   ],
   "coverageRules": [
@@ -832,6 +869,77 @@
       "answerAuthority": [
         "src/platform/hosted/counterfactual-comparison.ts",
         "src/platform/counterfactual/counterfactual-explorer.tsx"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_GUIDED_AUDIT_FINDING",
+      "match": {
+        "surfaces": [
+          "HOSTED"
+        ],
+        "scenarioIds": [
+          "SCN_GUIDED_COFFEE_AUDIT"
+        ],
+        "decisionIds": [
+          "AUDIT_FINDING_SUBMISSION"
+        ],
+        "fieldIds": [
+          "categoryId",
+          "entityId",
+          "title",
+          "observation",
+          "severity",
+          "materiality",
+          "confidence",
+          "evidenceIds",
+          "policyIds",
+          "rootCauseCode",
+          "recommendationCode",
+          "recommendation"
+        ]
+      },
+      "sourceIds": [
+        "SRC_GUIDED_AUDIT_CASE_EVIDENCE"
+      ],
+      "answerAuthority": [
+        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-scoring.ts",
+        "src/platform/audit/audit-run-service.ts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "ruleId": "COVER_GUIDED_AUDIT_CONCLUSION",
+      "match": {
+        "surfaces": [
+          "HOSTED"
+        ],
+        "scenarioIds": [
+          "SCN_GUIDED_COFFEE_AUDIT"
+        ],
+        "decisionIds": [
+          "AUDIT_CONCLUSION_SUBMISSION"
+        ],
+        "fieldIds": [
+          "conclusionCategory",
+          "scopeSummary",
+          "materialFindingsSummary",
+          "nonMaterialFindingsSummary",
+          "limitations",
+          "uncertainty",
+          "recommendations",
+          "confidence"
+        ]
+      },
+      "sourceIds": [
+        "SRC_GUIDED_AUDIT_CASE_EVIDENCE",
+        "SRC_GUIDED_AUDIT_WORKPAPER"
+      ],
+      "answerAuthority": [
+        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "src/platform/audit/audit-scoring.ts",
+        "src/platform/audit/audit-run-service.ts"
       ],
       "result": "PASS"
     }

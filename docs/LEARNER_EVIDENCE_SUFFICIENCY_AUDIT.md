@@ -12,8 +12,8 @@ This report is generated from the compiled SCORM scenarios, all hosted scenario 
 
 ## Coverage summary
 
-- Audited fields: **120**
-- HOSTED: **28**
+- Audited fields: **140**
+- HOSTED: **48**
 - HOSTED_COUNTERFACTUAL: **14**
 - SCORM: **78**
 - Open blocker/high findings: **0**
@@ -61,6 +61,26 @@ This report is generated from the compiled SCORM scenarios, all hosted scenario 
 | HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TAMPER_KNOWLEDGE | INT_TAMPER_DEMONSTRATION | integrityInterpretation | HOSTED_DECISION | Observed transaction, block, and chain verification results | PASS |
 | HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TRANSFORMATION_DECISION | DECISION_TRANSFORMATION_ACTION | transformationAction | HOSTED_DECISION | Corrected input state and transformation task briefing | PASS |
 | HOSTED | SCN_COFFEE_STAGE3_FOUNDATION@1.9.0 | tutorial, standard, sandbox, configured | NODE_TRANSFORMATION_PROVENANCE_DECISION | INT_TRANSFORMATION_PROVENANCE | provenanceRelationship | HOSTED_DECISION | Corrected input state and transformation task briefing; Role-visible oldest-to-newest provenance graph | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | conclusionCategory | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | confidence | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | limitations | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | materialFindingsSummary | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | nonMaterialFindingsSummary | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | recommendations | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | scopeSummary | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_CONCLUSION | AUDIT_CONCLUSION_SUBMISSION | uncertainty | AUDIT_CONCLUSION | Immutable source records, off-chain evidence, policies, scope, and role-visible process history; Submitted workpaper history, authored scope, evidence limitations, and conclusion guidance | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | categoryId | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | confidence | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | entityId | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | evidenceIds | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | materiality | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | observation | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | policyIds | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | recommendation | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | recommendationCode | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | rootCauseCode | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | severity | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
+| HOSTED | SCN_GUIDED_COFFEE_AUDIT@1.0.0 | tutorial | AUDIT_WORKPAPER | AUDIT_FINDING_SUBMISSION | title | AUDIT_FINDING | Immutable source records, off-chain evidence, policies, scope, and role-visible process history | PASS |
 | HOSTED | SCN_PHARMA_COLD_CHAIN_STARTER@1.2.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_DECISION | DECISION_PHARMA_RELEASE | shipmentAction | HOSTED_DECISION | Released role-visible cold-chain sensor and custody evidence | PASS |
 | HOSTED | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_DISPOSITION | DECISION_PHARMA_TRANSFER_DISPOSITION | dispositionAction | HOSTED_DECISION | Released calibration and stability evidence | PASS |
 | HOSTED | SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0 | tutorial, standard, sandbox, configured | NODE_PHARMA_TRANSFER_TRIAGE | DECISION_PHARMA_TRANSFER_TRIAGE | triageAction | HOSTED_DECISION | Released role-visible cold-chain sensor and custody evidence | PASS |

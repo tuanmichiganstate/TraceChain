@@ -56,6 +56,7 @@ import {
 } from "../counterfactual/counterfactual-api";
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedRunActionControls } from "../learner/hosted-learner-screen";
+import { HostedAuditReport } from "../audit/hosted-audit-workspace";
 
 export interface InstructorSession {
   readonly userId: string;
@@ -3593,7 +3594,10 @@ function RunReview({
               </div>
               <div>
                 <dt>{t("instructorReview.replayVisibleEvidence")}</dt>
-                <dd>{replay.projection.informationState.length}</dd>
+                <dd>
+                  {replay.projection.audit?.evidence.length ??
+                    replay.projection.informationState.length}
+                </dd>
               </div>
               <div>
                 <dt>{t("instructorReview.replayPermittedActions")}</dt>
@@ -3607,6 +3611,11 @@ function RunReview({
                 </dd>
               </div>
             </dl>
+            {replay.projection.audit?.report === undefined ? null : (
+              <HostedAuditReport
+                report={replay.projection.audit.report}
+              />
+            )}
             <DecisionTimeReview
               replay={replay}
               timeline={review.timeline}

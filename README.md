@@ -42,6 +42,12 @@ see `docs/PRODUCT_MODES_PHASE_2.md`.
 Phase 3 makes Guided, Practice, and Challenge explicit Operations support
 profiles and adds one curated Practice bridge case without introducing another
 simulation engine or scoring contract; see `docs/PRODUCT_MODES_PHASE_3.md`.
+Phase 4 adds one fixed hosted Guided Audit case over an immutable completed
+coffee process. Audit findings, decoys, workpapers, scoring, conclusions, and
+reports use the shared event, replay, assignment, competency, and persistence
+boundaries while remaining outside the operational ledger; see
+`docs/PRODUCT_MODES_PHASE_4.md`. Practice Audit and Audit SCORM delivery remain
+Phase 5 work.
 
 The instructor platform now defines versioned
 competency, rubric, scenario-pack, publication, hosted-event, replay, and
@@ -285,7 +291,7 @@ schemas/               published versioned JSON Schemas
   profiles, curated Practice case, persistence contract, and acceptance gates
 - `docs/current-architecture.md` / `docs/target-architecture.md` — the
   repository audit and target hosted/SCORM boundaries
-- `docs/SCENARIO_PACK_V1.md` — the V1.6 pack schema, validation, publication,
+- `docs/SCENARIO_PACK_V1.md` — the V1.7 pack schema, validation, publication,
   native-runtime, generic-workflow, and security contract
 - `docs/HOSTED_STAGE3_API.md` — the authenticated hosted coffee API, D1 schema,
   role boundaries, and bootstrap procedure

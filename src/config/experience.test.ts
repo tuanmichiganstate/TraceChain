@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import packJson from "../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import auditPackJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import type {
   ScenarioPackV1,
 } from "../platform/contracts/scenario-pack";
@@ -22,9 +23,11 @@ import { validateConfiguration } from "./validation";
 
 const pack = packJson as ScenarioPackV1;
 const scenario = pack.scenarios[0];
+const auditPack = auditPackJson as ScenarioPackV1;
+const auditScenario = auditPack.scenarios[0];
 
-if (scenario === undefined) {
-  throw new Error("Expected the hosted coffee scenario.");
+if (scenario === undefined || auditScenario === undefined) {
+  throw new Error("Expected the hosted coffee and Audit scenarios.");
 }
 
 describe("Configuration Schema V2 product dimensions", () => {
@@ -210,5 +213,54 @@ describe("Configuration Schema V2 product dimensions", () => {
       hints: PRACTICE_PRESET.hints,
       retries: PRACTICE_PRESET.retries,
     });
+  });
+
+  it("resolves Guided Audit as one hosted formative configuration", () => {
+    const runtimeConfiguration =
+      auditScenario.modeConfigurations[0];
+    if (runtimeConfiguration === undefined) {
+      throw new Error("Expected the Guided Audit runtime profile.");
+    }
+    const resolved = resolveHostedExperienceConfiguration({
+      packId: auditPack.packId,
+      packVersion: auditPack.version,
+      scenario: auditScenario,
+      runtimeConfiguration,
+      locale: "en",
+    });
+
+    expect(resolved.configuration).toMatchObject({
+      presetId: "hosted-audit-guided",
+      activityType: "AUDIT",
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+      feedback: { timing: "IMMEDIATE" },
+      decisions: {
+        requireEvidenceCitations: true,
+        requirePolicyCitations: true,
+        requireConfidence: true,
+        allowDrafts: true,
+      },
+      scoring: {
+        scoringBlueprintId: "GUIDED_AUDIT_100",
+        maximumScore: 100,
+        passScore: 70,
+        official: false,
+      },
+      reporting: {
+        causalReport: false,
+        auditReport: true,
+        competencyReport: true,
+      },
+      delivery: {
+        channel: "HOSTED",
+        persistencePolicyId:
+          "SERVER_APPEND_ONLY_EVENT_STREAM",
+      },
+    });
+    expect(
+      experienceConfigurationHash(resolved.configuration),
+    ).toBe(resolved.configurationHash);
   });
 });

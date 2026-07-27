@@ -405,10 +405,18 @@ function AuditFindingPrototype(): ReactNode {
   const { notify } = useNotifications();
   const [submitted, setSubmitted] = useState(false);
   const [draft, setDraft] = useState<AuditFindingDraft>({
+    findingId: "AUD-F-003",
+    categoryId: "CONTROL_EXCEPTION",
+    entityId: "TX-018",
     title: t("prototype.auditFinding.initialTitle"),
     observation: t("prototype.auditFinding.initialObservation"),
     severity: "HIGH",
+    materiality: "MATERIAL",
+    confidence: 80,
     evidenceIds: ["TX-018", "DOC-009"],
+    policyIds: ["POL-004"],
+    rootCauseCode: "MISSING_REVIEW",
+    recommendationCode: "REQUIRE_REVIEW",
     recommendation: t("prototype.auditFinding.initialRecommendation"),
   });
 
@@ -419,17 +427,45 @@ function AuditFindingPrototype(): ReactNode {
         title={t("prototype.auditFinding.title")}
         description={t("prototype.auditFinding.description")}
         labels={{
+          category: t("prototype.auditFinding.field.category"),
+          entity: t("prototype.auditFinding.field.entity"),
           findingTitle: t("prototype.auditFinding.field.title"),
           observation: t("prototype.auditFinding.field.observation"),
           severity: t("prototype.auditFinding.field.severity"),
+          materiality: t("prototype.auditFinding.field.materiality"),
+          confidence: t("prototype.auditFinding.field.confidence"),
           evidence: t("prototype.auditFinding.field.evidence"),
+          policy: t("prototype.auditFinding.field.policy"),
+          rootCause: t("prototype.auditFinding.field.rootCause"),
+          recommendationChoice: t(
+            "prototype.auditFinding.field.recommendationChoice",
+          ),
           recommendation: t("prototype.auditFinding.field.recommendation"),
           submit: t("prototype.auditFinding.submit"),
         }}
+        categoryOptions={[
+          {
+            choiceId: "CONTROL_EXCEPTION",
+            label: t("prototype.auditFinding.category.control"),
+          },
+        ]}
+        entityOptions={[
+          {
+            choiceId: "TX-018",
+            label: t("prototype.auditFinding.evidence.transaction"),
+          },
+        ]}
         severityOptions={{
           LOW: t("prototype.auditFinding.severity.low"),
-          MEDIUM: t("prototype.auditFinding.severity.medium"),
+          MODERATE: t("prototype.auditFinding.severity.medium"),
           HIGH: t("prototype.auditFinding.severity.high"),
+          CRITICAL: t("prototype.auditFinding.severity.critical"),
+        }}
+        materialityOptions={{
+          NON_MATERIAL: t(
+            "prototype.auditFinding.materiality.nonMaterial",
+          ),
+          MATERIAL: t("prototype.auditFinding.materiality.material"),
         }}
         evidenceOptions={[
           {
@@ -443,6 +479,26 @@ function AuditFindingPrototype(): ReactNode {
           {
             evidenceId: "POL-004",
             label: t("prototype.auditFinding.evidence.policy"),
+          },
+        ]}
+        policyOptions={[
+          {
+            evidenceId: "POL-004",
+            label: t("prototype.auditFinding.evidence.policy"),
+          },
+        ]}
+        rootCauseOptions={[
+          {
+            choiceId: "MISSING_REVIEW",
+            label: t("prototype.auditFinding.rootCause.missingReview"),
+          },
+        ]}
+        recommendationOptions={[
+          {
+            choiceId: "REQUIRE_REVIEW",
+            label: t(
+              "prototype.auditFinding.recommendation.requireReview",
+            ),
           },
         ]}
         draft={draft}
@@ -713,10 +769,18 @@ function MobileHandoffPrototype(): ReactNode {
 function MobileFindingPrototype(): ReactNode {
   const t = useTranslator();
   const [draft, setDraft] = useState<AuditFindingDraft>({
+    findingId: "AUD-MOBILE-001",
+    categoryId: "CONTROL_EXCEPTION",
+    entityId: "TX-018",
     title: t("prototype.mobileFinding.initialTitle"),
     observation: t("prototype.mobileFinding.initialObservation"),
-    severity: "MEDIUM",
+    severity: "MODERATE",
+    materiality: "NON_MATERIAL",
+    confidence: 50,
     evidenceIds: ["TX-018"],
+    policyIds: ["POL-004"],
+    rootCauseCode: "MISSING_REVIEW",
+    recommendationCode: "REQUIRE_REVIEW",
     recommendation: "",
   });
 
@@ -752,19 +816,63 @@ function MobileFindingPrototype(): ReactNode {
                 title={t("prototype.mobileFinding.builderTitle")}
                 description={t("prototype.mobileFinding.builderDescription")}
                 labels={{
+                  category: t("prototype.auditFinding.field.category"),
+                  entity: t("prototype.auditFinding.field.entity"),
                   findingTitle: t("prototype.auditFinding.field.title"),
                   observation: t("prototype.auditFinding.field.observation"),
                   severity: t("prototype.auditFinding.field.severity"),
+                  materiality: t(
+                    "prototype.auditFinding.field.materiality",
+                  ),
+                  confidence: t(
+                    "prototype.auditFinding.field.confidence",
+                  ),
                   evidence: t("prototype.auditFinding.field.evidence"),
+                  policy: t("prototype.auditFinding.field.policy"),
+                  rootCause: t(
+                    "prototype.auditFinding.field.rootCause",
+                  ),
+                  recommendationChoice: t(
+                    "prototype.auditFinding.field.recommendationChoice",
+                  ),
                   recommendation: t(
                     "prototype.auditFinding.field.recommendation",
                   ),
                   submit: t("prototype.auditFinding.submit"),
                 }}
+                categoryOptions={[
+                  {
+                    choiceId: "CONTROL_EXCEPTION",
+                    label: t(
+                      "prototype.auditFinding.category.control",
+                    ),
+                  },
+                ]}
+                entityOptions={[
+                  {
+                    choiceId: "TX-018",
+                    label: t(
+                      "prototype.auditFinding.evidence.transaction",
+                    ),
+                  },
+                ]}
                 severityOptions={{
                   LOW: t("prototype.auditFinding.severity.low"),
-                  MEDIUM: t("prototype.auditFinding.severity.medium"),
+                  MODERATE: t(
+                    "prototype.auditFinding.severity.medium",
+                  ),
                   HIGH: t("prototype.auditFinding.severity.high"),
+                  CRITICAL: t(
+                    "prototype.auditFinding.severity.critical",
+                  ),
+                }}
+                materialityOptions={{
+                  NON_MATERIAL: t(
+                    "prototype.auditFinding.materiality.nonMaterial",
+                  ),
+                  MATERIAL: t(
+                    "prototype.auditFinding.materiality.material",
+                  ),
                 }}
                 evidenceOptions={[
                   {
@@ -774,6 +882,30 @@ function MobileFindingPrototype(): ReactNode {
                   {
                     evidenceId: "POL-004",
                     label: t("prototype.auditFinding.evidence.policy"),
+                  },
+                ]}
+                policyOptions={[
+                  {
+                    evidenceId: "POL-004",
+                    label: t(
+                      "prototype.auditFinding.evidence.policy",
+                    ),
+                  },
+                ]}
+                rootCauseOptions={[
+                  {
+                    choiceId: "MISSING_REVIEW",
+                    label: t(
+                      "prototype.auditFinding.rootCause.missingReview",
+                    ),
+                  },
+                ]}
+                recommendationOptions={[
+                  {
+                    choiceId: "REQUIRE_REVIEW",
+                    label: t(
+                      "prototype.auditFinding.recommendation.requireReview",
+                    ),
                   },
                 ]}
                 draft={draft}

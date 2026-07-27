@@ -70,6 +70,84 @@ export function resolveHostedExperienceConfiguration(options: {
     HostedRunModeConfigurationV1;
   readonly locale?: "vi" | "en";
 }): HostedExperienceConfigurationIdentityV2 {
+  if (options.scenario.hostedRuntime?.runtimeId === "tracechain-audit-v1") {
+    const auditCase = options.scenario.auditCase;
+    if (
+      auditCase === undefined ||
+      options.runtimeConfiguration.mode !== "tutorial"
+    ) {
+      throw new Error(
+        "The Phase 4 audit runtime requires one Guided Audit case in tutorial mode.",
+      );
+    }
+    const configuration: TraceChainExperienceConfigurationV2 = {
+      configurationSchemaVersion: "2",
+      presetId: "hosted-audit-guided",
+      activityType: "AUDIT",
+      supportProfile: "GUIDED",
+      deliveryPurpose: "FORMATIVE",
+      outcomeStrategy: "FIXED",
+      content: {
+        packId: options.packId,
+        packVersion: options.packVersion,
+        scenarioId: options.scenario.scenarioId,
+        scenarioVersion: options.scenario.version,
+      },
+      guidance: guidancePolicyFor("GUIDED"),
+      feedback: feedbackPolicyFor("IMMEDIATE"),
+      hints: hintPolicyFor("ENABLED", "GUIDED"),
+      retries: {
+        knowledgeRetry: "DISABLED",
+        professionalDecisionRevision: "FREE_REVISION",
+        maximumKnowledgeAttempts: 1,
+        maximumMitigationActions: 0,
+      },
+      decisions: {
+        requireRationale: true,
+        requireEvidenceCitations: true,
+        requirePolicyCitations: true,
+        requireConfidence: true,
+        requireRiskEstimate: false,
+        allowDrafts: true,
+      },
+      scoring: {
+        scoringBlueprintId:
+          auditCase.scoringBlueprint.scoringBlueprintId,
+        scoringBlueprintVersion:
+          auditCase.scoringBlueprint.version,
+        maximumScore: 100,
+        passScore: auditCase.scoringBlueprint.passScore,
+        official: false,
+        competencyEvidenceEnabled: true,
+        reportDiagnosticDimensions: true,
+      },
+      reporting: {
+        causalReport: false,
+        auditReport: true,
+        competencyReport: true,
+        activitySummary: true,
+        showTechnicalMetadataToLearner: false,
+      },
+      delivery: {
+        channel: "HOSTED",
+        persistencePolicyId: "SERVER_APPEND_ONLY_EVENT_STREAM",
+        attemptPolicyId: "ASSIGNMENT_MANAGED",
+        ...(options.runtimeConfiguration.timeLimitMinutes === undefined
+          ? {}
+          : {
+              timeLimitMinutes:
+                options.runtimeConfiguration.timeLimitMinutes,
+            }),
+      },
+      locale: options.locale ?? "vi",
+    };
+    assertValidExperienceConfiguration(configuration);
+    return {
+      configuration,
+      configurationHash:
+        experienceConfigurationHash(configuration),
+    };
+  }
   return resolveHostedExperienceConfigurationFromPolicy({
     packId: options.packId,
     packVersion: options.packVersion,

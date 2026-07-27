@@ -30,6 +30,7 @@ import {
 } from "../counterfactual/counterfactual-api";
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedStaffIdentity } from "../components/hosted-staff-identity";
+import { HostedAuditWorkspace } from "../audit/hosted-audit-workspace";
 
 interface LearnerSession {
   readonly userId: string;
@@ -1074,6 +1075,18 @@ function RunWorkspace({
   ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
+  if (projection.audit !== undefined) {
+    return (
+      <HostedAuditWorkspace
+        audit={projection.audit}
+        completed={
+          projection.workflowState.permittedActionIds.length === 0
+        }
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    );
+  }
   const actions = projection.workflowState.permittedActionIds;
   const isExpired = projection.timing?.status === "expired";
   const presentation = projection.presentation;

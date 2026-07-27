@@ -3,6 +3,7 @@ import type {
   HostedRunModeConfigurationV1,
   StructuredDecisionResponseConfigurationV1,
 } from "./scenario-pack";
+import type { AuditLearnerProjectionV1 } from "./audit";
 
 export type ApplicationRole =
   | "learner"
@@ -37,6 +38,17 @@ export type PlatformRunEventType =
   | "FEEDBACK_VIEWED"
   | "REFLECTION_SUBMITTED"
   | "RUBRIC_RATED"
+  | "AUDIT_CASE_OPENED"
+  | "AUDIT_SCOPE_VIEWED"
+  | "AUDIT_EVIDENCE_INSPECTED"
+  | "AUDIT_EVIDENCE_BOOKMARKED"
+  | "AUDIT_SOURCE_RECORD_INSPECTED"
+  | "AUDIT_FINDING_DRAFT_SAVED"
+  | "AUDIT_FINDING_SUBMITTED"
+  | "AUDIT_FINDING_AMENDED"
+  | "AUDIT_FINDING_WITHDRAWN"
+  | "AUDIT_CONCLUSION_SUBMITTED"
+  | "AUDIT_FEEDBACK_VIEWED"
   | "RUN_TIME_LIMIT_EXCEEDED"
   | "RUN_COMPLETED";
 
@@ -132,6 +144,7 @@ export interface LearnerRunProjectionV1 {
     readonly timeLimitMinutes?: number;
   };
   readonly presentation?: LearnerRunPresentationV1;
+  readonly audit?: AuditLearnerProjectionV1;
 }
 
 export interface LearnerRunLocalizedTextV1 {

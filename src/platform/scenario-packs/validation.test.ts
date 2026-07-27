@@ -1,5 +1,6 @@
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
@@ -25,6 +26,33 @@ function validPack(): ScenarioPackV1 {
 }
 
 describe("scenario-pack validation", () => {
+  it("accepts the Guided Audit case and rejects insufficient authored finding evidence", () => {
+    const valid = validateScenarioPack(
+      structuredClone(auditPackJson),
+    );
+    expect(valid.isValid).toBe(true);
+
+    const invalid = structuredClone(auditPackJson) as unknown as {
+      scenarios: Array<{
+        auditCase: {
+          findingDefinitions: Array<{
+            requiredEvidenceIds: string[];
+          }>;
+        };
+      }>;
+    };
+    invalid.scenarios[0]!.auditCase.findingDefinitions[0]!
+      .requiredEvidenceIds = ["EVID_NOT_IN_CASE"];
+    const result = validateScenarioPack(invalid);
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INSUFFICIENT_AUDIT_FINDING_EVIDENCE",
+        }),
+      );
+    }
+  });
   it("validates the bilingual native coffee pack", () => {
     const result = validate(structuredClone(packJson));
 
@@ -635,7 +663,11 @@ describe("scenario-pack validation", () => {
     const scenario = pack.scenarios[0];
     const runtime = scenario?.hostedRuntime;
     expect(runtime).toBeDefined();
-    if (scenario === undefined || runtime === undefined) return;
+    if (
+      scenario === undefined ||
+      runtime === undefined ||
+      runtime.runtimeId !== "tracechain-coffee-v2"
+    ) return;
 
     expect(runtime.domainScenarioId).toBe(coffeeScenario.scenarioId);
     expect(runtime.domainScenarioVersion).toBe(

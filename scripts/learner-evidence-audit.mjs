@@ -35,6 +35,7 @@ const reportPath = join(
 const hostedPackPaths = [
   "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
   "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+  "scenario-packs/guided-coffee-audit/tracechain.pack.json",
 ];
 const latentCertificateChecks = new Set([
   "INT_CERTIFICATE_STORAGE_CHOICE",
@@ -171,6 +172,58 @@ function hostedInventory(pack) {
   const items = [];
   for (const scenario of pack.scenarios) {
     const modes = scenario.supportedModes;
+    if (scenario.auditCase !== undefined) {
+      for (const fieldId of [
+        "categoryId",
+        "entityId",
+        "title",
+        "observation",
+        "severity",
+        "materiality",
+        "confidence",
+        "evidenceIds",
+        "policyIds",
+        "rootCauseCode",
+        "recommendationCode",
+        "recommendation",
+      ]) {
+        items.push({
+          surface: "HOSTED",
+          scenarioId: scenario.scenarioId,
+          scenarioVersion: scenario.version,
+          modes,
+          stageOrNodeId: "AUDIT_WORKPAPER",
+          decisionId: "AUDIT_FINDING_SUBMISSION",
+          fieldId,
+          classification: "AUDIT_FINDING",
+          scored: true,
+          evidenceTiming: "PRE_SUBMISSION",
+        });
+      }
+      for (const fieldId of [
+        "conclusionCategory",
+        "scopeSummary",
+        "materialFindingsSummary",
+        "nonMaterialFindingsSummary",
+        "limitations",
+        "uncertainty",
+        "recommendations",
+        "confidence",
+      ]) {
+        items.push({
+          surface: "HOSTED",
+          scenarioId: scenario.scenarioId,
+          scenarioVersion: scenario.version,
+          modes,
+          stageOrNodeId: "AUDIT_CONCLUSION",
+          decisionId: "AUDIT_CONCLUSION_SUBMISSION",
+          fieldId,
+          classification: "AUDIT_CONCLUSION",
+          scored: true,
+          evidenceTiming: "PRE_SUBMISSION",
+        });
+      }
+    }
     for (const node of scenario.nodes) {
       if (node.nodeType === "ENDORSEMENT") {
         items.push({

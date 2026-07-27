@@ -1,0 +1,1181 @@
+{
+  "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
+  "schemaVersion": "1.7.0",
+  "packId": "PACK_GUIDED_COFFEE_AUDIT",
+  "version": "1.0.0",
+  "status": "draft",
+  "supportedLocales": [
+    "en",
+    "vi"
+  ],
+  "localizationCatalogs": {
+    "en": {
+      "platformPack.guidedAudit.manifest.title": "Guided coffee process audit",
+      "platformPack.guidedAudit.manifest.description": "A bounded audit of certificate, quantity-correction, authorization, and ledger evidence from a completed coffee process.",
+      "platformPack.guidedAudit.manifest.purpose": "Develop evidence-linked audit findings without changing the source process or its ledger.",
+      "platformPack.guidedAudit.framework.title": "TraceChain audit competencies",
+      "platformPack.guidedAudit.competency.title": "Evidence-based audit judgment",
+      "platformPack.guidedAudit.competency.description": "Evaluate process, ledger, document, and policy evidence to form proportionate audit findings.",
+      "platformPack.guidedAudit.indicator.evidence": "Links an audit finding to relevant source evidence and policy.",
+      "platformPack.guidedAudit.indicator.classification": "Classifies severity, materiality, root cause, and recommendation proportionately.",
+      "platformPack.guidedAudit.indicator.conclusion": "Forms a scoped conclusion that distinguishes findings, legitimate exceptions, and evidence limitations.",
+      "platformPack.guidedAudit.rubric.title": "Guided audit workpaper rubric",
+      "platformPack.guidedAudit.rubric.level0": "Not demonstrated",
+      "platformPack.guidedAudit.rubric.level1": "Developing",
+      "platformPack.guidedAudit.rubric.level2": "Demonstrated",
+      "platformPack.guidedAudit.rubric.level3": "Integrated",
+      "platformPack.guidedAudit.rubric.finding.title": "Evidence-linked audit judgment",
+      "platformPack.guidedAudit.rubric.finding.description": "The workpaper identifies relevant control exceptions and supports them with evidence and policy.",
+      "platformPack.guidedAudit.scenario.title": "Completed coffee process audit",
+      "platformPack.guidedAudit.organization.audit": "Independent audit team",
+      "platformPack.guidedAudit.organization.producer": "Cao Nguyên Coffee Cooperative",
+      "platformPack.guidedAudit.organization.processor": "Highland Coffee Processor",
+      "platformPack.guidedAudit.organization.certifier": "Agricultural Certification Centre",
+      "platformPack.guidedAudit.organization.regulator": "Food safety regulator",
+      "platformPack.guidedAudit.role.auditor": "Process auditor",
+      "platformPack.guidedAudit.node.briefing.title": "Review the completed coffee process",
+      "platformPack.guidedAudit.node.briefing.body": "Inspect the immutable source records, cite evidence and policy, record findings, and issue a scoped audit conclusion.",
+      "platformPack.guidedAudit.node.complete.title": "Guided audit complete",
+      "platformPack.guidedAudit.objective": "Determine whether certificate acceptance, quantity correction, and recall authorization controls operated as intended while preserving legitimate append-only ledger history.",
+      "platformPack.guidedAudit.scope": "Certificate, quantity-correction, and recall controls for BAT_GREEN_COFFEE_001",
+      "platformPack.guidedAudit.category.certificate": "Certificate control",
+      "platformPack.guidedAudit.category.documentation": "Investigation documentation",
+      "platformPack.guidedAudit.category.authorization": "Authorization control",
+      "platformPack.guidedAudit.category.ledger": "Ledger integrity",
+      "platformPack.guidedAudit.category.anomaly": "Unusual business event",
+      "platformPack.guidedAudit.entity.certificate": "Certificate for BAT_GREEN_COFFEE_001",
+      "platformPack.guidedAudit.entity.receipt": "Quantity receipt and investigation",
+      "platformPack.guidedAudit.entity.correction": "Append-only quantity correction",
+      "platformPack.guidedAudit.entity.recall": "Recall authorization process",
+      "platformPack.guidedAudit.entity.custody": "Custody transfer",
+      "platformPack.guidedAudit.entity.delay": "Transit delay",
+      "platformPack.guidedAudit.root.expiryReview": "Validity review was not completed before acceptance",
+      "platformPack.guidedAudit.root.documentationGap": "Required investigation documentation was omitted",
+      "platformPack.guidedAudit.root.roleControl": "The initial action occurred before authorized role handoff",
+      "platformPack.guidedAudit.root.noException": "No control exception is supported",
+      "platformPack.guidedAudit.recommend.hold": "Hold the lot until certificate validity is resolved",
+      "platformPack.guidedAudit.recommend.document": "Require a documented discrepancy investigation before correction",
+      "platformPack.guidedAudit.recommend.handoff": "Require regulator handoff before recall commitment",
+      "platformPack.guidedAudit.recommend.none": "Do not raise a finding; retain the evidence as reviewed",
+      "platformPack.guidedAudit.conclusion.effective": "Controls operated effectively",
+      "platformPack.guidedAudit.conclusion.qualified": "Controls operated with material exceptions",
+      "platformPack.guidedAudit.conclusion.adverse": "Controls did not operate effectively",
+      "platformPack.guidedAudit.conclusion.insufficient": "Evidence is insufficient for a conclusion",
+      "platformPack.guidedAudit.policy.certificate": "Certificate acceptance policy",
+      "platformPack.guidedAudit.policy.correction": "Quantity-correction control",
+      "platformPack.guidedAudit.policy.recall": "Recall authorization policy",
+      "platformPack.guidedAudit.policy.custody": "Custody endorsement policy",
+      "platformPack.guidedAudit.evidence.certificate": "Certificate validity record",
+      "platformPack.guidedAudit.evidence.registry": "Certifier recognition registry",
+      "platformPack.guidedAudit.evidence.receipt": "Receiving and discrepancy report",
+      "platformPack.guidedAudit.evidence.correction": "Append-only correction and endorsements",
+      "platformPack.guidedAudit.evidence.recallAttempt": "Rejected recall attempt audit record",
+      "platformPack.guidedAudit.evidence.recallCommit": "Authorized recall transaction",
+      "platformPack.guidedAudit.evidence.custody": "Endorsed custody transfer",
+      "platformPack.guidedAudit.evidence.transit": "Transit delay note",
+      "platformPack.guidedAudit.record.certificate": "Expired certificate accepted before review",
+      "platformPack.guidedAudit.record.custody": "Custody transfer endorsed by sender and receiver",
+      "platformPack.guidedAudit.record.receipt": "Receipt recorded a 900 kg discrepancy without investigation notes",
+      "platformPack.guidedAudit.record.correction": "Quantity corrected through an endorsed append-only transaction",
+      "platformPack.guidedAudit.record.recallAttempt": "Recall attempt rejected under an unauthorized role",
+      "platformPack.guidedAudit.record.recallCommit": "Recall committed after regulator handoff",
+      "platformPack.guidedAudit.record.delay": "Three-hour transit delay recorded without loss evidence",
+      "platformPack.guidedAudit.finding.certificate.title": "Expired certificate was accepted",
+      "platformPack.guidedAudit.finding.certificate.explanation": "The certificate had expired before the review date, yet the lot continued. The registry confirms the issuer was recognized, but recognition does not restore an expired document.",
+      "platformPack.guidedAudit.finding.documentation.title": "Discrepancy investigation was not documented",
+      "platformPack.guidedAudit.finding.documentation.explanation": "The append-only correction preserved ledger history, but the receiving report does not document how the 900 kg discrepancy was investigated.",
+      "platformPack.guidedAudit.finding.authorization.title": "Recall was first attempted under an unauthorized role",
+      "platformPack.guidedAudit.finding.authorization.explanation": "The rejected attempt did not enter the ledger, but it is evidence that the recall control was invoked before the regulator handoff.",
+      "platformPack.guidedAudit.decoy.correction": "The original quantity remained in history and both producer and processor endorsed the correction. This unusual change is a legitimate append-only transaction, not a ledger-integrity failure.",
+      "platformPack.guidedAudit.decoy.delay": "A delay is unusual, but the available evidence does not show loss, contamination, or policy breach. Record it as an evidence limitation rather than an unsupported finding.",
+      "platformPack.guidedAudit.feedback.unsupported": "The selected category and entity pair is not supported as a finding by the evidence available in this audit scope."
+    },
+    "vi": {
+      "platformPack.guidedAudit.manifest.title": "Kiểm toán có hướng dẫn quy trình cà phê",
+      "platformPack.guidedAudit.manifest.description": "Một cuộc kiểm toán có giới hạn về chứng nhận, sửa số lượng, thẩm quyền và bằng chứng sổ cái của một quy trình cà phê đã hoàn thành.",
+      "platformPack.guidedAudit.manifest.purpose": "Phát triển phát hiện kiểm toán có liên kết bằng chứng mà không thay đổi quy trình nguồn hoặc sổ cái.",
+      "platformPack.guidedAudit.framework.title": "Năng lực kiểm toán TraceChain",
+      "platformPack.guidedAudit.competency.title": "Xét đoán kiểm toán dựa trên bằng chứng",
+      "platformPack.guidedAudit.competency.description": "Đánh giá bằng chứng quy trình, sổ cái, tài liệu và chính sách để hình thành phát hiện kiểm toán tương xứng.",
+      "platformPack.guidedAudit.indicator.evidence": "Liên kết phát hiện kiểm toán với bằng chứng nguồn và chính sách phù hợp.",
+      "platformPack.guidedAudit.indicator.classification": "Phân loại mức độ, tính trọng yếu, nguyên nhân gốc và khuyến nghị một cách tương xứng.",
+      "platformPack.guidedAudit.indicator.conclusion": "Đưa ra kết luận trong phạm vi, phân biệt phát hiện, ngoại lệ hợp lệ và giới hạn bằng chứng.",
+      "platformPack.guidedAudit.rubric.title": "Rubric hồ sơ kiểm toán có hướng dẫn",
+      "platformPack.guidedAudit.rubric.level0": "Chưa thể hiện",
+      "platformPack.guidedAudit.rubric.level1": "Đang phát triển",
+      "platformPack.guidedAudit.rubric.level2": "Đã thể hiện",
+      "platformPack.guidedAudit.rubric.level3": "Tích hợp",
+      "platformPack.guidedAudit.rubric.finding.title": "Xét đoán kiểm toán có liên kết bằng chứng",
+      "platformPack.guidedAudit.rubric.finding.description": "Hồ sơ xác định các ngoại lệ kiểm soát phù hợp và hỗ trợ chúng bằng bằng chứng cùng chính sách.",
+      "platformPack.guidedAudit.scenario.title": "Kiểm toán quy trình cà phê đã hoàn thành",
+      "platformPack.guidedAudit.organization.audit": "Nhóm kiểm toán độc lập",
+      "platformPack.guidedAudit.organization.producer": "Hợp tác xã Cà phê Cao Nguyên",
+      "platformPack.guidedAudit.organization.processor": "Đơn vị Chế biến Cà phê Cao Nguyên",
+      "platformPack.guidedAudit.organization.certifier": "Trung tâm Chứng nhận Nông sản",
+      "platformPack.guidedAudit.organization.regulator": "Cơ quan quản lý an toàn thực phẩm",
+      "platformPack.guidedAudit.role.auditor": "Kiểm toán viên quy trình",
+      "platformPack.guidedAudit.node.briefing.title": "Rà soát quy trình cà phê đã hoàn thành",
+      "platformPack.guidedAudit.node.briefing.body": "Kiểm tra hồ sơ nguồn bất biến, trích dẫn bằng chứng và chính sách, ghi nhận phát hiện rồi đưa ra kết luận trong phạm vi.",
+      "platformPack.guidedAudit.node.complete.title": "Đã hoàn thành kiểm toán có hướng dẫn",
+      "platformPack.guidedAudit.objective": "Xác định liệu các kiểm soát về chấp nhận chứng nhận, sửa số lượng và thẩm quyền thu hồi có vận hành đúng hay không, đồng thời bảo toàn lịch sử sổ cái chỉ ghi thêm hợp lệ.",
+      "platformPack.guidedAudit.scope": "Kiểm soát chứng nhận, sửa số lượng và thu hồi đối với BAT_GREEN_COFFEE_001",
+      "platformPack.guidedAudit.category.certificate": "Kiểm soát chứng nhận",
+      "platformPack.guidedAudit.category.documentation": "Tài liệu điều tra",
+      "platformPack.guidedAudit.category.authorization": "Kiểm soát thẩm quyền",
+      "platformPack.guidedAudit.category.ledger": "Tính toàn vẹn sổ cái",
+      "platformPack.guidedAudit.category.anomaly": "Sự kiện nghiệp vụ bất thường",
+      "platformPack.guidedAudit.entity.certificate": "Chứng nhận của BAT_GREEN_COFFEE_001",
+      "platformPack.guidedAudit.entity.receipt": "Nhận hàng và điều tra chênh lệch",
+      "platformPack.guidedAudit.entity.correction": "Sửa số lượng chỉ ghi thêm",
+      "platformPack.guidedAudit.entity.recall": "Quy trình thẩm quyền thu hồi",
+      "platformPack.guidedAudit.entity.custody": "Chuyển giao lưu giữ",
+      "platformPack.guidedAudit.entity.delay": "Chậm trễ vận chuyển",
+      "platformPack.guidedAudit.root.expiryReview": "Chưa rà soát hiệu lực trước khi chấp nhận",
+      "platformPack.guidedAudit.root.documentationGap": "Thiếu tài liệu điều tra bắt buộc",
+      "platformPack.guidedAudit.root.roleControl": "Hành động ban đầu xảy ra trước khi bàn giao vai trò có thẩm quyền",
+      "platformPack.guidedAudit.root.noException": "Không có ngoại lệ kiểm soát được bằng chứng hỗ trợ",
+      "platformPack.guidedAudit.recommend.hold": "Tạm giữ lô cho đến khi giải quyết hiệu lực chứng nhận",
+      "platformPack.guidedAudit.recommend.document": "Yêu cầu ghi nhận điều tra chênh lệch trước khi sửa",
+      "platformPack.guidedAudit.recommend.handoff": "Yêu cầu bàn giao cho cơ quan quản lý trước khi cam kết thu hồi",
+      "platformPack.guidedAudit.recommend.none": "Không nêu phát hiện; lưu lại bằng chứng đã rà soát",
+      "platformPack.guidedAudit.conclusion.effective": "Các kiểm soát vận hành hiệu quả",
+      "platformPack.guidedAudit.conclusion.qualified": "Các kiểm soát vận hành nhưng có ngoại lệ trọng yếu",
+      "platformPack.guidedAudit.conclusion.adverse": "Các kiểm soát không vận hành hiệu quả",
+      "platformPack.guidedAudit.conclusion.insufficient": "Bằng chứng không đủ để kết luận",
+      "platformPack.guidedAudit.policy.certificate": "Chính sách chấp nhận chứng nhận",
+      "platformPack.guidedAudit.policy.correction": "Kiểm soát sửa số lượng",
+      "platformPack.guidedAudit.policy.recall": "Chính sách thẩm quyền thu hồi",
+      "platformPack.guidedAudit.policy.custody": "Chính sách xác nhận chuyển giao lưu giữ",
+      "platformPack.guidedAudit.evidence.certificate": "Hồ sơ hiệu lực chứng nhận",
+      "platformPack.guidedAudit.evidence.registry": "Sổ đăng ký công nhận đơn vị cấp",
+      "platformPack.guidedAudit.evidence.receipt": "Biên bản nhận hàng và chênh lệch",
+      "platformPack.guidedAudit.evidence.correction": "Giao dịch sửa chỉ ghi thêm và các xác nhận",
+      "platformPack.guidedAudit.evidence.recallAttempt": "Hồ sơ kiểm toán của lần thử thu hồi bị từ chối",
+      "platformPack.guidedAudit.evidence.recallCommit": "Giao dịch thu hồi có thẩm quyền",
+      "platformPack.guidedAudit.evidence.custody": "Chuyển giao lưu giữ đã được xác nhận",
+      "platformPack.guidedAudit.evidence.transit": "Ghi chú chậm trễ vận chuyển",
+      "platformPack.guidedAudit.record.certificate": "Chứng nhận hết hạn được chấp nhận trước khi rà soát",
+      "platformPack.guidedAudit.record.custody": "Chuyển giao lưu giữ được bên gửi và bên nhận xác nhận",
+      "platformPack.guidedAudit.record.receipt": "Biên bản nhận hàng ghi chênh lệch 900 kg nhưng không có ghi chú điều tra",
+      "platformPack.guidedAudit.record.correction": "Số lượng được sửa bằng giao dịch chỉ ghi thêm có xác nhận",
+      "platformPack.guidedAudit.record.recallAttempt": "Lần thử thu hồi bị từ chối dưới vai trò không có thẩm quyền",
+      "platformPack.guidedAudit.record.recallCommit": "Thu hồi được cam kết sau khi bàn giao cho cơ quan quản lý",
+      "platformPack.guidedAudit.record.delay": "Ghi nhận chậm vận chuyển ba giờ nhưng không có bằng chứng tổn thất",
+      "platformPack.guidedAudit.finding.certificate.title": "Đã chấp nhận chứng nhận hết hạn",
+      "platformPack.guidedAudit.finding.certificate.explanation": "Chứng nhận đã hết hạn trước ngày rà soát nhưng lô vẫn tiếp tục. Sổ đăng ký xác nhận đơn vị cấp được công nhận, nhưng sự công nhận không khôi phục hiệu lực của tài liệu hết hạn.",
+      "platformPack.guidedAudit.finding.documentation.title": "Điều tra chênh lệch không được ghi nhận",
+      "platformPack.guidedAudit.finding.documentation.explanation": "Giao dịch sửa chỉ ghi thêm đã bảo toàn lịch sử sổ cái, nhưng biên bản nhận hàng không ghi cách điều tra chênh lệch 900 kg.",
+      "platformPack.guidedAudit.finding.authorization.title": "Lần thử thu hồi ban đầu dùng vai trò không có thẩm quyền",
+      "platformPack.guidedAudit.finding.authorization.explanation": "Lần thử bị từ chối không vào sổ cái, nhưng là bằng chứng rằng kiểm soát thu hồi được kích hoạt trước khi bàn giao cho cơ quan quản lý.",
+      "platformPack.guidedAudit.decoy.correction": "Số lượng ban đầu vẫn còn trong lịch sử và cả nhà sản xuất lẫn đơn vị chế biến đã xác nhận bản sửa. Thay đổi bất thường này là giao dịch chỉ ghi thêm hợp lệ, không phải lỗi toàn vẹn sổ cái.",
+      "platformPack.guidedAudit.decoy.delay": "Chậm trễ là bất thường, nhưng bằng chứng hiện có không cho thấy tổn thất, nhiễm bẩn hay vi phạm chính sách. Hãy ghi đây là giới hạn bằng chứng thay vì nêu một phát hiện không được hỗ trợ.",
+      "platformPack.guidedAudit.feedback.unsupported": "Cặp nhóm phát hiện và đối tượng đã chọn không được bằng chứng trong phạm vi kiểm toán này hỗ trợ."
+    }
+  },
+  "manifest": {
+    "title": {
+      "localizationKey": "platformPack.guidedAudit.manifest.title"
+    },
+    "description": {
+      "localizationKey": "platformPack.guidedAudit.manifest.description"
+    },
+    "domain": "coffee_audit",
+    "educationalPurpose": {
+      "localizationKey": "platformPack.guidedAudit.manifest.purpose"
+    }
+  },
+  "competencyFrameworks": [
+    {
+      "schemaVersion": "1.0.0",
+      "frameworkId": "FRAMEWORK_GUIDED_AUDIT",
+      "version": "1.0.0",
+      "status": "draft",
+      "title": {
+        "localizationKey": "platformPack.guidedAudit.framework.title"
+      },
+      "competencies": [
+        {
+          "competencyId": "AUDIT_JUDGMENT",
+          "version": "1.0.0",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.competency.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.guidedAudit.competency.description"
+          },
+          "indicators": [
+            {
+              "indicatorId": "AUDIT_JUDGMENT.EVIDENCE",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.guidedAudit.indicator.evidence"
+              }
+            },
+            {
+              "indicatorId": "AUDIT_JUDGMENT.CLASSIFICATION",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.guidedAudit.indicator.classification"
+              }
+            },
+            {
+              "indicatorId": "AUDIT_JUDGMENT.CONCLUSION",
+              "version": "1.0.0",
+              "statement": {
+                "localizationKey": "platformPack.guidedAudit.indicator.conclusion"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rubrics": [
+    {
+      "rubricId": "RUBRIC_GUIDED_AUDIT",
+      "version": "1.0.0",
+      "title": {
+        "localizationKey": "platformPack.guidedAudit.rubric.title"
+      },
+      "levels": [
+        {
+          "value": 0,
+          "label": {
+            "localizationKey": "platformPack.guidedAudit.rubric.level0"
+          }
+        },
+        {
+          "value": 1,
+          "label": {
+            "localizationKey": "platformPack.guidedAudit.rubric.level1"
+          }
+        },
+        {
+          "value": 2,
+          "label": {
+            "localizationKey": "platformPack.guidedAudit.rubric.level2"
+          }
+        },
+        {
+          "value": 3,
+          "label": {
+            "localizationKey": "platformPack.guidedAudit.rubric.level3"
+          }
+        }
+      ],
+      "criteria": [
+        {
+          "criterionId": "CRITERION_AUDIT_FINDING",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.rubric.finding.title"
+          },
+          "description": {
+            "localizationKey": "platformPack.guidedAudit.rubric.finding.description"
+          },
+          "indicatorIds": [
+            "AUDIT_JUDGMENT.EVIDENCE",
+            "AUDIT_JUDGMENT.CLASSIFICATION",
+            "AUDIT_JUDGMENT.CONCLUSION"
+          ],
+          "evidenceRuleIds": [
+            "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_SUBMITTED",
+            "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_AMENDED",
+            "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidenceRules": [
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_SUBMITTED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "AUDIT_JUDGMENT.EVIDENCE",
+        "AUDIT_JUDGMENT.CLASSIFICATION"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "AUDIT_FINDING_SUBMITTED"
+    },
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_AMENDED",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "AUDIT_JUDGMENT.EVIDENCE",
+        "AUDIT_JUDGMENT.CLASSIFICATION"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "AUDIT_FINDING_AMENDED"
+    },
+    {
+      "evidenceRuleId": "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION",
+      "version": "1.0.0",
+      "indicatorIds": [
+        "AUDIT_JUDGMENT.CONCLUSION"
+      ],
+      "operator": "EVENT_OCCURRED",
+      "eventType": "AUDIT_CONCLUSION_SUBMITTED"
+    }
+  ],
+  "portraitAssets": [],
+  "scenarios": [
+    {
+      "scenarioId": "SCN_GUIDED_COFFEE_AUDIT",
+      "version": "1.0.0",
+      "status": "draft",
+      "title": {
+        "localizationKey": "platformPack.guidedAudit.scenario.title"
+      },
+      "supportedModes": [
+        "tutorial"
+      ],
+      "modeConfigurations": [
+        {
+          "mode": "tutorial",
+          "allowHints": true,
+          "allowRetry": true,
+          "allowBacktracking": true,
+          "feedbackTiming": "immediate",
+          "showScores": true,
+          "outcomeStrategy": "forced",
+          "seedPolicy": "supplied",
+          "allowCommunication": false,
+          "allowEvidenceRequests": true,
+          "outcomeModelId": "OUTCOME_GUIDED_AUDIT",
+          "forcedOutcomeCode": "FIXED_SOURCE_PROCESS"
+        }
+      ],
+      "outcomeModels": [
+        {
+          "outcomeModelId": "OUTCOME_GUIDED_AUDIT",
+          "distribution": "weighted-categorical",
+          "randomStreamId": "STREAM_GUIDED_AUDIT",
+          "outcomes": [
+            {
+              "outcomeCode": "FIXED_SOURCE_PROCESS",
+              "weight": 1
+            },
+            {
+              "outcomeCode": "UNUSED_ALTERNATIVE",
+              "weight": 1
+            }
+          ]
+        }
+      ],
+      "competencyTargets": [
+        {
+          "competencyId": "AUDIT_JUDGMENT",
+          "indicatorIds": [
+            "AUDIT_JUDGMENT.EVIDENCE",
+            "AUDIT_JUDGMENT.CLASSIFICATION",
+            "AUDIT_JUDGMENT.CONCLUSION"
+          ],
+          "targetType": "primary"
+        }
+      ],
+      "organizations": [
+        {
+          "organizationId": "ORG_AUDIT_TEAM",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.organization.audit"
+          }
+        },
+        {
+          "organizationId": "ORG_PRODUCER_COOP",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.organization.producer"
+          }
+        },
+        {
+          "organizationId": "ORG_COFFEE_PROCESSOR",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.organization.processor"
+          }
+        },
+        {
+          "organizationId": "ORG_CERTIFICATION_BODY",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.organization.certifier"
+          }
+        },
+        {
+          "organizationId": "ORG_REGULATOR",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.organization.regulator"
+          }
+        }
+      ],
+      "roles": [
+        {
+          "roleId": "PROCESS_AUDITOR",
+          "organizationId": "ORG_AUDIT_TEAM",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.role.auditor"
+          }
+        }
+      ],
+      "staffProfiles": [],
+      "assetTypes": [],
+      "initialState": {
+        "actualState": {},
+        "businessState": {},
+        "ledgerState": {},
+        "informationState": {}
+      },
+      "policies": [
+        {
+          "policyId": "POL_CERTIFICATE_ACCEPTANCE",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.policy.certificate"
+          },
+          "configuration": {
+            "requiresActiveDocument": true,
+            "requiresRecognizedIssuer": true,
+            "requiresAuthorizedIssuer": true
+          }
+        },
+        {
+          "policyId": "POL_QUANTITY_CORRECTION",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.policy.correction"
+          },
+          "configuration": {
+            "appendOnly": true,
+            "requiresInvestigationRecord": true,
+            "requiredEndorsers": [
+              "ORG_PRODUCER_COOP",
+              "ORG_COFFEE_PROCESSOR"
+            ]
+          }
+        },
+        {
+          "policyId": "POL_RECALL_AUTHORIZATION",
+          "policyType": "AUTHORIZATION",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.policy.recall"
+          },
+          "configuration": {
+            "authorizedRoleId": "REGULATORY_AUDITOR"
+          }
+        },
+        {
+          "policyId": "POL_CUSTODY_ENDORSEMENT",
+          "policyType": "BUSINESS_RULE",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.policy.custody"
+          },
+          "configuration": {
+            "requiresSender": true,
+            "requiresReceiver": true
+          }
+        }
+      ],
+      "evidenceItems": [
+        {
+          "evidenceId": "EVID_AUD_CERTIFICATE",
+          "evidenceType": "CERTIFICATE_RECORD",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.certificate"
+          },
+          "sourceOrganizationId": "ORG_CERTIFICATION_BODY",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "certificateId": "CERT_001",
+            "issuedAt": "2025-01-15T03:00:00.000Z",
+            "expiresAt": "2026-01-10T03:00:00.000Z",
+            "reviewedAt": "2026-01-15T03:00:00.000Z",
+            "lotDisposition": "CONTINUE"
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_CERTIFIER_REGISTRY",
+          "evidenceType": "ORGANIZATION_REGISTRY",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.registry"
+          },
+          "sourceOrganizationId": "ORG_REGULATOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "organizationId": "ORG_CERTIFICATION_BODY",
+            "recognized": true,
+            "authorizedActions": [
+              "ISSUE_CERTIFICATE"
+            ]
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_RECEIPT",
+          "evidenceType": "RECEIVING_REPORT",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.receipt"
+          },
+          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "declaredQuantityKg": 1000,
+            "receivedQuantityKg": 100,
+            "investigationReference": null
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_CORRECTION",
+          "evidenceType": "LEDGER_TRANSACTION",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.correction"
+          },
+          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "transactionId": "TX_CORRECTION_001",
+            "originalQuantityKg": 1000,
+            "correctedQuantityKg": 100,
+            "appendOnly": true,
+            "endorsers": [
+              "ORG_PRODUCER_COOP",
+              "ORG_COFFEE_PROCESSOR"
+            ]
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_RECALL_ATTEMPT",
+          "evidenceType": "ATTEMPT_AUDIT",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.recallAttempt"
+          },
+          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "attemptId": "ATTEMPT_RECALL_001",
+            "activeRoleId": "PROCESSING_MANAGER",
+            "accepted": false,
+            "ledgerMutation": false
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_RECALL_COMMIT",
+          "evidenceType": "LEDGER_TRANSACTION",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.recallCommit"
+          },
+          "sourceOrganizationId": "ORG_REGULATOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "transactionId": "TX_RECALL_001",
+            "activeRoleId": "REGULATORY_AUDITOR",
+            "accepted": true,
+            "scope": [
+              "BAT_PACKAGED_COFFEE_001"
+            ]
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_CUSTODY",
+          "evidenceType": "ENDORSEMENT_SUMMARY",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.custody"
+          },
+          "sourceOrganizationId": "ORG_PRODUCER_COOP",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "transactionId": "TX_CUSTODY_001",
+            "senderEndorsed": true,
+            "receiverEndorsed": true,
+            "stateVersionValid": true
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_TRANSIT",
+          "evidenceType": "PROCESS_NOTE",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.evidence.transit"
+          },
+          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "content": {
+            "delayHours": 3,
+            "lossConfirmed": false,
+            "contaminationConfirmed": false,
+            "policyBreachConfirmed": false
+          }
+        }
+      ],
+      "instructorIncidents": [],
+      "counterfactualComparisonDimensions": [],
+      "counterfactualConditions": [],
+      "entryNodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+      "nodes": [
+        {
+          "nodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+          "nodeType": "BRIEFING",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.node.briefing.title"
+          },
+          "body": {
+            "localizationKey": "platformPack.guidedAudit.node.briefing.body"
+          },
+          "transitions": [
+            {
+              "transitionId": "TRANSITION_GUIDED_AUDIT_COMPLETE",
+              "toNodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+              "when": {
+                "kind": "ALWAYS"
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+          "nodeType": "COMPLETION",
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.node.complete.title"
+          },
+          "outcomeCode": "GUIDED_AUDIT_COMPLETED",
+          "transitions": []
+        }
+      ],
+      "rubricIds": [
+        "RUBRIC_GUIDED_AUDIT"
+      ],
+      "evidenceRuleIds": [
+        "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_SUBMITTED",
+        "EVIDENCE_RULE_GUIDED_AUDIT_FINDING_AMENDED",
+        "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
+      ],
+      "hostedRuntime": {
+        "runtimeId": "tracechain-audit-v1",
+        "auditCaseId": "AUDIT_COFFEE_CONTROLS_001"
+      },
+      "auditCase": {
+        "schemaVersion": "1.0.0",
+        "auditCaseId": "AUDIT_COFFEE_CONTROLS_001",
+        "version": "1.0.0",
+        "sourceProcessId": "COFFEE_PROCESS_COMPLETED_001",
+        "sourceProcessVersion": "1.0.0",
+        "auditObjective": {
+          "localizationKey": "platformPack.guidedAudit.objective"
+        },
+        "scope": {
+          "title": {
+            "localizationKey": "platformPack.guidedAudit.scope"
+          },
+          "periodStart": "2026-01-15T03:00:00.000Z",
+          "periodEnd": "2026-01-22T03:00:00.000Z",
+          "organizationIds": [
+            "ORG_PRODUCER_COOP",
+            "ORG_COFFEE_PROCESSOR",
+            "ORG_CERTIFICATION_BODY",
+            "ORG_REGULATOR"
+          ],
+          "entityIds": [
+            "ENTITY_LOT_CERTIFICATE",
+            "ENTITY_QUANTITY_RECEIPT",
+            "ENTITY_QUANTITY_CORRECTION",
+            "ENTITY_RECALL_PROCESS",
+            "ENTITY_CUSTODY_TRANSFER",
+            "ENTITY_TRANSIT_DELAY"
+          ]
+        },
+        "categories": [
+          {
+            "choiceId": "CATEGORY_CERTIFICATE_CONTROL",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.category.certificate"
+            }
+          },
+          {
+            "choiceId": "CATEGORY_DOCUMENTATION_CONTROL",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.category.documentation"
+            }
+          },
+          {
+            "choiceId": "CATEGORY_AUTHORIZATION_CONTROL",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.category.authorization"
+            }
+          },
+          {
+            "choiceId": "CATEGORY_LEDGER_INTEGRITY",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.category.ledger"
+            }
+          },
+          {
+            "choiceId": "CATEGORY_BUSINESS_ANOMALY",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.category.anomaly"
+            }
+          }
+        ],
+        "entities": [
+          {
+            "choiceId": "ENTITY_LOT_CERTIFICATE",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.certificate"
+            }
+          },
+          {
+            "choiceId": "ENTITY_QUANTITY_RECEIPT",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.receipt"
+            }
+          },
+          {
+            "choiceId": "ENTITY_QUANTITY_CORRECTION",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.correction"
+            }
+          },
+          {
+            "choiceId": "ENTITY_RECALL_PROCESS",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.recall"
+            }
+          },
+          {
+            "choiceId": "ENTITY_CUSTODY_TRANSFER",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.custody"
+            }
+          },
+          {
+            "choiceId": "ENTITY_TRANSIT_DELAY",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.entity.delay"
+            }
+          }
+        ],
+        "rootCauses": [
+          {
+            "choiceId": "ROOT_EXPIRY_REVIEW",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.root.expiryReview"
+            }
+          },
+          {
+            "choiceId": "ROOT_DOCUMENTATION_GAP",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.root.documentationGap"
+            }
+          },
+          {
+            "choiceId": "ROOT_ROLE_CONTROL",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.root.roleControl"
+            }
+          },
+          {
+            "choiceId": "ROOT_NO_EXCEPTION",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.root.noException"
+            }
+          }
+        ],
+        "recommendations": [
+          {
+            "choiceId": "REC_HOLD_FOR_VALIDATION",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.recommend.hold"
+            }
+          },
+          {
+            "choiceId": "REC_REQUIRE_INVESTIGATION",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.recommend.document"
+            }
+          },
+          {
+            "choiceId": "REC_REQUIRE_ROLE_HANDOFF",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.recommend.handoff"
+            }
+          },
+          {
+            "choiceId": "REC_NO_FINDING",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.recommend.none"
+            }
+          }
+        ],
+        "conclusionCategories": [
+          {
+            "conclusionCategory": "EFFECTIVE",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.conclusion.effective"
+            }
+          },
+          {
+            "conclusionCategory": "QUALIFIED",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.conclusion.qualified"
+            }
+          },
+          {
+            "conclusionCategory": "ADVERSE",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.conclusion.adverse"
+            }
+          },
+          {
+            "conclusionCategory": "INSUFFICIENT_EVIDENCE",
+            "label": {
+              "localizationKey": "platformPack.guidedAudit.conclusion.insufficient"
+            }
+          }
+        ],
+        "expectedConclusionCategory": "QUALIFIED",
+        "sourceRecords": [
+          {
+            "sourceRecordId": "DOC_CERTIFICATE_001",
+            "recordKind": "SOURCE_DOCUMENT",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.certificate"
+            },
+            "occurredAt": "2026-01-15T03:00:00.000Z",
+            "organizationId": "ORG_CERTIFICATION_BODY",
+            "entityIds": [
+              "ENTITY_LOT_CERTIFICATE"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_CERTIFICATE",
+              "EVID_AUD_CERTIFIER_REGISTRY"
+            ],
+            "policyIds": [
+              "POL_CERTIFICATE_ACCEPTANCE"
+            ],
+            "details": {
+              "documentId": "CERT_001",
+              "expired": true,
+              "lotContinued": true
+            }
+          },
+          {
+            "sourceRecordId": "TX_CUSTODY_001",
+            "recordKind": "LEDGER_TRANSACTION",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.custody"
+            },
+            "occurredAt": "2026-01-16T03:00:00.000Z",
+            "organizationId": "ORG_PRODUCER_COOP",
+            "entityIds": [
+              "ENTITY_CUSTODY_TRANSFER"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_CUSTODY"
+            ],
+            "policyIds": [
+              "POL_CUSTODY_ENDORSEMENT"
+            ],
+            "details": {
+              "transactionType": "TRANSFER_CUSTODY",
+              "senderEndorsed": true,
+              "receiverEndorsed": true
+            }
+          },
+          {
+            "sourceRecordId": "DOC_RECEIPT_001",
+            "recordKind": "SOURCE_DOCUMENT",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.receipt"
+            },
+            "occurredAt": "2026-01-17T03:00:00.000Z",
+            "organizationId": "ORG_COFFEE_PROCESSOR",
+            "entityIds": [
+              "ENTITY_QUANTITY_RECEIPT"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_RECEIPT"
+            ],
+            "policyIds": [
+              "POL_QUANTITY_CORRECTION"
+            ],
+            "details": {
+              "declaredQuantityKg": 1000,
+              "receivedQuantityKg": 100,
+              "investigationReference": null
+            }
+          },
+          {
+            "sourceRecordId": "TX_CORRECTION_001",
+            "recordKind": "LEDGER_TRANSACTION",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.correction"
+            },
+            "occurredAt": "2026-01-17T04:00:00.000Z",
+            "organizationId": "ORG_COFFEE_PROCESSOR",
+            "entityIds": [
+              "ENTITY_QUANTITY_CORRECTION"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_CORRECTION"
+            ],
+            "policyIds": [
+              "POL_QUANTITY_CORRECTION"
+            ],
+            "details": {
+              "transactionType": "CORRECT_RECORD",
+              "appendOnly": true,
+              "previousValueKg": 1000,
+              "correctedValueKg": 100
+            }
+          },
+          {
+            "sourceRecordId": "ATTEMPT_RECALL_001",
+            "recordKind": "ATTEMPT_AUDIT",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.recallAttempt"
+            },
+            "occurredAt": "2026-01-21T03:00:00.000Z",
+            "organizationId": "ORG_COFFEE_PROCESSOR",
+            "entityIds": [
+              "ENTITY_RECALL_PROCESS"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_RECALL_ATTEMPT"
+            ],
+            "policyIds": [
+              "POL_RECALL_AUTHORIZATION"
+            ],
+            "details": {
+              "attemptType": "INITIATE_RECALL",
+              "accepted": false,
+              "ledgerMutation": false,
+              "failureRuleId": "RULE_ROLE_NOT_AUTHORIZED"
+            }
+          },
+          {
+            "sourceRecordId": "TX_RECALL_001",
+            "recordKind": "LEDGER_TRANSACTION",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.recallCommit"
+            },
+            "occurredAt": "2026-01-21T04:00:00.000Z",
+            "organizationId": "ORG_REGULATOR",
+            "entityIds": [
+              "ENTITY_RECALL_PROCESS"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_RECALL_COMMIT"
+            ],
+            "policyIds": [
+              "POL_RECALL_AUTHORIZATION"
+            ],
+            "details": {
+              "transactionType": "INITIATE_RECALL",
+              "accepted": true,
+              "roleId": "REGULATORY_AUDITOR"
+            }
+          },
+          {
+            "sourceRecordId": "NOTE_TRANSIT_DELAY_001",
+            "recordKind": "PROCESS_EVENT",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.record.delay"
+            },
+            "occurredAt": "2026-01-16T09:00:00.000Z",
+            "organizationId": "ORG_COFFEE_PROCESSOR",
+            "entityIds": [
+              "ENTITY_TRANSIT_DELAY"
+            ],
+            "evidenceIds": [
+              "EVID_AUD_TRANSIT"
+            ],
+            "policyIds": [],
+            "details": {
+              "delayHours": 3,
+              "confirmedLoss": false
+            }
+          }
+        ],
+        "evidenceItemIds": [
+          "EVID_AUD_CERTIFICATE",
+          "EVID_AUD_CERTIFIER_REGISTRY",
+          "EVID_AUD_RECEIPT",
+          "EVID_AUD_CORRECTION",
+          "EVID_AUD_RECALL_ATTEMPT",
+          "EVID_AUD_RECALL_COMMIT",
+          "EVID_AUD_CUSTODY",
+          "EVID_AUD_TRANSIT"
+        ],
+        "policyIds": [
+          "POL_CERTIFICATE_ACCEPTANCE",
+          "POL_QUANTITY_CORRECTION",
+          "POL_RECALL_AUTHORIZATION",
+          "POL_CUSTODY_ENDORSEMENT"
+        ],
+        "findingDefinitions": [
+          {
+            "findingDefinitionId": "FINDING_EXPIRED_CERTIFICATE",
+            "categoryId": "CATEGORY_CERTIFICATE_CONTROL",
+            "entityId": "ENTITY_LOT_CERTIFICATE",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.finding.certificate.title"
+            },
+            "explanation": {
+              "localizationKey": "platformPack.guidedAudit.finding.certificate.explanation"
+            },
+            "requiredEvidenceIds": [
+              "EVID_AUD_CERTIFICATE",
+              "EVID_AUD_CERTIFIER_REGISTRY"
+            ],
+            "applicablePolicyIds": [
+              "POL_CERTIFICATE_ACCEPTANCE"
+            ],
+            "expectedSeverity": "HIGH",
+            "expectedMateriality": "MATERIAL",
+            "acceptableRootCauseCodes": [
+              "ROOT_EXPIRY_REVIEW"
+            ],
+            "acceptableRecommendationCodes": [
+              "REC_HOLD_FOR_VALIDATION"
+            ],
+            "competencyIndicatorIds": [
+              "AUDIT_JUDGMENT.EVIDENCE",
+              "AUDIT_JUDGMENT.CLASSIFICATION"
+            ]
+          },
+          {
+            "findingDefinitionId": "FINDING_MISSING_INVESTIGATION",
+            "categoryId": "CATEGORY_DOCUMENTATION_CONTROL",
+            "entityId": "ENTITY_QUANTITY_RECEIPT",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.finding.documentation.title"
+            },
+            "explanation": {
+              "localizationKey": "platformPack.guidedAudit.finding.documentation.explanation"
+            },
+            "requiredEvidenceIds": [
+              "EVID_AUD_RECEIPT",
+              "EVID_AUD_CORRECTION"
+            ],
+            "applicablePolicyIds": [
+              "POL_QUANTITY_CORRECTION"
+            ],
+            "expectedSeverity": "MODERATE",
+            "expectedMateriality": "MATERIAL",
+            "acceptableRootCauseCodes": [
+              "ROOT_DOCUMENTATION_GAP"
+            ],
+            "acceptableRecommendationCodes": [
+              "REC_REQUIRE_INVESTIGATION"
+            ],
+            "competencyIndicatorIds": [
+              "AUDIT_JUDGMENT.EVIDENCE",
+              "AUDIT_JUDGMENT.CLASSIFICATION"
+            ]
+          },
+          {
+            "findingDefinitionId": "FINDING_UNAUTHORIZED_RECALL_ATTEMPT",
+            "categoryId": "CATEGORY_AUTHORIZATION_CONTROL",
+            "entityId": "ENTITY_RECALL_PROCESS",
+            "title": {
+              "localizationKey": "platformPack.guidedAudit.finding.authorization.title"
+            },
+            "explanation": {
+              "localizationKey": "platformPack.guidedAudit.finding.authorization.explanation"
+            },
+            "requiredEvidenceIds": [
+              "EVID_AUD_RECALL_ATTEMPT",
+              "EVID_AUD_RECALL_COMMIT"
+            ],
+            "applicablePolicyIds": [
+              "POL_RECALL_AUTHORIZATION"
+            ],
+            "expectedSeverity": "MODERATE",
+            "expectedMateriality": "NON_MATERIAL",
+            "acceptableRootCauseCodes": [
+              "ROOT_ROLE_CONTROL"
+            ],
+            "acceptableRecommendationCodes": [
+              "REC_REQUIRE_ROLE_HANDOFF"
+            ],
+            "competencyIndicatorIds": [
+              "AUDIT_JUDGMENT.EVIDENCE",
+              "AUDIT_JUDGMENT.CLASSIFICATION"
+            ]
+          }
+        ],
+        "decoyDefinitions": [
+          {
+            "decoyDefinitionId": "DECOY_VALID_APPEND_ONLY_CORRECTION",
+            "categoryId": "CATEGORY_LEDGER_INTEGRITY",
+            "entityId": "ENTITY_QUANTITY_CORRECTION",
+            "explanation": {
+              "localizationKey": "platformPack.guidedAudit.decoy.correction"
+            }
+          },
+          {
+            "decoyDefinitionId": "DECOY_UNSUPPORTED_TRANSIT_DELAY",
+            "categoryId": "CATEGORY_BUSINESS_ANOMALY",
+            "entityId": "ENTITY_TRANSIT_DELAY",
+            "explanation": {
+              "localizationKey": "platformPack.guidedAudit.decoy.delay"
+            }
+          }
+        ],
+        "scoringBlueprint": {
+          "scoringBlueprintId": "GUIDED_AUDIT_100",
+          "version": "1.0.0",
+          "maximumScore": 100,
+          "passScore": 70,
+          "items": [
+            {
+              "scorableItemId": "AUD_DETECTION",
+              "maximumScore": 25
+            },
+            {
+              "scorableItemId": "AUD_FALSE_POSITIVE_AVOIDANCE",
+              "maximumScore": 15
+            },
+            {
+              "scorableItemId": "AUD_EVIDENCE",
+              "maximumScore": 15
+            },
+            {
+              "scorableItemId": "AUD_POLICY",
+              "maximumScore": 10
+            },
+            {
+              "scorableItemId": "AUD_CLASSIFICATION",
+              "maximumScore": 10
+            },
+            {
+              "scorableItemId": "AUD_RECOMMENDATION",
+              "maximumScore": 10
+            },
+            {
+              "scorableItemId": "AUD_CONCLUSION",
+              "maximumScore": 15
+            }
+          ]
+        },
+        "supportProfiles": [
+          "GUIDED"
+        ],
+        "completionDefinition": {
+          "maximumSubmittedFindings": 5,
+          "conclusionRequired": true
+        }
+      }
+    }
+  ],
+  "assetHashes": {}
+}

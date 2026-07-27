@@ -281,18 +281,35 @@ export function PersistentResult({
   );
 }
 
-export type AuditFindingSeverity = "LOW" | "MEDIUM" | "HIGH";
+export type AuditFindingSeverity =
+  | "LOW"
+  | "MODERATE"
+  | "HIGH"
+  | "CRITICAL";
 
 export interface AuditFindingDraft {
+  readonly findingId: string;
+  readonly categoryId: string;
+  readonly entityId: string;
   readonly title: string;
   readonly observation: string;
   readonly severity: AuditFindingSeverity;
+  readonly materiality: "NON_MATERIAL" | "MATERIAL";
+  readonly confidence: number;
   readonly evidenceIds: readonly string[];
+  readonly policyIds: readonly string[];
+  readonly rootCauseCode: string;
+  readonly recommendationCode: string;
   readonly recommendation: string;
 }
 
 export interface AuditEvidenceOption {
   readonly evidenceId: string;
+  readonly label: string;
+}
+
+export interface AuditChoiceOption {
+  readonly choiceId: string;
   readonly label: string;
 }
 
@@ -306,10 +323,17 @@ export function AuditFindingBuilder({
   description,
   labels,
   severityOptions,
+  materialityOptions,
+  categoryOptions,
+  entityOptions,
   evidenceOptions,
+  policyOptions,
+  rootCauseOptions,
+  recommendationOptions,
   draft,
   disabled = false,
   onChange,
+  onSaveDraft,
   onSubmit,
 }: {
   readonly eyebrow: ReactNode;
@@ -317,19 +341,36 @@ export function AuditFindingBuilder({
   readonly description: ReactNode;
   readonly labels: {
     readonly findingTitle: string;
+    readonly category: string;
+    readonly entity: string;
     readonly observation: string;
     readonly severity: string;
+    readonly materiality: string;
+    readonly confidence: string;
     readonly evidence: string;
+    readonly policy: string;
+    readonly rootCause: string;
+    readonly recommendationChoice: string;
     readonly recommendation: string;
+    readonly saveDraft?: string;
     readonly submit: string;
   };
   readonly severityOptions: Readonly<
     Record<AuditFindingSeverity, string>
   >;
+  readonly materialityOptions: Readonly<
+    Record<AuditFindingDraft["materiality"], string>
+  >;
+  readonly categoryOptions: readonly AuditChoiceOption[];
+  readonly entityOptions: readonly AuditChoiceOption[];
   readonly evidenceOptions: readonly AuditEvidenceOption[];
+  readonly policyOptions: readonly AuditEvidenceOption[];
+  readonly rootCauseOptions: readonly AuditChoiceOption[];
+  readonly recommendationOptions: readonly AuditChoiceOption[];
   readonly draft: AuditFindingDraft;
   readonly disabled?: boolean;
   readonly onChange: (draft: AuditFindingDraft) => void;
+  readonly onSaveDraft?: () => void;
   readonly onSubmit: () => void;
 }): ReactNode {
   const headingId = useId();
@@ -345,6 +386,12 @@ export function AuditFindingBuilder({
       : draft.evidenceIds.filter((candidate) => candidate !== evidenceId);
     onChange({ ...draft, evidenceIds });
   };
+  const setPolicy = (policyId: string, checked: boolean): void => {
+    const policyIds = checked
+      ? [...draft.policyIds, policyId]
+      : draft.policyIds.filter((candidate) => candidate !== policyId);
+    onChange({ ...draft, policyIds });
+  };
 
   return (
     <section className="audit-finding-builder" aria-labelledby={headingId}>
@@ -354,6 +401,46 @@ export function AuditFindingBuilder({
         <p>{description}</p>
       </header>
       <form className="audit-finding-builder__form stack" onSubmit={submit}>
+        <div className="audit-finding-builder__pair">
+          <label className="field">
+            <span>{labels.category}</span>
+            <select
+              value={draft.categoryId}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  categoryId: event.target.value,
+                })
+              }
+            >
+              {categoryOptions.map((option) => (
+                <option key={option.choiceId} value={option.choiceId}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{labels.entity}</span>
+            <select
+              value={draft.entityId}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  entityId: event.target.value,
+                })
+              }
+            >
+              {entityOptions.map((option) => (
+                <option key={option.choiceId} value={option.choiceId}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <label className="field">
           <span>{labels.findingTitle}</span>
           <input
@@ -398,6 +485,48 @@ export function AuditFindingBuilder({
             ))}
           </div>
         </fieldset>
+        <div className="audit-finding-builder__pair">
+          <label className="field">
+            <span>{labels.materiality}</span>
+            <select
+              value={draft.materiality}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  materiality: event.target
+                    .value as AuditFindingDraft["materiality"],
+                })
+              }
+            >
+              {(
+                Object.entries(materialityOptions) as Array<
+                  [AuditFindingDraft["materiality"], string]
+                >
+              ).map(([materiality, label]) => (
+                <option key={materiality} value={materiality}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{labels.confidence}</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={draft.confidence}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  confidence: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+        </div>
         <fieldset className="fieldset" disabled={disabled}>
           <legend>{labels.evidence}</legend>
           <div className="audit-finding-builder__evidence">
@@ -415,6 +544,63 @@ export function AuditFindingBuilder({
             ))}
           </div>
         </fieldset>
+        <fieldset className="fieldset" disabled={disabled}>
+          <legend>{labels.policy}</legend>
+          <div className="audit-finding-builder__evidence">
+            {policyOptions.map((option) => (
+              <label key={option.evidenceId} className="choice">
+                <input
+                  type="checkbox"
+                  checked={draft.policyIds.includes(option.evidenceId)}
+                  onChange={(event) =>
+                    setPolicy(option.evidenceId, event.target.checked)
+                  }
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div className="audit-finding-builder__pair">
+          <label className="field">
+            <span>{labels.rootCause}</span>
+            <select
+              value={draft.rootCauseCode}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  rootCauseCode: event.target.value,
+                })
+              }
+            >
+              {rootCauseOptions.map((option) => (
+                <option key={option.choiceId} value={option.choiceId}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{labels.recommendationChoice}</span>
+            <select
+              value={draft.recommendationCode}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  recommendationCode: event.target.value,
+                })
+              }
+            >
+              {recommendationOptions.map((option) => (
+                <option key={option.choiceId} value={option.choiceId}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <label className="field">
           <span>{labels.recommendation}</span>
           <textarea
@@ -427,18 +613,33 @@ export function AuditFindingBuilder({
             }
           />
         </label>
-        <button
-          type="submit"
-          className="button button--primary"
-          disabled={
-            disabled ||
-            draft.title.trim().length === 0 ||
-            draft.observation.trim().length === 0 ||
-            draft.evidenceIds.length === 0
-          }
-        >
-          {labels.submit}
-        </button>
+        <div className="audit-finding-builder__actions">
+          {onSaveDraft === undefined ||
+          labels.saveDraft === undefined ? null : (
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={disabled}
+              onClick={onSaveDraft}
+            >
+              {labels.saveDraft}
+            </button>
+          )}
+          <button
+            type="submit"
+            className="button button--primary"
+            disabled={
+              disabled ||
+              draft.title.trim().length === 0 ||
+              draft.observation.trim().length === 0 ||
+              draft.evidenceIds.length === 0 ||
+              draft.policyIds.length === 0 ||
+              draft.recommendation.trim().length === 0
+            }
+          >
+            {labels.submit}
+          </button>
+        </div>
       </form>
     </section>
   );

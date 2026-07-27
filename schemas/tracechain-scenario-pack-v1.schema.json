@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.6",
+  "title": "TraceChain Scenario Pack V1.7",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -21,7 +21,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.6.0" },
+    "schemaVersion": { "const": "1.7.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -1083,23 +1083,377 @@
       }
     },
     "hostedRuntime": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "runtimeId",
+            "domainScenarioId",
+            "domainScenarioVersion",
+            "entryStageId",
+            "actionBindings"
+          ],
+          "properties": {
+            "runtimeId": { "const": "tracechain-coffee-v2" },
+            "domainScenarioId": { "$ref": "#/$defs/identifier" },
+            "domainScenarioVersion": { "$ref": "#/$defs/version" },
+            "entryStageId": { "$ref": "#/$defs/identifier" },
+            "actionBindings": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/hostedRuntimeActionBinding" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runtimeId", "auditCaseId"],
+          "properties": {
+            "runtimeId": { "const": "tracechain-audit-v1" },
+            "auditCaseId": { "$ref": "#/$defs/identifier" }
+          }
+        }
+      ]
+    },
+    "auditChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choiceId", "label"],
+      "properties": {
+        "choiceId": { "$ref": "#/$defs/identifier" },
+        "label": { "$ref": "#/$defs/localizedText" }
+      }
+    },
+    "auditSourceRecord": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "runtimeId",
-        "domainScenarioId",
-        "domainScenarioVersion",
-        "entryStageId",
-        "actionBindings"
+        "sourceRecordId",
+        "recordKind",
+        "title",
+        "occurredAt",
+        "organizationId",
+        "entityIds",
+        "evidenceIds",
+        "policyIds",
+        "details"
       ],
       "properties": {
-        "runtimeId": { "const": "tracechain-coffee-v2" },
-        "domainScenarioId": { "$ref": "#/$defs/identifier" },
-        "domainScenarioVersion": { "$ref": "#/$defs/version" },
-        "entryStageId": { "$ref": "#/$defs/identifier" },
-        "actionBindings": {
+        "sourceRecordId": { "$ref": "#/$defs/identifier" },
+        "recordKind": {
+          "enum": [
+            "LEDGER_TRANSACTION",
+            "SOURCE_DOCUMENT",
+            "ATTEMPT_AUDIT",
+            "PROCESS_EVENT"
+          ]
+        },
+        "title": { "$ref": "#/$defs/localizedText" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "organizationId": { "$ref": "#/$defs/identifier" },
+        "entityIds": {
           "type": "array",
-          "items": { "$ref": "#/$defs/hostedRuntimeActionBinding" }
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "policyIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "details": { "type": "object" }
+      }
+    },
+    "auditFindingDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findingDefinitionId",
+        "categoryId",
+        "entityId",
+        "title",
+        "explanation",
+        "requiredEvidenceIds",
+        "applicablePolicyIds",
+        "expectedSeverity",
+        "expectedMateriality",
+        "acceptableRootCauseCodes",
+        "acceptableRecommendationCodes",
+        "competencyIndicatorIds"
+      ],
+      "properties": {
+        "findingDefinitionId": { "$ref": "#/$defs/identifier" },
+        "categoryId": { "$ref": "#/$defs/identifier" },
+        "entityId": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/localizedText" },
+        "explanation": { "$ref": "#/$defs/localizedText" },
+        "requiredEvidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "applicablePolicyIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "expectedSeverity": {
+          "enum": ["LOW", "MODERATE", "HIGH", "CRITICAL"]
+        },
+        "expectedMateriality": {
+          "enum": ["NON_MATERIAL", "MATERIAL"]
+        },
+        "acceptableRootCauseCodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "acceptableRecommendationCodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "competencyIndicatorIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "auditDecoyDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decoyDefinitionId",
+        "categoryId",
+        "entityId",
+        "explanation"
+      ],
+      "properties": {
+        "decoyDefinitionId": { "$ref": "#/$defs/identifier" },
+        "categoryId": { "$ref": "#/$defs/identifier" },
+        "entityId": { "$ref": "#/$defs/identifier" },
+        "explanation": { "$ref": "#/$defs/localizedText" }
+      }
+    },
+    "auditScoringBlueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scoringBlueprintId",
+        "version",
+        "maximumScore",
+        "passScore",
+        "items"
+      ],
+      "properties": {
+        "scoringBlueprintId": { "$ref": "#/$defs/identifier" },
+        "version": { "$ref": "#/$defs/version" },
+        "maximumScore": { "const": 100 },
+        "passScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "items": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scorableItemId", "maximumScore"],
+            "properties": {
+              "scorableItemId": {
+                "enum": [
+                  "AUD_DETECTION",
+                  "AUD_FALSE_POSITIVE_AVOIDANCE",
+                  "AUD_EVIDENCE",
+                  "AUD_POLICY",
+                  "AUD_CLASSIFICATION",
+                  "AUD_RECOMMENDATION",
+                  "AUD_CONCLUSION"
+                ]
+              },
+              "maximumScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "auditCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "auditCaseId",
+        "version",
+        "sourceProcessId",
+        "sourceProcessVersion",
+        "auditObjective",
+        "scope",
+        "categories",
+        "entities",
+        "rootCauses",
+        "recommendations",
+        "conclusionCategories",
+        "expectedConclusionCategory",
+        "sourceRecords",
+        "evidenceItemIds",
+        "policyIds",
+        "findingDefinitions",
+        "decoyDefinitions",
+        "scoringBlueprint",
+        "supportProfiles",
+        "completionDefinition"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "auditCaseId": { "$ref": "#/$defs/identifier" },
+        "version": { "$ref": "#/$defs/version" },
+        "sourceProcessId": { "$ref": "#/$defs/identifier" },
+        "sourceProcessVersion": { "$ref": "#/$defs/version" },
+        "auditObjective": { "$ref": "#/$defs/localizedText" },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "periodStart",
+            "periodEnd",
+            "organizationIds",
+            "entityIds"
+          ],
+          "properties": {
+            "title": { "$ref": "#/$defs/localizedText" },
+            "periodStart": { "type": "string", "format": "date-time" },
+            "periodEnd": { "type": "string", "format": "date-time" },
+            "organizationIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "entityIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" }
+            }
+          }
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditChoice" }
+        },
+        "entities": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditChoice" }
+        },
+        "rootCauses": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditChoice" }
+        },
+        "recommendations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditChoice" }
+        },
+        "conclusionCategories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["conclusionCategory", "label"],
+            "properties": {
+              "conclusionCategory": {
+                "enum": [
+                  "EFFECTIVE",
+                  "QUALIFIED",
+                  "ADVERSE",
+                  "INSUFFICIENT_EVIDENCE"
+                ]
+              },
+              "label": { "$ref": "#/$defs/localizedText" }
+            }
+          }
+        },
+        "expectedConclusionCategory": {
+          "enum": [
+            "EFFECTIVE",
+            "QUALIFIED",
+            "ADVERSE",
+            "INSUFFICIENT_EVIDENCE"
+          ]
+        },
+        "sourceRecords": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditSourceRecord" }
+        },
+        "evidenceItemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "policyIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "findingDefinitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditFindingDefinition" }
+        },
+        "decoyDefinitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditDecoyDefinition" }
+        },
+        "scoringBlueprint": {
+          "$ref": "#/$defs/auditScoringBlueprint"
+        },
+        "supportProfiles": {
+          "const": ["GUIDED"]
+        },
+        "completionDefinition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maximumSubmittedFindings",
+            "conclusionRequired"
+          ],
+          "properties": {
+            "maximumSubmittedFindings": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "conclusionRequired": { "const": true }
+          }
         }
       }
     },
@@ -1338,7 +1692,8 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/identifier" }
         },
-        "hostedRuntime": { "$ref": "#/$defs/hostedRuntime" }
+        "hostedRuntime": { "$ref": "#/$defs/hostedRuntime" },
+        "auditCase": { "$ref": "#/$defs/auditCase" }
       }
     }
   }
