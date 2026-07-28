@@ -1,6 +1,9 @@
 import type { LocalizedText } from "./content";
 import type { JsonObject } from "./json";
 import type { LearnerRunLocalizedTextV1 } from "./run-events";
+import type {
+  ScenarioEvidenceLearnerMetadataV1,
+} from "./scenario-pack";
 
 export type AuditFindingSeverityV1 =
   | "LOW"
@@ -351,6 +354,8 @@ export interface AuditLearnerProjectionV1 {
     readonly title: LearnerRunLocalizedTextV1;
     readonly evidenceType: string;
     readonly sourceOrganizationId: string;
+    readonly learnerMetadata:
+      ScenarioEvidenceLearnerMetadataV1;
     readonly content: JsonObject;
     readonly inspected: boolean;
     readonly bookmarked: boolean;

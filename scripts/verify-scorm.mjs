@@ -1046,7 +1046,7 @@ function verifyPackage(zipPath) {
       .digest("hex");
     check(
       "Audit pack is the exact immutable configured content",
-      auditPack.schemaVersion === "1.9.0" &&
+      auditPack.schemaVersion === "1.10.0" &&
         auditPack.status === "published" &&
         auditPack.packId === configuration.content?.packId &&
         auditPack.version === configuration.content?.packVersion &&

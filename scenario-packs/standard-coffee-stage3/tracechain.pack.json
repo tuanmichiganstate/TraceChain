@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.9.0",
+  "schemaVersion": "1.10.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
   "version": "1.11.0",
   "status": "draft",
@@ -1055,12 +1055,22 @@
           "staffProfileId": "STAFF_PRODUCER_MANAGER",
           "roleId": "PRODUCER_MANAGER",
           "organizationId": "ORG_PRODUCER_COOP",
-          "displayName": { "localizationKey": "staff.producerManager.name" },
-          "roleTitle": { "localizationKey": "staff.producerManager.role" },
+          "displayName": {
+            "localizationKey": "staff.producerManager.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.producerManager.role"
+          },
           "portraitAssetId": "PORTRAIT_PRODUCER_MANAGER",
-          "portraitAlt": { "localizationKey": "staff.producerManager.alt" },
-          "shortProfile": { "localizationKey": "staff.producerManager.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.producerManager.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.producerManager.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.producerManager.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.producerManager.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1068,12 +1078,22 @@
           "staffProfileId": "STAFF_CERTIFICATION_OFFICER",
           "roleId": "CERTIFICATION_OFFICER",
           "organizationId": "ORG_CERTIFICATION_BODY",
-          "displayName": { "localizationKey": "staff.certificationOfficer.name" },
-          "roleTitle": { "localizationKey": "staff.certificationOfficer.role" },
+          "displayName": {
+            "localizationKey": "staff.certificationOfficer.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.certificationOfficer.role"
+          },
           "portraitAssetId": "PORTRAIT_CERTIFICATION_OFFICER",
-          "portraitAlt": { "localizationKey": "staff.certificationOfficer.alt" },
-          "shortProfile": { "localizationKey": "staff.certificationOfficer.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.certificationOfficer.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.certificationOfficer.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.certificationOfficer.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.certificationOfficer.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1081,12 +1101,22 @@
           "staffProfileId": "STAFF_LOGISTICS_COORDINATOR",
           "roleId": "LOGISTICS_COORDINATOR",
           "organizationId": "ORG_LOGISTICS_PROVIDER",
-          "displayName": { "localizationKey": "staff.logisticsCoordinator.name" },
-          "roleTitle": { "localizationKey": "staff.logisticsCoordinator.role" },
+          "displayName": {
+            "localizationKey": "staff.logisticsCoordinator.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.logisticsCoordinator.role"
+          },
           "portraitAssetId": "PORTRAIT_LOGISTICS_COORDINATOR",
-          "portraitAlt": { "localizationKey": "staff.logisticsCoordinator.alt" },
-          "shortProfile": { "localizationKey": "staff.logisticsCoordinator.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.logisticsCoordinator.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.logisticsCoordinator.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.logisticsCoordinator.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.logisticsCoordinator.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1094,12 +1124,22 @@
           "staffProfileId": "STAFF_PROCESSING_MANAGER",
           "roleId": "PROCESSING_MANAGER",
           "organizationId": "ORG_COFFEE_PROCESSOR",
-          "displayName": { "localizationKey": "staff.processingManager.name" },
-          "roleTitle": { "localizationKey": "staff.processingManager.role" },
+          "displayName": {
+            "localizationKey": "staff.processingManager.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.processingManager.role"
+          },
           "portraitAssetId": "PORTRAIT_PROCESSING_MANAGER",
-          "portraitAlt": { "localizationKey": "staff.processingManager.alt" },
-          "shortProfile": { "localizationKey": "staff.processingManager.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.processingManager.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.processingManager.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.processingManager.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.processingManager.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1107,12 +1147,22 @@
           "staffProfileId": "STAFF_SHIPPING_CLERK",
           "roleId": "SHIPPING_CLERK",
           "organizationId": "ORG_PRODUCER_COOP",
-          "displayName": { "localizationKey": "staff.shippingClerk.name" },
-          "roleTitle": { "localizationKey": "staff.shippingClerk.role" },
+          "displayName": {
+            "localizationKey": "staff.shippingClerk.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.shippingClerk.role"
+          },
           "portraitAssetId": "PORTRAIT_SHIPPING_CLERK",
-          "portraitAlt": { "localizationKey": "staff.shippingClerk.alt" },
-          "shortProfile": { "localizationKey": "staff.shippingClerk.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.shippingClerk.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.shippingClerk.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.shippingClerk.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.shippingClerk.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1120,12 +1170,22 @@
           "staffProfileId": "STAFF_RETAIL_MANAGER",
           "roleId": "RETAIL_MANAGER",
           "organizationId": "ORG_RETAILER",
-          "displayName": { "localizationKey": "staff.retailManager.name" },
-          "roleTitle": { "localizationKey": "staff.retailManager.role" },
+          "displayName": {
+            "localizationKey": "staff.retailManager.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.retailManager.role"
+          },
           "portraitAssetId": "PORTRAIT_RETAIL_MANAGER",
-          "portraitAlt": { "localizationKey": "staff.retailManager.alt" },
-          "shortProfile": { "localizationKey": "staff.retailManager.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.retailManager.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.retailManager.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.retailManager.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.retailManager.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         },
@@ -1133,12 +1193,22 @@
           "staffProfileId": "STAFF_REGULATORY_AUDITOR",
           "roleId": "REGULATORY_AUDITOR",
           "organizationId": "ORG_REGULATOR",
-          "displayName": { "localizationKey": "staff.regulatoryAuditor.name" },
-          "roleTitle": { "localizationKey": "staff.regulatoryAuditor.role" },
+          "displayName": {
+            "localizationKey": "staff.regulatoryAuditor.name"
+          },
+          "roleTitle": {
+            "localizationKey": "staff.regulatoryAuditor.role"
+          },
           "portraitAssetId": "PORTRAIT_REGULATORY_AUDITOR",
-          "portraitAlt": { "localizationKey": "staff.regulatoryAuditor.alt" },
-          "shortProfile": { "localizationKey": "staff.regulatoryAuditor.profile" },
-          "professionalResponsibility": { "localizationKey": "staff.regulatoryAuditor.responsibility" },
+          "portraitAlt": {
+            "localizationKey": "staff.regulatoryAuditor.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "staff.regulatoryAuditor.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "staff.regulatoryAuditor.responsibility"
+          },
           "visibility": "LEARNER_VISIBLE",
           "fictional": true
         }
@@ -1242,6 +1312,26 @@
             "CERTIFICATION_OFFICER",
             "LOGISTICS_COORDINATOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_CERTIFICATION_BODY",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "HASH_ANCHORED",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "HASH_DOES_NOT_PROVE_SOURCE_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "runtimeId": "tracechain-coffee-v2",
             "domainDocumentRole": "qualityCertificateAnchorId",

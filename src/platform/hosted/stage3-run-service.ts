@@ -35,6 +35,7 @@ import type {
   RunEventV1,
   UnsequencedRunEventV1,
 } from "../contracts/run-events";
+import { learnerEvidenceMetadataToJson } from "../scenario-packs/evidence-metadata";
 import type { HostedRunMonitorStatusV1 } from "../contracts/assessment";
 import type {
   HostedDecisionItemEvidenceV1,
@@ -5156,6 +5157,10 @@ export class HostedStage3RunService {
         value: {
           evidenceType: item.evidenceType,
           titleKey: item.title.localizationKey,
+          sourceOrganizationId: item.sourceOrganizationId,
+          learnerMetadata: learnerEvidenceMetadataToJson(
+            item.learnerMetadata,
+          ),
           inspected: state.inspectedEvidenceIds.includes(item.evidenceId),
           content: item.content,
         } satisfies JsonValue,

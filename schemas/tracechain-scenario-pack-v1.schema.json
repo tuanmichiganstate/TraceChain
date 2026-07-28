@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.9",
+  "title": "TraceChain Scenario Pack V1.10",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -22,7 +22,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.9.0" },
+    "schemaVersion": { "const": "1.10.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -455,6 +455,142 @@
         "configuration": { "type": "object" }
       }
     },
+    "evidenceLearnerMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signatureStatus",
+        "ledgerStatus",
+        "completeness",
+        "access"
+      ],
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "effectiveFrom": { "type": "string", "format": "date-time" },
+        "ownerOrganizationId": { "$ref": "#/$defs/identifier" },
+        "signatureStatus": {
+          "enum": [
+            "VALID",
+            "INVALID",
+            "NOT_SIGNED",
+            "NOT_CHECKED",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "ledgerStatus": {
+          "enum": [
+            "FULL_RECORD_ON_LEDGER",
+            "HASH_ANCHORED",
+            "OFF_CHAIN",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "completeness": {
+          "enum": ["COMPLETE", "PARTIAL", "UNKNOWN"]
+        },
+        "access": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "classification",
+            "acquisitionMode",
+            "delayMinutes",
+            "costUnits"
+          ],
+          "properties": {
+            "classification": {
+              "enum": [
+                "SHARED",
+                "ROLE_RESTRICTED",
+                "CONFIDENTIAL"
+              ]
+            },
+            "acquisitionMode": {
+              "enum": ["AVAILABLE", "REQUEST_REQUIRED"]
+            },
+            "delayMinutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "costUnits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "permissionPolicyId": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "acquisitionMode": {
+                    "const": "AVAILABLE"
+                  }
+                },
+                "required": [
+                  "acquisitionMode"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "delayMinutes": {
+                    "const": 0
+                  },
+                  "costUnits": {
+                    "const": 0
+                  }
+                },
+                "not": {
+                  "required": [
+                    "permissionPolicyId"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "evidenceAssessmentMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reliability",
+        "contentStatus",
+        "limitationCodes",
+        "hiddenConditionReferences"
+      ],
+      "properties": {
+        "reliability": {
+          "enum": [
+            "RELIABLE",
+            "CONTESTED",
+            "UNRELIABLE",
+            "NOT_ASSESSED"
+          ]
+        },
+        "contentStatus": {
+          "enum": [
+            "ACCURATE",
+            "INACCURATE",
+            "MISLEADING",
+            "INCOMPLETE",
+            "NOT_ASSESSED"
+          ]
+        },
+        "limitationCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "hiddenConditionReferences": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
     "evidenceItem": {
       "type": "object",
       "additionalProperties": false,
@@ -464,6 +600,8 @@
         "title",
         "sourceOrganizationId",
         "visibleToRoleIds",
+        "learnerMetadata",
+        "assessmentMetadata",
         "content"
       ],
       "properties": {
@@ -477,6 +615,12 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/identifier" }
+        },
+        "learnerMetadata": {
+          "$ref": "#/$defs/evidenceLearnerMetadata"
+        },
+        "assessmentMetadata": {
+          "$ref": "#/$defs/evidenceAssessmentMetadata"
         },
         "content": { "type": "object" }
       }

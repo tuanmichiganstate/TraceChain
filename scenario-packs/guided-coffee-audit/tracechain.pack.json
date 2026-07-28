@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.9.0",
+  "schemaVersion": "1.10.0",
   "packId": "PACK_GUIDED_COFFEE_AUDIT",
   "version": "2.0.0",
   "status": "draft",
@@ -490,6 +490,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_CERTIFICATION_BODY",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "CERTIFICATE_CONTENT_REQUIRES_POLICY_REVIEW"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "certificateId": "CERT_001",
             "issuedAt": "2025-01-15T03:00:00.000Z",
@@ -508,6 +528,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_REGULATOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "REGISTRY_DOES_NOT_PROVE_BUSINESS_CLAIM_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "organizationId": "ORG_CERTIFICATION_BODY",
             "recognized": true,
@@ -526,6 +566,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "RECEIVING_REPORT_REQUIRES_LEDGER_COMPARISON"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "declaredQuantityKg": 1000,
             "receivedQuantityKg": 100,
@@ -542,6 +602,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "FULL_RECORD_ON_LEDGER",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "LEDGER_INTEGRITY_DOES_NOT_PROVE_SOURCE_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "transactionId": "TX_CORRECTION_001",
             "originalQuantityKg": 1000,
@@ -563,6 +643,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "REJECTED_ATTEMPT_IS_NOT_LEDGER_STATE"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "attemptId": "ATTEMPT_RECALL_001",
             "activeRoleId": "PROCESSING_MANAGER",
@@ -580,6 +680,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_REGULATOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "FULL_RECORD_ON_LEDGER",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "LEDGER_INTEGRITY_DOES_NOT_PROVE_SOURCE_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "transactionId": "TX_RECALL_001",
             "activeRoleId": "REGULATORY_AUDITOR",
@@ -599,6 +719,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_PRODUCER_COOP",
+            "signatureStatus": "NOT_CHECKED",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "ENDORSEMENT_DOES_NOT_PROVE_SOURCE_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "transactionId": "TX_CUSTODY_001",
             "senderEndorsed": true,
@@ -616,6 +756,26 @@
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "PARTIAL",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "PROCESS_NOTE_REQUIRES_CORROBORATION"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "delayHours": 3,
             "lossConfirmed": false,

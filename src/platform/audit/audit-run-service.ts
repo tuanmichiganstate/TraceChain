@@ -1770,6 +1770,9 @@ export class AuditHostedRunService {
           title: localize(evidence.title.localizationKey),
           evidenceType: evidence.evidenceType,
           sourceOrganizationId: evidence.sourceOrganizationId,
+          learnerMetadata: structuredClone(
+            evidence.learnerMetadata,
+          ),
           content: evidence.content,
           inspected:
             state.inspectedEvidenceIds.includes(evidenceId),

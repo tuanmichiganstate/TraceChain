@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.9
+# TraceChain scenario-pack V1.10
 
-The V1.9 scenario-pack format is the active contract for the hosted
+The V1.10 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -18,6 +18,7 @@ scenario-packs/standard-coffee-stage3/tracechain.pack.json
 scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json
 scenario-packs/guided-coffee-audit/tracechain.pack.json
 scenario-packs/practice-coffee-audit/tracechain.pack.json
+scenario-packs/challenge-coffee-audit/tracechain.pack.json
 ```
 
 Validate it with:
@@ -95,6 +96,43 @@ Every scenario must provide `modeConfigurations`, `outcomeModels`,
 `counterfactualConditions`; no application default or older pack shape is
 accepted. Empty incident, comparison, and condition arrays are valid for
 scenarios that do not support those capabilities.
+
+## Evidence metadata and visibility
+
+Every evidence item owns two deliberately separate metadata views.
+`learnerMetadata` contains facts that may be projected to an authorized
+learner:
+
+- creation and effective dates, when authored;
+- owning organization;
+- signature status;
+- ledger relationship;
+- completeness;
+- access classification; and
+- bounded availability, delay, cost, and permission-policy requirements.
+
+`assessmentMetadata` contains instructor- and author-facing judgments:
+
+- reliability;
+- content status;
+- limitation codes; and
+- hidden-condition references.
+
+The learner projection serializes only `learnerMetadata`. It never serializes
+`assessmentMetadata`, limitation codes, or hidden-condition references.
+Instructor and author services resolve those assessment fields from the exact
+immutable pack version instead of copying them into learner events. Evidence
+inspection remains an append-only run event; metadata does not imply that the
+learner opened or cited an item.
+
+Evidence authored as `AVAILABLE` must have zero acquisition delay and cost and
+must not reference a permission policy. `REQUEST_REQUIRED` supports bounded
+future workflows, but no current pack pretends to implement an evidence
+request merely because the metadata can describe one.
+
+Signature status, ledger anchoring, and reliability remain distinct. A valid
+signature or intact hash does not by itself establish authorization,
+completeness, or factual truth.
 
 ## Workflow nodes
 
@@ -201,7 +239,7 @@ the 39/61 operational/knowledge split.
 
 ## Audit cases
 
-V1.9 carries the Audit-specific hosted and SCORM runtime without creating a second
+The Audit contract introduced in V1.9 remains part of V1.10 without creating a second
 application or transaction system. A scenario selects
 `tracechain-audit-v1` and references one bounded `auditCase`.
 
@@ -242,7 +280,7 @@ high-stakes equivalence.
 
 ## Curriculum ownership boundary
 
-V1.9 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.10 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 

@@ -24,6 +24,7 @@ import type {
   UnsequencedRunEventV1,
   VisibleStateRecordV1,
 } from "../contracts/run-events";
+import { learnerEvidenceMetadataToJson } from "../scenario-packs/evidence-metadata";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
   InstructorIncidentStatusV1,
@@ -2660,6 +2661,9 @@ export class GenericHostedRunService {
           value: {
             evidenceType: evidence.evidenceType,
             sourceOrganizationId: evidence.sourceOrganizationId,
+            learnerMetadata: learnerEvidenceMetadataToJson(
+              evidence.learnerMetadata,
+            ),
             inspected: state.inspectedEvidenceIds.includes(
               evidence.evidenceId,
             ),

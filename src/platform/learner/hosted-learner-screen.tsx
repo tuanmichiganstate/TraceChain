@@ -30,6 +30,7 @@ import {
 } from "../counterfactual/counterfactual-api";
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedStaffIdentity } from "../components/hosted-staff-identity";
+import { EvidenceMetadataSummary } from "../components/evidence-metadata-summary";
 import { HostedAuditWorkspace } from "../audit/hosted-audit-workspace";
 import { TechnicalLabShell } from "../../technical-lab/technical-lab-shell";
 import { hostedTechnicalLabConfiguration } from "../../technical-lab/hosted-pack-adapter";
@@ -308,7 +309,7 @@ function HostedEvidenceFacts({
   );
 }
 
-export function HostedEvidenceValue({
+function HostedEvidenceContent({
   recordId,
   value,
 }: {
@@ -522,7 +523,7 @@ export function HostedEvidenceValue({
     );
   }
   if (recordId !== "EVID_CERTIFICATE_RECORD") {
-    return <code>{JSON.stringify(value)}</code>;
+    return <code>{JSON.stringify(content)}</code>;
   }
   const actions = Array.isArray(content.issuerPermittedActions)
     ? content.issuerPermittedActions.map(String)
@@ -578,6 +579,27 @@ export function HostedEvidenceValue({
         <dd>{t("check.certificateStorage.optionHash")}</dd>
       </div>
     </dl>
+  );
+}
+
+export function HostedEvidenceValue({
+  recordId,
+  value,
+}: {
+  readonly recordId: string;
+  readonly value: unknown;
+}): ReactNode {
+  const record = asObject(value);
+  return (
+    <div className="stack">
+      <EvidenceMetadataSummary
+        metadata={record?.learnerMetadata}
+      />
+      <HostedEvidenceContent
+        recordId={recordId}
+        value={value}
+      />
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   type AuditFindingDraft,
 } from "../../components/product-mode-workspaces";
 import { useTranslator } from "../../app/providers/locale-provider";
+import { EvidenceMetadataSummary } from "../components/evidence-metadata-summary";
 import type {
   AuditConclusionCategoryV1,
   AuditLearnerProjectionV1,
@@ -193,6 +194,9 @@ export function HostedAuditWorkspace({
               </dd>
             </div>
           </dl>
+          <EvidenceMetadataSummary
+            metadata={evidence.learnerMetadata}
+          />
           <details>
             <summary>{t("hostedAudit.viewEvidence")}</summary>
             <pre className="audit-json-evidence">

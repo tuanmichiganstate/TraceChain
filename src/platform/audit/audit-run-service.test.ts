@@ -261,6 +261,19 @@ describe("AuditHostedRunService", () => {
           record.sourceRecordId === "ATTEMPT_RECALL_001",
       )?.recordKind,
     ).toBe("ATTEMPT_AUDIT");
+    expect(projection.audit?.evidence[0]?.learnerMetadata).toEqual(
+      expect.objectContaining({
+        signatureStatus: "NOT_APPLICABLE",
+        ledgerStatus: "OFF_CHAIN",
+        completeness: "COMPLETE",
+      }),
+    );
+    expect(JSON.stringify(projection)).not.toContain(
+      "assessmentMetadata",
+    );
+    expect(JSON.stringify(projection)).not.toContain(
+      "CERTIFICATE_CONTENT_REQUIRES_POLICY_REVIEW",
+    );
     expect(
       (await store.load(submitted.state.runId)).map(
         (event) => event.eventType,

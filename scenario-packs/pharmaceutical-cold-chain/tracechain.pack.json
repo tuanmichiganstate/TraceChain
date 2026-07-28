@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.9.0",
+  "schemaVersion": "1.10.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
   "version": "1.6.0",
   "status": "draft",
@@ -581,6 +581,28 @@
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "SENSOR_READING_REQUIRES_CALIBRATION_CONTEXT"
+            ],
+            "hiddenConditionReferences": [
+              "temperatureExcursionConfirmed"
+            ]
+          },
           "content": {
             "minimumTemperatureC": 2,
             "maximumTemperatureC": 12.4,
@@ -960,6 +982,28 @@
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "CONTESTED",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "SENSOR_READING_REQUIRES_CALIBRATION_CONTEXT"
+            ],
+            "hiddenConditionReferences": [
+              "temperatureExcursionConfirmed"
+            ]
+          },
           "content": {
             "minimumTemperatureC": 2,
             "maximumTemperatureC": 12.4,
@@ -978,6 +1022,26 @@
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+            "signatureStatus": "VALID",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "CUSTODY_RECORD_DOES_NOT_ATTEST_PRODUCT_CONDITION"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "signatureValid": true,
             "signerRecognized": true,
@@ -996,6 +1060,24 @@
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "calibrationStatus": "EXPIRED",
             "expiredDaysBeforeShipment": 11,
@@ -1013,6 +1095,26 @@
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
           ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_MEDICINE_MANUFACTURER",
+            "signatureStatus": "NOT_APPLICABLE",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "ASSESSMENT_SCOPE_LIMITED_TO_AUTHORED_CONDITIONS"
+            ],
+            "hiddenConditionReferences": []
+          },
           "content": {
             "approvedMaximumTemperatureC": 10,
             "approvedMaximumExcursionMinutes": 60,

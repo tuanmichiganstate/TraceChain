@@ -70,6 +70,18 @@ describe("hosted learner workspace", () => {
         <HostedEvidenceValue
           recordId="EVID_CERTIFICATE_RECORD"
           value={{
+            learnerMetadata: {
+              ownerOrganizationId: "ORG_CERTIFICATION_BODY",
+              signatureStatus: "NOT_APPLICABLE",
+              ledgerStatus: "HASH_ANCHORED",
+              completeness: "COMPLETE",
+              access: {
+                classification: "ROLE_RESTRICTED",
+                acquisitionMode: "AVAILABLE",
+                delayMinutes: 0,
+                costUnits: 0,
+              },
+            },
             content: {
               assetId: "BAT_GREEN_COFFEE_001",
               certificateContentStatus: "VALID",
@@ -96,6 +108,15 @@ describe("hosted learner workspace", () => {
       screen.getByText(
         "The scope names this batch and records no quality exception",
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Evidence attributes",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Hash anchored")).toBeInTheDocument();
+    expect(
+      screen.getByText("Restricted to the active role"),
     ).toBeInTheDocument();
 
     rerender(

@@ -126,6 +126,18 @@ function auditProjection(): AuditLearnerProjectionV1 {
         ),
         evidenceType: "CERTIFICATE",
         sourceOrganizationId: "ORG_CERTIFIER",
+        learnerMetadata: {
+          ownerOrganizationId: "ORG_CERTIFIER",
+          signatureStatus: "NOT_APPLICABLE",
+          ledgerStatus: "OFF_CHAIN",
+          completeness: "COMPLETE",
+          access: {
+            classification: "ROLE_RESTRICTED",
+            acquisitionMode: "AVAILABLE",
+            delayMinutes: 0,
+            costUnits: 0,
+          },
+        },
         content: { status: "EXPIRED" },
         inspected: false,
         bookmarked: false,

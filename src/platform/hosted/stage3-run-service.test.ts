@@ -1861,6 +1861,24 @@ describe("server-authoritative hosted Stage 3 run", () => {
     expect(serializedProjection).not.toContain(final.scenarioSeed);
     expect(serializedProjection).not.toContain(final.caseVariant);
     expect(serializedProjection).not.toContain("authoredCorrect");
+    expect(serializedProjection).not.toContain(
+      "assessmentMetadata",
+    );
+    expect(serializedProjection).not.toContain(
+      "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
+    );
+    expect(projection.informationState).toContainEqual(
+      expect.objectContaining({
+        recordId: "EVID_CERTIFICATE_RECORD",
+        value: expect.objectContaining({
+          learnerMetadata: expect.objectContaining({
+            ownerOrganizationId: "ORG_CERTIFICATION_BODY",
+            ledgerStatus: "HASH_ANCHORED",
+            completeness: "COMPLETE",
+          }),
+        }),
+      }),
+    );
     expect(projection.workflowState.currentNodeId).toBe("complete");
     expect(projection.workflowState.permittedActionIds).toEqual([]);
 

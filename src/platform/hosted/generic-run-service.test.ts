@@ -317,8 +317,23 @@ describe("GenericHostedRunService", () => {
     expect(projection.informationState).toEqual([
       expect.objectContaining({
         recordId: "EVID_PHARMA_SENSOR_SUMMARY",
+        value: expect.objectContaining({
+          learnerMetadata: expect.objectContaining({
+            ownerOrganizationId:
+              "ORG_HEALTHCARE_DISTRIBUTOR",
+            signatureStatus: "NOT_APPLICABLE",
+            ledgerStatus: "OFF_CHAIN",
+            completeness: "COMPLETE",
+          }),
+        }),
       }),
     ]);
+    expect(JSON.stringify(projection)).not.toContain(
+      "assessmentMetadata",
+    );
+    expect(JSON.stringify(projection)).not.toContain(
+      "temperatureExcursionConfirmed",
+    );
     expect(Object.hasOwn(projection, "actualState")).toBe(false);
     expect(projection.presentation?.currentNode.nodeType).toBe(
       "COMPLETION",

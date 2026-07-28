@@ -27,6 +27,140 @@ function validPack(): ScenarioPackV1 {
 }
 
 describe("scenario-pack validation", () => {
+  it("accepts separately authored learner and assessment evidence metadata", () => {
+    const enriched = structuredClone(pharmaceuticalPackJson) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<Record<string, unknown>>;
+      }>;
+    };
+    for (const scenario of enriched.scenarios) {
+      for (const evidence of scenario.evidenceItems) {
+        evidence.learnerMetadata = {
+          signatureStatus: "NOT_CHECKED",
+          ledgerStatus: "OFF_CHAIN",
+          completeness: "UNKNOWN",
+          access: {
+            classification: "ROLE_RESTRICTED",
+            acquisitionMode: "AVAILABLE",
+            delayMinutes: 0,
+            costUnits: 0,
+          },
+        };
+        evidence.assessmentMetadata = {
+          reliability: "NOT_ASSESSED",
+          contentStatus: "NOT_ASSESSED",
+          limitationCodes: [],
+          hiddenConditionReferences: [],
+        };
+      }
+    }
+
+    const result = validateScenarioPack(enriched);
+
+    expect(
+      result.isValid,
+      result.isValid ? "" : JSON.stringify(result.issues, null, 2),
+    ).toBe(true);
+  });
+
+  it("requires both evidence metadata views in the active schema", () => {
+    const missing = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          learnerMetadata?: unknown;
+          assessmentMetadata?: unknown;
+        }>;
+      }>;
+    };
+    delete missing.scenarios[0]!.evidenceItems[0]!.learnerMetadata;
+    delete missing.scenarios[1]!.evidenceItems[0]!
+      .assessmentMetadata;
+
+    const result = validateScenarioPack(missing);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "EXPECTED_OBJECT",
+            path:
+              "$.scenarios[0].evidenceItems[0].learnerMetadata",
+          }),
+          expect.objectContaining({
+            code: "EXPECTED_OBJECT",
+            path:
+              "$.scenarios[1].evidenceItems[0].assessmentMetadata",
+          }),
+        ]),
+      );
+    }
+  });
+
+  it("rejects acquisition costs on evidence authored as immediately available", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          learnerMetadata: {
+            access: {
+              acquisitionMode: string;
+              delayMinutes: number;
+              costUnits: number;
+            };
+          };
+        }>;
+      }>;
+    };
+    invalid.scenarios[0]!.evidenceItems[0]!.learnerMetadata
+      .access.costUnits = 1;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "AVAILABLE_EVIDENCE_HAS_ACQUISITION_COST",
+          path:
+            "$.scenarios[0].evidenceItems[0].learnerMetadata.access",
+        }),
+      );
+    }
+  });
+
+  it("rejects assessment metadata that names an unknown hidden condition", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          assessmentMetadata: {
+            hiddenConditionReferences: string[];
+          };
+        }>;
+      }>;
+    };
+    invalid.scenarios[0]!.evidenceItems[0]!.assessmentMetadata
+      .hiddenConditionReferences = ["conditionNotAuthored"];
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNKNOWN_HIDDEN_CONDITION_REFERENCE",
+          path:
+            "$.scenarios[0].evidenceItems[0].assessmentMetadata.hiddenConditionReferences[0]",
+        }),
+      );
+    }
+  });
+
   it("accepts the Guided Audit case and rejects insufficient authored finding evidence", () => {
     const valid = validateScenarioPack(
       structuredClone(auditPackJson),

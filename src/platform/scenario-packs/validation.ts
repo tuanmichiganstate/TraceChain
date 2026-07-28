@@ -154,6 +154,46 @@ const AUDIT_SOURCE_RECORD_KINDS = new Set([
   "ATTEMPT_AUDIT",
   "PROCESS_EVENT",
 ]);
+const EVIDENCE_SIGNATURE_STATUSES = new Set([
+  "VALID",
+  "INVALID",
+  "NOT_SIGNED",
+  "NOT_CHECKED",
+  "NOT_APPLICABLE",
+]);
+const EVIDENCE_LEDGER_STATUSES = new Set([
+  "FULL_RECORD_ON_LEDGER",
+  "HASH_ANCHORED",
+  "OFF_CHAIN",
+  "NOT_APPLICABLE",
+]);
+const EVIDENCE_COMPLETENESS_VALUES = new Set([
+  "COMPLETE",
+  "PARTIAL",
+  "UNKNOWN",
+]);
+const EVIDENCE_ACCESS_CLASSIFICATIONS = new Set([
+  "SHARED",
+  "ROLE_RESTRICTED",
+  "CONFIDENTIAL",
+]);
+const EVIDENCE_ACQUISITION_MODES = new Set([
+  "AVAILABLE",
+  "REQUEST_REQUIRED",
+]);
+const EVIDENCE_RELIABILITY_VALUES = new Set([
+  "RELIABLE",
+  "CONTESTED",
+  "UNRELIABLE",
+  "NOT_ASSESSED",
+]);
+const EVIDENCE_CONTENT_STATUSES = new Set([
+  "ACCURATE",
+  "INACCURATE",
+  "MISLEADING",
+  "INCOMPLETE",
+  "NOT_ASSESSED",
+]);
 const AUDIT_SCORABLE_ITEMS = new Map([
   ["AUD_DETECTION", 25],
   ["AUD_FALSE_POSITIVE_AVOIDANCE", 15],
@@ -2503,6 +2543,199 @@ function validateScenarioNodes(
   );
 }
 
+function validateEvidenceLearnerMetadata(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  organizationIds: ReadonlySet<string>,
+  policyIds: ReadonlySet<string>,
+): void {
+  const metadata = context.object(value, path);
+  if (metadata === null) return;
+  context.allowedKeys(
+    metadata,
+    [
+      "createdAt",
+      "effectiveFrom",
+      "ownerOrganizationId",
+      "signatureStatus",
+      "ledgerStatus",
+      "completeness",
+      "access",
+    ],
+    path,
+  );
+  for (const timestampField of ["createdAt", "effectiveFrom"] as const) {
+    if (metadata[timestampField] === undefined) continue;
+    const timestamp = context.string(
+      metadata[timestampField],
+      `${path}.${timestampField}`,
+    );
+    if (timestamp !== null) {
+      context.check(
+        ISO_TIMESTAMP.test(timestamp),
+        "INVALID_EVIDENCE_TIMESTAMP",
+        `${path}.${timestampField}`,
+        "must be an ISO UTC timestamp",
+      );
+    }
+  }
+  if (metadata.ownerOrganizationId !== undefined) {
+    const ownerOrganizationId = context.string(
+      metadata.ownerOrganizationId,
+      `${path}.ownerOrganizationId`,
+      { identifier: true },
+    );
+    context.check(
+      ownerOrganizationId !== null &&
+        organizationIds.has(ownerOrganizationId),
+      "UNKNOWN_ORGANIZATION_REFERENCE",
+      `${path}.ownerOrganizationId`,
+      "must reference an organization in this scenario",
+    );
+  }
+  context.check(
+    typeof metadata.signatureStatus === "string" &&
+      EVIDENCE_SIGNATURE_STATUSES.has(metadata.signatureStatus),
+    "INVALID_EVIDENCE_SIGNATURE_STATUS",
+    `${path}.signatureStatus`,
+    "must use a supported learner-visible signature status",
+  );
+  context.check(
+    typeof metadata.ledgerStatus === "string" &&
+      EVIDENCE_LEDGER_STATUSES.has(metadata.ledgerStatus),
+    "INVALID_EVIDENCE_LEDGER_STATUS",
+    `${path}.ledgerStatus`,
+    "must use a supported learner-visible ledger status",
+  );
+  context.check(
+    typeof metadata.completeness === "string" &&
+      EVIDENCE_COMPLETENESS_VALUES.has(metadata.completeness),
+    "INVALID_EVIDENCE_COMPLETENESS",
+    `${path}.completeness`,
+    "must use a supported learner-visible completeness value",
+  );
+  const access = context.object(metadata.access, `${path}.access`);
+  if (access === null) return;
+  context.allowedKeys(
+    access,
+    [
+      "classification",
+      "acquisitionMode",
+      "delayMinutes",
+      "costUnits",
+      "permissionPolicyId",
+    ],
+    `${path}.access`,
+  );
+  context.check(
+    typeof access.classification === "string" &&
+      EVIDENCE_ACCESS_CLASSIFICATIONS.has(access.classification),
+    "INVALID_EVIDENCE_ACCESS_CLASSIFICATION",
+    `${path}.access.classification`,
+    "must use a supported access classification",
+  );
+  context.check(
+    typeof access.acquisitionMode === "string" &&
+      EVIDENCE_ACQUISITION_MODES.has(access.acquisitionMode),
+    "INVALID_EVIDENCE_ACQUISITION_MODE",
+    `${path}.access.acquisitionMode`,
+    "must be available or require an authored request",
+  );
+  const delayMinutes = context.number(
+    access.delayMinutes,
+    `${path}.access.delayMinutes`,
+    { integer: true, minimum: 0 },
+  );
+  const costUnits = context.number(
+    access.costUnits,
+    `${path}.access.costUnits`,
+    { integer: true, minimum: 0 },
+  );
+  if (access.permissionPolicyId !== undefined) {
+    const permissionPolicyId = context.string(
+      access.permissionPolicyId,
+      `${path}.access.permissionPolicyId`,
+      { identifier: true },
+    );
+    context.check(
+      permissionPolicyId !== null &&
+        policyIds.has(permissionPolicyId),
+      "UNKNOWN_POLICY_REFERENCE",
+      `${path}.access.permissionPolicyId`,
+      "must reference a policy in this scenario",
+    );
+  }
+  if (access.acquisitionMode === "AVAILABLE") {
+    context.check(
+      delayMinutes === 0 && costUnits === 0,
+      "AVAILABLE_EVIDENCE_HAS_ACQUISITION_COST",
+      `${path}.access`,
+      "available evidence must have zero delay and cost",
+    );
+    context.check(
+      access.permissionPolicyId === undefined,
+      "AVAILABLE_EVIDENCE_HAS_PERMISSION_POLICY",
+      `${path}.access.permissionPolicyId`,
+      "available evidence cannot require a permission policy",
+    );
+  }
+}
+
+function validateEvidenceAssessmentMetadata(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  actualStateKeys: ReadonlySet<string>,
+): void {
+  const metadata = context.object(value, path);
+  if (metadata === null) return;
+  context.allowedKeys(
+    metadata,
+    [
+      "reliability",
+      "contentStatus",
+      "limitationCodes",
+      "hiddenConditionReferences",
+    ],
+    path,
+  );
+  context.check(
+    typeof metadata.reliability === "string" &&
+      EVIDENCE_RELIABILITY_VALUES.has(metadata.reliability),
+    "INVALID_EVIDENCE_RELIABILITY",
+    `${path}.reliability`,
+    "must use a supported instructor-only reliability value",
+  );
+  context.check(
+    typeof metadata.contentStatus === "string" &&
+      EVIDENCE_CONTENT_STATUSES.has(metadata.contentStatus),
+    "INVALID_EVIDENCE_CONTENT_STATUS",
+    `${path}.contentStatus`,
+    "must use a supported instructor-only content status",
+  );
+  validateUniqueStrings(
+    context,
+    metadata.limitationCodes,
+    `${path}.limitationCodes`,
+    { identifiers: true },
+  );
+  const hiddenConditionReferences = validateUniqueStrings(
+    context,
+    metadata.hiddenConditionReferences,
+    `${path}.hiddenConditionReferences`,
+    { identifiers: true },
+  );
+  hiddenConditionReferences.forEach((reference, index) => {
+    context.check(
+      actualStateKeys.has(reference),
+      "UNKNOWN_HIDDEN_CONDITION_REFERENCE",
+      `${path}.hiddenConditionReferences[${String(index)}]`,
+      "must reference a top-level field in the scenario actual state",
+    );
+  });
+}
+
 function validateScenario(
   context: ValidationContext,
   value: unknown,
@@ -3188,6 +3421,7 @@ function validateScenario(
     });
   }
 
+  const actualStateKeys = new Set<string>();
   const initialState = context.object(
     scenario.initialState,
     `${path}.initialState`,
@@ -3214,6 +3448,11 @@ function validateScenario(
         `${path}.initialState.${stateName}`,
       );
       if (state !== null) {
+        if (stateName === "actualState") {
+          Object.keys(state).forEach((key) =>
+            actualStateKeys.add(key),
+          );
+        }
         validateJsonData(
           context,
           state,
@@ -3291,6 +3530,8 @@ function validateScenario(
           "sourceOrganizationId",
           "staffProfileId",
           "visibleToRoleIds",
+          "learnerMetadata",
+          "assessmentMetadata",
           "content",
         ],
         evidencePath,
@@ -3359,6 +3600,19 @@ function validateScenario(
           "must reference a role in this scenario",
         );
       });
+      validateEvidenceLearnerMetadata(
+        context,
+        evidence.learnerMetadata,
+        `${evidencePath}.learnerMetadata`,
+        organizationIds,
+        policyIds,
+      );
+      validateEvidenceAssessmentMetadata(
+        context,
+        evidence.assessmentMetadata,
+        `${evidencePath}.assessmentMetadata`,
+        actualStateKeys,
+      );
       validateJsonData(
         context,
         evidence.content,
@@ -4355,10 +4609,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.9.0",
+    schemaVersion === "1.10.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.9.0",
+    "requires scenario-pack schema version 1.10.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -4901,10 +5155,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.9.0",
+      pack.schemaVersion === "1.10.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.9.0",
+      "must equal 1.10.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

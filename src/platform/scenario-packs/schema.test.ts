@@ -16,6 +16,9 @@ describe("published scenario-pack JSON Schema", () => {
         scenario: {
           required: readonly string[];
         };
+        evidenceItem: {
+          required: readonly string[];
+        };
       };
     };
 
@@ -23,7 +26,7 @@ describe("published scenario-pack JSON Schema", () => {
       "https://json-schema.org/draft/2020-12/schema",
     );
     expect(schema.$id).toContain("tracechain-scenario-pack-v1");
-    expect(schema.title).toBe("TraceChain Scenario Pack V1.9");
+    expect(schema.title).toBe("TraceChain Scenario Pack V1.10");
     expect(schema.properties).toHaveProperty("schemaVersion");
     expect(schema.properties).toHaveProperty("scenarios");
     expect(schema.properties).toHaveProperty("auditVariantBanks");
@@ -33,6 +36,12 @@ describe("published scenario-pack JSON Schema", () => {
         "outcomeModels",
         "counterfactualComparisonDimensions",
         "counterfactualConditions",
+      ]),
+    );
+    expect(schema.$defs.evidenceItem.required).toEqual(
+      expect.arrayContaining([
+        "learnerMetadata",
+        "assessmentMetadata",
       ]),
     );
     expect(schema.properties).toHaveProperty("competencyFrameworks");

@@ -128,6 +128,69 @@ export interface ScenarioAssetTypeV1 {
   readonly schema: JsonObject;
 }
 
+export type EvidenceSignatureStatusV1 =
+  | "VALID"
+  | "INVALID"
+  | "NOT_SIGNED"
+  | "NOT_CHECKED"
+  | "NOT_APPLICABLE";
+
+export type EvidenceLedgerStatusV1 =
+  | "FULL_RECORD_ON_LEDGER"
+  | "HASH_ANCHORED"
+  | "OFF_CHAIN"
+  | "NOT_APPLICABLE";
+
+export type EvidenceCompletenessV1 =
+  | "COMPLETE"
+  | "PARTIAL"
+  | "UNKNOWN";
+
+export type EvidenceAccessClassificationV1 =
+  | "SHARED"
+  | "ROLE_RESTRICTED"
+  | "CONFIDENTIAL";
+
+export type EvidenceAcquisitionModeV1 =
+  | "AVAILABLE"
+  | "REQUEST_REQUIRED";
+
+export interface ScenarioEvidenceLearnerMetadataV1 {
+  readonly createdAt?: string;
+  readonly effectiveFrom?: string;
+  readonly ownerOrganizationId?: string;
+  readonly signatureStatus: EvidenceSignatureStatusV1;
+  readonly ledgerStatus: EvidenceLedgerStatusV1;
+  readonly completeness: EvidenceCompletenessV1;
+  readonly access: {
+    readonly classification: EvidenceAccessClassificationV1;
+    readonly acquisitionMode: EvidenceAcquisitionModeV1;
+    readonly delayMinutes: number;
+    readonly costUnits: number;
+    readonly permissionPolicyId?: string;
+  };
+}
+
+export type EvidenceReliabilityV1 =
+  | "RELIABLE"
+  | "CONTESTED"
+  | "UNRELIABLE"
+  | "NOT_ASSESSED";
+
+export type EvidenceContentStatusV1 =
+  | "ACCURATE"
+  | "INACCURATE"
+  | "MISLEADING"
+  | "INCOMPLETE"
+  | "NOT_ASSESSED";
+
+export interface ScenarioEvidenceAssessmentMetadataV1 {
+  readonly reliability: EvidenceReliabilityV1;
+  readonly contentStatus: EvidenceContentStatusV1;
+  readonly limitationCodes: readonly string[];
+  readonly hiddenConditionReferences: readonly string[];
+}
+
 export interface ScenarioEvidenceItemV1 {
   readonly evidenceId: string;
   readonly evidenceType: string;
@@ -135,6 +198,9 @@ export interface ScenarioEvidenceItemV1 {
   readonly sourceOrganizationId: string;
   readonly staffProfileId?: string;
   readonly visibleToRoleIds: readonly string[];
+  readonly learnerMetadata: ScenarioEvidenceLearnerMetadataV1;
+  readonly assessmentMetadata:
+    ScenarioEvidenceAssessmentMetadataV1;
   readonly content: JsonObject;
 }
 
@@ -489,7 +555,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.9.0";
+  readonly schemaVersion: "1.10.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
