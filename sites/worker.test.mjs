@@ -53,6 +53,15 @@ const instructorCounterfactualReplay = {
   requireReflection: true,
 };
 
+test("permits the hosted Deep Linking picker to post only to its own origin", async () => {
+  const indexHtml = await readFile(
+    new URL("../index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(indexHtml, /form-action 'self'/u);
+  assert.doesNotMatch(indexHtml, /form-action 'none'/u);
+});
+
 function canonicalJson(value) {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
