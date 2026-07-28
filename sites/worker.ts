@@ -1342,6 +1342,71 @@ async function enforceLtiCourseRequestScope(options: {
   }
 }
 
+/**
+ * The staff scope of one assignment.
+ *
+ * An administrator sees every assignment. An instructor sees the ones they
+ * created. A rater carries no assignment relation of its own, so the roles it
+ * is granted alongside decide: a plain rater reaches the assessment endpoints
+ * that admit raters, exactly as the evidence export has always allowed.
+ *
+ * Every staff projection of an assignment goes through here. The reports,
+ * monitors, replays and exports are all views of the same learner evidence, so
+ * a scope enforced on one of them and not the others is not a scope at all.
+ */
+function assertAssignmentScope(
+  principal: ApplicationPrincipal,
+  assignment: HostedAssignmentV1,
+): HostedAssignmentV1 {
+  if (
+    principal.roles.includes("instructor") &&
+    !principal.roles.includes("administrator") &&
+    assignment.createdByUserId !== principal.userId
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The assignment is outside the instructor's assignment scope.",
+    );
+  }
+  return assignment;
+}
+
+async function assertScopedAssignment(
+  environment: WorkerEnvironment,
+  principal: ApplicationPrincipal,
+  assignmentId: string,
+): Promise<HostedAssignmentV1> {
+  const assignment = await new D1AssignmentRepository(
+    environment.DB,
+    new SystemUtcClock(),
+  ).find(assignmentId);
+  if (assignment === null) {
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_NOT_FOUND",
+      `Assignment ${assignmentId} does not exist.`,
+    );
+  }
+  return assertAssignmentScope(principal, assignment);
+}
+
+async function assertScopedRunAssignment(
+  environment: WorkerEnvironment,
+  principal: ApplicationPrincipal,
+  runId: string,
+): Promise<HostedAssignmentV1> {
+  const assignment = await new D1AssignmentRepository(
+    environment.DB,
+    new SystemUtcClock(),
+  ).findForRun(runId);
+  if (assignment === null) {
+    throw new AssignmentRepositoryError(
+      "RUN_NOT_ASSIGNED",
+      "Run is not linked to an assignment.",
+    );
+  }
+  return assertAssignmentScope(principal, assignment);
+}
+
 function byteHash(bytes: ArrayBuffer): Promise<string> {
   return crypto.subtle.digest("SHA-256", bytes).then((digest) =>
     [...new Uint8Array(digest)]
@@ -2838,17 +2903,13 @@ async function apiResponse(
       "rater",
       "administrator",
     ]);
-    const assignment = await new D1AssignmentRepository(
-      environment.DB,
-      new SystemUtcClock(),
-    ).find(assignmentId);
-    if (assignment === null) {
-      throw new AssignmentRepositoryError(
-        "ASSIGNMENT_NOT_FOUND",
-        `Assignment ${assignmentId} does not exist.`,
-      );
-    }
-    return jsonResponse(200, { assignment });
+    return jsonResponse(200, {
+      assignment: await assertScopedAssignment(
+        environment,
+        principal,
+        assignmentId,
+      ),
+    });
   }
 
   const closeAssignmentId = pathAssignmentId(
@@ -2870,6 +2931,11 @@ async function apiResponse(
         "Assignment close request must be an object.",
       );
     }
+    await assertScopedAssignment(
+      environment,
+      principal,
+      closeAssignmentId,
+    );
     const result = await new D1AssignmentRepository(
       environment.DB,
       new SystemUtcClock(),
@@ -3051,6 +3117,11 @@ async function apiResponse(
       "rater",
       "administrator",
     ]);
+    await assertScopedAssignment(
+      environment,
+      principal,
+      reportAssignmentId,
+    );
     const report = await new D1AssignmentRepository(
       environment.DB,
       new SystemUtcClock(),
@@ -3071,29 +3142,11 @@ async function apiResponse(
       "rater",
       "administrator",
     ]);
-    const repository = new D1AssignmentRepository(
-      environment.DB,
-      new SystemUtcClock(),
-    );
-    const assignment = await repository.find(
+    const assignment = await assertScopedAssignment(
+      environment,
+      catalogActor,
       evidenceCatalogAssignmentId,
     );
-    if (assignment === null) {
-      throw new AssignmentRepositoryError(
-        "ASSIGNMENT_NOT_FOUND",
-        `Assignment ${evidenceCatalogAssignmentId} does not exist.`,
-      );
-    }
-    if (
-      catalogActor.roles.includes("instructor") &&
-      !catalogActor.roles.includes("administrator") &&
-      assignment.createdByUserId !== catalogActor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The evidence catalog is outside the instructor's assignment scope.",
-      );
-    }
     const pack = await findHostedContentPack(
       environment,
       catalogActor.userId,
@@ -3137,16 +3190,7 @@ async function apiResponse(
     const report = await repository.report(
       auditReportAssignmentId,
     );
-    if (
-      reportActor.roles.includes("instructor") &&
-      !reportActor.roles.includes("administrator") &&
-      report.assignment.createdByUserId !== reportActor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The assignment is outside the instructor's scope.",
-      );
-    }
+    assertAssignmentScope(reportActor, report.assignment);
     const pack = await findHostedContentPack(
       environment,
       reportActor.userId,
@@ -3237,16 +3281,7 @@ async function apiResponse(
       environment.DB,
       clock,
     ).report(technicalLabReportAssignmentId);
-    if (
-      reportActor.roles.includes("instructor") &&
-      !reportActor.roles.includes("administrator") &&
-      report.assignment.createdByUserId !== reportActor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The assignment is outside the instructor's scope.",
-      );
-    }
+    assertAssignmentScope(reportActor, report.assignment);
     if (
       !isTechnicalLabHostedContent(
         report.assignment.packId,
@@ -3314,6 +3349,11 @@ async function apiResponse(
     const repository = new D1AssignmentRepository(
       environment.DB,
       clock,
+    );
+    await assertScopedAssignment(
+      environment,
+      principal,
+      decisionOutcomeAssignmentId,
     );
     const report = await repository.report(
       decisionOutcomeAssignmentId,
@@ -3385,15 +3425,7 @@ async function apiResponse(
     const report = await repository.report(
       processAnalyticsAssignmentId,
     );
-    if (
-      !analyticsActor.roles.includes("administrator") &&
-      report.assignment.createdByUserId !== analyticsActor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The assignment is outside the instructor's scope.",
-      );
-    }
+    assertAssignmentScope(analyticsActor, report.assignment);
     const eventStore = new D1RunEventStore(environment.DB);
     const allRuns = report.learners.flatMap((learner) =>
       learner.runs.map((run) => run.runId),
@@ -3447,6 +3479,11 @@ async function apiResponse(
     const repository = new D1AssignmentRepository(
       environment.DB,
       clock,
+    );
+    await assertScopedAssignment(
+      environment,
+      principal,
+      monitorAssignmentId,
     );
     const report = await repository.report(monitorAssignmentId);
     const pack = await findHostedContentPack(
@@ -3529,6 +3566,11 @@ async function apiResponse(
       environment.DB,
       clock,
     );
+    await assertScopedAssignment(
+      environment,
+      principal,
+      competencyAssignmentId,
+    );
     const report = await repository.report(competencyAssignmentId);
     const pack = await findHostedContentPack(
       environment,
@@ -3594,6 +3636,11 @@ async function apiResponse(
     const repository = new D1AssignmentRepository(
       environment.DB,
       clock,
+    );
+    await assertScopedAssignment(
+      environment,
+      principal,
+      requestedCurriculumCrosswalkAssignmentId,
     );
     const assignmentReport = await repository.report(
       requestedCurriculumCrosswalkAssignmentId,
@@ -3672,16 +3719,7 @@ async function apiResponse(
         environment.DB,
         clock,
       ).report(counterfactualReportAssignmentId);
-    if (
-      !actor.roles.includes("administrator") &&
-      assignmentReport.assignment.createdByUserId !==
-        actor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The counterfactual report is outside the instructor's assignment scope.",
-      );
-    }
+    assertAssignmentScope(actor, assignmentReport.assignment);
     const branchRepository =
       new D1CounterfactualRunRepository(environment.DB);
     const eventStore = new D1RunEventStore(environment.DB);
@@ -3758,16 +3796,7 @@ async function apiResponse(
     );
     const identityMode = assignmentExportIdentityMode(url);
     const report = await repository.report(exportAssignmentId);
-    if (
-      exportActor.roles.includes("instructor") &&
-      !exportActor.roles.includes("administrator") &&
-      report.assignment.createdByUserId !== exportActor.userId
-    ) {
-      throw new HostedAuthorizationError(
-        "RUN_ACCESS_DENIED",
-        "The evidence export is outside the instructor's assignment scope.",
-      );
-    }
+    assertAssignmentScope(exportActor, report.assignment);
     const pack = await findHostedContentPack(
       environment,
       exportActor.userId,
@@ -3848,6 +3877,11 @@ async function apiResponse(
         "Feedback release request must be an object.",
       );
     }
+    await assertScopedAssignment(
+      environment,
+      principal,
+      feedbackReleaseAssignmentId,
+    );
     const result = await new D1AssignmentRepository(
       environment.DB,
       new SystemUtcClock(),
@@ -3873,13 +3907,11 @@ async function apiResponse(
       environment.DB,
       new SystemUtcClock(),
     );
-    const assignment = await repository.findForRun(ratingRunId);
-    if (assignment === null) {
-      throw new AssignmentRepositoryError(
-        "RUN_NOT_ASSIGNED",
-        "Run is not linked to an assignment.",
-      );
-    }
+    const assignment = await assertScopedRunAssignment(
+      environment,
+      principal,
+      ratingRunId,
+    );
     return jsonResponse(200, {
       assignment,
       ratings: await repository.currentRatings(ratingRunId),
@@ -3903,6 +3935,11 @@ async function apiResponse(
         "Rating run ID must match the API route.",
       );
     }
+    await assertScopedRunAssignment(
+      environment,
+      principal,
+      ratingRunId,
+    );
     const { pack, service } = await hostedServiceForRun(
       environment,
       principal.userId,
@@ -4022,6 +4059,11 @@ async function apiResponse(
         "Moderation run ID must match the API route.",
       );
     }
+    await assertScopedRunAssignment(
+      environment,
+      principal,
+      moderationRunId,
+    );
     const { pack, service } = await hostedServiceForRun(
       environment,
       principal.userId,
@@ -5105,8 +5147,9 @@ async function apiResponse(
     });
   }
 
+  const learnerRunId = pathRunId(url.pathname);
   const runId =
-    pathRunId(url.pathname) ??
+    learnerRunId ??
     pathRunId(url.pathname, "timeline") ??
     pathRunId(url.pathname, "replay") ??
     pathRunId(url.pathname, "competencies") ??
@@ -5120,6 +5163,14 @@ async function apiResponse(
         "RUN_NOT_FOUND",
         `Run ${runId} does not exist.`,
       );
+    }
+    /*
+     * The bare run path is the learner's own projection, which the runtime
+     * scopes to the assigned learner. Every suffix below it is a staff view of
+     * that learner's evidence and carries the assignment scope.
+     */
+    if (learnerRunId === null) {
+      await assertScopedRunAssignment(environment, principal, runId);
     }
     const pack = await findHostedContentPack(
       environment,

@@ -28,10 +28,12 @@ import { challengeVariantBank } from "../../scenarios/challenge-a/variant-bank";
 import { practiceAScenario } from "../../scenarios/practice-a/scenario";
 import { practiceVariantBank } from "../../scenarios/practice-a/variant-bank";
 import { selectVariantAssignment } from "../../domain/scenario/variant-bank";
+import { sha256Hex } from "../hashing/sha256";
 import {
   TC3_AUTHORED_PAYLOAD_LIMIT,
   TC3_INTERNAL_CHARACTER_LIMIT,
   TC3_SECTION_BUDGET,
+  assertStageBitmapCapacity,
   decodeTc3Attempt,
   encodeTc3Attempt,
   measureTc3Attempt,
@@ -217,6 +219,21 @@ function maximumJournal(
   );
 }
 
+/** Re-frame an arbitrary wire array as a checksum-valid TC3 payload. */
+function forgedTc3(wire: unknown): string {
+  const payload = Buffer.from(JSON.stringify(wire), "utf8").toString(
+    "base64url",
+  );
+  return `TC3.${payload}.${sha256Hex(payload).slice(0, 8)}`;
+}
+
+function decodedWire(encoded: string): readonly unknown[] {
+  const payload = encoded.split(".")[1] as string;
+  return JSON.parse(
+    Buffer.from(payload, "base64url").toString("utf8"),
+  ) as readonly unknown[];
+}
+
 describe("TC3 attempt codec", () => {
   it("round-trips compact commands without storing outcomes", () => {
     const encoded = encodeTc3Attempt(snapshot(), schema);
@@ -240,6 +257,43 @@ describe("TC3 attempt codec", () => {
     expect(() => decodeTc3Attempt("TC2.000....", schema)).toThrow(
       UnsupportedStateVersionError,
     );
+  });
+
+  /*
+   * Suspend data comes back from the LMS, so a hand-edited payload must fail
+   * as a persistence fault the recovery path understands, never as a raw
+   * TypeError raised part-way through reading the wire.
+   */
+  it("rejects a structurally invalid wire as a persistence fault", () => {
+    const valid = decodedWire(encodeTc3Attempt(snapshot(), schema));
+    const corruptions: readonly (readonly [number, unknown])[] = [
+      [4, 17],
+      [5, "not-a-stage-index"],
+      [6, "not-a-bitmap"],
+      [7, "not-a-decision-vector"],
+      [8, 1234],
+      [9, "not-a-journal"],
+      [10, "not-a-flag-set"],
+    ];
+    for (const [index, corruption] of corruptions) {
+      const wire = [...valid];
+      wire[index] = corruption;
+      expect(
+        () => decodeTc3Attempt(forgedTc3(wire), schema),
+        `wire slot ${String(index)} must be rejected`,
+      ).toThrow(PersistenceError);
+    }
+  });
+
+  it("keeps the stage bitmap wide enough for every ordered stage", () => {
+    expect(() =>
+      assertStageBitmapCapacity(SCENARIO_STAGE_ORDER),
+    ).not.toThrow();
+    expect(() =>
+      assertStageBitmapCapacity(
+        Array.from({ length: 32 }, (_value, index) => `STAGE_${String(index)}`),
+      ),
+    ).toThrow(PersistenceError);
   });
 
   it("rejects duplicate command identifiers", () => {

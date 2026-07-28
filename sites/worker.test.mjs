@@ -6320,6 +6320,100 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "RUN_ACCESS_DENIED",
     );
 
+    /*
+     * Every staff projection of one assignment's learner evidence answers to
+     * the same scope, so a guarded export cannot be reached by an unguarded
+     * report, monitor or replay of the same run.
+     */
+    for (const scopedPath of [
+      "/api/v1/assignments/ASSIGNMENT_SITE_001",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/report",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/monitor",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/competencies",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/decision-outcomes",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/curriculum-crosswalks",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/curriculum-crosswalks.json",
+      `/api/v1/runs/${runId}/timeline`,
+      `/api/v1/runs/${runId}/replay`,
+      `/api/v1/runs/${runId}/competencies`,
+      `/api/v1/runs/${runId}/rubric-evidence`,
+      `/api/v1/runs/${runId}/ratings`,
+    ]) {
+      const outsideRead = await worker.fetch(
+        apiRequest(scopedPath, {
+          email: "outside-instructor@example.edu",
+        }),
+        env,
+      );
+      assert.equal(
+        outsideRead.status,
+        403,
+        `${scopedPath} must refuse an instructor outside its assignment`,
+      );
+      assert.equal(
+        (await outsideRead.json()).error.code,
+        "RUN_ACCESS_DENIED",
+        `${scopedPath} must refuse with RUN_ACCESS_DENIED`,
+      );
+    }
+
+    /* The one-way writes answer to the same scope as the reads. */
+    for (const [scopedPath, scopedBody] of [
+      [
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/close",
+        { commandId: "COMMAND_OUTSIDE_CLOSE_001" },
+      ],
+      [
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/feedback-release",
+        { commandId: "COMMAND_OUTSIDE_RELEASE_001" },
+      ],
+      [
+        `/api/v1/runs/${runId}/ratings`,
+        {
+          commandId: "COMMAND_OUTSIDE_RATING_001",
+          runId,
+          rubricId: "RUBRIC_COFFEE_STAGE3",
+          criterionId: "CRIT_EVIDENCE_USE",
+          levelValue: 3,
+          comment: "",
+          linkedEvidenceIds: [],
+          expectedRevision: 0,
+        },
+      ],
+      [
+        `/api/v1/runs/${runId}/moderation`,
+        {
+          commandId: "COMMAND_OUTSIDE_MODERATION_001",
+          runId,
+          rubricId: "RUBRIC_COFFEE_STAGE3",
+          criterionId: "CRIT_EVIDENCE_USE",
+          levelValue: 3,
+          comment: "",
+          sourceRatingIds: [],
+          expectedRevision: 0,
+        },
+      ],
+    ]) {
+      const outsideWrite = await worker.fetch(
+        apiRequest(scopedPath, {
+          method: "POST",
+          email: "outside-instructor@example.edu",
+          body: scopedBody,
+        }),
+        env,
+      );
+      assert.equal(
+        outsideWrite.status,
+        403,
+        `${scopedPath} must refuse a write from outside its assignment`,
+      );
+      assert.equal(
+        (await outsideWrite.json()).error.code,
+        "RUN_ACCESS_DENIED",
+        `${scopedPath} must refuse with RUN_ACCESS_DENIED`,
+      );
+    }
+
     const activityTimelineResponse = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/timeline`, {
         email: "instructor@example.edu",

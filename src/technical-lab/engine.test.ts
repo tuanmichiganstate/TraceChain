@@ -114,6 +114,38 @@ describe("Technical Laboratory headless engine", () => {
     expect(replay.complete).toBe(true);
   });
 
+  /*
+   * The projection reports a fixed 100-point maximum. If a bundle's module
+   * allocations ever stop summing to it, the laboratory must say so rather
+   * than report a score out of a total it does not actually award.
+   */
+  it("refuses a bundle whose module allocations do not reach its maximum", async () => {
+    const [first, ...rest] =
+      permissionedFoundationsLabBundle.pack.scoringContract.moduleAllocations;
+    const driftedRuntime: TechnicalLabEngineRuntime = {
+      ...runtime,
+      bundle: {
+        ...permissionedFoundationsLabBundle,
+        pack: {
+          ...permissionedFoundationsLabBundle.pack,
+          scoringContract: {
+            ...permissionedFoundationsLabBundle.pack.scoringContract,
+            moduleAllocations: [
+              {
+                ...first!,
+                interpretationPoints: first!.interpretationPoints - 1,
+              },
+              ...rest,
+            ],
+          },
+        },
+      },
+    };
+    await expect(
+      replayTechnicalLab(driftedRuntime, emptyTechnicalLabSnapshot()),
+    ).rejects.toThrow(/allocations/u);
+  });
+
   it("applies the hint ceiling only to its interpretation item", async () => {
     let snapshot = emptyTechnicalLabSnapshot();
     let replay = await replayTechnicalLab(runtime, snapshot);

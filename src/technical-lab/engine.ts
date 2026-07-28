@@ -1240,6 +1240,21 @@ export async function replayTechnicalLab(
   );
   const totalScore =
     experimentScore + interpretationScore + applicationScore;
+  /*
+   * The maximum below is the fixed 100 of the accepted contract, which the
+   * pack validator pins by summing these same allocations. Recheck it here so
+   * a bundle that reached the engine without that validation cannot report a
+   * score out of a total it never awards.
+   */
+  const awardableScore = modules.reduce(
+    (total, module) => total + module.maximumScore,
+    0,
+  );
+  if (awardableScore !== 100) {
+    throw new Error(
+      `Technical Laboratory module allocations award ${String(awardableScore)} of a declared 100 points`,
+    );
+  }
   const complete = modules.every((module) => module.complete);
   return {
     snapshot,

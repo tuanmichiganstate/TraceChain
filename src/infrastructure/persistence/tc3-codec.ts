@@ -180,7 +180,25 @@ function encodedJsonCharacters(value: unknown): number {
   return encodeBase64Url(utf8Bytes(JSON.stringify(value))).length;
 }
 
+/**
+ * Completed stages travel as a 32-bit bitmap, so the ordered stage list has to
+ * stay inside a signed 32-bit shift. `SCENARIO_STAGE_ORDER` is append-only,
+ * which makes outgrowing this a live risk rather than a theoretical one: the
+ * 32nd stage would shift into the sign bit and the 33rd would silently wrap
+ * onto the first, reinterpreting every stored attempt instead of failing.
+ */
+export function assertStageBitmapCapacity(
+  stageOrder: readonly string[],
+): void {
+  if (stageOrder.length > 31) {
+    throw new PersistenceError(
+      `TC3 stores completed stages in a 31-slot bitmap, but the scenario declares ${String(stageOrder.length)} stages`,
+    );
+  }
+}
+
 function stageBitmap(stageIds: readonly ScenarioStageId[]): number {
+  assertStageBitmapCapacity(SCENARIO_STAGE_ORDER);
   let result = 0;
   for (const stageId of stageIds) {
     const index = SCENARIO_STAGE_ORDER.indexOf(stageId);
@@ -663,6 +681,52 @@ export function peekTc3VariantAssignment(
   };
 }
 
+/**
+ * Check every wire slot before any of them is read.
+ *
+ * Suspend data is returned by the LMS and can be hand-edited there, so a
+ * malformed payload has to surface as a `PersistenceError` the recovery path
+ * classifies. Reading a slot first and discovering its type by crashing raises
+ * a bare `TypeError` from inside `.map` or a spread, which that path does not
+ * recognise as recoverable stored state.
+ */
+function assertWireShape(
+  wire: readonly unknown[],
+): asserts wire is [
+  string,
+  string,
+  string,
+  string,
+  string,
+  number,
+  number,
+  readonly number[],
+  string,
+  readonly WireJournalEntry[],
+  number,
+  WireVariantAssignment | null,
+] {
+  const isJournalEntry = (entry: unknown): boolean =>
+    Array.isArray(entry) &&
+    entry.length === 4 &&
+    Number.isInteger(entry[0]) &&
+    Number.isInteger(entry[1]) &&
+    Number.isInteger(entry[2]) &&
+    Array.isArray(entry[3]);
+  if (
+    wire.slice(0, 5).some((field) => typeof field !== "string") ||
+    !Number.isInteger(wire[5]) ||
+    !Number.isInteger(wire[6]) ||
+    !Array.isArray(wire[7]) ||
+    typeof wire[8] !== "string" ||
+    !Array.isArray(wire[9]) ||
+    !wire[9].every(isJournalEntry) ||
+    !Number.isInteger(wire[10])
+  ) {
+    throw new PersistenceError("TC3 payload has a malformed field");
+  }
+}
+
 export function decodeTc3Attempt(
   encoded: string,
   schema: Tc3CodecSchema,
@@ -672,6 +736,7 @@ export function decodeTc3Attempt(
   if (!Array.isArray(wire) || wire.length !== 12) {
     throw new PersistenceError("TC3 payload has an invalid field count");
   }
+  assertWireShape(wire);
   if (
     wire[0] !== schema.configurationHash ||
     wire[1] !== schema.scenarioId ||
