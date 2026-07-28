@@ -1668,15 +1668,24 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     const login = await initiateLogin();
     const launch = await deepLinkLaunch(login);
     assert.equal(launch.status, 303, await launch.clone().text());
-    assert.equal(
+    const launchLocation = new URL(
       launch.headers.get("location"),
+      "https://tracechain.example",
+    );
+    assert.equal(
+      `${launchLocation.pathname}${launchLocation.search}`,
       "/instructor?ltiDeepLink=1&locale=en",
     );
-    const cookie = launch.headers.get("set-cookie").split(";")[0];
+    const deepLinkToken = new URLSearchParams(
+      launchLocation.hash.slice(1),
+    ).get("ltiSession");
+    assert.match(deepLinkToken, /^[A-Za-z0-9_-]{32,256}$/u);
 
     const session = await worker.fetch(
       new Request("https://tracechain.example/api/v1/session", {
-        headers: { cookie },
+        headers: {
+          authorization: `Bearer ${deepLinkToken}`,
+        },
       }),
       env,
     );
@@ -1776,7 +1785,11 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     const choices = await worker.fetch(
       new Request(
         "https://tracechain.example/api/lti/v1/deep-links/assignments",
-        { headers: { cookie } },
+        {
+          headers: {
+            authorization: `Bearer ${deepLinkToken}`,
+          },
+        },
       ),
       env,
     );
@@ -1794,12 +1807,12 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
         {
           method: "POST",
           headers: {
-            cookie,
             "content-type": "application/x-www-form-urlencoded",
             origin: "https://tracechain.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_OTHER_COURSE",
+            lti_session_token: deepLinkToken,
           }),
         },
       ),
@@ -1814,7 +1827,11 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     const regularInstructorApi = await worker.fetch(
       new Request(
         "https://tracechain.example/api/v1/assignment-options",
-        { headers: { cookie } },
+        {
+          headers: {
+            authorization: `Bearer ${deepLinkToken}`,
+          },
+        },
       ),
       env,
     );
@@ -1830,12 +1847,12 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
         {
           method: "POST",
           headers: {
-            cookie,
             "content-type": "application/x-www-form-urlencoded",
             origin: "https://tracechain.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_DEEP_LINK",
+            lti_session_token: deepLinkToken,
           }),
         },
       ),
@@ -1914,12 +1931,12 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
         {
           method: "POST",
           headers: {
-            cookie,
             "content-type": "application/x-www-form-urlencoded",
             origin: "https://tracechain.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_DEEP_LINK",
+            lti_session_token: deepLinkToken,
           }),
         },
       ),

@@ -7,6 +7,7 @@ import type {
 } from "../contracts/assessment";
 import {
   ClassTechnicalLabReport,
+  consumeLtiDeepLinkSessionToken,
   createInstructorReviewApi,
   InstructorReviewScreen,
   type InstructorReviewApi,
@@ -122,6 +123,26 @@ function renderScreen(api: InstructorReviewApi) {
 }
 
 describe("instructor review screen", () => {
+  it("consumes a Deep Linking fragment credential without leaving it in the URL", () => {
+    const token =
+      "LTI_DEEP_LINK_SESSION_TOKEN_0123456789abcdef";
+    window.sessionStorage.clear();
+    window.history.pushState(
+      {},
+      "",
+      `/instructor?ltiDeepLink=1&locale=en#ltiSession=${token}&panel=assignments`,
+    );
+
+    try {
+      expect(consumeLtiDeepLinkSessionToken()).toBe(token);
+      expect(window.location.hash).toBe("#panel=assignments");
+      expect(consumeLtiDeepLinkSessionToken()).toBe(token);
+    } finally {
+      window.sessionStorage.clear();
+      window.history.pushState({}, "", "/instructor");
+    }
+  });
+
   it("presents module-level Technical Laboratory evidence without treating timing as ability", () => {
     render(
       <LocaleProvider locale="en">
@@ -338,6 +359,10 @@ describe("instructor review screen", () => {
       saveModeration: vi.fn(),
       saveRating: vi.fn(),
     };
+    Object.assign(api, {
+      ltiDeepLinkSessionToken:
+        "LTI_DEEP_LINK_SESSION_TOKEN_0123456789abcdef",
+    });
 
     try {
       renderScreen(api);
@@ -356,6 +381,13 @@ describe("instructor review screen", () => {
       expect(form).toHaveAttribute(
         "action",
         "/api/lti/v1/deep-links/response",
+      );
+      expect(
+        form?.querySelector<HTMLInputElement>(
+          'input[name="lti_session_token"]',
+        ),
+      ).toHaveValue(
+        "LTI_DEEP_LINK_SESSION_TOKEN_0123456789abcdef",
       );
       expect(
         screen.queryByRole("heading", {

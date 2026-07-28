@@ -704,14 +704,17 @@ async function ltiResponse(
         "A same-origin Deep Linking response is required.",
       );
     }
-    const token = ltiSessionToken(request);
+    const parameters = await readLtiForm(request);
+    const token = ltiSessionToken(
+      request,
+      parameters.get("lti_session_token"),
+    );
     if (token === null) {
       throw new LtiAuthenticationError(
         "LTI_SESSION_REQUIRED",
         "An active LTI Deep Linking session is required.",
       );
     }
-    const parameters = await readLtiForm(request);
     const cancel = parameters.get("cancel") === "1";
     const assignmentId = cancel
       ? null

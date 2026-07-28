@@ -11,6 +11,7 @@ import {
   LTI_AGS_ENDPOINT_CLAIM,
   LTI_CONTEXT_CLAIM,
   LTI_CUSTOM_CLAIM,
+  LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER,
   LTI_DEEP_LINKING_SETTINGS_CLAIM,
   LTI_DEPLOYMENT_ID_CLAIM,
   LTI_INSTRUCTOR_ROLE,
@@ -219,18 +220,35 @@ function sessionCookie(token: string, maximumAgeSeconds: number): string {
   ].join("; ");
 }
 
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,256}$/u;
+
+function validSessionToken(value: string | null): string | null {
+  return value !== null && SESSION_TOKEN_PATTERN.test(value)
+    ? value
+    : null;
+}
+
 export function clearLtiSessionCookie(): string {
   return sessionCookie("", 0);
 }
 
-export function ltiSessionToken(request: Request): string | null {
+export function ltiSessionToken(
+  request: Request,
+  submittedToken: string | null = null,
+): string | null {
+  const explicit = validSessionToken(submittedToken);
+  if (explicit !== null) return explicit;
+  const authorization = request.headers.get("authorization");
+  if (authorization?.startsWith("Bearer ") === true) {
+    const bearer = validSessionToken(authorization.slice(7));
+    if (bearer !== null) return bearer;
+  }
   const cookie = request.headers.get("cookie");
   if (cookie === null) return null;
   for (const part of cookie.split(";")) {
     const [name, ...valueParts] = part.trim().split("=");
     if (name === LTI_SESSION_COOKIE) {
-      const value = valueParts.join("=");
-      return /^[A-Za-z0-9_-]{32,256}$/u.test(value) ? value : null;
+      return validSessionToken(valueParts.join("="));
     }
   }
   return null;
@@ -965,7 +983,8 @@ export async function completeLtiLaunch(options: {
       : "vi";
   const location =
     launchType === "deep-linking"
-      ? `/instructor?ltiDeepLink=1&locale=${locale}`
+      ? `/instructor?ltiDeepLink=1&locale=${locale}` +
+        `#${LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER}=${sessionToken}`
       : applicationRole === "instructor"
       ? `/instructor?locale=${locale}`
       : `/learner?assignmentId=${encodeURIComponent(

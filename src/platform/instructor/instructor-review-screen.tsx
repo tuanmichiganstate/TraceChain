@@ -26,6 +26,9 @@ import type {
   LtiLearningContextV2,
   LtiNrpsSyncProjectionV1,
 } from "../contracts/lti";
+import {
+  LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER,
+} from "../contracts/lti";
 import type {
   AssignmentRunMode,
   AssignmentCounterfactualConfigurationV1,
@@ -131,6 +134,7 @@ export interface SaveInstructorModerationInput {
 }
 
 export interface InstructorReviewApi {
+  readonly ltiDeepLinkSessionToken?: string;
   loadSession(): Promise<InstructorSession>;
   logoutSession?(): Promise<void>;
   loadAssignmentScenarioOptions(): Promise<
@@ -207,6 +211,85 @@ type FetchLike = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+const LTI_DEEP_LINK_SESSION_STORAGE_KEY =
+  "tracechain.lti.deep-link-session";
+const LTI_SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,256}$/u;
+
+function boundedLtiSessionToken(value: string | null): string | null {
+  return value !== null && LTI_SESSION_TOKEN_PATTERN.test(value)
+    ? value
+    : null;
+}
+
+export function consumeLtiDeepLinkSessionToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const query = new URLSearchParams(window.location.search);
+  if (!query.has("ltiDeepLink")) return null;
+  const fragment = new URLSearchParams(
+    window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash,
+  );
+  const fragmentValue = fragment.get(
+    LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER,
+  );
+  if (fragmentValue !== null) {
+    fragment.delete(LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER);
+    const remainingFragment = fragment.toString();
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${window.location.search}${
+        remainingFragment.length === 0
+          ? ""
+          : `#${remainingFragment}`
+      }`,
+    );
+    const token = boundedLtiSessionToken(fragmentValue);
+    try {
+      if (token === null) {
+        window.sessionStorage.removeItem(
+          LTI_DEEP_LINK_SESSION_STORAGE_KEY,
+        );
+      } else {
+        window.sessionStorage.setItem(
+          LTI_DEEP_LINK_SESSION_STORAGE_KEY,
+          token,
+        );
+      }
+    } catch {
+      // The current launch can still continue when storage is unavailable.
+    }
+    return token;
+  }
+  try {
+    return boundedLtiSessionToken(
+      window.sessionStorage.getItem(
+        LTI_DEEP_LINK_SESSION_STORAGE_KEY,
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function ltiSessionFetcher(
+  fetcher: FetchLike,
+  token: string | null,
+): FetchLike {
+  if (token === null) return fetcher;
+  return (input, init) => {
+    const headers = new Headers(
+      input instanceof Request ? input.headers : undefined,
+    );
+    new Headers(init?.headers).forEach((value, name) => {
+      headers.set(name, value);
+    });
+    headers.set("authorization", `Bearer ${token}`);
+    return fetcher(input, { ...init, headers });
+  };
+}
+
 export class InstructorReviewApiError extends Error {
   constructor(readonly code: string) {
     super(code);
@@ -274,8 +357,12 @@ function runLocalizedText(
 
 export function createInstructorReviewApi(
   fetcher: FetchLike = globalThis.fetch.bind(globalThis),
+  ltiDeepLinkSessionToken?: string,
 ): InstructorReviewApi {
   return {
+    ...(ltiDeepLinkSessionToken === undefined
+      ? {}
+      : { ltiDeepLinkSessionToken }),
     counterfactuals: createCounterfactualExplorerApi(fetcher),
     loadSession: () =>
       responseJson<InstructorSession>(fetcher, "/api/v1/session"),
@@ -570,7 +657,16 @@ export function createInstructorReviewApi(
   };
 }
 
-const browserApi = createInstructorReviewApi();
+const browserLtiDeepLinkSessionToken =
+  consumeLtiDeepLinkSessionToken();
+const browserFetch = globalThis.fetch.bind(globalThis);
+const browserApi = createInstructorReviewApi(
+  ltiSessionFetcher(
+    browserFetch,
+    browserLtiDeepLinkSessionToken,
+  ),
+  browserLtiDeepLinkSessionToken ?? undefined,
+);
 const REVIEW_ROLES: readonly ApplicationRole[] = [
   "instructor",
   "rater",
@@ -975,6 +1071,13 @@ function LtiDeepLinkAssignmentSelection({
             action="/api/lti/v1/deep-links/response"
             method="post"
           >
+            {api.ltiDeepLinkSessionToken === undefined ? null : (
+              <input
+                type="hidden"
+                name="lti_session_token"
+                value={api.ltiDeepLinkSessionToken}
+              />
+            )}
             <input type="hidden" name="locale" value={locale} />
             <button
               className="button button--secondary"
@@ -991,6 +1094,13 @@ function LtiDeepLinkAssignmentSelection({
           action="/api/lti/v1/deep-links/response"
           method="post"
         >
+          {api.ltiDeepLinkSessionToken === undefined ? null : (
+            <input
+              type="hidden"
+              name="lti_session_token"
+              value={api.ltiDeepLinkSessionToken}
+            />
+          )}
           <input type="hidden" name="locale" value={locale} />
           {assignments.length === 0 ? (
             <p>{t("instructorReview.lti.deepLink.empty")}</p>

@@ -30,6 +30,8 @@ export const LTI_NRPS_CONTEXT_MEMBERSHIP_SCOPE =
   "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly";
 export const LTI_NRPS_MEMBERSHIP_MEDIA_TYPE =
   "application/vnd.ims.lti-nrps.v2.membershipcontainer+json";
+export const LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER =
+  "ltiSession";
 
 export const LTI_INSTRUCTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
