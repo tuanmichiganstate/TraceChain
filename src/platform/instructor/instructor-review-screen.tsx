@@ -20,7 +20,11 @@ import type {
   SupportProfile,
 } from "../../config/types";
 import type { ApplicationRole } from "../contracts/run-events";
-import type { LtiLearningContextV1 } from "../contracts/lti";
+import type {
+  LtiDeepLinkAssignmentOptionV1,
+  LtiLaunchType,
+  LtiLearningContextV2,
+} from "../contracts/lti";
 import type {
   AssignmentRunMode,
   AssignmentCounterfactualConfigurationV1,
@@ -83,7 +87,8 @@ export interface InstructorSession {
   readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
   readonly authenticationSource?: "sites" | "lti";
-  readonly learningContext?: LtiLearningContextV1;
+  readonly ltiLaunchType?: LtiLaunchType;
+  readonly learningContext?: LtiLearningContextV2;
 }
 
 export interface InstructorRunReview {
@@ -131,6 +136,9 @@ export interface InstructorReviewApi {
   >;
   loadAssignmentLearnerOptions(): Promise<
     readonly HostedAssignmentLearnerOptionV1[]
+  >;
+  loadLtiDeepLinkAssignments?(): Promise<
+    readonly LtiDeepLinkAssignmentOptionV1[]
   >;
   loadRunReview(runId: string): Promise<InstructorRunReview>;
   loadRunReplay(
@@ -294,6 +302,17 @@ export function createInstructorReviewApi(
             readonly HostedAssignmentLearnerOptionV1[];
         }>(fetcher, "/api/v1/assignment-learners")
       ).learners;
+    },
+    async loadLtiDeepLinkAssignments() {
+      return (
+        await responseJson<{
+          readonly assignments:
+            readonly LtiDeepLinkAssignmentOptionV1[];
+        }>(
+          fetcher,
+          "/api/lti/v1/deep-links/assignments",
+        )
+      ).assignments;
     },
     async loadRunReview(runId) {
       const encodedRunId = encodeURIComponent(runId);
@@ -649,6 +668,9 @@ export function InstructorReviewScreen({
     session?.roles.some(
       (role) => role === "instructor" || role === "administrator",
     ) ?? false;
+  const deepLinkSelection =
+    session?.authenticationSource === "lti" &&
+    session.ltiLaunchType === "deep-linking";
   const accountLabel =
     session?.email ??
     session?.displayName ??
@@ -781,7 +803,17 @@ export function InstructorReviewScreen({
             </section>
           ) : null}
 
-          {mayManage ? (
+          {session !== null &&
+          deepLinkSelection &&
+          session.authenticationSource === "lti" &&
+          session.ltiLaunchType === "deep-linking" ? (
+            <LtiDeepLinkAssignmentSelection
+              api={api}
+              locale={t.locale}
+            />
+          ) : null}
+
+          {mayManage && !deepLinkSelection ? (
             <AssignmentCreation
               api={api}
               allowLtiLearnerLaunch={
@@ -790,9 +822,11 @@ export function InstructorReviewScreen({
             />
           ) : null}
 
-          {mayManage ? <ScormPackageBuilder api={api} /> : null}
+          {mayManage && !deepLinkSelection ? (
+            <ScormPackageBuilder api={api} />
+          ) : null}
 
-          {mayReview ? (
+          {mayReview && !deepLinkSelection ? (
             <AssignmentReport
               api={api}
               mayManage={mayManage}
@@ -802,7 +836,7 @@ export function InstructorReviewScreen({
             />
           ) : null}
 
-          {mayReview ? (
+          {mayReview && !deepLinkSelection ? (
             <section className="card card--work">
               <h2>{t("instructorReview.findRunHeading")}</h2>
               <form onSubmit={(event) => void loadReview(event)}>
@@ -843,7 +877,7 @@ export function InstructorReviewScreen({
             </section>
           ) : null}
 
-          {review === null ? null : (
+          {review === null || deepLinkSelection ? null : (
             <RunReview
               api={api}
               review={review}
@@ -857,6 +891,160 @@ export function InstructorReviewScreen({
         </div>
       </main>
     </>
+  );
+}
+
+function LtiDeepLinkAssignmentSelection({
+  api,
+  locale,
+}: {
+  readonly api: InstructorReviewApi;
+  readonly locale: "en" | "vi";
+}): ReactNode {
+  const t = useTranslator();
+  const loadAssignments = api.loadLtiDeepLinkAssignments;
+  const [assignments, setAssignments] = useState<
+    readonly LtiDeepLinkAssignmentOptionV1[]
+  >([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] =
+    useState("");
+  const [isLoading, setLoading] = useState(
+    loadAssignments !== undefined,
+  );
+  const [failed, setFailed] = useState(
+    loadAssignments === undefined,
+  );
+
+  useEffect(() => {
+    let active = true;
+    if (loadAssignments === undefined) {
+      return () => {
+        active = false;
+      };
+    }
+    void loadAssignments().then(
+      (available) => {
+        if (!active) return;
+        setAssignments(available);
+        setSelectedAssignmentId(
+          available[0]?.assignmentId ?? "",
+        );
+        setLoading(false);
+      },
+      () => {
+        if (!active) return;
+        setFailed(true);
+        setLoading(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [loadAssignments]);
+
+  return (
+    <section className="card card--work">
+      <h2>{t("instructorReview.lti.deepLink.heading")}</h2>
+      <p>{t("instructorReview.lti.deepLink.help")}</p>
+      {isLoading ? (
+        <p aria-live="polite">
+          {t("instructorReview.lti.deepLink.loading")}
+        </p>
+      ) : failed ? (
+        <>
+          <p className="notice notice--standalone" role="alert">
+            {t("instructorReview.lti.deepLink.error")}
+          </p>
+          <form
+            action="/api/lti/v1/deep-links/response"
+            method="post"
+          >
+            <input type="hidden" name="locale" value={locale} />
+            <button
+              className="button button--secondary"
+              type="submit"
+              name="cancel"
+              value="1"
+            >
+              {t("instructorReview.lti.deepLink.cancel")}
+            </button>
+          </form>
+        </>
+      ) : (
+        <form
+          action="/api/lti/v1/deep-links/response"
+          method="post"
+        >
+          <input type="hidden" name="locale" value={locale} />
+          {assignments.length === 0 ? (
+            <p>{t("instructorReview.lti.deepLink.empty")}</p>
+          ) : (
+            <fieldset className="instructor-review__learner-picker">
+              <legend className="field__label">
+                {t(
+                  "instructorReview.lti.deepLink.assignmentLegend",
+                )}
+              </legend>
+              <div className="instructor-review__learner-options">
+                {assignments.map((assignment) => (
+                  <label key={assignment.assignmentId}>
+                    <input
+                      type="radio"
+                      name="assignment_id"
+                      value={assignment.assignmentId}
+                      checked={
+                        selectedAssignmentId ===
+                        assignment.assignmentId
+                      }
+                      required
+                      onChange={() =>
+                        setSelectedAssignmentId(
+                          assignment.assignmentId,
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{assignment.title}</strong>
+                      <br />
+                      <span className="muted">
+                        {t(
+                          "instructorReview.lti.deepLink.assignmentDetails",
+                          {
+                            assignmentId:
+                              assignment.assignmentId,
+                            scenarioId: assignment.scenarioId,
+                            scenarioVersion:
+                              assignment.scenarioVersion,
+                          },
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <div className="instructor-review__form-actions">
+            <button
+              className="button button--primary"
+              type="submit"
+              disabled={assignments.length === 0}
+            >
+              {t("instructorReview.lti.deepLink.addToMoodle")}
+            </button>
+            <button
+              className="button button--secondary"
+              type="submit"
+              name="cancel"
+              value="1"
+              formNoValidate
+            >
+              {t("instructorReview.lti.deepLink.cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 

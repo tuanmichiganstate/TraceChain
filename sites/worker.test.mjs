@@ -9,7 +9,13 @@ import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import test, { after } from "node:test";
 import { build } from "esbuild";
-import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import {
+  createLocalJWKSet,
+  exportJWK,
+  generateKeyPair,
+  jwtVerify,
+  SignJWT,
+} from "jose";
 
 const buildDirectory = await mkdtemp(
   join(tmpdir(), "tracechain-worker-test-"),
@@ -1128,6 +1134,458 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       env,
     );
     assert.equal(expiredSession.status, 401);
+  } finally {
+    database.close();
+  }
+});
+
+test("returns one course-scoped assignment through a signed LTI Deep Linking response", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  const issuer = "https://moodle.example";
+  const clientId = "TRACECHAIN_CLIENT";
+  const deploymentId = "TRACECHAIN_DEPLOYMENT";
+  const { publicKey: platformPublicKey, privateKey: platformPrivateKey } =
+    await generateKeyPair("RS256", { extractable: true });
+  const {
+    publicKey: toolPublicKey,
+    privateKey: toolPrivateKey,
+  } = await generateKeyPair("RS256", { extractable: true });
+  const platformPublicJwk = {
+    ...(await exportJWK(platformPublicKey)),
+    alg: "RS256",
+    kid: "MOODLE_SIGNING_KEY",
+    use: "sig",
+  };
+  const toolPublicJwk = {
+    ...(await exportJWK(toolPublicKey)),
+    alg: "RS256",
+    kid: "TRACECHAIN_SIGNING_KEY",
+    use: "sig",
+  };
+  const toolPrivateJwk = {
+    ...(await exportJWK(toolPrivateKey)),
+    alg: "RS256",
+    kid: "TRACECHAIN_SIGNING_KEY",
+    use: "sig",
+  };
+  env.DB = database;
+  env.TRACECHAIN_LTI_REGISTRATIONS_JSON = JSON.stringify([
+    {
+      registrationId: "MOODLE_DEMO",
+      issuer,
+      clientId,
+      deploymentId,
+      authorizationEndpoint: `${issuer}/mod/lti/auth.php`,
+      jwksUri: `${issuer}/mod/lti/certs.php`,
+      platformJwks: { keys: [platformPublicJwk] },
+    },
+  ]);
+  env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
+    keys: [toolPublicJwk],
+  });
+  env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+    JSON.stringify(toolPrivateJwk);
+
+  async function initiateLogin() {
+    const parameters = new URLSearchParams({
+      iss: issuer,
+      login_hint: "LOGIN_HINT",
+      target_link_uri:
+        "https://tracechain.example/api/lti/v1/launch",
+      client_id: clientId,
+      lti_deployment_id: deploymentId,
+      lti_message_hint: "DEEP_LINK_MESSAGE_HINT",
+    });
+    const response = await worker.fetch(
+      new Request(
+        `https://tracechain.example/api/lti/v1/login?${parameters.toString()}`,
+      ),
+      env,
+    );
+    assert.equal(response.status, 302);
+    const authorization = new URL(response.headers.get("location"));
+    return {
+      nonce: authorization.searchParams.get("nonce"),
+      state: authorization.searchParams.get("state"),
+    };
+  }
+
+  async function deepLinkLaunch({
+    nonce,
+    state,
+    contextId = "COURSE_ACCOUNTING_101",
+    acceptTypes = ["ltiResourceLink"],
+  }) {
+    const now = Math.floor(Date.now() / 1_000);
+    const idToken = await new SignJWT({
+      nonce,
+      name: "Course instructor",
+      locale: "en-US",
+      "https://purl.imsglobal.org/spec/lti/claim/version":
+        "1.3.0",
+      "https://purl.imsglobal.org/spec/lti/claim/message_type":
+        "LtiDeepLinkingRequest",
+      "https://purl.imsglobal.org/spec/lti/claim/deployment_id":
+        deploymentId,
+      "https://purl.imsglobal.org/spec/lti/claim/roles": [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor",
+      ],
+      "https://purl.imsglobal.org/spec/lti/claim/context": {
+        id: contextId,
+        label: "ACC101",
+        title: "Accounting 101",
+      },
+      "https://purl.imsglobal.org/spec/lti-dl/claim/deep_linking_settings":
+        {
+          accept_types: acceptTypes,
+          accept_presentation_document_targets: ["window"],
+          accept_multiple: false,
+          data: "MOODLE_OPAQUE_DEEP_LINK_DATA",
+          deep_link_return_url:
+            `${issuer}/mod/lti/contentitem_return.php`,
+        },
+    })
+      .setProtectedHeader({
+        alg: "RS256",
+        kid: "MOODLE_SIGNING_KEY",
+      })
+      .setIssuer(issuer)
+      .setAudience(clientId)
+      .setSubject("MOODLE_INSTRUCTOR_42")
+      .setIssuedAt(now)
+      .setExpirationTime(now + 120)
+      .sign(platformPrivateKey);
+    return worker.fetch(
+      new Request("https://tracechain.example/api/lti/v1/launch", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ id_token: idToken, state }),
+      }),
+      env,
+    );
+  }
+
+  try {
+    const login = await initiateLogin();
+    const launch = await deepLinkLaunch(login);
+    assert.equal(launch.status, 303, await launch.clone().text());
+    assert.equal(
+      launch.headers.get("location"),
+      "/instructor?ltiDeepLink=1&locale=en",
+    );
+    const cookie = launch.headers.get("set-cookie").split(";")[0];
+
+    const session = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie },
+      }),
+      env,
+    );
+    assert.equal(session.status, 200);
+    const sessionBody = await session.json();
+    assert.equal(sessionBody.ltiLaunchType, "deep-linking");
+    assert.equal(
+      sessionBody.learningContext.resourceLinkId,
+      undefined,
+    );
+
+    const publishedPack = await standardCoffeePack();
+    const modeConfiguration =
+      publishedPack.scenarios[0].modeConfigurations.find(
+        (configuration) => configuration.mode === "standard",
+      );
+    const experience = standardHostedExperienceFixture({
+      packId: "PACK",
+      packVersion: "1.0.0",
+      scenarioId: "SCENARIO",
+      scenarioVersion: "1.0.0",
+    });
+    database.sqlite
+      .prepare(
+        `INSERT INTO scenario_pack_versions (
+          pack_id,
+          pack_version,
+          lifecycle_status,
+          pack_json,
+          updated_at_utc,
+          updated_by_user_id
+        ) VALUES ('PACK', '1.0.0', 'published', '{}', ?, ?)`,
+      )
+      .run("2026-07-28T08:00:00.000Z", sessionBody.userId);
+    const insertAssignment = database.sqlite.prepare(
+      `INSERT INTO assignments (
+        assignment_id,
+        creation_command_id,
+        title,
+        pack_id,
+        pack_version,
+        scenario_id,
+        scenario_version,
+        run_mode,
+        mode_configuration_json,
+        experience_configuration_json,
+        experience_configuration_hash,
+        counterfactual_configuration_json,
+        research_configuration_json,
+        learning_platform_issuer,
+        learning_platform_client_id,
+        learning_platform_deployment_id,
+        learning_context_id,
+        learning_resource_link_id,
+        lifecycle_status,
+        feedback_release_status,
+        created_at_utc,
+        created_by_user_id
+      ) VALUES (
+        ?, ?, ?, 'PACK', '1.0.0', 'SCENARIO', '1.0.0',
+        'standard', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, 'withheld', ?, ?
+      )`,
+    );
+    const sharedArguments = [
+      JSON.stringify(modeConfiguration),
+      JSON.stringify(experience.configuration),
+      experience.configurationHash,
+      JSON.stringify(disabledCounterfactualReplay),
+      JSON.stringify({ enabled: false }),
+      issuer,
+      clientId,
+      deploymentId,
+    ];
+    insertAssignment.run(
+      "ASSIGNMENT_DEEP_LINK",
+      "COMMAND_DEEP_LINK",
+      "Certificate evidence case",
+      ...sharedArguments,
+      "COURSE_ACCOUNTING_101",
+      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "active",
+      "2026-07-28T08:00:00.000Z",
+      sessionBody.userId,
+    );
+    insertAssignment.run(
+      "ASSIGNMENT_OTHER_COURSE",
+      "COMMAND_OTHER_COURSE_DEEP_LINK",
+      "Other course",
+      ...sharedArguments,
+      "COURSE_ACCOUNTING_202",
+      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "active",
+      "2026-07-28T08:00:00.000Z",
+      sessionBody.userId,
+    );
+    const choices = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/assignments",
+        { headers: { cookie } },
+      ),
+      env,
+    );
+    assert.equal(choices.status, 200, await choices.clone().text());
+    assert.deepEqual(
+      (await choices.json()).assignments.map(
+        (assignment) => assignment.assignmentId,
+      ),
+      ["ASSIGNMENT_DEEP_LINK"],
+    );
+
+    const crossCourseSelection = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/response",
+        {
+          method: "POST",
+          headers: {
+            cookie,
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://tracechain.example",
+          },
+          body: new URLSearchParams({
+            assignment_id: "ASSIGNMENT_OTHER_COURSE",
+          }),
+        },
+      ),
+      env,
+    );
+    assert.equal(crossCourseSelection.status, 403);
+    assert.equal(
+      (await crossCourseSelection.json()).error.code,
+      "LTI_ASSIGNMENT_ACCESS_DENIED",
+    );
+
+    const regularInstructorApi = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/assignment-options",
+        { headers: { cookie } },
+      ),
+      env,
+    );
+    assert.equal(regularInstructorApi.status, 403);
+    assert.equal(
+      (await regularInstructorApi.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
+    const response = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/response",
+        {
+          method: "POST",
+          headers: {
+            cookie,
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://tracechain.example",
+          },
+          body: new URLSearchParams({
+            assignment_id: "ASSIGNMENT_DEEP_LINK",
+          }),
+        },
+      ),
+      env,
+    );
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.match(
+      response.headers.get("content-type"),
+      /^text\/html/u,
+    );
+    const html = await response.text();
+    assert.match(
+      html,
+      /action="https:\/\/moodle\.example\/mod\/lti\/contentitem_return\.php"/u,
+    );
+    const jwt = /name="JWT" value="([^"]+)"/u.exec(html)?.[1];
+    assert.ok(jwt);
+    const verified = await jwtVerify(
+      jwt,
+      createLocalJWKSet({ keys: [toolPublicJwk] }),
+      {
+        algorithms: ["RS256"],
+        issuer: clientId,
+        audience: issuer,
+      },
+    );
+    assert.equal(
+      verified.payload[
+        "https://purl.imsglobal.org/spec/lti/claim/message_type"
+      ],
+      "LtiDeepLinkingResponse",
+    );
+    assert.equal(
+      verified.payload[
+        "https://purl.imsglobal.org/spec/lti-dl/claim/data"
+      ],
+      "MOODLE_OPAQUE_DEEP_LINK_DATA",
+    );
+    assert.deepEqual(
+      verified.payload[
+        "https://purl.imsglobal.org/spec/lti-dl/claim/content_items"
+      ],
+      [
+        {
+          type: "ltiResourceLink",
+          title: "Certificate evidence case",
+          url: "https://tracechain.example/api/lti/v1/launch",
+          custom: {
+            tracechain_assignment_id: "ASSIGNMENT_DEEP_LINK",
+          },
+          presentation: {
+            documentTarget: "window",
+          },
+        },
+      ],
+    );
+
+    database.sqlite
+      .prepare(
+        `UPDATE assignments
+         SET title = 'Changed after selection'
+         WHERE assignment_id = 'ASSIGNMENT_DEEP_LINK'`,
+      )
+      .run();
+    env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON = undefined;
+    const repeatedResponse = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/response",
+        {
+          method: "POST",
+          headers: {
+            cookie,
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://tracechain.example",
+          },
+          body: new URLSearchParams({
+            assignment_id: "ASSIGNMENT_DEEP_LINK",
+          }),
+        },
+      ),
+      env,
+    );
+    assert.equal(repeatedResponse.status, 200);
+    assert.equal(
+      /name="JWT" value="([^"]+)"/u.exec(
+        await repeatedResponse.text(),
+      )?.[1],
+      jwt,
+    );
+    env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+      JSON.stringify(toolPrivateJwk);
+
+    const cancelLogin = await initiateLogin();
+    const cancelLaunch = await deepLinkLaunch(cancelLogin);
+    assert.equal(cancelLaunch.status, 303);
+    const cancelCookie = cancelLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const cancelResponse = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/response",
+        {
+          method: "POST",
+          headers: {
+            cookie: cancelCookie,
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://tracechain.example",
+          },
+          body: new URLSearchParams({ cancel: "1" }),
+        },
+      ),
+      env,
+    );
+    assert.equal(cancelResponse.status, 200);
+    const cancelJwt = /name="JWT" value="([^"]+)"/u.exec(
+      await cancelResponse.text(),
+    )?.[1];
+    assert.ok(cancelJwt);
+    const verifiedCancel = await jwtVerify(
+      cancelJwt,
+      createLocalJWKSet({ keys: [toolPublicJwk] }),
+      {
+        algorithms: ["RS256"],
+        issuer: clientId,
+        audience: issuer,
+      },
+    );
+    assert.deepEqual(
+      verifiedCancel.payload[
+        "https://purl.imsglobal.org/spec/lti-dl/claim/content_items"
+      ],
+      [],
+    );
+
+    const unsupportedLogin = await initiateLogin();
+    const unsupportedLaunch = await deepLinkLaunch({
+      ...unsupportedLogin,
+      acceptTypes: ["link"],
+    });
+    assert.equal(unsupportedLaunch.status, 303);
+    assert.equal(
+      new URL(
+        unsupportedLaunch.headers.get("location"),
+      ).searchParams.get("ltiError"),
+      "LTI_DEEP_LINK_UNSUPPORTED",
+    );
   } finally {
     database.close();
   }

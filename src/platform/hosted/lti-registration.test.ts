@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseLtiPlatformRegistrations,
+  parseToolPrivateJwk,
   parseToolPublicJwks,
 } from "./lti-registration";
 
@@ -59,6 +60,37 @@ describe("LTI registration validation", () => {
           registration(),
           registration({ registrationId: "MOODLE_002" }),
         ]),
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "LTI_REGISTRATION_CONFIGURATION_INVALID",
+      }),
+    );
+  });
+
+  it("accepts only the private signing key paired with the public tool keyset", () => {
+    const privateJwk = {
+      ...publicJwk,
+      d: "PRIVATE_EXPONENT",
+      p: "PRIME_P",
+      q: "PRIME_Q",
+      dp: "PRIVATE_DP",
+      dq: "PRIVATE_DQ",
+      qi: "PRIVATE_QI",
+    };
+
+    expect(
+      parseToolPrivateJwk(JSON.stringify(privateJwk), {
+        keys: [publicJwk],
+      }).kid,
+    ).toBe("PUBLIC_KEY_001");
+    expect(() =>
+      parseToolPrivateJwk(
+        JSON.stringify({
+          ...privateJwk,
+          n: "OTHER_MODULUS",
+        }),
+        { keys: [publicJwk] },
       ),
     ).toThrowError(
       expect.objectContaining({

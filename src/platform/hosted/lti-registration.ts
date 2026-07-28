@@ -232,3 +232,70 @@ export function parseToolPublicJwks(
   }
   return parsePublicJwks(parsed, "toolJwks");
 }
+
+export function parseToolPrivateJwk(
+  configuration: string | undefined,
+  publicJwks: JsonWebKeySetV1,
+): Readonly<Record<string, unknown>> {
+  if (configuration === undefined || configuration.trim().length === 0) {
+    throw new LtiRegistrationError(
+      "LTI_REGISTRATION_CONFIGURATION_INVALID",
+      "TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is required for LTI Deep Linking.",
+    );
+  }
+  if (configuration.length > 32 * 1024) {
+    invalid("TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON exceeds its size limit.");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(configuration);
+  } catch {
+    invalid("TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is not valid JSON.");
+  }
+  const key = record(parsed, "toolPrivateJwk");
+  const requiredMembers = [
+    "kty",
+    "kid",
+    "alg",
+    "use",
+    "n",
+    "e",
+    "d",
+    "p",
+    "q",
+    "dp",
+    "dq",
+    "qi",
+  ] as const;
+  if (
+    requiredMembers.some(
+      (member) =>
+        typeof key[member] !== "string" ||
+        (key[member] as string).length === 0,
+    ) ||
+    key.kty !== "RSA" ||
+    key.alg !== "RS256" ||
+    key.use !== "sig"
+  ) {
+    invalid(
+      "toolPrivateJwk must be one complete RSA RS256 signing key.",
+    );
+  }
+  const publicMatch = publicJwks.keys.find(
+    (candidate) =>
+      candidate.kid === key.kid &&
+      candidate.kty === "RSA" &&
+      candidate.alg === "RS256" &&
+      candidate.use === "sig",
+  );
+  if (
+    publicMatch === undefined ||
+    publicMatch.n !== key.n ||
+    publicMatch.e !== key.e
+  ) {
+    invalid(
+      "toolPrivateJwk must match one public key exposed by the tool JWKS.",
+    );
+  }
+  return key;
+}

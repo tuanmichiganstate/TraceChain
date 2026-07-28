@@ -53,12 +53,14 @@ The worker resolves that email against `application_users` and
 application role or self-assert simulation actor, organization, or role.
 
 Moodle may instead launch `/instructor` or one exact `/learner` assignment
-through the separate LTI 1.3 Core boundary. That flow verifies Moodle's signed
+through the separate LTI 1.3 boundary. That flow verifies Moodle's signed
 launch, one-use state and nonce, registered deployment, full Instructor or
 Learner role, and course context before creating a server-side session. A
 learner launch additionally requires the signed
 `tracechain_assignment_id` custom claim and is authorized only for that
-course-bound assignment. See `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
+course-bound assignment. Deep Linking lets a verified instructor select one
+active assignment from that course and returns the binding to Moodle in a
+signed resource link. See `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 For an empty deployment, the optional runtime variable
 `TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS` may contain a comma-separated email

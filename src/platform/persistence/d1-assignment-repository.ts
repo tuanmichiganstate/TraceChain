@@ -27,7 +27,7 @@ import {
 } from "../runs/research-configuration";
 import { assignmentStartAvailability } from "../runs/assignment-availability";
 import { assertHostedExperienceIdentity } from "../runs/experience-configuration";
-import type { LtiLearningContextV1 } from "../contracts/lti";
+import type { LtiLearningContextV2 } from "../contracts/lti";
 import type { D1DatabaseLike } from "./d1-types";
 
 interface AssignmentRow {
@@ -163,6 +163,16 @@ WHERE creation_command_id = ?`;
 const FIND_ASSIGNMENT_BY_CLOSE_COMMAND = `SELECT assignment_id
 FROM assignments
 WHERE close_command_id = ?`;
+
+const LIST_ACTIVE_ASSIGNMENT_IDS_FOR_LTI_CONTEXT = `SELECT
+  assignment_id
+FROM assignments
+WHERE learning_platform_issuer = ?
+  AND learning_platform_client_id = ?
+  AND learning_platform_deployment_id = ?
+  AND learning_context_id = ?
+  AND lifecycle_status = 'active'
+ORDER BY created_at_utc DESC, assignment_id`;
 
 const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.assignment_id,
@@ -719,12 +729,14 @@ function assignmentMode(value: unknown): AssignmentRunMode {
 }
 
 function normalizeLearningContext(
-  value: LtiLearningContextV1 | undefined,
-): LtiLearningContextV1 | undefined {
+  value: LtiLearningContextV2 | undefined,
+): LtiLearningContextV2 | undefined {
   if (value === undefined) return undefined;
   if (
-    value.schemaVersion !== "1.0.0" ||
-    value.provider !== "lti-1.3"
+    value.schemaVersion !== "2.0.0" ||
+    value.provider !== "lti-1.3" ||
+    value.launchType !== "resource-link" ||
+    value.resourceLinkId === undefined
   ) {
     throw new AssignmentRepositoryError(
       "INVALID_ASSIGNMENT",
@@ -753,8 +765,9 @@ function normalizeLearningContext(
       ? undefined
       : boundedText(value.contextTitle, "learningContext.contextTitle", 500);
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     provider: "lti-1.3",
+    launchType: "resource-link",
     issuer,
     clientId: boundedText(
       value.clientId,
@@ -782,8 +795,8 @@ function normalizeLearningContext(
 }
 
 function learningContextMatchesPrincipal(
-  assignmentContext: LtiLearningContextV1,
-  principalContext: LtiLearningContextV1,
+  assignmentContext: LtiLearningContextV2,
+  principalContext: LtiLearningContextV2,
 ): boolean {
   return (
     assignmentContext.issuer === principalContext.issuer &&
@@ -1228,7 +1241,7 @@ function assignmentFrom(
   );
   let availableFrom: string | undefined;
   let availableUntil: string | undefined;
-  let learningContext: LtiLearningContextV1 | undefined;
+  let learningContext: LtiLearningContextV2 | undefined;
   try {
     availableFrom = optionalUtcTimestamp(
       row.available_from_utc ?? undefined,
@@ -1254,8 +1267,9 @@ function assignmentFrom(
     }
     if (hasCompleteContext) {
       learningContext = normalizeLearningContext({
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         provider: "lti-1.3",
+        launchType: "resource-link",
         issuer: row.learning_platform_issuer!,
         clientId: row.learning_platform_client_id!,
         deploymentId: row.learning_platform_deployment_id!,
@@ -1546,6 +1560,38 @@ export class D1AssignmentRepository {
       );
     }
     return assignment;
+  }
+
+  async listActiveForLtiContext(
+    context: LtiLearningContextV2,
+  ): Promise<readonly HostedAssignmentV1[]> {
+    const result = await this.database
+      .prepare(LIST_ACTIVE_ASSIGNMENT_IDS_FOR_LTI_CONTEXT)
+      .bind(
+        context.issuer,
+        context.clientId,
+        context.deploymentId,
+        context.contextId,
+      )
+      .all<{ readonly assignment_id: string }>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Course assignments could not be loaded.",
+      );
+    }
+    const assignments: HostedAssignmentV1[] = [];
+    for (const row of result.results) {
+      const assignment = await this.find(row.assignment_id);
+      if (assignment === null) {
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_STORAGE_FAILED",
+          "A course assignment could not be reloaded.",
+        );
+      }
+      assignments.push(assignment);
+    }
+    return assignments;
   }
 
   async listForLearner(

@@ -1,4 +1,4 @@
-import type { LtiLearningContextV1 } from "./lti";
+import type { LtiLearningContextV2 } from "./lti";
 import type { HostedRunModeConfigurationV1 } from "./scenario-pack";
 import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
 
@@ -66,7 +66,7 @@ export interface HostedAssignmentV1 {
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
   readonly research: AssignmentResearchConfigurationV1;
-  readonly learningContext?: LtiLearningContextV1;
+  readonly learningContext?: LtiLearningContextV2;
   readonly learnerUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly availableFrom?: string;
@@ -100,7 +100,7 @@ export interface CreateHostedAssignmentRequest {
    * Server-derived from an authenticated LTI launch. Browser request bodies
    * cannot select or replace this context.
    */
-  readonly learningContext?: LtiLearningContextV1;
+  readonly learningContext?: LtiLearningContextV2;
   readonly learnerUserIds: readonly string[];
   readonly availableFrom?: string;
   readonly availableUntil?: string;

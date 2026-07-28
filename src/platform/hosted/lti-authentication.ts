@@ -10,6 +10,7 @@ import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   LTI_CONTEXT_CLAIM,
   LTI_CUSTOM_CLAIM,
+  LTI_DEEP_LINKING_SETTINGS_CLAIM,
   LTI_DEPLOYMENT_ID_CLAIM,
   LTI_INSTRUCTOR_ROLE,
   LTI_LAUNCH_PRESENTATION_CLAIM,
@@ -19,7 +20,9 @@ import {
   LTI_ROLES_CLAIM,
   LTI_VERSION_CLAIM,
   type LtiApplicationRole,
-  type LtiLearningContextV1,
+  type LtiDeepLinkingSettingsV1,
+  type LtiLaunchType,
+  type LtiLearningContextV2,
   type LtiPlatformRegistrationV1,
 } from "../contracts/lti";
 import type { HostedAssignmentV1 } from "../contracts/assessment";
@@ -51,7 +54,9 @@ export class LtiAuthenticationError extends Error {
       | "LTI_CONTEXT_REQUIRED"
       | "LTI_SESSION_REQUIRED"
       | "LTI_ASSIGNMENT_REQUIRED"
-      | "LTI_ASSIGNMENT_ACCESS_DENIED",
+      | "LTI_ASSIGNMENT_ACCESS_DENIED"
+      | "LTI_DEEP_LINK_UNSUPPORTED"
+      | "LTI_DEEP_LINK_COMPLETED",
     message: string,
     readonly recoveryPath: "/instructor" | "/learner" =
       "/instructor",
@@ -404,14 +409,123 @@ async function verifiedLaunchPayload(options: {
   }
 }
 
+function deepLinkReturnUrl(
+  value: unknown,
+  registration: LtiPlatformRegistrationV1,
+): string {
+  const candidate = claimText(
+    value,
+    `${LTI_DEEP_LINKING_SETTINGS_CLAIM}.deep_link_return_url`,
+  );
+  try {
+    const returnUrl = new URL(candidate);
+    const issuer = new URL(registration.issuer);
+    if (
+      returnUrl.origin !== issuer.origin ||
+      (returnUrl.protocol !== "https:" &&
+        returnUrl.hostname !== "localhost" &&
+        returnUrl.hostname !== "127.0.0.1" &&
+        returnUrl.hostname !== "::1")
+    ) {
+      throw new Error("Unexpected Deep Linking return origin.");
+    }
+    return returnUrl.toString();
+  } catch {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      "The LTI Deep Linking return URL is invalid.",
+    );
+  }
+}
+
+function claimTextArray(
+  value: unknown,
+  name: string,
+): readonly string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > 16 ||
+    !value.every(
+      (entry) =>
+        typeof entry === "string" &&
+        entry.length > 0 &&
+        entry.length <= 128,
+    )
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      `${name} must contain bounded string values.`,
+    );
+  }
+  return [...new Set(value)].sort();
+}
+
+function deepLinkingSettings(
+  payload: JWTPayload,
+  registration: LtiPlatformRegistrationV1,
+): LtiDeepLinkingSettingsV1 {
+  const settings = objectClaim(
+    payload,
+    LTI_DEEP_LINKING_SETTINGS_CLAIM,
+  );
+  const acceptedTypes = claimTextArray(
+    settings.accept_types,
+    `${LTI_DEEP_LINKING_SETTINGS_CLAIM}.accept_types`,
+  );
+  const acceptedPresentationTargets = claimTextArray(
+    settings.accept_presentation_document_targets,
+    `${LTI_DEEP_LINKING_SETTINGS_CLAIM}.accept_presentation_document_targets`,
+  );
+  if (
+    !acceptedTypes.includes("ltiResourceLink") ||
+    !acceptedPresentationTargets.includes("window")
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      "TraceChain Deep Linking requires an LTI resource link that opens in a new window.",
+    );
+  }
+  if (
+    settings.accept_multiple !== undefined &&
+    typeof settings.accept_multiple !== "boolean"
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      "The LTI Deep Linking multiple-selection setting is invalid.",
+    );
+  }
+  const data = optionalClaimText(settings.data, 8 * 1024);
+  if (
+    settings.data !== undefined &&
+    data === undefined
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      "The LTI Deep Linking opaque data exceeds its size limit.",
+    );
+  }
+  return {
+    returnUrl: deepLinkReturnUrl(
+      settings.deep_link_return_url,
+      registration,
+    ),
+    ...(data === undefined ? {} : { data }),
+    acceptedTypes,
+    acceptedPresentationTargets,
+  };
+}
+
 function learningContext(
   payload: JWTPayload,
   registration: LtiPlatformRegistrationV1,
 ): {
-  readonly context: LtiLearningContextV1;
+  readonly context: LtiLearningContextV2;
   readonly roles: readonly string[];
   readonly applicationRole: LtiApplicationRole;
+  readonly launchType: LtiLaunchType;
   readonly assignmentId?: string;
+  readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
 } {
   if (payload[LTI_VERSION_CLAIM] !== "1.3.0") {
     throw new LtiAuthenticationError(
@@ -419,10 +533,14 @@ function learningContext(
       "The LTI version claim is not supported.",
     );
   }
-  if (payload[LTI_MESSAGE_TYPE_CLAIM] !== "LtiResourceLinkRequest") {
+  const messageType = payload[LTI_MESSAGE_TYPE_CLAIM];
+  if (
+    messageType !== "LtiResourceLinkRequest" &&
+    messageType !== "LtiDeepLinkingRequest"
+  ) {
     throw new LtiAuthenticationError(
       "LTI_TOKEN_INVALID",
-      "Only an LTI resource-link launch is supported.",
+      "The LTI message type is not supported.",
     );
   }
   if (
@@ -454,21 +572,33 @@ function learningContext(
               "The Moodle launch does not carry a supported TraceChain role.",
             );
           })();
+  if (
+    messageType === "LtiDeepLinkingRequest" &&
+    applicationRole !== "instructor"
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_INSTRUCTOR_ROLE_REQUIRED",
+      "LTI Deep Linking requires a verified Moodle instructor role.",
+    );
+  }
   const contextClaim = objectClaim(payload, LTI_CONTEXT_CLAIM);
   const contextId = claimText(
     contextClaim.id,
     `${LTI_CONTEXT_CLAIM}.id`,
     512,
   );
-  const resourceLinkClaim = objectClaim(
-    payload,
-    LTI_RESOURCE_LINK_CLAIM,
-  );
-  const resourceLinkId = claimText(
-    resourceLinkClaim.id,
-    `${LTI_RESOURCE_LINK_CLAIM}.id`,
-    512,
-  );
+  const launchType: LtiLaunchType =
+    messageType === "LtiDeepLinkingRequest"
+      ? "deep-linking"
+      : "resource-link";
+  const resourceLinkId =
+    launchType === "resource-link"
+      ? claimText(
+          objectClaim(payload, LTI_RESOURCE_LINK_CLAIM).id,
+          `${LTI_RESOURCE_LINK_CLAIM}.id`,
+          512,
+        )
+      : undefined;
   const launchPresentation =
     typeof payload[LTI_LAUNCH_PRESENTATION_CLAIM] === "object" &&
     payload[LTI_LAUNCH_PRESENTATION_CLAIM] !== null &&
@@ -513,18 +643,27 @@ function learningContext(
     }
     assignmentId = candidate.trim();
   }
+  const selectedDeepLinkingSettings =
+    launchType === "deep-linking"
+      ? deepLinkingSettings(payload, registration)
+      : undefined;
   return {
     roles: [...new Set(rolesValue)].sort(),
     applicationRole,
+    launchType,
     ...(assignmentId === undefined ? {} : { assignmentId }),
+    ...(selectedDeepLinkingSettings === undefined
+      ? {}
+      : { deepLinkingSettings: selectedDeepLinkingSettings }),
     context: {
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       provider: "lti-1.3",
+      launchType,
       issuer: registration.issuer,
       clientId: registration.clientId,
       deploymentId: registration.deploymentId,
       contextId,
-      resourceLinkId,
+      ...(resourceLinkId === undefined ? {} : { resourceLinkId }),
       ...(contextLabel === undefined ? {} : { contextLabel }),
       ...(contextTitle === undefined ? {} : { contextTitle }),
       ...(returnUrl === undefined ? {} : { returnUrl }),
@@ -534,7 +673,7 @@ function learningContext(
 
 function assignmentMatchesLaunch(
   assignment: HostedAssignmentV1,
-  context: LtiLearningContextV1,
+  context: LtiLearningContextV2,
 ): boolean {
   const assignedContext = assignment.learningContext;
   return (
@@ -580,7 +719,9 @@ export async function completeLtiLaunch(options: {
     context,
     roles,
     applicationRole,
+    launchType,
     assignmentId,
+    deepLinkingSettings: selectedDeepLinkingSettings,
   } = learningContext(payload, registration);
   const assignment =
     applicationRole === "learner" && assignmentId !== undefined
@@ -634,7 +775,14 @@ export async function completeLtiLaunch(options: {
       context,
       platformRoles: roles,
       applicationRole,
+      launchType,
       ...(assignmentId === undefined ? {} : { assignmentId }),
+      ...(selectedDeepLinkingSettings === undefined
+        ? {}
+        : {
+            deepLinkingSettings: selectedDeepLinkingSettings,
+            deepLinkResponseNonce: opaqueToken(),
+          }),
       issuedAt,
       expiresAt,
     },
@@ -646,7 +794,9 @@ export async function completeLtiLaunch(options: {
       ? "en"
       : "vi";
   const location =
-    applicationRole === "instructor"
+    launchType === "deep-linking"
+      ? `/instructor?ltiDeepLink=1&locale=${locale}`
+      : applicationRole === "instructor"
       ? `/instructor?locale=${locale}`
       : `/learner?assignmentId=${encodeURIComponent(
           assignmentId!,

@@ -49,8 +49,14 @@ import {
 import {
   LtiRegistrationError,
   parseLtiPlatformRegistrations,
+  parseToolPrivateJwk,
   parseToolPublicJwks,
 } from "../src/platform/hosted/lti-registration";
+import {
+  assertDeepLinkAssignmentAccess,
+  createDeepLinkResponseJwt,
+  deepLinkAutoSubmitResponse,
+} from "../src/platform/hosted/lti-deep-linking";
 import { provisionBootstrapAdministrator } from "../src/platform/hosted/bootstrap-principal";
 import {
   HostedAuthorizationError,
@@ -221,6 +227,7 @@ interface WorkerEnvironment {
   readonly TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS?: string;
   readonly TRACECHAIN_LTI_REGISTRATIONS_JSON?: string;
   readonly TRACECHAIN_LTI_TOOL_JWKS_JSON?: string;
+  readonly TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON?: string;
 }
 
 const securityHeaders = {
@@ -538,7 +545,11 @@ function ltiErrorResponse(
     );
   }
   const status =
-    code === "LTI_INSTRUCTOR_ROLE_REQUIRED" ? 403 : 400;
+    code === "LTI_INSTRUCTOR_ROLE_REQUIRED" ||
+    code === "LTI_ASSIGNMENT_ACCESS_DENIED" ||
+    code === "LTI_SESSION_REQUIRED"
+      ? 403
+      : 400;
   return jsonResponse(status, { error: { code } });
 }
 
@@ -607,6 +618,197 @@ async function ltiResponse(
         clock,
       }),
     );
+  }
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/lti/v1/deep-links/assignments"
+  ) {
+    const token = ltiSessionToken(request);
+    if (token === null) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An active LTI Deep Linking session is required.",
+      );
+    }
+    const tokenHash = sha256Hex(token);
+    const principal = await repository.findActiveSession(tokenHash);
+    const deepLink =
+      await repository.findActiveDeepLinkSession(tokenHash);
+    if (
+      principal === null ||
+      deepLink === null ||
+      principal.ltiLaunchType !== "deep-linking" ||
+      !principal.roles.includes("instructor")
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An active instructor Deep Linking session is required.",
+      );
+    }
+    if (deepLink.completedAt !== undefined) {
+      throw new LtiAuthenticationError(
+        "LTI_DEEP_LINK_COMPLETED",
+        "This LTI Deep Linking selection is already complete.",
+      );
+    }
+    const assignments =
+      await new D1AssignmentRepository(
+        environment.DB,
+        clock,
+      ).listActiveForLtiContext(principal.learningContext!);
+    return jsonResponse(200, {
+      assignments: assignments.map((assignment) => ({
+        schemaVersion: "1.0.0",
+        assignmentId: assignment.assignmentId,
+        title: assignment.title,
+        scenarioId: assignment.scenarioId,
+        scenarioVersion: assignment.scenarioVersion,
+        mode: assignment.mode,
+      })),
+    });
+  }
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/lti/v1/deep-links/response"
+  ) {
+    const origin = request.headers.get("origin");
+    if (origin !== url.origin) {
+      throw new LtiAuthenticationError(
+        "LTI_REQUEST_INVALID",
+        "A same-origin Deep Linking response is required.",
+      );
+    }
+    const token = ltiSessionToken(request);
+    if (token === null) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An active LTI Deep Linking session is required.",
+      );
+    }
+    const parameters = await readLtiForm(request);
+    const cancel = parameters.get("cancel") === "1";
+    const assignmentId = cancel
+      ? null
+      : ltiLoginParameter(
+          parameters.get("assignment_id"),
+          "assignment_id",
+        );
+    if (
+      assignmentId !== null &&
+      (assignmentId.length > 128 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(assignmentId))
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_REQUEST_INVALID",
+        "The Deep Linking assignment identifier is invalid.",
+      );
+    }
+    const tokenHash = sha256Hex(token);
+    const principal = await repository.findActiveSession(tokenHash);
+    const pending =
+      await repository.findActiveDeepLinkSession(tokenHash);
+    if (
+      principal === null ||
+      pending === null ||
+      principal.ltiLaunchType !== "deep-linking" ||
+      !principal.roles.includes("instructor")
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An active instructor Deep Linking session is required.",
+      );
+    }
+    if (pending.completedAt !== undefined) {
+      if (
+        (pending.selectedAssignmentId ?? null) !== assignmentId ||
+        pending.responseJwt === undefined
+      ) {
+        throw new LtiAuthenticationError(
+          "LTI_DEEP_LINK_COMPLETED",
+          "This LTI Deep Linking selection is already complete.",
+        );
+      }
+      const language =
+        parameters.get("locale") === "en" ? "en" : "vi";
+      return deepLinkAutoSubmitResponse({
+        returnUrl: pending.settings.returnUrl,
+        jwt: pending.responseJwt,
+        language,
+        submitLabel:
+          language === "en"
+            ? en["instructorReview.lti.deepLink.returnToMoodle"]
+            : vi["instructorReview.lti.deepLink.returnToMoodle"],
+        scriptNonce: pending.responseNonce,
+      });
+    }
+    const assignment =
+      assignmentId === null
+        ? null
+        : await new D1AssignmentRepository(
+            environment.DB,
+            clock,
+          ).find(assignmentId);
+    if (assignmentId !== null && assignment === null) {
+      throw new LtiAuthenticationError(
+        "LTI_ASSIGNMENT_ACCESS_DENIED",
+        "The selected assignment is unavailable.",
+      );
+    }
+    if (assignment !== null) {
+      assertDeepLinkAssignmentAccess(assignment, pending);
+    }
+    const registration = registrations.find(
+      (candidate) =>
+        candidate.registrationId === pending.registrationId,
+    );
+    if (registration === undefined) {
+      throw new LtiAuthenticationError(
+        "LTI_LOGIN_STATE_INVALID",
+        "The LTI Deep Linking registration is no longer active.",
+      );
+    }
+    const toolJwks = parseToolPublicJwks(
+      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+    );
+    const privateJwk = parseToolPrivateJwk(
+      environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      toolJwks,
+    );
+    const completedAt = clock.now();
+    const prospectiveJwt = await createDeepLinkResponseJwt({
+      registration,
+      privateJwk,
+      session: {
+        ...pending,
+        ...(assignmentId === null
+          ? {}
+          : { selectedAssignmentId: assignmentId }),
+        completedAt,
+      },
+      assignment,
+      launchUrl: new URL(
+        "/api/lti/v1/launch",
+        request.url,
+      ).toString(),
+    });
+    const completed = await repository.completeDeepLinkSession(
+      tokenHash,
+      assignmentId,
+      completedAt,
+      prospectiveJwt,
+    );
+    const language =
+      parameters.get("locale") === "en" ? "en" : "vi";
+    return deepLinkAutoSubmitResponse({
+      returnUrl: completed.settings.returnUrl,
+      jwt: completed.responseJwt!,
+      language,
+      submitLabel:
+        language === "en"
+          ? en["instructorReview.lti.deepLink.returnToMoodle"]
+          : vi["instructorReview.lti.deepLink.returnToMoodle"],
+      scriptNonce: completed.responseNonce,
+    });
   }
   if (
     request.method === "POST" &&
@@ -1462,10 +1664,20 @@ async function apiResponse(
       ...(principal.learningContext === undefined
         ? {}
         : { learningContext: principal.learningContext }),
+      ...(principal.ltiLaunchType === undefined
+        ? {}
+        : { ltiLaunchType: principal.ltiLaunchType }),
       ...(principal.ltiAssignmentId === undefined
         ? {}
         : { ltiAssignmentId: principal.ltiAssignmentId }),
     });
+  }
+
+  if (principal.ltiLaunchType === "deep-linking") {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "An LTI Deep Linking session may only select one course assignment.",
+    );
   }
 
   await enforceLtiCourseRequestScope({

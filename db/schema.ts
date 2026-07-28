@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-28-lti-learner-launch-v1";
+  "2026-07-28-lti-deep-linking-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -247,11 +247,32 @@ export const schemaStatements = [
     client_id TEXT NOT NULL,
     deployment_id TEXT NOT NULL,
     subject TEXT NOT NULL,
+    launch_type TEXT NOT NULL
+      CHECK (launch_type IN ('resource-link', 'deep-linking')),
     context_id TEXT NOT NULL,
-    resource_link_id TEXT NOT NULL,
+    resource_link_id TEXT,
     context_label TEXT,
     context_title TEXT,
     return_url TEXT,
+    deep_link_return_url TEXT,
+    deep_link_data TEXT CHECK (
+      deep_link_data IS NULL OR length(deep_link_data) <= 8192
+    ),
+    deep_link_accept_types_json TEXT CHECK (
+      deep_link_accept_types_json IS NULL
+      OR json_valid(deep_link_accept_types_json)
+    ),
+    deep_link_accept_targets_json TEXT CHECK (
+      deep_link_accept_targets_json IS NULL
+      OR json_valid(deep_link_accept_targets_json)
+    ),
+    deep_link_response_nonce TEXT,
+    deep_link_assignment_id TEXT,
+    deep_link_completed_at_utc TEXT,
+    deep_link_response_jwt TEXT CHECK (
+      deep_link_response_jwt IS NULL
+      OR length(deep_link_response_jwt) <= 32768
+    ),
     platform_roles_json TEXT NOT NULL
       CHECK (json_valid(platform_roles_json)),
     application_role TEXT NOT NULL
@@ -272,8 +293,46 @@ export const schemaStatements = [
         AND assignment_id IS NOT NULL
       )
     ),
+    CHECK (
+      (
+        launch_type = 'resource-link'
+        AND resource_link_id IS NOT NULL
+        AND deep_link_return_url IS NULL
+        AND deep_link_data IS NULL
+        AND deep_link_accept_types_json IS NULL
+        AND deep_link_accept_targets_json IS NULL
+        AND deep_link_response_nonce IS NULL
+        AND deep_link_assignment_id IS NULL
+        AND deep_link_completed_at_utc IS NULL
+        AND deep_link_response_jwt IS NULL
+      )
+      OR
+      (
+        launch_type = 'deep-linking'
+        AND application_role = 'instructor'
+        AND resource_link_id IS NULL
+        AND deep_link_return_url IS NOT NULL
+        AND deep_link_accept_types_json IS NOT NULL
+        AND deep_link_accept_targets_json IS NOT NULL
+        AND deep_link_response_nonce IS NOT NULL
+        AND (
+          (
+            deep_link_assignment_id IS NULL
+            AND deep_link_completed_at_utc IS NULL
+            AND deep_link_response_jwt IS NULL
+          )
+          OR
+          (
+            deep_link_completed_at_utc IS NOT NULL
+            AND deep_link_response_jwt IS NOT NULL
+          )
+        )
+      )
+    ),
     FOREIGN KEY (user_id) REFERENCES application_users(user_id),
-    FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id)
+    FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id),
+    FOREIGN KEY (deep_link_assignment_id)
+      REFERENCES assignments(assignment_id)
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS lti_sessions_user_expiry
     ON lti_sessions(user_id, expires_at_utc, revoked_at_utc)`,

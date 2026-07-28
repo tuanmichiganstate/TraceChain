@@ -251,8 +251,9 @@ describe("instructor review screen", () => {
         roles: ["instructor"],
         authenticationSource: "lti",
         learningContext: {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           provider: "lti-1.3",
+          launchType: "resource-link",
           issuer: "https://moodle.example",
           clientId: "TRACECHAIN_CLIENT",
           deploymentId: "TRACECHAIN_DEPLOYMENT",
@@ -286,6 +287,89 @@ describe("instructor review screen", () => {
     expect(
       screen.getByRole("button", { name: "Sign out" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows only the course assignment picker during an LTI Deep Linking launch", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/instructor?ltiDeepLink=1&locale=en",
+    );
+    const api: InstructorReviewApi = {
+      createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
+      loadLtiDeepLinkAssignments: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: "1.0.0",
+          assignmentId: "ASSIGNMENT_LTI_001",
+          title: "Certificate evidence case",
+          scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
+          scenarioVersion: "1.9.0",
+          mode: "standard",
+        },
+      ]),
+      loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
+      loadAssignmentReport: vi.fn(),
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_001",
+        displayName: "Course instructor",
+        roles: ["instructor"],
+        authenticationSource: "lti",
+        ltiLaunchType: "deep-linking",
+        learningContext: {
+          schemaVersion: "2.0.0",
+          provider: "lti-1.3",
+          launchType: "deep-linking",
+          issuer: "https://moodle.example",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_ACCOUNTING_101",
+          contextTitle: "Accounting 101",
+        },
+      }),
+      loadRunReplay: vi.fn(),
+      loadRunReview: vi.fn(),
+      releaseFeedback: vi.fn(),
+      saveModeration: vi.fn(),
+      saveRating: vi.fn(),
+    };
+
+    try {
+      renderScreen(api);
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Choose a TraceChain assignment",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByLabelText(/Certificate evidence case/),
+      ).toBeChecked();
+      const form = screen
+        .getByRole("button", { name: "Add to Moodle" })
+        .closest("form");
+      expect(form).toHaveAttribute(
+        "action",
+        "/api/lti/v1/deep-links/response",
+      );
+      expect(
+        screen.queryByRole("heading", {
+          name: "Create an assignment",
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", {
+          name: "Build a SCORM package",
+        }),
+      ).not.toBeInTheDocument();
+    } finally {
+      window.history.pushState({}, "", "/instructor");
+    }
   });
 
   it("allows a Moodle assignment to rely on verified learner launch instead of a preselected roster", async () => {
@@ -327,8 +411,9 @@ describe("instructor review screen", () => {
         roles: ["instructor"],
         authenticationSource: "lti",
         learningContext: {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           provider: "lti-1.3",
+          launchType: "resource-link",
           issuer: "https://moodle.example",
           clientId: "TRACECHAIN_CLIENT",
           deploymentId: "TRACECHAIN_DEPLOYMENT",

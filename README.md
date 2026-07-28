@@ -167,8 +167,10 @@ The hosted instructor and learner workspaces support bounded LTI 1.3 Core
 resource-link launches from Moodle. TraceChain verifies the signed Moodle
 launch, provisions exactly the verified instructor or learner role, scopes
 records to the verified course context, and binds a learner session to the
-single assignment named by the signed activity custom claim. NRPS, grade
-services, Deep Linking, and Moodle SCORM-attempt access remain deferred.
+single assignment named by the signed activity custom claim. LTI Deep Linking
+lets a verified instructor select one active course assignment and returns a
+signed, assignment-bound resource link to Moodle. NRPS, grade services, and
+Moodle SCORM-attempt access remain deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.

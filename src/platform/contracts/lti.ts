@@ -14,6 +14,12 @@ export const LTI_LAUNCH_PRESENTATION_CLAIM =
   "https://purl.imsglobal.org/spec/lti/claim/launch_presentation";
 export const LTI_CUSTOM_CLAIM =
   "https://purl.imsglobal.org/spec/lti/claim/custom";
+export const LTI_DEEP_LINKING_SETTINGS_CLAIM =
+  "https://purl.imsglobal.org/spec/lti-dl/claim/deep_linking_settings";
+export const LTI_DEEP_LINKING_DATA_CLAIM =
+  "https://purl.imsglobal.org/spec/lti-dl/claim/data";
+export const LTI_DEEP_LINKING_CONTENT_ITEMS_CLAIM =
+  "https://purl.imsglobal.org/spec/lti-dl/claim/content_items";
 
 export const LTI_INSTRUCTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
@@ -25,6 +31,7 @@ export const LTI_MENTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Mentor";
 
 export type LtiApplicationRole = "instructor" | "learner";
+export type LtiLaunchType = "resource-link" | "deep-linking";
 
 export interface JsonWebKeySetV1 {
   readonly keys: readonly Readonly<Record<string, unknown>>[];
@@ -46,23 +53,41 @@ export interface LtiPlatformRegistrationV1 {
   readonly platformJwks?: JsonWebKeySetV1;
 }
 
-export interface LtiLearningContextV1 {
-  readonly schemaVersion: "1.0.0";
+export interface LtiLearningContextV2 {
+  readonly schemaVersion: "2.0.0";
   readonly provider: "lti-1.3";
+  readonly launchType: LtiLaunchType;
   readonly issuer: string;
   readonly clientId: string;
   readonly deploymentId: string;
   readonly contextId: string;
-  readonly resourceLinkId: string;
+  readonly resourceLinkId?: string;
   readonly contextLabel?: string;
   readonly contextTitle?: string;
   readonly returnUrl?: string;
 }
 
-export interface LtiSessionProjectionV1 {
+export interface LtiSessionProjectionV2 {
   readonly authenticationSource: "lti";
   readonly displayName?: string;
   readonly applicationRole: LtiApplicationRole;
+  readonly ltiLaunchType: LtiLaunchType;
   readonly ltiAssignmentId?: string;
-  readonly learningContext: LtiLearningContextV1;
+  readonly learningContext: LtiLearningContextV2;
+}
+
+export interface LtiDeepLinkingSettingsV1 {
+  readonly returnUrl: string;
+  readonly data?: string;
+  readonly acceptedTypes: readonly string[];
+  readonly acceptedPresentationTargets: readonly string[];
+}
+
+export interface LtiDeepLinkAssignmentOptionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly assignmentId: string;
+  readonly title: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly mode: string;
 }

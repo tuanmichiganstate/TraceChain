@@ -1,5 +1,8 @@
 import type { ApplicationRole } from "../contracts/run-events";
-import type { LtiLearningContextV1 } from "../contracts/lti";
+import type {
+  LtiLaunchType,
+  LtiLearningContextV2,
+} from "../contracts/lti";
 
 export interface ApplicationPrincipal {
   readonly userId: string;
@@ -7,7 +10,8 @@ export interface ApplicationPrincipal {
   readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
   readonly authenticationSource?: "sites" | "lti";
-  readonly learningContext?: LtiLearningContextV1;
+  readonly learningContext?: LtiLearningContextV2;
+  readonly ltiLaunchType?: LtiLaunchType;
   readonly ltiAssignmentId?: string;
 }
 

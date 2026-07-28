@@ -2,7 +2,9 @@ import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
   LtiApplicationRole,
-  LtiLearningContextV1,
+  LtiDeepLinkingSettingsV1,
+  LtiLaunchType,
+  LtiLearningContextV2,
 } from "../contracts/lti";
 import type { ApplicationPrincipal } from "../hosted/access";
 import type { D1DatabaseLike } from "./d1-types";
@@ -90,17 +92,24 @@ const INSERT_SESSION = `INSERT INTO lti_sessions (
     client_id,
     deployment_id,
     subject,
+    launch_type,
     context_id,
     resource_link_id,
     context_label,
     context_title,
     return_url,
+    deep_link_return_url,
+    deep_link_data,
+    deep_link_accept_types_json,
+    deep_link_accept_targets_json,
+    deep_link_response_nonce,
+    deep_link_response_jwt,
     platform_roles_json,
     application_role,
     assignment_id,
     issued_at_utc,
     expires_at_utc
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 const DELETE_FINISHED_SESSIONS = `DELETE FROM lti_sessions
   WHERE expires_at_utc <= ?
     OR revoked_at_utc IS NOT NULL`;
@@ -109,6 +118,7 @@ const FIND_ACTIVE_SESSION = `SELECT
     sessions.issuer,
     sessions.client_id,
     sessions.deployment_id,
+    sessions.launch_type,
     sessions.context_id,
     sessions.resource_link_id,
     sessions.context_label,
@@ -139,6 +149,41 @@ const FIND_ACTIVE_SESSION = `SELECT
     AND sessions.revoked_at_utc IS NULL
     AND sessions.expires_at_utc > ?
     AND users.status = 'active'`;
+const FIND_ACTIVE_DEEP_LINK_SESSION = `SELECT
+    sessions.registration_id,
+    sessions.issuer,
+    sessions.client_id,
+    sessions.deployment_id,
+    sessions.context_id,
+    sessions.context_label,
+    sessions.context_title,
+    sessions.deep_link_return_url,
+    sessions.deep_link_data,
+    sessions.deep_link_accept_types_json,
+    sessions.deep_link_accept_targets_json,
+    sessions.deep_link_response_nonce,
+    sessions.deep_link_assignment_id,
+    sessions.deep_link_completed_at_utc,
+    sessions.deep_link_response_jwt
+  FROM lti_sessions AS sessions
+  JOIN application_users AS users
+    ON users.user_id = sessions.user_id
+  WHERE sessions.session_token_hash = ?
+    AND sessions.launch_type = 'deep-linking'
+    AND sessions.application_role = 'instructor'
+    AND sessions.revoked_at_utc IS NULL
+    AND sessions.expires_at_utc > ?
+    AND users.status = 'active'`;
+const COMPLETE_DEEP_LINK_SESSION = `UPDATE lti_sessions
+  SET deep_link_assignment_id = ?,
+      deep_link_completed_at_utc = ?,
+      deep_link_response_jwt = ?
+  WHERE session_token_hash = ?
+    AND launch_type = 'deep-linking'
+    AND application_role = 'instructor'
+    AND revoked_at_utc IS NULL
+    AND expires_at_utc > ?
+    AND deep_link_completed_at_utc IS NULL`;
 const REVOKE_SESSION = `UPDATE lti_sessions
   SET revoked_at_utc = ?
   WHERE session_token_hash = ?
@@ -165,8 +210,9 @@ interface SessionRow {
   readonly issuer: string;
   readonly client_id: string;
   readonly deployment_id: string;
+  readonly launch_type: LtiLaunchType;
   readonly context_id: string;
-  readonly resource_link_id: string;
+  readonly resource_link_id: string | null;
   readonly context_label: string | null;
   readonly context_title: string | null;
   readonly return_url: string | null;
@@ -175,6 +221,24 @@ interface SessionRow {
   readonly user_id: string;
   readonly email: string | null;
   readonly display_name: string | null;
+}
+
+interface DeepLinkSessionRow {
+  readonly registration_id: string;
+  readonly issuer: string;
+  readonly client_id: string;
+  readonly deployment_id: string;
+  readonly context_id: string;
+  readonly context_label: string | null;
+  readonly context_title: string | null;
+  readonly deep_link_return_url: string;
+  readonly deep_link_data: string | null;
+  readonly deep_link_accept_types_json: string;
+  readonly deep_link_accept_targets_json: string;
+  readonly deep_link_response_nonce: string;
+  readonly deep_link_assignment_id: string | null;
+  readonly deep_link_completed_at_utc: string | null;
+  readonly deep_link_response_jwt: string | null;
 }
 
 export interface ConsumedLtiLoginState {
@@ -198,12 +262,30 @@ export interface LtiIdentityInput {
 export interface LtiSessionInput extends LtiIdentityInput {
   readonly sessionTokenHash: string;
   readonly registrationId: string;
-  readonly context: LtiLearningContextV1;
+  readonly context: LtiLearningContextV2;
   readonly platformRoles: readonly string[];
   readonly applicationRole: LtiApplicationRole;
+  readonly launchType: LtiLaunchType;
   readonly assignmentId?: string;
+  readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
+  readonly deepLinkResponseNonce?: string;
   readonly issuedAt: string;
   readonly expiresAt: string;
+}
+
+export interface ActiveLtiDeepLinkSession {
+  readonly registrationId: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly deploymentId: string;
+  readonly contextId: string;
+  readonly contextLabel?: string;
+  readonly contextTitle?: string;
+  readonly settings: LtiDeepLinkingSettingsV1;
+  readonly responseNonce: string;
+  readonly selectedAssignmentId?: string;
+  readonly completedAt?: string;
+  readonly responseJwt?: string;
 }
 
 export interface LtiUserProvisioningInput extends LtiIdentityInput {
@@ -474,6 +556,24 @@ export class D1LtiAuthenticationRepository {
         recoveryPath,
       );
     }
+    if (
+      (input.launchType === "deep-linking") !==
+        (input.deepLinkingSettings !== undefined) ||
+      (input.launchType === "deep-linking") !==
+        (input.deepLinkResponseNonce !== undefined) ||
+      (input.launchType === "deep-linking" &&
+        input.applicationRole !== "instructor") ||
+      (input.launchType === "resource-link" &&
+        input.context.resourceLinkId === undefined) ||
+      (input.launchType === "deep-linking" &&
+        input.context.resourceLinkId !== undefined)
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "The LTI session launch data violates the current contract.",
+        recoveryPath,
+      );
+    }
     const results = await this.database.batch([
       this.database
         .prepare(DELETE_FINISHED_SESSIONS)
@@ -488,11 +588,27 @@ export class D1LtiAuthenticationRepository {
           input.clientId,
           input.deploymentId,
           input.subject,
+          input.launchType,
           input.context.contextId,
-          input.context.resourceLinkId,
+          input.context.resourceLinkId ?? null,
           input.context.contextLabel ?? null,
           input.context.contextTitle ?? null,
           input.context.returnUrl ?? null,
+          input.deepLinkingSettings?.returnUrl ?? null,
+          input.deepLinkingSettings?.data ?? null,
+          input.deepLinkingSettings === undefined
+            ? null
+            : JSON.stringify(
+                input.deepLinkingSettings.acceptedTypes,
+              ),
+          input.deepLinkingSettings === undefined
+            ? null
+            : JSON.stringify(
+                input.deepLinkingSettings
+                  .acceptedPresentationTargets,
+              ),
+          input.deepLinkResponseNonce ?? null,
+          null,
           JSON.stringify(input.platformRoles),
           input.applicationRole,
           input.assignmentId ?? null,
@@ -526,17 +642,21 @@ export class D1LtiAuthenticationRepository {
         : { displayName: row.display_name }),
       roles: [row.application_role],
       authenticationSource: "lti",
+      ltiLaunchType: row.launch_type,
       ...(row.assignment_id === null
         ? {}
         : { ltiAssignmentId: row.assignment_id }),
       learningContext: {
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         provider: "lti-1.3",
+        launchType: row.launch_type,
         issuer: row.issuer,
         clientId: row.client_id,
         deploymentId: row.deployment_id,
         contextId: row.context_id,
-        resourceLinkId: row.resource_link_id,
+        ...(row.resource_link_id === null
+          ? {}
+          : { resourceLinkId: row.resource_link_id }),
         ...(row.context_label === null
           ? {}
           : { contextLabel: row.context_label }),
@@ -547,6 +667,154 @@ export class D1LtiAuthenticationRepository {
           ? {}
           : { returnUrl: row.return_url }),
       },
+    };
+  }
+
+  async findActiveDeepLinkSession(
+    sessionTokenHash: string,
+  ): Promise<ActiveLtiDeepLinkSession | null> {
+    const row = await this.database
+      .prepare(FIND_ACTIVE_DEEP_LINK_SESSION)
+      .bind(sessionTokenHash, this.clock.now())
+      .first<DeepLinkSessionRow>();
+    if (row === null) return null;
+    let acceptedTypes: unknown;
+    let acceptedPresentationTargets: unknown;
+    try {
+      acceptedTypes = JSON.parse(row.deep_link_accept_types_json);
+      acceptedPresentationTargets = JSON.parse(
+        row.deep_link_accept_targets_json,
+      );
+    } catch {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI Deep Linking settings are invalid.",
+      );
+    }
+    if (
+      !Array.isArray(acceptedTypes) ||
+      !acceptedTypes.every((value) => typeof value === "string") ||
+      !Array.isArray(acceptedPresentationTargets) ||
+      !acceptedPresentationTargets.every(
+        (value) => typeof value === "string",
+      )
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI Deep Linking settings are invalid.",
+      );
+    }
+    return {
+      registrationId: row.registration_id,
+      issuer: row.issuer,
+      clientId: row.client_id,
+      deploymentId: row.deployment_id,
+      contextId: row.context_id,
+      ...(row.context_label === null
+        ? {}
+        : { contextLabel: row.context_label }),
+      ...(row.context_title === null
+        ? {}
+        : { contextTitle: row.context_title }),
+      settings: {
+        returnUrl: row.deep_link_return_url,
+        ...(row.deep_link_data === null
+          ? {}
+          : { data: row.deep_link_data }),
+        acceptedTypes,
+        acceptedPresentationTargets,
+      },
+      responseNonce: row.deep_link_response_nonce,
+      ...(row.deep_link_assignment_id === null
+        ? {}
+        : {
+            selectedAssignmentId:
+              row.deep_link_assignment_id,
+          }),
+      ...(row.deep_link_completed_at_utc === null
+        ? {}
+        : { completedAt: row.deep_link_completed_at_utc }),
+      ...(row.deep_link_response_jwt === null
+        ? {}
+        : { responseJwt: row.deep_link_response_jwt }),
+    };
+  }
+
+  async completeDeepLinkSession(
+    sessionTokenHash: string,
+    assignmentId: string | null,
+    completedAt: string,
+    responseJwt: string,
+  ): Promise<ActiveLtiDeepLinkSession> {
+    const existing =
+      await this.findActiveDeepLinkSession(sessionTokenHash);
+    if (existing === null) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_LOGIN_STATE_INVALID",
+        "The LTI Deep Linking session is missing or expired.",
+      );
+    }
+    if (existing.completedAt !== undefined) {
+      if (
+        (existing.selectedAssignmentId ?? null) === assignmentId &&
+        existing.responseJwt !== undefined
+      ) {
+        return existing;
+      }
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_LOGIN_STATE_INVALID",
+        "The LTI Deep Linking selection is already complete.",
+      );
+    }
+    if (
+      responseJwt.length === 0 ||
+      responseJwt.length > 32_768
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "The LTI Deep Linking response token is invalid.",
+      );
+    }
+    const result = await this.database
+      .prepare(COMPLETE_DEEP_LINK_SESSION)
+      .bind(
+        assignmentId,
+        completedAt,
+        responseJwt,
+        sessionTokenHash,
+        completedAt,
+      )
+      .run();
+    if (!result.success) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        result.error ??
+          "The LTI Deep Linking selection could not be stored.",
+      );
+    }
+    if (result.meta?.changes !== 1) {
+      const concurrent =
+        await this.findActiveDeepLinkSession(sessionTokenHash);
+      if (
+        concurrent !== null &&
+        concurrent.completedAt !== undefined &&
+        (concurrent.selectedAssignmentId ?? null) === assignmentId &&
+        concurrent.responseJwt !== undefined
+      ) {
+        return concurrent;
+      }
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_LOGIN_STATE_INVALID",
+        "The LTI Deep Linking selection could not be completed exactly once.",
+      );
+    }
+    return {
+      ...existing,
+      ...(assignmentId === null
+        ? {}
+        : { selectedAssignmentId: assignmentId }),
+      completedAt,
+      responseJwt,
     };
   }
 

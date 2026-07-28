@@ -30,6 +30,12 @@ another Moodle course. LTI Core does not synchronize the Moodle roster, read
 SCORM attempts, or return grades. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
+An LTI Deep Linking launch is narrower than the instructor workspace. It lists
+only active TraceChain assignments already bound to the verified Moodle course
+and returns one signed resource link, or an empty response when the instructor
+cancels. It cannot open reports, create assignments, or select content from
+another course.
+
 Assignment creation loads the versioned scenario library and offers only
 published scenarios with a registered hosted runtime. Selecting one binds its
 exact pack and scenario versions and limits the mode control to the modes
