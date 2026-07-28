@@ -26,7 +26,9 @@ An LTI launch uses a separate HTTP-only session and carries the verified
 issuer, client, deployment, course context, and resource-link identity.
 Assignments created in that session are bound to the course context, and
 assignment-, run-, and counterfactual-specific API requests cannot cross into
-another Moodle course. LTI does not synchronize the Moodle roster or read
+another Moodle course. When the signed instructor launch contains NRPS 2.0,
+the assignment form can explicitly synchronize and select active learners from
+that exact course; no background synchronization occurs. LTI does not read
 SCORM attempts. For activities created through Deep Linking, AGS returns final
 completion and an existing automatic score when the runtime has one; generic
 evidence-based runs remain pending manual grading. See
@@ -42,10 +44,14 @@ Assignment creation loads the versioned scenario library and offers only
 published scenarios with a registered hosted runtime. Selecting one binds its
 exact pack and scenario versions and limits the mode control to the modes
 authored in that scenario. Draft, retired, and preview-only packs remain
-available to authors but cannot be assigned accidentally. The same form loads
-only active users with the server-provisioned learner role. The instructor
-selects that bounded roster rather than copying internal user identifiers;
-disabled users and non-learners are not offered.
+available to authors but cannot be assigned accidentally. Under direct hosted
+authentication, the same form loads active application users with the
+server-provisioned learner role. Under an LTI instructor session, it loads only
+active synchronized learners from the exact verified Moodle course. Optional
+Moodle names and email addresses are display labels; the durable external
+identity remains the signed platform subject. The instructor selects the
+bounded roster rather than copying internal identifiers. Disabled users,
+inactive memberships, and non-learners are not offered.
 
 An instructor may also set optional opening and closing times. The browser
 accepts local date-time input, while the API normalizes and stores immutable UTC
@@ -143,8 +149,9 @@ Application-user and role provisioning are available in the administrator
 workspace. Direct hosted access still uses the hosting layer's verified email.
 Moodle instructor and learner access may instead use a verified LTI 1.3
 subject, role, and course context. A learner activity grants access only to the
-exact assignment in its signed custom claim; it is not Moodle roster
-synchronization. TraceChain does not implement passwords, institutional
-directory synchronization, NRPS roster synchronization, multi-tenant
-administration, or collaborative multi-learner runs.
+exact assignment in its signed custom claim. A verified instructor may
+explicitly synchronize the exact course's NRPS learner snapshot for subsequent
+assignment creation. TraceChain does not implement passwords, general
+institutional directory synchronization, scheduled roster synchronization,
+multi-tenant administration, or collaborative multi-learner runs.
 See `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md`.

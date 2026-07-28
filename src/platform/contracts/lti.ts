@@ -24,6 +24,12 @@ export const LTI_AGS_ENDPOINT_CLAIM =
   "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
 export const LTI_AGS_SCORE_SCOPE =
   "https://purl.imsglobal.org/spec/lti-ags/scope/score";
+export const LTI_NRPS_NAMES_AND_ROLES_CLAIM =
+  "https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice";
+export const LTI_NRPS_CONTEXT_MEMBERSHIP_SCOPE =
+  "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly";
+export const LTI_NRPS_MEMBERSHIP_MEDIA_TYPE =
+  "application/vnd.ims.lti-nrps.v2.membershipcontainer+json";
 
 export const LTI_INSTRUCTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
@@ -100,6 +106,37 @@ export interface LtiDeepLinkAssignmentOptionV1 {
 export interface LtiAgsEndpointV1 {
   readonly lineItemUrl: string;
   readonly scopes: readonly string[];
+}
+
+export interface LtiNrpsEndpointV1 {
+  readonly contextMembershipsUrl: string;
+  readonly serviceVersions: readonly string[];
+}
+
+export type LtiNrpsMembershipStatus = "active" | "inactive";
+
+export interface LtiNrpsLearnerMemberV1 {
+  readonly platformUserId: string;
+  readonly status: LtiNrpsMembershipStatus;
+  readonly roles: readonly string[];
+  readonly displayName?: string;
+  readonly email?: string;
+}
+
+export interface LtiNrpsRosterSnapshotV1 {
+  readonly pageCount: number;
+  readonly members: readonly LtiNrpsLearnerMemberV1[];
+}
+
+export interface LtiNrpsSyncProjectionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly syncId: string;
+  readonly contextId: string;
+  readonly receivedMemberCount: number;
+  readonly activeLearnerCount: number;
+  readonly inactiveLearnerCount: number;
+  readonly pageCount: number;
+  readonly synchronizedAt: string;
 }
 
 export type LtiAgsActivityProgress =

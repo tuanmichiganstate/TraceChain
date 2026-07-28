@@ -62,7 +62,10 @@ course-bound assignment. Deep Linking lets a verified instructor select one
 active assignment from that course and returns the binding to Moodle in a
 signed resource link. When Moodle accepts a line item, the resource launch
 binds the signed AGS endpoint to the learner session and the completed run's
-existing score is returned through a durable server-side delivery. See
+existing score is returned through a durable server-side delivery. A signed
+instructor launch may also bind an NRPS 2.0 endpoint; an explicit instructor
+action then synchronizes the exact course's read-only learner snapshot for
+assignment selection. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 For an empty deployment, the optional runtime variable
@@ -97,6 +100,9 @@ Tables:
 - `lti_login_states`
 - `external_user_identities`
 - `lti_sessions`
+- `lti_ags_score_deliveries`
+- `lti_nrps_syncs`
+- `lti_context_memberships`
 - `scenario_pack_versions`
 - `assignments`
 - `assignment_learners`
@@ -132,7 +138,7 @@ All endpoints use `/api/v1`.
 | `POST /scenario-packs/:packId/versions/:version/retire` | scenario author or administrator | Idempotent retirement metadata |
 | `POST /scenario-packs/publish` | scenario author or administrator | Immutable pack identity |
 | `GET /assignment-options` | instructor or administrator | Published scenarios with a registered hosted runtime, exact versions, localized labels, and authored modes only |
-| `GET /assignment-learners` | instructor or administrator | Active provisioned users carrying the learner role, limited to user ID and email for roster selection |
+| `GET /assignment-learners` | instructor or administrator | Direct sessions receive active application learners; LTI instructor sessions receive active synchronized learners from only the exact verified Moodle course |
 | `POST /assignments` | instructor or administrator | Active assignment bound to one exact published scenario, provisioned learner roster, optional UTC start window, and resolved counterfactual controls |
 | `GET /assignments/:assignmentId` | instructor, rater or administrator | Assignment metadata and feedback-release state |
 | `POST /assignments/:assignmentId/close` | instructor or administrator | One-way idempotent closure that blocks new attempts and preserves existing runs |
@@ -183,8 +189,11 @@ The public LTI boundary is versioned separately under `/api/lti/v1`:
 |---|---|
 | `GET /jwks` | Configured public TraceChain tool keyset |
 | `GET` or `POST /login` | Validated OIDC login initiation and redirect to Moodle |
-| `POST /launch` | Signed LTI Resource Link launch and instructor session |
+| `POST /launch` | Signed LTI Resource Link or Deep Linking launch and purpose-limited session |
 | `POST /logout` | Same-origin session revocation and cookie clearing |
+| `GET /deep-links/assignments` | Active assignments from the exact Deep Linking course |
+| `POST /deep-links/response` | Signed one-assignment resource link or exact idempotent cancellation |
+| `POST /nrps/sync` | Idempotent, instructor-initiated read-only learner snapshot for the exact signed course context |
 
 Assignments retain the fully resolved published mode configuration. Sandbox
 and Configured probabilistic cases record deterministic random-draw and
@@ -362,7 +371,8 @@ limit remains unlimited.
 - The complete current nine-stage coffee journey is hosted for one assigned
   learner run.
 - Exact-version assignment creation from the published runnable scenario
-  library, an instructor-selectable active provisioned learner roster,
+  library, an instructor-selectable active direct or course-synchronized
+  learner roster,
   optional UTC availability boundaries, assignment-bound run start, manual
   rating, feedback release, and a focused
   assignment report are implemented. Stable JSON and CSV assignment evidence

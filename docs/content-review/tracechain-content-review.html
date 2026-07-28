@@ -37,7 +37,7 @@
 <li><a href="#group-hostedAudit"><span>hostedAudit</span><b>114</b></a></li>
 <li><a href="#group-hostedLearner"><span>hostedLearner</span><b>175</b></a></li>
 <li><a href="#group-hostedPortal"><span>hostedPortal</span><b>18</b></a></li>
-<li><a href="#group-instructorReview"><span>instructorReview</span><b>441</b></a></li>
+<li><a href="#group-instructorReview"><span>instructorReview</span><b>446</b></a></li>
 <li><a href="#group-ledger"><span>ledger</span><b>20</b></a></li>
 <li><a href="#group-lifecycle"><span>lifecycle</span><b>12</b></a></li>
 <li><a href="#group-lineage"><span>lineage</span><b>10</b></a></li>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>2816/2816</b>chuỗi song ngữ</li>
+    <li><b>2821/2821</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -3610,7 +3610,7 @@
 </article>
 </section>
 <section id="group-instructorReview">
-  <h2>instructorReview <span>441 chuỗi</span></h2>
+  <h2>instructorReview <span>446 chuỗi</span></h2>
   <article class="entry" data-locale-key="instructorReview.account">
   <header><code>instructorReview.account</code></header>
   <p class="vi" lang="vi">Tài khoản</p>
@@ -4468,8 +4468,13 @@
 </article>
   <article class="entry" data-locale-key="instructorReview.learnerOption">
   <header><code>instructorReview.learnerOption</code></header>
-  <p class="vi" lang="vi">{email} ({userId})</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{email} ({userId})</p></details>
+  <p class="vi" lang="vi">{displayName} — {email} ({userId})</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{displayName} — {email} ({userId})</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.learnerOptionWithoutEmail">
+  <header><code>instructorReview.learnerOptionWithoutEmail</code></header>
+  <p class="vi" lang="vi">{displayName} ({userId}); Moodle không chia sẻ địa chỉ email</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{displayName} ({userId}); Moodle did not share an email address</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.learnerProfilesHeading">
   <header><code>instructorReview.learnerProfilesHeading</code></header>
@@ -4488,8 +4493,8 @@
 </article>
   <article class="entry" data-locale-key="instructorReview.learnersEmpty">
   <header><code>instructorReview.learnersEmpty</code></header>
-  <p class="vi" lang="vi">Chưa có người học đang hoạt động được cấp quyền</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No active learner is provisioned</p></details>
+  <p class="vi" lang="vi">Hiện chưa có người học đang hoạt động</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No active learner is currently available</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.learnersHint">
   <header><code>instructorReview.learnersHint</code></header>
@@ -4498,13 +4503,13 @@
 </article>
   <article class="entry" data-locale-key="instructorReview.learnersLoading">
   <header><code>instructorReview.learnersLoading</code></header>
-  <p class="vi" lang="vi">Đang tải danh sách người học đã cấp quyền...</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading provisioned learners...</p></details>
+  <p class="vi" lang="vi">Đang tải danh sách người học có thể giao bài...</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Loading available learners...</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.learnersLtiHint">
   <header><code>instructorReview.learnersLtiHint</code></header>
-  <p class="vi" lang="vi">Bạn có thể chọn người học đã được cấp quyền hoặc để trống. Người học chỉ được tự động ghi danh khi Moodle mở đúng bài tập này qua hoạt động LTI đã được xác minh.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">You may select provisioned learners now or leave this empty. A learner is enrolled automatically only after Moodle opens this exact assignment through its verified LTI activity.</p></details>
+  <p class="vi" lang="vi">Khi Moodle cung cấp dịch vụ danh sách lớp, hãy đồng bộ khóa học này và chọn tối đa 200 người học. Bạn vẫn có thể để trống; người học sẽ được ghi danh khi Moodle mở đúng bài tập này qua hoạt động LTI đã được xác minh.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">When Moodle provides its roster service, synchronize this course and select up to 200 learners. You may leave the list empty; a learner is still enrolled after Moodle opens this exact assignment through its verified LTI activity.</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.learnersObserved">
   <header><code>instructorReview.learnersObserved</code></header>
@@ -4605,6 +4610,26 @@
   <header><code>instructorReview.lti.logoutFailed</code></header>
   <p class="vi" lang="vi">TraceChain không thể kết thúc phiên kết nối với Moodle. Hãy thử lại.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">TraceChain could not end the Moodle-connected session. Try again.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.lti.nrps.error">
+  <header><code>instructorReview.lti.nrps.error</code></header>
+  <p class="vi" lang="vi">TraceChain không thể đồng bộ danh sách lớp của khóa học này. Hãy quay lại Moodle, kiểm tra dịch vụ cung cấp tên và vai trò đã được bật cho công cụ, rồi thử lại.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">TraceChain could not synchronize this course roster. Return to Moodle, confirm that Names and Role Provisioning Services is enabled for the tool, and try again.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.lti.nrps.sync">
+  <header><code>instructorReview.lti.nrps.sync</code></header>
+  <p class="vi" lang="vi">Đồng bộ danh sách lớp từ Moodle</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Synchronize Moodle roster</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.lti.nrps.synced">
+  <header><code>instructorReview.lti.nrps.synced</code></header>
+  <p class="vi" lang="vi">Đã đồng bộ danh sách lớp Moodle. Người học đang hoạt động: {active}. Lượt ghi danh không hoạt động: {inactive}.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Moodle roster synchronized. Active learners: {active}. Inactive memberships: {inactive}.</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.lti.nrps.syncing">
+  <header><code>instructorReview.lti.nrps.syncing</code></header>
+  <p class="vi" lang="vi">Đang đồng bộ danh sách lớp…</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Synchronizing roster…</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.lti.returnToMoodle">
   <header><code>instructorReview.lti.returnToMoodle</code></header>
@@ -14400,7 +14425,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>bdbc729eb7e2c86ac7f5fcb3cf324515b636685d</code> · SHA-256 nguồn: <code>c74a67b3e0800879a8f6e1457f6a33f0cb4f12df4f6f26f293251adb3a339690</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>3abf9b66259b79e94fc18ac041651eda449208ba</code> · SHA-256 nguồn: <code>8909c6151f52f5c5b15c65ba177aa226d90c482a079dc92311e3a9c661ab1da7</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

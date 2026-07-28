@@ -24,12 +24,13 @@ import type {
   LtiDeepLinkAssignmentOptionV1,
   LtiLaunchType,
   LtiLearningContextV2,
+  LtiNrpsSyncProjectionV1,
 } from "../contracts/lti";
 import type {
   AssignmentRunMode,
   AssignmentCounterfactualConfigurationV1,
   CreateHostedAssignmentRequest,
-  HostedAssignmentLearnerOptionV1,
+  HostedAssignmentLearnerOptionV2,
   HostedAssignmentMonitorV1,
   HostedAssignmentReportV1,
   HostedAssignmentScenarioOptionV1,
@@ -88,6 +89,7 @@ export interface InstructorSession {
   readonly roles: readonly ApplicationRole[];
   readonly authenticationSource?: "sites" | "lti";
   readonly ltiLaunchType?: LtiLaunchType;
+  readonly ltiNrpsAvailable?: boolean;
   readonly learningContext?: LtiLearningContextV2;
 }
 
@@ -135,11 +137,12 @@ export interface InstructorReviewApi {
     readonly HostedAssignmentScenarioOptionV1[]
   >;
   loadAssignmentLearnerOptions(): Promise<
-    readonly HostedAssignmentLearnerOptionV1[]
+    readonly HostedAssignmentLearnerOptionV2[]
   >;
   loadLtiDeepLinkAssignments?(): Promise<
     readonly LtiDeepLinkAssignmentOptionV1[]
   >;
+  synchronizeLtiNrpsRoster?(): Promise<LtiNrpsSyncProjectionV1>;
   loadRunReview(runId: string): Promise<InstructorRunReview>;
   loadRunReplay(
     runId: string,
@@ -299,7 +302,7 @@ export function createInstructorReviewApi(
       return (
         await responseJson<{
           readonly learners:
-            readonly HostedAssignmentLearnerOptionV1[];
+            readonly HostedAssignmentLearnerOptionV2[];
         }>(fetcher, "/api/v1/assignment-learners")
       ).learners;
     },
@@ -313,6 +316,15 @@ export function createInstructorReviewApi(
           "/api/lti/v1/deep-links/assignments",
         )
       ).assignments;
+    },
+    async synchronizeLtiNrpsRoster() {
+      return (
+        await mutationJson<{
+          readonly sync: LtiNrpsSyncProjectionV1;
+        }>(fetcher, "/api/lti/v1/nrps/sync", {
+          syncId: newCommandId("LTI_NRPS_SYNC"),
+        })
+      ).sync;
     },
     async loadRunReview(runId) {
       const encodedRunId = encodeURIComponent(runId);
@@ -818,6 +830,10 @@ export function InstructorReviewScreen({
               api={api}
               allowLtiLearnerLaunch={
                 session?.authenticationSource === "lti"
+              }
+              allowLtiNrpsSync={
+                session?.authenticationSource === "lti" &&
+                session.ltiNrpsAvailable === true
               }
             />
           ) : null}
@@ -1648,9 +1664,11 @@ function ModeConfigurationSummary({
 function AssignmentCreation({
   api,
   allowLtiLearnerLaunch,
+  allowLtiNrpsSync,
 }: {
   readonly api: InstructorReviewApi;
   readonly allowLtiLearnerLaunch: boolean;
+  readonly allowLtiNrpsSync: boolean;
 }): ReactNode {
   const t = useTranslator();
   const [assignmentId, setAssignmentId] = useState("");
@@ -1704,7 +1722,7 @@ function AssignmentCreation({
   const [availableUntilLocal, setAvailableUntilLocal] =
     useState("");
   const [learnerOptions, setLearnerOptions] = useState<
-    readonly HostedAssignmentLearnerOptionV1[]
+    readonly HostedAssignmentLearnerOptionV2[]
   >([]);
   const [selectedLearnerIds, setSelectedLearnerIds] = useState<
     readonly string[]
@@ -1713,6 +1731,10 @@ function AssignmentCreation({
     useState(true);
   const [learnerRosterError, setLearnerRosterError] =
     useState(false);
+  const [isNrpsSyncing, setNrpsSyncing] = useState(false);
+  const [nrpsSync, setNrpsSync] =
+    useState<LtiNrpsSyncProjectionV1 | null>(null);
+  const [nrpsSyncError, setNrpsSyncError] = useState(false);
   const [created, setCreated] = useState<HostedAssignmentV1 | null>(
     null,
   );
@@ -1773,6 +1795,31 @@ function AssignmentCreation({
       active = false;
     };
   }, [api]);
+
+  async function synchronizeMoodleRoster(): Promise<void> {
+    if (api.synchronizeLtiNrpsRoster === undefined) return;
+    setNrpsSyncing(true);
+    setNrpsSync(null);
+    setNrpsSyncError(false);
+    setLearnerRosterError(false);
+    try {
+      const synchronized =
+        await api.synchronizeLtiNrpsRoster();
+      const available =
+        await api.loadAssignmentLearnerOptions();
+      setNrpsSync(synchronized);
+      setLearnerOptions(available);
+      setSelectedLearnerIds((current) =>
+        current.filter((userId) =>
+          available.some((learner) => learner.userId === userId),
+        ),
+      );
+    } catch {
+      setNrpsSyncError(true);
+    } finally {
+      setNrpsSyncing(false);
+    }
+  }
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2249,6 +2296,33 @@ function AssignmentCreation({
           <legend className="field__label">
             {t("instructorReview.learners")}
           </legend>
+          {allowLtiNrpsSync ? (
+            <div className="instructor-review__form-actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={isNrpsSyncing}
+                onClick={() => void synchronizeMoodleRoster()}
+              >
+                {isNrpsSyncing
+                  ? t("instructorReview.lti.nrps.syncing")
+                  : t("instructorReview.lti.nrps.sync")}
+              </button>
+            </div>
+          ) : null}
+          {nrpsSync === null ? null : (
+            <p role="status">
+              {t("instructorReview.lti.nrps.synced", {
+                active: nrpsSync.activeLearnerCount,
+                inactive: nrpsSync.inactiveLearnerCount,
+              })}
+            </p>
+          )}
+          {nrpsSyncError ? (
+            <p className="notice notice--standalone" role="alert">
+              {t("instructorReview.lti.nrps.error")}
+            </p>
+          ) : null}
           {isLearnerRosterLoading ? (
             <p>{t("instructorReview.learnersLoading")}</p>
           ) : learnerOptions.length === 0 ? (
@@ -2280,10 +2354,19 @@ function AssignmentCreation({
                       }}
                     />
                     <span>
-                      {t("instructorReview.learnerOption", {
-                        email: learner.email,
-                        userId: learner.userId,
-                      })}
+                      {learner.email === undefined
+                        ? t(
+                            "instructorReview.learnerOptionWithoutEmail",
+                            {
+                              displayName: learner.displayName,
+                              userId: learner.userId,
+                            },
+                          )
+                        : t("instructorReview.learnerOption", {
+                            displayName: learner.displayName,
+                            email: learner.email,
+                            userId: learner.userId,
+                          })}
                     </span>
                   </label>
                 );

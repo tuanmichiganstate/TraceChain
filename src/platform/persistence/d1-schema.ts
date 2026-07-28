@@ -16,6 +16,8 @@ const resetStatements = [
   "DROP TABLE IF EXISTS lti_ags_score_deliveries",
   "DROP TABLE IF EXISTS assignment_learners",
   "DROP TABLE IF EXISTS counterfactual_runs",
+  "DROP TABLE IF EXISTS lti_context_memberships",
+  "DROP TABLE IF EXISTS lti_nrps_syncs",
   "DROP TABLE IF EXISTS lti_sessions",
   "DROP TABLE IF EXISTS assignments",
   "DROP TABLE IF EXISTS scenario_pack_versions",

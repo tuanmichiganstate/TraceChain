@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-28-lti-ags-v1";
+  "2026-07-28-lti-nrps-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -226,7 +226,7 @@ export const schemaStatements = [
     email_claim TEXT COLLATE NOCASE,
     display_name_claim TEXT,
     created_at_utc TEXT NOT NULL,
-    last_authenticated_at_utc TEXT NOT NULL,
+    last_authenticated_at_utc TEXT,
     UNIQUE (
       provider,
       issuer,
@@ -285,6 +285,14 @@ export const schemaStatements = [
       ags_scopes_json IS NULL
       OR json_valid(ags_scopes_json)
     ),
+    nrps_context_memberships_url TEXT CHECK (
+      nrps_context_memberships_url IS NULL
+      OR length(nrps_context_memberships_url) BETWEEN 1 AND 2048
+    ),
+    nrps_service_versions_json TEXT CHECK (
+      nrps_service_versions_json IS NULL
+      OR json_valid(nrps_service_versions_json)
+    ),
     platform_roles_json TEXT NOT NULL
       CHECK (json_valid(platform_roles_json)),
     application_role TEXT NOT NULL
@@ -303,6 +311,18 @@ export const schemaStatements = [
       (
         application_role = 'learner'
         AND assignment_id IS NOT NULL
+      )
+    ),
+    CHECK (
+      (
+        nrps_context_memberships_url IS NULL
+        AND nrps_service_versions_json IS NULL
+      )
+      OR
+      (
+        application_role = 'instructor'
+        AND nrps_context_memberships_url IS NOT NULL
+        AND nrps_service_versions_json IS NOT NULL
       )
     ),
     CHECK (
@@ -374,6 +394,83 @@ export const schemaStatements = [
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS lti_sessions_user_expiry
     ON lti_sessions(user_id, expires_at_utc, revoked_at_utc)`,
+  `CREATE TABLE IF NOT EXISTS lti_nrps_syncs (
+    sync_id TEXT PRIMARY KEY CHECK (
+      length(sync_id) BETWEEN 1 AND 128
+    ),
+    registration_id TEXT NOT NULL,
+    issuer TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    deployment_id TEXT NOT NULL,
+    context_id TEXT NOT NULL,
+    context_memberships_url TEXT NOT NULL CHECK (
+      length(context_memberships_url) BETWEEN 1 AND 2048
+    ),
+    snapshot_hash TEXT NOT NULL CHECK (
+      length(snapshot_hash) = 64
+      AND snapshot_hash NOT GLOB '*[^0-9a-f]*'
+    ),
+    received_member_count INTEGER NOT NULL CHECK (
+      received_member_count BETWEEN 0 AND 1000
+    ),
+    active_learner_count INTEGER NOT NULL CHECK (
+      active_learner_count BETWEEN 0 AND received_member_count
+    ),
+    inactive_learner_count INTEGER NOT NULL CHECK (
+      inactive_learner_count BETWEEN 0 AND received_member_count
+    ),
+    page_count INTEGER NOT NULL CHECK (
+      page_count BETWEEN 1 AND 20
+    ),
+    synchronized_at_utc TEXT NOT NULL,
+    synchronized_by_user_id TEXT NOT NULL,
+    CHECK (
+      active_learner_count + inactive_learner_count
+      = received_member_count
+    ),
+    FOREIGN KEY (synchronized_by_user_id)
+      REFERENCES application_users(user_id)
+  ) STRICT`,
+  `CREATE INDEX IF NOT EXISTS lti_nrps_syncs_context
+    ON lti_nrps_syncs(
+      registration_id,
+      context_id,
+      synchronized_at_utc
+    )`,
+  `CREATE TABLE IF NOT EXISTS lti_context_memberships (
+    registration_id TEXT NOT NULL,
+    issuer TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    deployment_id TEXT NOT NULL,
+    context_id TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    membership_status TEXT NOT NULL
+      CHECK (membership_status IN ('active', 'inactive')),
+    platform_roles_json TEXT NOT NULL
+      CHECK (json_valid(platform_roles_json)),
+    email_claim TEXT COLLATE NOCASE CHECK (
+      email_claim IS NULL OR length(email_claim) <= 320
+    ),
+    display_name_claim TEXT CHECK (
+      display_name_claim IS NULL
+      OR length(display_name_claim) BETWEEN 1 AND 200
+    ),
+    first_seen_at_utc TEXT NOT NULL,
+    updated_at_utc TEXT NOT NULL,
+    last_sync_id TEXT NOT NULL,
+    PRIMARY KEY (registration_id, context_id, subject),
+    FOREIGN KEY (user_id) REFERENCES application_users(user_id),
+    FOREIGN KEY (last_sync_id)
+      REFERENCES lti_nrps_syncs(sync_id)
+  ) STRICT`,
+  `CREATE INDEX IF NOT EXISTS lti_context_memberships_active
+    ON lti_context_memberships(
+      registration_id,
+      context_id,
+      membership_status,
+      user_id
+    )`,
   `CREATE TABLE IF NOT EXISTS lti_ags_score_deliveries (
     delivery_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL UNIQUE,

@@ -4,7 +4,7 @@ import type {
 } from "../src/platform/contracts/scenario-pack";
 import type {
   CreateHostedAssignmentRequest,
-  HostedAssignmentLearnerOptionV1,
+  HostedAssignmentLearnerOptionV2,
   HostedAssignmentV1,
   HostedAssignmentScenarioOptionV1,
   HostedAssignmentMonitorV1,
@@ -61,6 +61,10 @@ import {
   deliverLtiAgsScore,
   supportsLtiAgsScore,
 } from "../src/platform/hosted/lti-ags";
+import {
+  fetchLtiNrpsRoster,
+  LtiNrpsError,
+} from "../src/platform/hosted/lti-nrps";
 import { provisionBootstrapAdministrator } from "../src/platform/hosted/bootstrap-principal";
 import {
   HostedAuthorizationError,
@@ -102,6 +106,10 @@ import {
 import {
   D1LtiAgsRepository,
 } from "../src/platform/persistence/d1-lti-ags-repository";
+import {
+  D1LtiNrpsRepository,
+  LtiNrpsRepositoryError,
+} from "../src/platform/persistence/d1-lti-nrps-repository";
 import {
   ApplicationAccessRepositoryError,
   D1ApplicationAccessRepository,
@@ -511,7 +519,9 @@ function ltiErrorCode(error: unknown): string | null {
   if (
     error instanceof LtiAuthenticationError ||
     error instanceof LtiRegistrationError ||
-    error instanceof LtiAuthenticationRepositoryError
+    error instanceof LtiAuthenticationRepositoryError ||
+    error instanceof LtiNrpsError ||
+    error instanceof LtiNrpsRepositoryError
   ) {
     return error.code;
   }
@@ -556,7 +566,16 @@ function ltiErrorResponse(
     code === "LTI_ASSIGNMENT_ACCESS_DENIED" ||
     code === "LTI_SESSION_REQUIRED"
       ? 403
-      : 400;
+      : code === "LTI_NRPS_SYNC_CONFLICT"
+        ? 409
+        : code === "LTI_NRPS_TOKEN_REQUEST_FAILED" ||
+            code === "LTI_NRPS_REQUEST_FAILED" ||
+            code === "LTI_NRPS_RESPONSE_INVALID"
+          ? 502
+          : code === "LTI_NRPS_CONFIGURATION_INVALID" ||
+              code === "LTI_NRPS_STORAGE_FAILED"
+            ? 500
+            : 400;
   return jsonResponse(status, { error: { code } });
 }
 
@@ -835,6 +854,94 @@ async function ltiResponse(
         },
       }),
     );
+  }
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/lti/v1/nrps/sync"
+  ) {
+    enforceSameOriginMutation(request);
+    const token = ltiSessionToken(request);
+    if (token === null) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An active Moodle instructor session is required.",
+      );
+    }
+    const tokenHash = sha256Hex(token);
+    const principal = await repository.findActiveSession(tokenHash);
+    const nrps = await repository.findActiveNrpsContext(tokenHash);
+    if (
+      principal === null ||
+      nrps === null ||
+      principal.ltiLaunchType !== "resource-link" ||
+      !principal.roles.includes("instructor")
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_SESSION_REQUIRED",
+        "An instructor resource-link launch with NRPS is required.",
+      );
+    }
+    const body = await readJson(request, MAXIMUM_COMMAND_BYTES);
+    if (
+      !isRecord(body) ||
+      typeof body.syncId !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/u.test(body.syncId)
+    ) {
+      throw new LtiNrpsRepositoryError(
+        "LTI_NRPS_SYNC_INVALID",
+        "A bounded NRPS sync ID is required.",
+      );
+    }
+    const nrpsRepository = new D1LtiNrpsRepository(
+      environment.DB,
+      clock,
+    );
+    const replayed = await nrpsRepository.replay(
+      body.syncId,
+      nrps,
+      principal.userId,
+    );
+    if (replayed !== null) {
+      return jsonResponse(200, {
+        sync: replayed,
+        wasIdempotentReplay: true,
+      });
+    }
+    const registration = registrations.find(
+      (candidate) =>
+        candidate.registrationId === nrps.registrationId,
+    );
+    if (registration === undefined) {
+      throw new LtiNrpsError(
+        "LTI_NRPS_CONFIGURATION_INVALID",
+        "The NRPS registration is no longer active.",
+      );
+    }
+    const publicJwks = parseToolPublicJwks(
+      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+    );
+    const privateJwk = parseToolPrivateJwk(
+      environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      publicJwks,
+    );
+    const snapshot = await fetchLtiNrpsRoster({
+      context: nrps,
+      registration,
+      privateJwk,
+      clock,
+      ids: new WebCryptoIdGenerator(),
+    });
+    const result = await nrpsRepository.synchronize({
+      syncId: body.syncId,
+      context: nrps,
+      synchronizedByUserId: principal.userId,
+      pageCount: snapshot.pageCount,
+      members: snapshot.members,
+    });
+    return jsonResponse(201, {
+      sync: result.sync,
+      wasIdempotentReplay: result.wasIdempotentReplay,
+    });
   }
   return jsonResponse(404, {
     error: { code: "LTI_ENDPOINT_NOT_FOUND" },
@@ -1767,6 +1874,9 @@ async function apiResponse(
       ...(principal.ltiAssignmentId === undefined
         ? {}
         : { ltiAssignmentId: principal.ltiAssignmentId }),
+      ...(principal.ltiNrpsAvailable === undefined
+        ? {}
+        : { ltiNrpsAvailable: principal.ltiNrpsAvailable }),
     });
   }
 
@@ -2483,31 +2593,54 @@ async function apiResponse(
       "instructor",
       "administrator",
     ]);
-    const learners: HostedAssignmentLearnerOptionV1[] = (
-      await new D1ApplicationAccessRepository(
-        environment.DB,
-        new SystemUtcClock(),
-      ).list()
-    )
-      .filter(
-        (user) =>
-          user.status === "active" &&
-          user.roles.includes("learner"),
+    let learners: readonly HostedAssignmentLearnerOptionV2[];
+    if (
+      principal.authenticationSource === "lti" &&
+      sessionToken !== null
+    ) {
+      const context =
+        await new D1LtiAuthenticationRepository(
+          environment.DB,
+          clock,
+        ).findActiveNrpsContext(sha256Hex(sessionToken));
+      learners =
+        context === null
+          ? []
+          : await new D1LtiNrpsRepository(
+              environment.DB,
+              clock,
+            ).listActiveLearners(context);
+    } else {
+      learners = (
+        await new D1ApplicationAccessRepository(
+          environment.DB,
+          clock,
+        ).list()
       )
-      .map<HostedAssignmentLearnerOptionV1>((user) => ({
-        schemaVersion: "1.0.0",
-        userId: user.userId,
-        email: user.email,
-      }))
-      .sort((left, right) => {
-        const leftKey = `${left.email}\u0000${left.userId}`;
-        const rightKey = `${right.email}\u0000${right.userId}`;
-        return leftKey < rightKey
-          ? -1
-          : leftKey > rightKey
-            ? 1
-            : 0;
-      });
+        .filter(
+          (user) =>
+            user.status === "active" &&
+            user.roles.includes("learner"),
+        )
+        .map<HostedAssignmentLearnerOptionV2>((user) => ({
+          schemaVersion: "2.0.0",
+          userId: user.userId,
+          displayName: user.email,
+          email: user.email,
+          source: "APPLICATION_ACCESS",
+        }))
+        .sort((left, right) => {
+          const leftKey =
+            `${left.displayName}\u0000${left.userId}`;
+          const rightKey =
+            `${right.displayName}\u0000${right.userId}`;
+          return leftKey < rightKey
+            ? -1
+            : leftKey > rightKey
+              ? 1
+              : 0;
+        });
+    }
     return jsonResponse(200, { learners });
   }
 
@@ -2627,6 +2760,41 @@ async function apiResponse(
         "INVALID_ASSIGNMENT",
         "Assignment counterfactual points must belong to the exact scenario version.",
       );
+    }
+    if (
+      principal.authenticationSource === "lti" &&
+      Array.isArray(body.learnerUserIds) &&
+      body.learnerUserIds.length > 0
+    ) {
+      const nrpsContext =
+        sessionToken === null
+          ? null
+          : await new D1LtiAuthenticationRepository(
+              environment.DB,
+              clock,
+            ).findActiveNrpsContext(sha256Hex(sessionToken));
+      const activeLearnerIds = new Set(
+        nrpsContext === null
+          ? []
+          : (
+              await new D1LtiNrpsRepository(
+                environment.DB,
+                clock,
+              ).listActiveLearners(nrpsContext)
+            ).map((learner) => learner.userId),
+      );
+      if (
+        body.learnerUserIds.some(
+          (learnerUserId) =>
+            typeof learnerUserId !== "string" ||
+            !activeLearnerIds.has(learnerUserId),
+        )
+      ) {
+        throw new AssignmentRepositoryError(
+          "LEARNER_NOT_PROVISIONED",
+          "An LTI assignment may select only active learners synchronized from its exact Moodle course.",
+        );
+      }
     }
     const result = await new D1AssignmentRepository(
       environment.DB,

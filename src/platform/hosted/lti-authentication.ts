@@ -17,6 +17,7 @@ import {
   LTI_LAUNCH_PRESENTATION_CLAIM,
   LTI_LEARNER_ROLE,
   LTI_MESSAGE_TYPE_CLAIM,
+  LTI_NRPS_NAMES_AND_ROLES_CLAIM,
   LTI_RESOURCE_LINK_CLAIM,
   LTI_ROLES_CLAIM,
   LTI_VERSION_CLAIM,
@@ -25,6 +26,7 @@ import {
   type LtiDeepLinkingSettingsV1,
   type LtiLaunchType,
   type LtiLearningContextV2,
+  type LtiNrpsEndpointV1,
   type LtiPlatformRegistrationV1,
 } from "../contracts/lti";
 import type { HostedAssignmentV1 } from "../contracts/assessment";
@@ -443,6 +445,11 @@ function deepLinkReturnUrl(
 function claimTextArray(
   value: unknown,
   name: string,
+  errorCode:
+    | "LTI_TOKEN_INVALID"
+    | "LTI_DEEP_LINK_UNSUPPORTED" =
+      "LTI_DEEP_LINK_UNSUPPORTED",
+  recoveryPath: "/instructor" | "/learner" = "/instructor",
 ): readonly string[] {
   if (
     !Array.isArray(value) ||
@@ -456,8 +463,9 @@ function claimTextArray(
     )
   ) {
     throw new LtiAuthenticationError(
-      "LTI_DEEP_LINK_UNSUPPORTED",
+      errorCode,
       `${name} must contain bounded string values.`,
+      recoveryPath,
     );
   }
   return [...new Set(value)].sort();
@@ -553,6 +561,8 @@ function agsEndpoint(
   const scopes = claimTextArray(
     endpoint.scope,
     `${LTI_AGS_ENDPOINT_CLAIM}.scope`,
+    "LTI_TOKEN_INVALID",
+    "/learner",
   );
   let lineItemUrl: URL;
   let issuerUrl: URL;
@@ -590,6 +600,67 @@ function agsEndpoint(
   };
 }
 
+function nrpsEndpoint(
+  payload: JWTPayload,
+  registration: LtiPlatformRegistrationV1,
+): LtiNrpsEndpointV1 | undefined {
+  const value = payload[LTI_NRPS_NAMES_AND_ROLES_CLAIM];
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      `${LTI_NRPS_NAMES_AND_ROLES_CLAIM} must be an object claim.`,
+    );
+  }
+  const endpoint = value as Readonly<Record<string, unknown>>;
+  const contextMembershipsUrl = claimText(
+    endpoint.context_memberships_url,
+    `${LTI_NRPS_NAMES_AND_ROLES_CLAIM}.context_memberships_url`,
+  );
+  const serviceVersions = claimTextArray(
+    endpoint.service_versions,
+    `${LTI_NRPS_NAMES_AND_ROLES_CLAIM}.service_versions`,
+    "LTI_TOKEN_INVALID",
+  );
+  let membershipsUrl: URL;
+  let issuerUrl: URL;
+  try {
+    membershipsUrl = new URL(contextMembershipsUrl);
+    issuerUrl = new URL(registration.issuer);
+  } catch {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      "The LTI NRPS context-memberships URL is invalid.",
+    );
+  }
+  const loopback =
+    membershipsUrl.hostname === "localhost" ||
+    membershipsUrl.hostname === "127.0.0.1" ||
+    membershipsUrl.hostname === "::1";
+  if (
+    membershipsUrl.origin !== issuerUrl.origin ||
+    (membershipsUrl.protocol !== "https:" &&
+      !(loopback && membershipsUrl.protocol === "http:")) ||
+    membershipsUrl.username.length > 0 ||
+    membershipsUrl.password.length > 0 ||
+    membershipsUrl.hash.length > 0 ||
+    !serviceVersions.includes("2.0")
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      "The LTI NRPS endpoint must provide version 2.0 on the registered Moodle origin.",
+    );
+  }
+  return {
+    contextMembershipsUrl: membershipsUrl.toString(),
+    serviceVersions,
+  };
+}
+
 function learningContext(
   payload: JWTPayload,
   registration: LtiPlatformRegistrationV1,
@@ -601,6 +672,7 @@ function learningContext(
   readonly assignmentId?: string;
   readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
   readonly agsEndpoint?: LtiAgsEndpointV1;
+  readonly nrpsEndpoint?: LtiNrpsEndpointV1;
 } {
   if (payload[LTI_VERSION_CLAIM] !== "1.3.0") {
     throw new LtiAuthenticationError(
@@ -727,6 +799,10 @@ function learningContext(
     applicationRole === "learner"
       ? agsEndpoint(payload, registration)
       : undefined;
+  const selectedNrpsEndpoint =
+    applicationRole === "instructor"
+      ? nrpsEndpoint(payload, registration)
+      : undefined;
   return {
     roles: [...new Set(rolesValue)].sort(),
     applicationRole,
@@ -738,6 +814,9 @@ function learningContext(
     ...(selectedAgsEndpoint === undefined
       ? {}
       : { agsEndpoint: selectedAgsEndpoint }),
+    ...(selectedNrpsEndpoint === undefined
+      ? {}
+      : { nrpsEndpoint: selectedNrpsEndpoint }),
     context: {
       schemaVersion: "2.0.0",
       provider: "lti-1.3",
@@ -806,6 +885,7 @@ export async function completeLtiLaunch(options: {
     assignmentId,
     deepLinkingSettings: selectedDeepLinkingSettings,
     agsEndpoint: selectedAgsEndpoint,
+    nrpsEndpoint: selectedNrpsEndpoint,
   } = learningContext(payload, registration);
   const assignment =
     applicationRole === "learner" && assignmentId !== undefined
@@ -870,6 +950,9 @@ export async function completeLtiLaunch(options: {
       ...(selectedAgsEndpoint === undefined
         ? {}
         : { agsEndpoint: selectedAgsEndpoint }),
+      ...(selectedNrpsEndpoint === undefined
+        ? {}
+        : { nrpsEndpoint: selectedNrpsEndpoint }),
       issuedAt,
       expiresAt,
     },

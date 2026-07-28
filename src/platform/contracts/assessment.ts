@@ -147,10 +147,12 @@ export interface HostedAssignmentScenarioOptionV1 {
   }[];
 }
 
-export interface HostedAssignmentLearnerOptionV1 {
-  readonly schemaVersion: "1.0.0";
+export interface HostedAssignmentLearnerOptionV2 {
+  readonly schemaVersion: "2.0.0";
   readonly userId: string;
-  readonly email: string;
+  readonly displayName: string;
+  readonly email?: string;
+  readonly source: "APPLICATION_ACCESS" | "LTI_NRPS";
 }
 
 export interface HostedAssignmentCreationResult {

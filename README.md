@@ -172,7 +172,10 @@ lets a verified instructor select one active course assignment and returns a
 signed, assignment-bound resource link with a 100-point line item when Moodle
 accepts one. AGS returns final completion and the existing score for Coffee,
 Audit, and Technical Lab runs; evidence-only generic runs remain pending
-manual grading. NRPS and Moodle SCORM-attempt access remain deferred.
+manual grading. A verified LTI instructor launch may also advertise NRPS 2.0;
+the instructor can explicitly synchronize the exact course's read-only learner
+roster before selecting learners for a new assignment. Moodle SCORM-attempt
+access remains deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.

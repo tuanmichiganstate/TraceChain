@@ -6,6 +6,7 @@ import type {
   LtiDeepLinkingSettingsV1,
   LtiLaunchType,
   LtiLearningContextV2,
+  LtiNrpsEndpointV1,
 } from "../contracts/lti";
 import type { ApplicationPrincipal } from "../hosted/access";
 import type { D1DatabaseLike } from "./d1-types";
@@ -108,12 +109,14 @@ const INSERT_SESSION = `INSERT INTO lti_sessions (
     deep_link_response_jwt,
     ags_lineitem_url,
     ags_scopes_json,
+    nrps_context_memberships_url,
+    nrps_service_versions_json,
     platform_roles_json,
     application_role,
     assignment_id,
     issued_at_utc,
     expires_at_utc
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 const DELETE_FINISHED_SESSIONS = `DELETE FROM lti_sessions
   WHERE expires_at_utc <= ?
     OR revoked_at_utc IS NOT NULL`;
@@ -130,6 +133,8 @@ const FIND_ACTIVE_SESSION = `SELECT
     sessions.return_url,
     sessions.application_role,
     sessions.assignment_id,
+    sessions.nrps_context_memberships_url,
+    sessions.nrps_service_versions_json,
     users.user_id,
     COALESCE(identities.email_claim, users.email) AS email,
     COALESCE(
@@ -196,6 +201,24 @@ const FIND_ACTIVE_AGS_CONTEXT = `SELECT
     AND sessions.revoked_at_utc IS NULL
     AND sessions.expires_at_utc > ?
     AND users.status = 'active'`;
+const FIND_ACTIVE_NRPS_CONTEXT = `SELECT
+    sessions.registration_id,
+    sessions.issuer,
+    sessions.client_id,
+    sessions.deployment_id,
+    sessions.context_id,
+    sessions.nrps_context_memberships_url,
+    sessions.nrps_service_versions_json
+  FROM lti_sessions AS sessions
+  JOIN application_users AS users
+    ON users.user_id = sessions.user_id
+  WHERE sessions.session_token_hash = ?
+    AND sessions.application_role = 'instructor'
+    AND sessions.nrps_context_memberships_url IS NOT NULL
+    AND sessions.nrps_service_versions_json IS NOT NULL
+    AND sessions.revoked_at_utc IS NULL
+    AND sessions.expires_at_utc > ?
+    AND users.status = 'active'`;
 const COMPLETE_DEEP_LINK_SESSION = `UPDATE lti_sessions
   SET deep_link_assignment_id = ?,
       deep_link_completed_at_utc = ?,
@@ -240,6 +263,8 @@ interface SessionRow {
   readonly return_url: string | null;
   readonly application_role: LtiApplicationRole;
   readonly assignment_id: string | null;
+  readonly nrps_context_memberships_url: string | null;
+  readonly nrps_service_versions_json: string | null;
   readonly user_id: string;
   readonly email: string | null;
   readonly display_name: string | null;
@@ -272,6 +297,16 @@ interface AgsContextRow {
   readonly ags_scopes_json: string;
 }
 
+interface NrpsContextRow {
+  readonly registration_id: string;
+  readonly issuer: string;
+  readonly client_id: string;
+  readonly deployment_id: string;
+  readonly context_id: string;
+  readonly nrps_context_memberships_url: string;
+  readonly nrps_service_versions_json: string;
+}
+
 export interface ConsumedLtiLoginState {
   readonly stateHash: string;
   readonly nonceHash: string;
@@ -301,6 +336,7 @@ export interface LtiSessionInput extends LtiIdentityInput {
   readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
   readonly deepLinkResponseNonce?: string;
   readonly agsEndpoint?: LtiAgsEndpointV1;
+  readonly nrpsEndpoint?: LtiNrpsEndpointV1;
   readonly issuedAt: string;
   readonly expiresAt: string;
 }
@@ -325,6 +361,15 @@ export interface ActiveLtiAgsContext {
   readonly platformUserId: string;
   readonly assignmentId: string;
   readonly endpoint: LtiAgsEndpointV1;
+}
+
+export interface ActiveLtiNrpsContext {
+  readonly registrationId: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly deploymentId: string;
+  readonly contextId: string;
+  readonly endpoint: LtiNrpsEndpointV1;
 }
 
 export interface LtiUserProvisioningInput extends LtiIdentityInput {
@@ -624,6 +669,16 @@ export class D1LtiAuthenticationRepository {
         recoveryPath,
       );
     }
+    if (
+      input.nrpsEndpoint !== undefined &&
+      input.applicationRole !== "instructor"
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "LTI NRPS may be bound only to an instructor session.",
+        recoveryPath,
+      );
+    }
     const results = await this.database.batch([
       this.database
         .prepare(DELETE_FINISHED_SESSIONS)
@@ -666,6 +721,12 @@ export class D1LtiAuthenticationRepository {
           input.agsEndpoint === undefined
             ? null
             : JSON.stringify(input.agsEndpoint.scopes),
+          input.nrpsEndpoint?.contextMembershipsUrl ?? null,
+          input.nrpsEndpoint === undefined
+            ? null
+            : JSON.stringify(
+                input.nrpsEndpoint.serviceVersions,
+              ),
           JSON.stringify(input.platformRoles),
           input.applicationRole,
           input.assignmentId ?? null,
@@ -703,6 +764,9 @@ export class D1LtiAuthenticationRepository {
       ...(row.assignment_id === null
         ? {}
         : { ltiAssignmentId: row.assignment_id }),
+      ltiNrpsAvailable:
+        row.nrps_context_memberships_url !== null &&
+        row.nrps_service_versions_json !== null,
       learningContext: {
         schemaVersion: "2.0.0",
         provider: "lti-1.3",
@@ -834,6 +898,51 @@ export class D1LtiAuthenticationRepository {
       endpoint: {
         lineItemUrl: row.ags_lineitem_url,
         scopes,
+      },
+    };
+  }
+
+  async findActiveNrpsContext(
+    sessionTokenHash: string,
+  ): Promise<ActiveLtiNrpsContext | null> {
+    const row = await this.database
+      .prepare(FIND_ACTIVE_NRPS_CONTEXT)
+      .bind(sessionTokenHash, this.clock.now())
+      .first<NrpsContextRow>();
+    if (row === null) return null;
+    let serviceVersions: unknown;
+    try {
+      serviceVersions = JSON.parse(
+        row.nrps_service_versions_json,
+      );
+    } catch {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI NRPS service versions are invalid.",
+      );
+    }
+    if (
+      !Array.isArray(serviceVersions) ||
+      !serviceVersions.includes("2.0") ||
+      !serviceVersions.every(
+        (version) => typeof version === "string",
+      )
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI NRPS service versions are invalid.",
+      );
+    }
+    return {
+      registrationId: row.registration_id,
+      issuer: row.issuer,
+      clientId: row.client_id,
+      deploymentId: row.deployment_id,
+      contextId: row.context_id,
+      endpoint: {
+        contextMembershipsUrl:
+          row.nrps_context_memberships_url,
+        serviceVersions,
       },
     };
   }

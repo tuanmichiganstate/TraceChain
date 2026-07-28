@@ -560,6 +560,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     kid: "MOODLE_SIGNING_KEY",
     use: "sig",
   };
+  const privateJwk = {
+    ...(await exportJWK(privateKey)),
+    alg: "RS256",
+    kid: "MOODLE_SIGNING_KEY",
+    use: "sig",
+  };
   env.DB = database;
   env.TRACECHAIN_LTI_REGISTRATIONS_JSON = JSON.stringify([
     {
@@ -576,6 +582,8 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
   env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
     keys: [publicJwk],
   });
+  env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+    JSON.stringify(privateJwk);
 
   async function initiateLogin() {
     const parameters = new URLSearchParams({
@@ -624,6 +632,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     name = "Course instructor",
     signingKey = privateKey,
     agsEndpoint,
+    nrpsEndpoint,
   }) {
     const now = Math.floor(Date.now() / 1_000);
     const idToken = await new SignJWT({
@@ -662,6 +671,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
             "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint":
               agsEndpoint,
           }),
+      ...(nrpsEndpoint === undefined
+        ? {}
+        : {
+            "https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice":
+              nrpsEndpoint,
+          }),
     })
       .setProtectedHeader({
         alg: "RS256",
@@ -695,7 +710,14 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     assert.equal((await keyset.json()).keys[0].kid, "MOODLE_SIGNING_KEY");
 
     const login = await initiateLogin();
-    const launched = await launch(login);
+    const launched = await launch({
+      ...login,
+      nrpsEndpoint: {
+        context_memberships_url:
+          `${issuer}/mod/lti/services.php/memberships/42`,
+        service_versions: ["2.0"],
+      },
+    });
     assert.equal(launched.status, 303, await launched.clone().text());
     assert.equal(
       launched.headers.get("location"),
@@ -716,6 +738,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     const sessionBody = await session.json();
     assert.deepEqual(sessionBody.roles, ["instructor"]);
     assert.equal(sessionBody.authenticationSource, "lti");
+    assert.equal(sessionBody.ltiNrpsAvailable, true);
     assert.equal(
       sessionBody.learningContext.contextId,
       "COURSE_ACCOUNTING_101",
@@ -732,6 +755,186 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         .get(sessionBody.userId).email,
       null,
     );
+
+    const originalFetch = globalThis.fetch;
+    let nrpsNetworkRequestCount = 0;
+    let nrpsActiveUserId;
+    try {
+      globalThis.fetch = async (input, init) => {
+        const requestUrl =
+          input instanceof Request
+            ? input.url
+            : input instanceof URL
+              ? input.toString()
+              : input;
+        nrpsNetworkRequestCount += 1;
+        if (requestUrl === `${issuer}/mod/lti/token.php`) {
+          const form = new URLSearchParams(String(init?.body));
+          assert.equal(
+            form.get("scope"),
+            "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly",
+          );
+          const assertion = form.get("client_assertion");
+          assert.ok(assertion);
+          const verified = await jwtVerify(assertion, publicKey, {
+            algorithms: ["RS256"],
+            issuer: clientId,
+            audience: `${issuer}/mod/lti/token.php`,
+          });
+          assert.equal(verified.payload.sub, clientId);
+          return Response.json({
+            access_token: "OPAQUE_NRPS_TOKEN",
+            token_type: "Bearer",
+            scope:
+              "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly",
+          });
+        }
+        const membershipUrl = new URL(requestUrl);
+        assert.equal(
+          membershipUrl.origin + membershipUrl.pathname,
+          `${issuer}/mod/lti/services.php/memberships/42`,
+        );
+        assert.equal(membershipUrl.searchParams.get("role"), "Learner");
+        assert.equal(membershipUrl.searchParams.get("limit"), "100");
+        assert.equal(init?.method, "GET");
+        assert.deepEqual(init?.headers, {
+          accept:
+            "application/vnd.ims.lti-nrps.v2.membershipcontainer+json",
+          authorization: "Bearer OPAQUE_NRPS_TOKEN",
+        });
+        return Response.json(
+          {
+            id: requestUrl,
+            context: { id: "COURSE_ACCOUNTING_101" },
+            members: [
+              {
+                user_id: "MOODLE_NRPS_LEARNER_ACTIVE",
+                status: "Active",
+                name: "Roster learner",
+                email: "roster-learner@example.edu",
+                roles: [
+                  "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+                ],
+              },
+              {
+                user_id: "MOODLE_NRPS_LEARNER_INACTIVE",
+                status: "Inactive",
+                name: "Inactive roster learner",
+                roles: ["Learner"],
+              },
+            ],
+          },
+          {
+            headers: {
+              "content-type":
+                "application/vnd.ims.lti-nrps.v2.membershipcontainer+json",
+            },
+          },
+        );
+      };
+      const synchronized = await worker.fetch(
+        new Request(
+          "https://tracechain.example/api/lti/v1/nrps/sync",
+          {
+            method: "POST",
+            headers: {
+              cookie,
+              "content-type": "application/json",
+              origin: "https://tracechain.example",
+            },
+            body: JSON.stringify({
+              syncId: "LTI_NRPS_SYNC_WORKER_001",
+            }),
+          },
+        ),
+        env,
+      );
+      assert.equal(
+        synchronized.status,
+        201,
+        await synchronized.clone().text(),
+      );
+      const synchronizedBody = await synchronized.json();
+      assert.deepEqual(
+        {
+          ...synchronizedBody,
+          sync: {
+            ...synchronizedBody.sync,
+            synchronizedAt: "IGNORED",
+          },
+        },
+        {
+          sync: {
+            schemaVersion: "1.0.0",
+            syncId: "LTI_NRPS_SYNC_WORKER_001",
+            contextId: "COURSE_ACCOUNTING_101",
+            receivedMemberCount: 2,
+            activeLearnerCount: 1,
+            inactiveLearnerCount: 1,
+            pageCount: 1,
+            synchronizedAt: "IGNORED",
+          },
+          wasIdempotentReplay: false,
+        },
+      );
+      assert.equal(nrpsNetworkRequestCount, 2);
+
+      const synchronizedLearners = await worker.fetch(
+        new Request(
+          "https://tracechain.example/api/v1/assignment-learners",
+          { headers: { cookie } },
+        ),
+        env,
+      );
+      assert.equal(synchronizedLearners.status, 200);
+      nrpsActiveUserId = database.sqlite
+        .prepare(
+          `SELECT user_id
+           FROM external_user_identities
+           WHERE subject = ?`,
+        )
+        .get("MOODLE_NRPS_LEARNER_ACTIVE").user_id;
+      assert.deepEqual(
+        (await synchronizedLearners.json()).learners,
+        [
+          {
+            schemaVersion: "2.0.0",
+            userId: nrpsActiveUserId,
+            displayName: "Roster learner",
+            email: "roster-learner@example.edu",
+            source: "LTI_NRPS",
+          },
+        ],
+      );
+
+      globalThis.fetch = async () => {
+        throw new Error("Idempotent replay must not use Moodle.");
+      };
+      const replayedSync = await worker.fetch(
+        new Request(
+          "https://tracechain.example/api/lti/v1/nrps/sync",
+          {
+            method: "POST",
+            headers: {
+              cookie,
+              "content-type": "application/json",
+              origin: "https://tracechain.example",
+            },
+            body: JSON.stringify({
+              syncId: "LTI_NRPS_SYNC_WORKER_001",
+            }),
+          },
+        ),
+        env,
+      );
+      assert.equal(replayedSync.status, 200);
+      assert.equal(
+        (await replayedSync.json()).wasIdempotentReplay,
+        true,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
 
     const publishedPack = await standardCoffeePack();
     const modeConfiguration =
@@ -853,6 +1056,98 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     assert.deepEqual(
       (await emptyRosterAssignment.json()).assignment.learnerUserIds,
       [],
+    );
+    assert.ok(nrpsActiveUserId);
+    const synchronizedRosterAssignment = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/assignments", {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "application/json",
+          origin: "https://tracechain.example",
+        },
+        body: JSON.stringify({
+          commandId: "COMMAND_LTI_SYNCHRONIZED_ROSTER",
+          assignmentId: "ASSIGNMENT_LTI_SYNCHRONIZED_ROSTER",
+          title: "LTI synchronized learner",
+          packId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          packVersion: "1.0.0",
+          scenarioId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          scenarioVersion: "1.0.0",
+          mode: "tutorial",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
+          research: { enabled: false },
+          learnerUserIds: [nrpsActiveUserId],
+        }),
+      }),
+      env,
+    );
+    assert.equal(
+      synchronizedRosterAssignment.status,
+      201,
+      await synchronizedRosterAssignment.clone().text(),
+    );
+
+    database.sqlite
+      .prepare(
+        `INSERT INTO application_users (
+          user_id,
+          email,
+          display_name,
+          status,
+          created_at_utc
+        ) VALUES (?, ?, ?, 'active', ?)`,
+      )
+      .run(
+        "USER_LEARNER_OUTSIDE_LTI_COURSE",
+        "outside-course@example.edu",
+        "Outside course",
+        "2026-07-28T08:00:00.000Z",
+      );
+    database.sqlite
+      .prepare(
+        `INSERT INTO application_role_assignments (
+          user_id,
+          application_role,
+          assigned_at_utc,
+          assigned_by_user_id
+        ) VALUES (?, 'learner', ?, ?)`,
+      )
+      .run(
+        "USER_LEARNER_OUTSIDE_LTI_COURSE",
+        "2026-07-28T08:00:00.000Z",
+        sessionBody.userId,
+      );
+    const outsideCourseAssignment = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/assignments", {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "application/json",
+          origin: "https://tracechain.example",
+        },
+        body: JSON.stringify({
+          commandId: "COMMAND_LTI_OUTSIDE_COURSE",
+          assignmentId: "ASSIGNMENT_LTI_OUTSIDE_COURSE",
+          title: "LTI outside-course learner",
+          packId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          packVersion: "1.0.0",
+          scenarioId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          scenarioVersion: "1.0.0",
+          mode: "tutorial",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
+          research: { enabled: false },
+          learnerUserIds: ["USER_LEARNER_OUTSIDE_LTI_COURSE"],
+        }),
+      }),
+      env,
+    );
+    assert.equal(outsideCourseAssignment.status, 400);
+    assert.equal(
+      (await outsideCourseAssignment.json()).error.code,
+      "LEARNER_NOT_PROVISIONED",
     );
 
     const sameCourse = await worker.fetch(
@@ -1168,6 +1463,34 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
            WHERE subject = ?`,
         )
         .get("MOODLE_LEARNER_UNSAFE_AGS").count,
+      0,
+    );
+
+    const unsafeNrpsLogin = await initiateLogin();
+    const unsafeNrpsLaunch = await launch({
+      ...unsafeNrpsLogin,
+      subject: "MOODLE_INSTRUCTOR_UNSAFE_NRPS",
+      nrpsEndpoint: {
+        context_memberships_url:
+          "https://attacker.example/collect/memberships",
+        service_versions: ["2.0"],
+      },
+    });
+    assert.equal(unsafeNrpsLaunch.status, 303);
+    assert.equal(
+      new URL(
+        unsafeNrpsLaunch.headers.get("location"),
+      ).searchParams.get("ltiError"),
+      "LTI_TOKEN_INVALID",
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM external_user_identities
+           WHERE subject = ?`,
+        )
+        .get("MOODLE_INSTRUCTOR_UNSAFE_NRPS").count,
       0,
     );
 
@@ -3186,14 +3509,18 @@ test("creates an exact published assignment for a provisioned learner", async ()
     );
     assert.deepEqual((await learnerOptions.json()).learners, [
       {
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         userId: "USER_LEARNER_ASSIGNMENT",
+        displayName: "assignment-learner@example.edu",
         email: "assignment-learner@example.edu",
+        source: "APPLICATION_ACCESS",
       },
       {
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         userId: "USER_LEARNER_UNASSIGNED",
+        displayName: "unassigned-learner@example.edu",
         email: "unassigned-learner@example.edu",
+        source: "APPLICATION_ACCESS",
       },
     ]);
     const learnerRosterDenied = await worker.fetch(

@@ -240,7 +240,7 @@ export function parseToolPrivateJwk(
   if (configuration === undefined || configuration.trim().length === 0) {
     throw new LtiRegistrationError(
       "LTI_REGISTRATION_CONFIGURATION_INVALID",
-      "TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is required for LTI Deep Linking.",
+      "TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is required for LTI service signing.",
     );
   }
   if (configuration.length > 32 * 1024) {

@@ -129,9 +129,11 @@ for:
 This implementation does not override the roadmap's evidence gates. In
 particular, process analytics are available for transparent inspection but must
 not be used to infer learner traits or make high-stakes decisions before pilot
-validation. Institutional authentication, roster synchronization, and grade
-return remain outside the bounded deep-link integration. See
-`POST_PLATFORM_PRIORITIES_5_6_7_8_11_V1.md`.
+validation. The later bounded Moodle integration now implements verified
+LTI 1.3 launches, assignment Deep Linking, final AGS outcome return, and
+explicit course-scoped NRPS learner synchronization. It still does not provide
+general institutional SSO, scheduled directory synchronization, or Moodle
+SCORM-attempt access. See `LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 ## 2026-07-28 decision-process evidence checkpoint
 
@@ -396,6 +398,11 @@ unstructured instructor-authored events during a live run.
 
 If hosted adoption is the main goal, add one bounded institutional integration
 before attempting a generic interoperability framework.
+
+Current checkpoint: the bounded Moodle LTI 1.3 integration implements Core
+launch, one-assignment Deep Linking, final AGS outcome return, and
+instructor-initiated NRPS synchronization. Broader institutional
+interoperability remains deferred.
 
 Possible first scope:
 

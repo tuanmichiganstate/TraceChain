@@ -13,6 +13,7 @@ export interface ApplicationPrincipal {
   readonly learningContext?: LtiLearningContextV2;
   readonly ltiLaunchType?: LtiLaunchType;
   readonly ltiAssignmentId?: string;
+  readonly ltiNrpsAvailable?: boolean;
 }
 
 export class HostedAuthorizationError extends Error {

@@ -437,7 +437,7 @@ describe("instructor review screen", () => {
     if (section === null) throw new Error("Expected assignment section.");
     const form = within(section);
     expect(
-      form.getByText(/enrolled automatically only after Moodle opens/),
+      form.getByText(/still enrolled after Moodle opens/),
     ).toBeInTheDocument();
     const user = userEvent.setup();
     await user.type(
@@ -458,6 +458,85 @@ describe("instructor review screen", () => {
         learnerUserIds: [],
       }),
     );
+  });
+
+  it("synchronizes the signed Moodle course roster before learner selection", async () => {
+    const loadAssignmentLearnerOptions = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          schemaVersion: "2.0.0",
+          userId: "USER_LTI_LEARNER_001",
+          displayName: "Nguyễn An",
+          email: "an@example.edu",
+          source: "LTI_NRPS",
+        },
+      ]);
+    const synchronizeLtiNrpsRoster = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      syncId: "LTI_NRPS_SYNC_001",
+      contextId: "COURSE_ACCOUNTING_101",
+      receivedMemberCount: 2,
+      activeLearnerCount: 1,
+      inactiveLearnerCount: 1,
+      pageCount: 1,
+      synchronizedAt: "2026-07-28T10:00:00.000Z",
+    });
+    const api: InstructorReviewApi = {
+      createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions,
+      synchronizeLtiNrpsRoster,
+      loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
+      loadAssignmentReport: vi.fn(),
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_001",
+        displayName: "Course instructor",
+        roles: ["instructor"],
+        authenticationSource: "lti",
+        ltiLaunchType: "resource-link",
+        ltiNrpsAvailable: true,
+        learningContext: {
+          schemaVersion: "2.0.0",
+          provider: "lti-1.3",
+          launchType: "resource-link",
+          issuer: "https://moodle.example",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_ACCOUNTING_101",
+          resourceLinkId: "RESOURCE_INSTRUCTOR",
+        },
+      }),
+      loadRunReplay: vi.fn(),
+      loadRunReview: vi.fn(),
+      releaseFeedback: vi.fn(),
+      saveModeration: vi.fn(),
+      saveRating: vi.fn(),
+    };
+    renderScreen(api);
+
+    const synchronize = await screen.findByRole("button", {
+      name: "Synchronize Moodle roster",
+    });
+    await userEvent.setup().click(synchronize);
+
+    expect(synchronizeLtiNrpsRoster).toHaveBeenCalledOnce();
+    expect(loadAssignmentLearnerOptions).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByText(
+        "Moodle roster synchronized. Active learners: 1. Inactive memberships: 1.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Nguyễn An — an@example.edu (USER_LTI_LEARNER_001)",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("generates an accepted assessment package through the hosted job API", async () => {
@@ -600,9 +679,11 @@ describe("instructor review screen", () => {
       ]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           userId: "USER_LEARNER_001",
+          displayName: "Learner",
           email: "learner@example.edu",
+          source: "APPLICATION_ACCESS",
         },
       ]),
       loadAssignmentCompetencies: vi.fn(),
@@ -746,7 +827,7 @@ describe("instructor review screen", () => {
     );
     await user.click(
       form.getByRole("checkbox", {
-        name: "learner@example.edu (USER_LEARNER_001)",
+        name: "Learner — learner@example.edu (USER_LEARNER_001)",
       }),
     );
     await user.click(
@@ -2042,9 +2123,11 @@ describe("instructor review screen", () => {
             ? {
                 learners: [
                   {
-                    schemaVersion: "1.0.0",
+                    schemaVersion: "2.0.0",
                     userId: "USER_LEARNER_001",
+                    displayName: "Learner",
                     email: "learner@example.edu",
+                    source: "APPLICATION_ACCESS",
                   },
                 ],
               }
@@ -2112,9 +2195,11 @@ describe("instructor review screen", () => {
     ]);
     expect(await api.loadAssignmentLearnerOptions()).toEqual([
       {
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         userId: "USER_LEARNER_001",
+        displayName: "Learner",
         email: "learner@example.edu",
+        source: "APPLICATION_ACCESS",
       },
     ]);
     await api.closeAssignment("ASSIGNMENT / 001");
