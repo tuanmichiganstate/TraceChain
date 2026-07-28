@@ -676,7 +676,7 @@
 
 .notification-viewport {
   position: fixed;
-  inset-block-start: 6.5rem;
+  inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
   inset-inline-end: max(var(--space-4), env(safe-area-inset-right));
   width: min(28rem, calc(100vw - 2 * var(--space-4)));
   z-index: 40;
@@ -786,7 +786,7 @@
 @keyframes notification-enter {
   from {
     opacity: 0;
-    transform: translateY(-0.5rem);
+    transform: translateY(0.5rem);
   }
   to {
     opacity: 1;
@@ -1548,7 +1548,7 @@
 
 @media (max-width: 47.99rem) {
   .notification-viewport {
-    inset-block-start: calc(8.5rem + env(safe-area-inset-top));
+    inset-block-end: max(var(--space-2), env(safe-area-inset-bottom));
     inset-inline: max(var(--space-2), env(safe-area-inset-left))
       max(var(--space-2), env(safe-area-inset-right));
     width: auto;

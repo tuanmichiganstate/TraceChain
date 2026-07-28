@@ -155,7 +155,7 @@ test.describe("rules the learner can feel", () => {
     ).toBeVisible();
   });
 
-  test("keeps notifications usable at 390 and 320 pixels", async ({
+  test("keeps notifications bottom-right and usable across viewport sizes", async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -186,29 +186,42 @@ test.describe("rules the learner can feel", () => {
     ).toHaveCount(1);
 
     for (const viewport of [
+      { width: 1280, height: 800 },
       { width: 390, height: 844 },
       { width: 320, height: 640 },
     ]) {
       await page.setViewportSize(viewport);
       const notificationBox =
         await activity.notificationRegion().boundingBox();
-      const primaryActionBox = await panel
-        .getByRole("button", {
-          name: "Ghi giao dịch vào khối",
-        })
-        .boundingBox();
       expect(notificationBox).not.toBeNull();
-      expect(primaryActionBox).not.toBeNull();
       expect(notificationBox?.x).toBeGreaterThanOrEqual(0);
       expect(
         (notificationBox?.x ?? 0) +
           (notificationBox?.width ?? viewport.width),
       ).toBeLessThanOrEqual(viewport.width);
-      expect(
-        (notificationBox?.y ?? 0) +
-          (notificationBox?.height ?? 0),
-      ).toBeLessThanOrEqual(primaryActionBox?.y ?? 0);
+      const inlineEndGap =
+        viewport.width -
+        ((notificationBox?.x ?? 0) + (notificationBox?.width ?? 0));
+      const blockEndGap =
+        viewport.height -
+        ((notificationBox?.y ?? 0) + (notificationBox?.height ?? 0));
+      expect(inlineEndGap).toBeGreaterThanOrEqual(0);
+      expect(inlineEndGap).toBeLessThanOrEqual(20);
+      expect(blockEndGap).toBeGreaterThanOrEqual(0);
+      expect(blockEndGap).toBeLessThanOrEqual(20);
     }
+
+    await activity
+      .notificationRegion()
+      .getByRole("button", { name: "Đóng thông báo" })
+      .click();
+    await expect(activity.notificationRegion()).toHaveCount(0);
+    await panel
+      .getByRole("button", {
+        name: "Ghi giao dịch vào khối",
+      })
+      .click();
+    await activity.expectNotification("Giao dịch đã được ghi nhận");
   });
 
   test("shows the tamper escalation without touching the learner's ledger", async ({
