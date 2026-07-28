@@ -80,10 +80,13 @@ self-contained, fully validated disciplinary pack. Its starter proves:
 The second scenario, `SCN_PHARMA_COLD_CHAIN_TRANSFER`, adds a two-decision
 transfer case without adding a domain adapter. Learners first decide whether
 an intact signed custody record is enough to release a vaccine shipment with a
-temperature excursion. After calibration and stability evidence is released,
-they choose a proportionate disposition. Both submissions capture bounded
-evidence citations, a policy citation, confidence, and an adverse-event risk
-estimate. The case has its own rubric and declarative evidence rules.
+temperature excursion. The calibration record is then released, while the
+manufacturer's stability assessment is available only through the bounded
+evidence-request workflow. The request records a 45-minute simulated delay and
+two cost units before the learner chooses a proportionate disposition. Both
+decision submissions capture bounded evidence citations, a policy citation,
+confidence, and an adverse-event risk estimate. The case has its own rubric
+and declarative evidence rules.
 
 Course and program outcome mappings deliberately do not live in this pack.
 The repository's independent demonstration overlays reference the pack's exact

@@ -21,8 +21,20 @@ export interface GenericDecisionSubmission {
   readonly submittedAt: string;
 }
 
+export interface GenericEvidenceRequestRecord {
+  readonly evidenceId: string;
+  readonly requestEventId: string;
+  readonly requestSequenceNumber: number;
+  readonly requestCommandId: string;
+  readonly requestedAt: string;
+  readonly simulatedAvailableAt: string;
+  readonly delayMinutes: number;
+  readonly costUnits: number;
+  readonly permissionPolicyId?: string;
+}
+
 export interface GenericHostedRunState {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly runtimeKind: "generic-v1";
   readonly runId: string;
   readonly assignmentId: string;
@@ -47,6 +59,8 @@ export interface GenericHostedRunState {
   readonly ledgerState: JsonObject;
   readonly releasedEvidenceIds: readonly string[];
   readonly inspectedEvidenceIds: readonly string[];
+  readonly evidenceRequests:
+    readonly GenericEvidenceRequestRecord[];
   readonly releasedInstructorIncidents: readonly {
     readonly incidentId: string;
     readonly releasedAt: string;
@@ -97,6 +111,12 @@ export interface InspectGenericEvidenceCommand
   readonly evidenceId: string;
 }
 
+export interface RequestGenericEvidenceCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "REQUEST_EVIDENCE";
+  readonly evidenceId: string;
+}
+
 export interface SubmitGenericDecisionCommand
   extends GenericHostedCommandBase {
   readonly commandType: "SUBMIT_STRUCTURED_DECISION";
@@ -114,6 +134,7 @@ export interface SubmitGenericDecisionCommand
 export type GenericHostedCommand =
   | AdvanceGenericWorkflowCommand
   | InspectGenericEvidenceCommand
+  | RequestGenericEvidenceCommand
   | SubmitGenericDecisionCommand;
 
 export interface GenericHostedRunResult {

@@ -17,6 +17,7 @@ export type PlatformRunEventType =
   | "RANDOM_DRAW_MADE"
   | "OUTCOME_REALIZED"
   | "INSTRUCTOR_INCIDENT_RELEASED"
+  | "EVIDENCE_REQUESTED"
   | "EVIDENCE_RELEASED"
   | "EVIDENCE_INSPECTED"
   | "POLICY_CONSULTED"
@@ -222,6 +223,16 @@ export interface LearnerRunAuthoredFeedbackV1 {
   readonly message: LearnerRunLocalizedTextV1;
 }
 
+export interface LearnerRunEvidenceRequestV1 {
+  readonly evidenceId: string;
+  readonly status: "REQUESTABLE" | "FULFILLED";
+  readonly learnerMetadata: JsonObject;
+  readonly requestedAt?: string;
+  readonly simulatedAvailableAt?: string;
+  readonly delayMinutes: number;
+  readonly costUnits: number;
+}
+
 export interface LearnerRunPresentationV1 {
   readonly scenarioTitle: LearnerRunLocalizedTextV1;
   readonly roleName: LearnerRunLocalizedTextV1;
@@ -229,6 +240,8 @@ export interface LearnerRunPresentationV1 {
   readonly evidenceTitles: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;
+  readonly evidenceRequests?:
+    readonly LearnerRunEvidenceRequestV1[];
   readonly policyTitles: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;

@@ -161,9 +161,9 @@ describe("curriculum crosswalk report", () => {
       interpretation:
         "EVIDENCE_CROSSWALK_NO_ATTAINMENT_INFERENCE",
       assignmentId: "ASSIGNMENT_PHARMA_TRANSFER",
-      packVersion: "1.6.0",
+      packVersion: "1.7.0",
       scenarioId: "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-      scenarioVersion: "1.1.0",
+      scenarioVersion: "1.2.0",
       competencyIndicators: expect.arrayContaining([
         expect.objectContaining({
           competencyId: "PHARMA.COLD_CHAIN",

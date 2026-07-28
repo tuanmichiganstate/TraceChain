@@ -1240,6 +1240,55 @@ function RunWorkspace({
             })}
           </ul>
         )}
+        {(presentation?.evidenceRequests?.length ?? 0) === 0
+          ? null
+          : (
+              <>
+                <h3>{t("hostedLearner.evidenceRequests")}</h3>
+                <p>{t("hostedLearner.evidenceRequestsHelp")}</p>
+                <ul>
+                  {presentation?.evidenceRequests?.map((request) => {
+                    const authoredTitle =
+                      presentation.evidenceTitles[
+                        request.evidenceId
+                      ];
+                    const title =
+                      authoredTitle === undefined
+                        ? t("hostedLearner.evidenceUnknown", {
+                            evidenceId: request.evidenceId,
+                          })
+                        : runText(authoredTitle, t);
+                    return (
+                      <li key={request.evidenceId}>
+                        <p><strong>{title}</strong></p>
+                        <EvidenceMetadataSummary
+                          metadata={request.learnerMetadata}
+                        />
+                        <p>
+                          {request.status === "REQUESTABLE"
+                            ? t(
+                                "hostedLearner.evidenceRequestAvailable",
+                              )
+                            : t(
+                                "hostedLearner.evidenceRequestFulfilled",
+                                {
+                                  requestedAt:
+                                    request.requestedAt ?? "",
+                                  availableAt:
+                                    request.simulatedAvailableAt ??
+                                    "",
+                                  delayMinutes:
+                                    request.delayMinutes,
+                                  costUnits: request.costUnits,
+                                },
+                              )}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
       </section>
       {(presentation?.professionalConsequences.length ?? 0) === 0 ? null : (
         <section className="card card--reference">
@@ -1664,6 +1713,32 @@ function ActionControl({
               : { label: runText(title, t) }),
           };
         })}
+        busy={busy}
+        onSubmit={(evidenceId) =>
+          onSubmit({ commandType: action, evidenceId })
+        }
+      />
+    );
+  }
+  if (action === "REQUEST_EVIDENCE") {
+    return (
+      <SelectActionForm
+        action={action}
+        options={(projection.presentation?.evidenceRequests ?? [])
+          .filter((request) => request.status === "REQUESTABLE")
+          .map((request) => {
+            const title =
+              projection.presentation?.evidenceTitles[
+                request.evidenceId
+              ];
+            return {
+              value: request.evidenceId,
+              labelKey: null,
+              ...(title === undefined
+                ? {}
+                : { label: runText(title, t) }),
+            };
+          })}
         busy={busy}
         onSubmit={(evidenceId) =>
           onSubmit({ commandType: action, evidenceId })

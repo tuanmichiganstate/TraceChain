@@ -1330,13 +1330,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       await route.fulfill({
         json: {
           analytics: {
-            schemaVersion: "1.0.0",
+            schemaVersion: "1.1.0",
             reportType:
               "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
             interpretation:
               "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
             ruleVersion:
-              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
             assignmentId,
             packId: assignment.packId,
             packVersion: assignment.packVersion,
@@ -1346,12 +1346,15 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
             runs: [],
             summary: {
               runCount: 0,
+              evidenceRequestCounts: {},
               evidenceInspectionCounts: {},
               evidenceCitationCounts: {},
               policyConsultationCounts: {},
               decisionSubmissionCounts: {},
               rejectedAttemptCount: 0,
               mitigationCount: 0,
+              authoredRequestDelayMinutesTotal: 0,
+              authoredRequestCostUnitsTotal: 0,
             },
             limitations: [
               "ELAPSED_INTERVAL_IS_NOT_ATTENTION",

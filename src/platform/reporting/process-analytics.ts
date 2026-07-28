@@ -4,6 +4,7 @@ import type {
 import type {
   AssignmentProcessAnalyticsV1,
   ProcessAnalyticsDecisionV1,
+  ProcessAnalyticsEvidenceRequestV1,
   ProcessAnalyticsRunV1,
   ProcessAnalyticsSourceObservationV1,
 } from "../contracts/process-analytics";
@@ -57,6 +58,44 @@ function observation(
         recordedAt: event.serverTimestampUtc,
         itemId,
       };
+}
+
+function evidenceRequest(
+  event: RunEventV1,
+): ProcessAnalyticsEvidenceRequestV1 {
+  const evidenceId = event.payload.evidenceId;
+  const simulatedAvailableAt =
+    event.payload.simulatedAvailableAt;
+  const delayMinutes = event.payload.delayMinutes;
+  const costUnits = event.payload.costUnits;
+  const permissionPolicyId = event.payload.permissionPolicyId;
+  if (
+    typeof evidenceId !== "string" ||
+    typeof simulatedAvailableAt !== "string" ||
+    !Number.isInteger(delayMinutes) ||
+    (delayMinutes as number) < 0 ||
+    typeof costUnits !== "number" ||
+    !Number.isFinite(costUnits) ||
+    costUnits < 0 ||
+    (permissionPolicyId !== undefined &&
+      typeof permissionPolicyId !== "string")
+  ) {
+    throw new ProcessAnalyticsError(
+      `Evidence-request event ${event.eventId} has invalid authored acquisition metadata.`,
+    );
+  }
+  return {
+    eventId: event.eventId,
+    sequenceNumber: event.sequenceNumber,
+    recordedAt: event.serverTimestampUtc,
+    itemId: evidenceId,
+    simulatedAvailableAt,
+    delayMinutes: delayMinutes as number,
+    costUnits,
+    ...(permissionPolicyId === undefined
+      ? {}
+      : { permissionPolicyId }),
+  };
 }
 
 function decision(
@@ -150,12 +189,15 @@ export function createAssignmentProcessAnalytics(input: {
     }
   }
 
+  const evidenceRequestCounts: Record<string, number> = {};
   const evidenceInspectionCounts: Record<string, number> = {};
   const evidenceCitationCounts: Record<string, number> = {};
   const policyConsultationCounts: Record<string, number> = {};
   const decisionSubmissionCounts: Record<string, number> = {};
   let rejectedAttemptCount = 0;
   let mitigationCount = 0;
+  let authoredRequestDelayMinutesTotal = 0;
+  let authoredRequestCostUnitsTotal = 0;
   const runs: ProcessAnalyticsRunV1[] = [];
 
   for (const [runId, learnerUserId] of [...runOwners].sort()) {
@@ -175,6 +217,14 @@ export function createAssignmentProcessAnalytics(input: {
         increment(evidenceCitationCounts, evidenceId),
       );
     }
+    const evidenceRequestOrder = events.flatMap((event) => {
+      if (event.eventType !== "EVIDENCE_REQUESTED") return [];
+      const derived = evidenceRequest(event);
+      increment(evidenceRequestCounts, derived.itemId);
+      authoredRequestDelayMinutesTotal += derived.delayMinutes;
+      authoredRequestCostUnitsTotal += derived.costUnits;
+      return [derived];
+    });
     const evidenceInspectionOrder = events.flatMap((event) => {
       if (event.eventType !== "EVIDENCE_INSPECTED") return [];
       const derived = observation(event, "evidenceId");
@@ -209,6 +259,7 @@ export function createAssignmentProcessAnalytics(input: {
     runs.push({
       runId,
       learnerUserId,
+      evidenceRequestOrder,
       evidenceInspectionOrder,
       policyConsultationOrder,
       decisions,
@@ -225,11 +276,11 @@ export function createAssignmentProcessAnalytics(input: {
   }
 
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     reportType: "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
     interpretation:
       "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-    ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+    ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
     assignmentId: assignment.assignmentId,
     packId: assignment.packId,
     packVersion: assignment.packVersion,
@@ -239,12 +290,15 @@ export function createAssignmentProcessAnalytics(input: {
     runs,
     summary: {
       runCount: runs.length,
+      evidenceRequestCounts,
       evidenceInspectionCounts,
       evidenceCitationCounts,
       policyConsultationCounts,
       decisionSubmissionCounts,
       rejectedAttemptCount,
       mitigationCount,
+      authoredRequestDelayMinutesTotal,
+      authoredRequestCostUnitsTotal,
     },
     limitations: [
       "ELAPSED_INTERVAL_IS_NOT_ATTENTION",

@@ -62,7 +62,7 @@ this document.
 | Guided Audit | Guided Coffee Audit 2.0.0 | Recorded in package metadata | Approval pending |
 | Practice Audit | Practice Coffee Audit 1.0.0 | Recorded in package metadata | Approval pending |
 | Audit Challenge and Assessment | Challenge Coffee Audit Bank 1.0.0 | Recorded in package metadata | Calibration pending |
-| Pharmaceutical transfer | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.6.0` | Recorded in published pack source | Subject approval pending |
+| Pharmaceutical transfer | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.7.0` | Recorded in published pack source | Subject approval pending |
 | Counterfactual definitions | Contract 1.0.0, exact source-pack versions | Recorded in source-pack content | Approval pending |
 | Rubrics | Exact assignment rubric versions | Recorded at assignment creation | Approval pending |
 | Competency definitions | Exact framework and overlay versions | Recorded in evidence exports | Approval pending |
@@ -87,7 +87,7 @@ demonstrate learning effectiveness, content validity, or real accessibility.
 | Challenge Moodle acceptance | Passed and synthetic data cleaned | Challenge Bank 2.0.0, Moodle revision 81 | Technical baseline |
 | Practice, Assessment, and Audit Moodle acceptance | Passed for all four managed activities and synthetic data cleaned | Moodle revision 81 | Technical baseline |
 | Hosted production reachability | Passed HTTP check; Sites version 32 | Exact application source tree | Technical baseline |
-| Pharmaceutical hosted acceptance | Automated generic-runtime flow passed; representative-user acceptance pending | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.6.0` | Technical baseline and human pilot required |
+| Pharmaceutical hosted acceptance | Automated generic-runtime flow includes bounded evidence acquisition; representative-user acceptance pending | `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.7.0` | Current quality gate and human pilot required |
 | Pharmaceutical SCORM acceptance | Not applicable; no approved pharmaceutical SCORM preset | Not applicable | `PHARMACEUTICAL_TRANSFER_ACCEPTANCE_V1.md` |
 
 ## Human evidence

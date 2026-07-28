@@ -1,8 +1,8 @@
 # Pharmaceutical transfer case acceptance record V1
 
-**Case:** `SCN_PHARMA_COLD_CHAIN_TRANSFER@1.1.0`
+**Case:** `SCN_PHARMA_COLD_CHAIN_TRANSFER@1.2.0`
 
-**Pack:** `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.5.0`
+**Pack:** `PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER@1.7.0`
 
 **Status:** Technical candidate; external acceptance incomplete.
 
@@ -16,7 +16,7 @@ coffee labels:
 | Evidence structure | An intact signed custody record is evaluated beside off-chain temperature, calibration, and product-stability evidence. |
 | Professional policy | Investigation and disposition policies require evidence-based cold-chain release and proportionate patient-safety action. |
 | Risk trade-off | Patient safety and compliance are weighed against delay and business cost. |
-| Decision pattern | Learners make an initial hold/release triage decision, receive later calibration and stability evidence, then make a bounded disposition decision. |
+| Decision pattern | Learners make an initial hold/release triage decision, receive the calibration record, decide whether to request the manufacturer stability assessment at an authored delay and cost, then make a bounded disposition decision. |
 | Causal consequence | Early release or investigation changes the evidence position; later quarantine, broad recall, or no action produces different safety, cost, delay, compliance, and evidence-quality effects. |
 
 The generic hosted runtime executes the case. No pharmaceutical-specific
@@ -32,7 +32,9 @@ Implemented and covered by automated tests:
 - complete reachable two-decision workflow;
 - atomic rationale, evidence citation, policy citation, confidence, and risk
   capture;
-- role-visible staged evidence release;
+- role-visible staged evidence release and bounded evidence acquisition;
+- append-only, idempotent request and fulfillment events with simulated delay
+  and cost;
 - declarative competency evidence rules and rubric references;
 - deterministic replay and idempotent commands;
 - two authored counterfactual decision points;
@@ -48,10 +50,10 @@ The scenario remains `draft`. Publication would be dishonest before the human
 exit gates below are complete.
 
 The complete repository `npm run quality` gate passed on the candidate working
-tree on 2026-07-26, including all 650 Vitest tests, 13 hosted site tests, 11,433
+tree on 2026-07-28, including all 823 Vitest tests, 17 hosted site tests, 28,371
 scenario-pack checks, 332 curriculum-overlay checks, the content-review gate,
-and 213 SCORM checks for the existing coffee presets. The quality gate verifies
-the browser-matrix definition but does not by itself constitute
+and 769 SCORM checks across the nine configured packages. The quality gate
+verifies the browser-matrix definition but does not by itself constitute
 pharmaceutical browser or user acceptance.
 
 ## Delivery-path boundary

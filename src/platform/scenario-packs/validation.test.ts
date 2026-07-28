@@ -132,6 +132,129 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("requires request-required evidence to be offered by the workflow", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        scenarioId: string;
+        nodes: Array<{
+          nodeType: string;
+          evidenceIds?: string[];
+        }>;
+      }>;
+    };
+    const scenario = invalid.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId ===
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+    );
+    const release = scenario?.nodes.find(
+      (node) =>
+        node.nodeType === "EVIDENCE_RELEASE" &&
+        node.evidenceIds?.includes(
+          "EVID_PHARMA_TRANSFER_STABILITY",
+        ),
+    );
+    if (release?.evidenceIds === undefined) {
+      throw new Error("Expected the investigation evidence node.");
+    }
+    release.evidenceIds = release.evidenceIds.filter(
+      (evidenceId) =>
+        evidenceId !== "EVID_PHARMA_TRANSFER_STABILITY",
+    );
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "REQUEST_REQUIRED_EVIDENCE_NOT_OFFERED",
+        }),
+      );
+    }
+  });
+
+  it("requires an authored mode that permits evidence requests", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        scenarioId: string;
+        modeConfigurations: Array<{
+          allowEvidenceRequests: boolean;
+        }>;
+      }>;
+    };
+    const scenario = invalid.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId ===
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+    );
+    if (scenario === undefined) {
+      throw new Error("Expected the pharmaceutical transfer case.");
+    }
+    scenario.modeConfigurations.forEach((configuration) => {
+      configuration.allowEvidenceRequests = false;
+    });
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "REQUEST_REQUIRED_EVIDENCE_DISABLED",
+        }),
+      );
+    }
+  });
+
+  it("requires evidence-request permission references to use a supported authorization policy", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        scenarioId: string;
+        evidenceItems: Array<{
+          evidenceId: string;
+          learnerMetadata: {
+            access: {
+              permissionPolicyId?: string;
+            };
+          };
+        }>;
+      }>;
+    };
+    const scenario = invalid.scenarios.find(
+      (candidate) =>
+        candidate.scenarioId ===
+        "SCN_PHARMA_COLD_CHAIN_TRANSFER",
+    );
+    const evidence = scenario?.evidenceItems.find(
+      (candidate) =>
+        candidate.evidenceId ===
+        "EVID_PHARMA_TRANSFER_STABILITY",
+    );
+    if (evidence === undefined) {
+      throw new Error("Expected request-required stability evidence.");
+    }
+    evidence.learnerMetadata.access.permissionPolicyId =
+      "POLICY_PHARMA_TRANSFER_DISPOSITION";
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INVALID_EVIDENCE_REQUEST_PERMISSION_POLICY",
+        }),
+      );
+    }
+  });
+
   it("rejects assessment metadata that names an unknown hidden condition", () => {
     const invalid = structuredClone(
       pharmaceuticalPackJson,

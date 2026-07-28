@@ -2543,6 +2543,165 @@ function validateScenarioNodes(
   );
 }
 
+function validateEvidenceRequestReachability(
+  context: ValidationContext,
+  scenario: Readonly<Record<string, unknown>>,
+  path: string,
+): void {
+  const requestRequired = (
+    Array.isArray(scenario.evidenceItems)
+      ? scenario.evidenceItems
+      : []
+  ).flatMap((value, index) => {
+    if (!isJsonObject(value)) return [];
+    const learnerMetadata = value.learnerMetadata;
+    if (!isJsonObject(learnerMetadata)) return [];
+    const access = learnerMetadata.access;
+    return isJsonObject(access) &&
+      access.acquisitionMode === "REQUEST_REQUIRED" &&
+      typeof value.evidenceId === "string"
+      ? [
+          {
+            evidenceId: value.evidenceId,
+            index,
+            permissionPolicyId:
+              typeof access.permissionPolicyId === "string"
+                ? access.permissionPolicyId
+                : undefined,
+            visibleToRoleIds: Array.isArray(
+              value.visibleToRoleIds,
+            )
+              ? value.visibleToRoleIds.filter(
+                  (roleId): roleId is string =>
+                    typeof roleId === "string",
+                )
+              : [],
+          },
+        ]
+      : [];
+  });
+  if (requestRequired.length === 0) return;
+  const offeredEvidenceIds = new Set(
+    (Array.isArray(scenario.nodes) ? scenario.nodes : []).flatMap(
+      (value) =>
+        isJsonObject(value) &&
+        value.nodeType === "EVIDENCE_RELEASE" &&
+        Array.isArray(value.evidenceIds)
+          ? value.evidenceIds.filter(
+              (evidenceId): evidenceId is string =>
+                typeof evidenceId === "string",
+            )
+          : [],
+    ),
+  );
+  for (const { evidenceId, index } of requestRequired) {
+    context.check(
+      offeredEvidenceIds.has(evidenceId),
+      "REQUEST_REQUIRED_EVIDENCE_NOT_OFFERED",
+      `${path}.evidenceItems[${String(index)}].learnerMetadata.access.acquisitionMode`,
+      "request-required evidence must be introduced by a reachable evidence-release node",
+    );
+  }
+  const policies = Array.isArray(scenario.policies)
+    ? scenario.policies
+    : [];
+  const roleIds = new Set(
+    (Array.isArray(scenario.roles) ? scenario.roles : []).flatMap(
+      (value) =>
+        isJsonObject(value) && typeof value.roleId === "string"
+          ? [value.roleId]
+          : [],
+    ),
+  );
+  const organizationIds = new Set(
+    (
+      Array.isArray(scenario.organizations)
+        ? scenario.organizations
+        : []
+    ).flatMap((value) =>
+      isJsonObject(value) &&
+      typeof value.organizationId === "string"
+        ? [value.organizationId]
+        : [],
+    ),
+  );
+  for (const {
+    permissionPolicyId,
+    visibleToRoleIds,
+    index,
+  } of requestRequired) {
+    if (permissionPolicyId === undefined) continue;
+    const policy = policies.find(
+      (value) =>
+        isJsonObject(value) &&
+        value.policyId === permissionPolicyId,
+    );
+    const policyPath =
+      `${path}.evidenceItems[${String(index)}].learnerMetadata.access.permissionPolicyId`;
+    context.check(
+      isJsonObject(policy) &&
+        policy.policyType === "AUTHORIZATION",
+      "INVALID_EVIDENCE_REQUEST_PERMISSION_POLICY",
+      policyPath,
+      "must reference an authorization policy",
+    );
+    if (
+      !isJsonObject(policy) ||
+      !isJsonObject(policy.configuration)
+    ) {
+      continue;
+    }
+    const authorizedRoleId =
+      policy.configuration.authorizedRoleId;
+    const authorizedOrganizationId =
+      policy.configuration.authorizedOrganizationId;
+    context.check(
+      typeof authorizedRoleId === "string" ||
+        typeof authorizedOrganizationId === "string",
+      "UNSUPPORTED_EVIDENCE_REQUEST_PERMISSION_POLICY",
+      policyPath,
+      "must declare an authorized role or organization",
+    );
+    if (typeof authorizedRoleId === "string") {
+      context.check(
+        roleIds.has(authorizedRoleId),
+        "UNKNOWN_ROLE_REFERENCE",
+        policyPath,
+        "authorization policy must reference a scenario role",
+      );
+      context.check(
+        visibleToRoleIds.includes(authorizedRoleId),
+        "EVIDENCE_REQUEST_POLICY_ROLE_NOT_VISIBLE",
+        policyPath,
+        "authorized request role must also be able to see the evidence",
+      );
+    }
+    if (typeof authorizedOrganizationId === "string") {
+      context.check(
+        organizationIds.has(authorizedOrganizationId),
+        "UNKNOWN_ORGANIZATION_REFERENCE",
+        policyPath,
+        "authorization policy must reference a scenario organization",
+      );
+    }
+  }
+  const requestEnabled = (
+    Array.isArray(scenario.modeConfigurations)
+      ? scenario.modeConfigurations
+      : []
+  ).some(
+    (value) =>
+      isJsonObject(value) &&
+      value.allowEvidenceRequests === true,
+  );
+  context.check(
+    requestEnabled,
+    "REQUEST_REQUIRED_EVIDENCE_DISABLED",
+    `${path}.modeConfigurations`,
+    "at least one supported mode must allow authored evidence requests",
+  );
+}
+
 function validateEvidenceLearnerMetadata(
   context: ValidationContext,
   value: unknown,
@@ -3703,6 +3862,7 @@ function validateScenario(
     counterfactualDimensionIds,
     counterfactualMetricIds,
   );
+  validateEvidenceRequestReachability(context, scenario, path);
   validateAuditCase(
     context,
     scenario,

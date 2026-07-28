@@ -2,6 +2,7 @@ import packJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracecha
 import {
   FixedClock,
   SequenceIdGenerator,
+  type Clock,
 } from "../../domain/simulation/environment";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
 import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
@@ -27,6 +28,20 @@ const learner: ApplicationPrincipal = {
   email: "learner@example.edu",
   roles: ["learner"],
 };
+
+class AdvancingClock implements Clock {
+  private instant: number;
+
+  constructor(startAt: string) {
+    this.instant = Date.parse(startAt);
+  }
+
+  now(): string {
+    const current = new Date(this.instant).toISOString();
+    this.instant += 1_000;
+    return current;
+  }
+}
 
 function publishedPack(): ScenarioPackV1 {
   const result = validateScenarioPack(structuredClone(packJson));
@@ -59,7 +74,10 @@ function createService(store = new MemoryRunEventStore()) {
   };
 }
 
-function createTransferService(store = new MemoryRunEventStore()) {
+function createTransferService(
+  store = new MemoryRunEventStore(),
+  clock: Clock = new FixedClock(NOW),
+) {
   const pack = publishedPack();
   return {
     pack,
@@ -67,9 +85,9 @@ function createTransferService(store = new MemoryRunEventStore()) {
     service: new GenericHostedRunService(
       pack,
       "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-      "1.1.0",
+      "1.2.0",
       store,
-      new FixedClock(NOW),
+      clock,
       new SequenceIdGenerator(1),
     ),
   };
@@ -377,7 +395,10 @@ describe("GenericHostedRunService", () => {
   });
 
   it("runs the richer pharmaceutical transfer case through evidence, two decisions, and proportional disposition", async () => {
-    const { pack, service, store } = createTransferService();
+    const { pack, service, store } = createTransferService(
+      new MemoryRunEventStore(),
+      new AdvancingClock(NOW),
+    );
     const created = await service.createRun(instructor, {
       commandId: "COMMAND_CREATE_PHARMA_TRANSFER",
       runId: "RUN_PHARMA_TRANSFER",
@@ -462,7 +483,27 @@ describe("GenericHostedRunService", () => {
       "EVID_PHARMA_TRANSFER_SENSOR",
       "EVID_PHARMA_TRANSFER_CUSTODY",
       "EVID_PHARMA_TRANSFER_CALIBRATION",
-      "EVID_PHARMA_TRANSFER_STABILITY",
+    ]);
+    expect(
+      disposition.state.workflowState.permittedActionIdsByRole[
+        "QUALITY_MANAGER"
+      ],
+    ).toEqual([
+      "INSPECT_EVIDENCE",
+      "REQUEST_EVIDENCE",
+      "SUBMIT_STRUCTURED_DECISION",
+    ]);
+    const beforeRequest = await service.learnerProjection(
+      learner,
+      disposition.state.runId,
+    );
+    expect(beforeRequest.presentation?.evidenceRequests).toEqual([
+      expect.objectContaining({
+        evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+        status: "REQUESTABLE",
+        delayMinutes: 45,
+        costUnits: 2,
+      }),
     ]);
 
     const calibrationInspected = await service.submit(learner, {
@@ -472,11 +513,68 @@ describe("GenericHostedRunService", () => {
       expectedRunVersion: disposition.state.version,
       evidenceId: "EVID_PHARMA_TRANSFER_CALIBRATION",
     });
+    const requestCommand = {
+      commandType: "REQUEST_EVIDENCE" as const,
+      commandId: "COMMAND_REQUEST_TRANSFER_STABILITY",
+      runId: calibrationInspected.state.runId,
+      expectedRunVersion: calibrationInspected.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+    };
+    const stabilityRequested = await service.submit(
+      learner,
+      requestCommand,
+    );
+    const repeatedRequest = await service.submit(
+      learner,
+      requestCommand,
+    );
+    expect(repeatedRequest.wasIdempotentReplay).toBe(true);
+    expect(repeatedRequest.state).toEqual(stabilityRequested.state);
+    expect(stabilityRequested.state.evidenceRequests).toEqual([
+      expect.objectContaining({
+        evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+        requestEventId: expect.stringMatching(/^HEVT_/u),
+        requestSequenceNumber: expect.any(Number),
+        requestCommandId: "COMMAND_REQUEST_TRANSFER_STABILITY",
+        requestedAt: expect.any(String),
+        simulatedAvailableAt: expect.any(String),
+        delayMinutes: 45,
+        costUnits: 2,
+      }),
+    ]);
+    const evidenceRequest =
+      stabilityRequested.state.evidenceRequests[0];
+    if (evidenceRequest === undefined) {
+      throw new Error("Expected a persisted evidence request.");
+    }
+    expect(
+      Date.parse(evidenceRequest.simulatedAvailableAt) -
+        Date.parse(evidenceRequest.requestedAt),
+    ).toBe(45 * 60_000);
+    expect(stabilityRequested.state.releasedEvidenceIds).toEqual([
+      "EVID_PHARMA_TRANSFER_SENSOR",
+      "EVID_PHARMA_TRANSFER_CUSTODY",
+      "EVID_PHARMA_TRANSFER_CALIBRATION",
+      "EVID_PHARMA_TRANSFER_STABILITY",
+    ]);
+    const afterRequest = await service.learnerProjection(
+      learner,
+      stabilityRequested.state.runId,
+    );
+    expect(afterRequest.presentation?.evidenceRequests).toEqual([
+      expect.objectContaining({
+        evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+        status: "FULFILLED",
+        requestedAt: evidenceRequest.requestedAt,
+        simulatedAvailableAt:
+          evidenceRequest.simulatedAvailableAt,
+      }),
+    ]);
     const stabilityInspected = await service.submit(learner, {
       commandType: "INSPECT_EVIDENCE",
       commandId: "COMMAND_INSPECT_TRANSFER_STABILITY",
-      runId: calibrationInspected.state.runId,
-      expectedRunVersion: calibrationInspected.state.version,
+      runId: stabilityRequested.state.runId,
+      expectedRunVersion: stabilityRequested.state.version,
       evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
     });
     const quarantined = await service.submit(learner, {
@@ -536,6 +634,17 @@ describe("GenericHostedRunService", () => {
       completed.state.runId,
     );
     expect(projection.informationState).toHaveLength(4);
+    const requestEvents = (await store.load(completed.state.runId))
+      .filter(
+        (event) =>
+          event.causationId ===
+          "COMMAND_REQUEST_TRANSFER_STABILITY",
+      )
+      .map((event) => event.eventType);
+    expect(requestEvents).toEqual([
+      "EVIDENCE_REQUESTED",
+      "EVIDENCE_RELEASED",
+    ]);
     expect(Object.hasOwn(projection, "actualState")).toBe(false);
     expect(
       await service.learnerAuthoredFeedback(

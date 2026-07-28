@@ -3542,6 +3542,9 @@ function ClassProcessAnalyticsReport({
   ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
+  const evidenceRequestCount = Object.values(
+    report.summary.evidenceRequestCounts,
+  ).reduce((total, count) => total + count, 0);
   return (
     <section>
       <h3>{t("instructorReview.processAnalytics.heading")}</h3>
@@ -3568,6 +3571,36 @@ function ClassProcessAnalyticsReport({
           </dt>
           <dd>{report.summary.mitigationCount}</dd>
         </div>
+        <div>
+          <dt>
+            {t("instructorReview.processAnalytics.evidenceRequests")}
+          </dt>
+          <dd>{evidenceRequestCount}</dd>
+        </div>
+        <div>
+          <dt>
+            {t(
+              "instructorReview.processAnalytics.authoredRequestDelay",
+            )}
+          </dt>
+          <dd>
+            {t(
+              "instructorReview.processAnalytics.authoredRequestDelayValue",
+              {
+                count:
+                  report.summary.authoredRequestDelayMinutesTotal,
+              },
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>
+            {t(
+              "instructorReview.processAnalytics.authoredRequestCost",
+            )}
+          </dt>
+          <dd>{report.summary.authoredRequestCostUnitsTotal}</dd>
+        </div>
       </dl>
       <details>
         <summary>
@@ -3586,6 +3619,19 @@ function ClassProcessAnalyticsReport({
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <th scope="row">
+                  {t(
+                    "instructorReview.processAnalytics.evidenceRequests",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.evidenceRequestCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
               <tr>
                 <th scope="row">
                   {t(
@@ -3644,6 +3690,7 @@ function ClassProcessAnalyticsReport({
       </details>
       {report.runs.map((run) => {
         const sourceEvents = [
+          ...run.evidenceRequestOrder,
           ...run.evidenceInspectionOrder,
           ...run.policyConsultationOrder,
           ...run.decisions,

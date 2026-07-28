@@ -60,6 +60,14 @@ authored time limit, before creation and confirms the stored configuration
 after creation. The display is read-only; it does not create a parallel source
 of mode configuration.
 
+`allowEvidenceRequests` controls the authored request workflow. When disabled,
+request-required records remain outside the learner projection and no request
+command is offered. When enabled, a reachable evidence-release node may make
+those records requestable at a decision. A successful request records the
+authored simulated delay and cost before releasing the role-visible content.
+It does not wait in real time, expose hidden assessment metadata, or create an
+academic score item.
+
 ## Assignment counterfactual controls
 
 Assignments also store one resolved `counterfactualReplay` object. It enables

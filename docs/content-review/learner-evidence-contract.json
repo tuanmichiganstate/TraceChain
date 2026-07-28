@@ -291,7 +291,7 @@
     },
     {
       "sourceId": "SRC_PHARMA_INVESTIGATION",
-      "label": "Released calibration and stability evidence",
+      "label": "Released calibration record and requestable manufacturer stability assessment",
       "sourceType": "INVESTIGATION",
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",

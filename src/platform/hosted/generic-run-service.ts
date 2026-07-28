@@ -126,6 +126,17 @@ function requestDigest(value: unknown): string {
   return sha256Hex(canonicalize(value));
 }
 
+function addMinutes(timestamp: string, minutes: number): string {
+  const instant = Date.parse(timestamp);
+  if (!Number.isFinite(instant)) {
+    throw new HostedRunCommandError(
+      "PACK_CONTRACT_MISMATCH",
+      "Evidence acquisition requires a valid server timestamp.",
+    );
+  }
+  return new Date(instant + minutes * 60_000).toISOString();
+}
+
 function submittedCommandIntent(
   command:
     | GenericHostedCommand
@@ -774,6 +785,67 @@ export class GenericHostedRunService {
       });
       built.push(inspected);
       state = inspected.nextState;
+    } else if (command.commandType === "REQUEST_EVIDENCE") {
+      const evidence = this.requestableEvidence(state).find(
+        (candidate) => candidate.evidenceId === command.evidenceId,
+      );
+      if (evidence === undefined) {
+        throw new HostedRunCommandError(
+          "WORKFLOW_PRECONDITION_FAILED",
+          "The requested evidence is not available for acquisition in the current run state.",
+        );
+      }
+      const requestedAt = this.clock.now();
+      const simulatedAvailableAt = addMinutes(
+        requestedAt,
+        evidence.learnerMetadata.access.delayMinutes,
+      );
+      const requested = this.buildEvent({
+        runId: command.runId,
+        state,
+        principal: learner,
+        context,
+        commandId: command.commandId,
+        commandDigest: digest,
+        batchIndex: built.length,
+        eventType: "EVIDENCE_REQUESTED",
+        serverTimestampUtc: requestedAt,
+        payload: {
+          evidenceId: evidence.evidenceId,
+          delayMinutes:
+            evidence.learnerMetadata.access.delayMinutes,
+          costUnits: evidence.learnerMetadata.access.costUnits,
+          simulatedAvailableAt,
+          ...(evidence.learnerMetadata.access
+            .permissionPolicyId === undefined
+            ? {}
+            : {
+                permissionPolicyId:
+                  evidence.learnerMetadata.access
+                    .permissionPolicyId,
+              }),
+        },
+      });
+      built.push(requested);
+      state = requested.nextState;
+      const released = this.buildEvent({
+        runId: command.runId,
+        state,
+        principal: learner,
+        context,
+        commandId: command.commandId,
+        commandDigest: digest,
+        batchIndex: built.length,
+        eventType: "EVIDENCE_RELEASED",
+        payload: {
+          evidenceId: evidence.evidenceId,
+          releaseReason: "REQUEST_FULFILLED",
+          requestEventId: requested.sequenced.eventId,
+          simulatedAvailableAt,
+        },
+      });
+      built.push(released);
+      state = released.nextState;
     } else if (command.commandType === "SUBMIT_STRUCTURED_DECISION") {
       const node = this.currentNode(state);
       if (node.nodeType !== "DECISION") {
@@ -1605,7 +1677,7 @@ export class GenericHostedRunService {
           );
         }
         const state: GenericHostedRunState = {
-          schemaVersion: "1.0.0",
+          schemaVersion: "1.1.0",
           runtimeKind: "generic-v1",
           runId: request.runId,
           assignmentId: request.assignmentId,
@@ -1637,6 +1709,7 @@ export class GenericHostedRunService {
           ),
           releasedEvidenceIds: [],
           inspectedEvidenceIds: [],
+          evidenceRequests: [],
           releasedInstructorIncidents: [],
           decisions: {},
           competencyEvidence: [],
@@ -1789,6 +1862,62 @@ export class GenericHostedRunService {
           },
         });
       }
+      case "EVIDENCE_REQUESTED": {
+        const state = this.stateOrThrow(current);
+        const evidenceId = requiredString(
+          event.payload.evidenceId,
+          "evidenceId",
+        );
+        const evidence = this.requestableEvidence(state).find(
+          (candidate) => candidate.evidenceId === evidenceId,
+        );
+        if (evidence === undefined) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Evidence request is not permitted by the exact scenario and run state.",
+          );
+        }
+        const delayMinutes =
+          evidence.learnerMetadata.access.delayMinutes;
+        const costUnits =
+          evidence.learnerMetadata.access.costUnits;
+        const simulatedAvailableAt = addMinutes(
+          event.serverTimestampUtc,
+          delayMinutes,
+        );
+        const permissionPolicyId =
+          evidence.learnerMetadata.access.permissionPolicyId;
+        if (
+          event.payload.delayMinutes !== delayMinutes ||
+          event.payload.costUnits !== costUnits ||
+          event.payload.simulatedAvailableAt !==
+            simulatedAvailableAt ||
+          event.payload.permissionPolicyId !== permissionPolicyId
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Evidence request terms do not match the exact scenario.",
+          );
+        }
+        return this.updateState(state, event, {
+          evidenceRequests: [
+            ...state.evidenceRequests,
+            {
+              evidenceId,
+              requestEventId: event.eventId,
+              requestSequenceNumber: event.sequenceNumber,
+              requestCommandId: event.causationId,
+              requestedAt: event.serverTimestampUtc,
+              simulatedAvailableAt,
+              delayMinutes,
+              costUnits,
+              ...(permissionPolicyId === undefined
+                ? {}
+                : { permissionPolicyId }),
+            },
+          ],
+        });
+      }
       case "EVIDENCE_RELEASED": {
         const state = this.stateOrThrow(current);
         const node = this.currentNode(state);
@@ -1796,12 +1925,36 @@ export class GenericHostedRunService {
           event.payload.evidenceId,
           "evidenceId",
         );
+        const evidence = this.scenario.evidenceItems.find(
+          (candidate) => candidate.evidenceId === evidenceId,
+        );
+        const releaseReason = requiredString(
+          event.payload.releaseReason,
+          "releaseReason",
+        );
+        const workflowRelease =
+          releaseReason === "WORKFLOW" &&
+          node.nodeType === "EVIDENCE_RELEASE" &&
+          node.evidenceIds.includes(evidenceId) &&
+          evidence?.learnerMetadata.access.acquisitionMode ===
+            "AVAILABLE";
+        const request = state.evidenceRequests.find(
+          (candidate) =>
+            candidate.evidenceId === evidenceId &&
+            candidate.requestEventId ===
+              event.payload.requestEventId,
+        );
+        const requestedRelease =
+          releaseReason === "REQUEST_FULFILLED" &&
+          request !== undefined &&
+          request.requestSequenceNumber + 1 ===
+            event.sequenceNumber &&
+          request.requestCommandId === event.causationId &&
+          event.payload.simulatedAvailableAt ===
+            request.simulatedAvailableAt;
         if (
-          node.nodeType !== "EVIDENCE_RELEASE" ||
-          !node.evidenceIds.includes(evidenceId) ||
-          !this.scenario.evidenceItems.some(
-            (evidence) => evidence.evidenceId === evidenceId,
-          ) ||
+          evidence === undefined ||
+          (!workflowRelease && !requestedRelease) ||
           state.releasedEvidenceIds.includes(evidenceId)
         ) {
           throw new HostedRunCommandError(
@@ -1976,6 +2129,7 @@ export class GenericHostedRunService {
     readonly commandDigest: string;
     readonly batchIndex: number;
     readonly eventType: PlatformRunEventType;
+    readonly serverTimestampUtc?: string;
     readonly payload: JsonObject;
   }): BuiltEvent {
     if (
@@ -2000,6 +2154,7 @@ export class GenericHostedRunService {
       readonly commandDigest: string;
       readonly batchIndex: number;
       readonly eventType: PlatformRunEventType;
+      readonly serverTimestampUtc?: string;
       readonly payload: JsonObject;
     },
   ): BuiltEvent {
@@ -2012,7 +2167,8 @@ export class GenericHostedRunService {
       eventId: this.ids.nextId("HEVT"),
       runId,
       idempotencyKey: `${options.commandId}:${String(options.batchIndex)}`,
-      serverTimestampUtc: this.clock.now(),
+      serverTimestampUtc:
+        options.serverTimestampUtc ?? this.clock.now(),
       authenticatedUserId: options.principal.userId,
       simulationActorId: options.context.actorId,
       organizationId: options.context.organizationId,
@@ -2069,6 +2225,15 @@ export class GenericHostedRunService {
       if (node.nodeType === "EVIDENCE_RELEASE") {
         for (const evidenceId of node.evidenceIds) {
           if (state.releasedEvidenceIds.includes(evidenceId)) continue;
+          const evidence = this.scenario.evidenceItems.find(
+            (candidate) => candidate.evidenceId === evidenceId,
+          );
+          if (
+            evidence?.learnerMetadata.access.acquisitionMode ===
+            "REQUEST_REQUIRED"
+          ) {
+            continue;
+          }
           const released = this.buildEventForRun(state.runId, {
             state,
             principal: options.principal,
@@ -2077,7 +2242,10 @@ export class GenericHostedRunService {
             commandDigest: options.commandDigest,
             batchIndex: options.built.length,
             eventType: "EVIDENCE_RELEASED",
-            payload: { evidenceId },
+            payload: {
+              evidenceId,
+              releaseReason: "WORKFLOW",
+            },
           });
           options.built.push(released);
           state = released.nextState;
@@ -2499,6 +2667,68 @@ export class GenericHostedRunService {
     return node;
   }
 
+  private requestableEvidence(state: GenericHostedRunState) {
+    if (
+      state.status !== "active" ||
+      !state.modeConfiguration.allowEvidenceRequests ||
+      this.currentNode(state).nodeType !== "DECISION"
+    ) {
+      return [];
+    }
+    const offeredEvidenceIds = new Set(
+      this.scenario.nodes.flatMap((node) =>
+        node.nodeType === "EVIDENCE_RELEASE" &&
+        state.workflowState.completedNodeIds.includes(node.nodeId)
+          ? node.evidenceIds
+          : [],
+      ),
+    );
+    return this.scenario.evidenceItems.filter(
+      (evidence) =>
+        offeredEvidenceIds.has(evidence.evidenceId) &&
+        evidence.learnerMetadata.access.acquisitionMode ===
+          "REQUEST_REQUIRED" &&
+        evidence.visibleToRoleIds.includes(
+          state.activeTrustedContext.roleId,
+        ) &&
+        !state.releasedEvidenceIds.includes(evidence.evidenceId) &&
+        !state.evidenceRequests.some(
+          (request) =>
+            request.evidenceId === evidence.evidenceId,
+        ) &&
+        this.evidenceRequestPolicyAllows(evidence, state),
+    );
+  }
+
+  private evidenceRequestPolicyAllows(
+    evidence: ScenarioDefinitionV1["evidenceItems"][number],
+    state: GenericHostedRunState,
+  ): boolean {
+    const policyId =
+      evidence.learnerMetadata.access.permissionPolicyId;
+    if (policyId === undefined) return true;
+    const policy = this.scenario.policies.find(
+      (candidate) =>
+        candidate.policyId === policyId &&
+        candidate.policyType === "AUTHORIZATION",
+    );
+    if (policy === undefined) return false;
+    const authorizedRoleId =
+      policy.configuration.authorizedRoleId;
+    const authorizedOrganizationId =
+      policy.configuration.authorizedOrganizationId;
+    return (
+      (typeof authorizedRoleId === "string" ||
+        typeof authorizedOrganizationId === "string") &&
+      (authorizedRoleId === undefined ||
+        authorizedRoleId ===
+          state.activeTrustedContext.roleId) &&
+      (authorizedOrganizationId === undefined ||
+        authorizedOrganizationId ===
+          state.activeTrustedContext.organizationId)
+    );
+  }
+
   private nextTransition(
     node: ScenarioNodeV1,
     state: GenericHostedRunState,
@@ -2574,6 +2804,9 @@ export class GenericHostedRunService {
       );
       actions = [
         ...(visibleEvidenceExists ? ["INSPECT_EVIDENCE"] : []),
+        ...(this.requestableEvidence(state).length > 0
+          ? ["REQUEST_EVIDENCE"]
+          : []),
         "SUBMIT_STRUCTURED_DECISION",
       ];
     }
@@ -2805,15 +3038,58 @@ export class GenericHostedRunService {
       evidenceTitles: Object.fromEntries(
         this.scenario.evidenceItems
           .filter((evidence) =>
-            state.releasedEvidenceIds.includes(
-              evidence.evidenceId,
-            ),
+            [
+              ...state.releasedEvidenceIds,
+              ...this.requestableEvidence(state).map(
+                (candidate) => candidate.evidenceId,
+              ),
+              ...state.evidenceRequests.map(
+                (request) => request.evidenceId,
+              ),
+            ].includes(evidence.evidenceId),
           )
           .map((evidence) => [
             evidence.evidenceId,
             this.localizedText(evidence.title.localizationKey),
           ]),
       ),
+      evidenceRequests: [
+        ...this.requestableEvidence(state).map((evidence) => ({
+          evidenceId: evidence.evidenceId,
+          status: "REQUESTABLE" as const,
+          learnerMetadata: learnerEvidenceMetadataToJson(
+            evidence.learnerMetadata,
+          ),
+          delayMinutes:
+            evidence.learnerMetadata.access.delayMinutes,
+          costUnits: evidence.learnerMetadata.access.costUnits,
+        })),
+        ...state.evidenceRequests.flatMap((request) => {
+          const evidence = this.scenario.evidenceItems.find(
+            (candidate) =>
+              candidate.evidenceId === request.evidenceId &&
+              candidate.visibleToRoleIds.includes(
+                state.activeTrustedContext.roleId,
+              ),
+          );
+          return evidence === undefined
+            ? []
+            : [
+                {
+                  evidenceId: request.evidenceId,
+                  status: "FULFILLED" as const,
+                  learnerMetadata: learnerEvidenceMetadataToJson(
+                    evidence.learnerMetadata,
+                  ),
+                  requestedAt: request.requestedAt,
+                  simulatedAvailableAt:
+                    request.simulatedAvailableAt,
+                  delayMinutes: request.delayMinutes,
+                  costUnits: request.costUnits,
+                },
+              ];
+        }),
+      ],
       policyTitles: Object.fromEntries(
         this.scenario.policies.map((policy) => [
           policy.policyId,

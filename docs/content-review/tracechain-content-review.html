@@ -35,9 +35,9 @@
 <li><a href="#group-hint"><span>hint</span><b>10</b></a></li>
 <li><a href="#group-history"><span>history</span><b>8</b></a></li>
 <li><a href="#group-hostedAudit"><span>hostedAudit</span><b>114</b></a></li>
-<li><a href="#group-hostedLearner"><span>hostedLearner</span><b>156</b></a></li>
+<li><a href="#group-hostedLearner"><span>hostedLearner</span><b>161</b></a></li>
 <li><a href="#group-hostedPortal"><span>hostedPortal</span><b>18</b></a></li>
-<li><a href="#group-instructorReview"><span>instructorReview</span><b>425</b></a></li>
+<li><a href="#group-instructorReview"><span>instructorReview</span><b>429</b></a></li>
 <li><a href="#group-ledger"><span>ledger</span><b>20</b></a></li>
 <li><a href="#group-lifecycle"><span>lifecycle</span><b>12</b></a></li>
 <li><a href="#group-lineage"><span>lineage</span><b>10</b></a></li>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>2776/2776</b>chuỗi song ngữ</li>
+    <li><b>2785/2785</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -2639,7 +2639,7 @@
 </article>
 </section>
 <section id="group-hostedLearner">
-  <h2>hostedLearner <span>156 chuỗi</span></h2>
+  <h2>hostedLearner <span>161 chuỗi</span></h2>
   <article class="entry" data-locale-key="hostedLearner.account">
   <header><code>hostedLearner.account</code></header>
   <p class="vi" lang="vi">Người học đang đăng nhập</p>
@@ -2719,6 +2719,11 @@
   <header><code>hostedLearner.action.RECORD_TRANSPORT_CONDITION</code></header>
   <p class="vi" lang="vi">Ghi nhận điều kiện vận chuyển</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Record transport condition</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.action.REQUEST_EVIDENCE">
+  <header><code>hostedLearner.action.REQUEST_EVIDENCE</code></header>
+  <p class="vi" lang="vi">Yêu cầu bằng chứng bổ sung</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Request additional evidence</p></details>
 </article>
   <article class="entry" data-locale-key="hostedLearner.action.REQUEST_RECALL_HANDOFF">
   <header><code>hostedLearner.action.REQUEST_RECALL_HANDOFF</code></header>
@@ -2974,6 +2979,26 @@
   <header><code>hostedLearner.evidenceCitations</code></header>
   <p class="vi" lang="vi">Bằng chứng được viện dẫn trong quyết định</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence cited in this decision</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidenceRequestAvailable">
+  <header><code>hostedLearner.evidenceRequestAvailable</code></header>
+  <p class="vi" lang="vi">Hồ sơ này chưa được yêu cầu. Hãy dùng phần thao tác hiện tại khi bằng chứng bổ sung xứng đáng với thời gian chờ và chi phí.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This record has not been requested. Use the current-action control when the additional evidence is worth its delay and cost.</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidenceRequestFulfilled">
+  <header><code>hostedLearner.evidenceRequestFulfilled</code></header>
+  <p class="vi" lang="vi">Đã đáp ứng yêu cầu. Yêu cầu lúc {requestedAt}; thời điểm có bằng chứng trong mô phỏng {availableAt}; chờ {delayMinutes} phút; chi phí {costUnits} đơn vị.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Request fulfilled. Requested {requestedAt}; simulated availability {availableAt}; delay {delayMinutes} minutes; cost {costUnits} unit(s).</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidenceRequests">
+  <header><code>hostedLearner.evidenceRequests</code></header>
+  <p class="vi" lang="vi">Bằng chứng có thể yêu cầu</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence available by request</p></details>
+</article>
+  <article class="entry" data-locale-key="hostedLearner.evidenceRequestsHelp">
+  <header><code>hostedLearner.evidenceRequestsHelp</code></header>
+  <p class="vi" lang="vi">Khi yêu cầu một hồ sơ, thời gian chờ và chi phí đã biên soạn sẽ được ghi vào lịch sử mô phỏng. Riêng việc yêu cầu không làm thay đổi điểm học tập.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Requesting a record adds its authored delay and cost to the simulation history. It does not change the academic score by itself.</p></details>
 </article>
   <article class="entry" data-locale-key="hostedLearner.evidenceUnknown">
   <header><code>hostedLearner.evidenceUnknown</code></header>
@@ -3515,7 +3540,7 @@
 </article>
 </section>
 <section id="group-instructorReview">
-  <h2>instructorReview <span>425 chuỗi</span></h2>
+  <h2>instructorReview <span>429 chuỗi</span></h2>
   <article class="entry" data-locale-key="instructorReview.account">
   <header><code>instructorReview.account</code></header>
   <p class="vi" lang="vi">Tài khoản</p>
@@ -5091,6 +5116,21 @@
   <p class="vi" lang="vi">Nhãn viện dẫn lấy từ phản hồi người học đã gửi. Chính sách được đánh dấu có sẵn nhưng không được viện dẫn đã áp dụng tại thời điểm quyết định.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Citation labels come from the learner&#39;s submitted response. A policy marked available but not cited was applicable at this decision point.</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.processAnalytics.authoredRequestCost">
+  <header><code>instructorReview.processAnalytics.authoredRequestCost</code></header>
+  <p class="vi" lang="vi">Đơn vị chi phí yêu cầu theo kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authored request cost units</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.processAnalytics.authoredRequestDelay">
+  <header><code>instructorReview.processAnalytics.authoredRequestDelay</code></header>
+  <p class="vi" lang="vi">Độ trễ yêu cầu theo kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authored request delay</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.processAnalytics.authoredRequestDelayValue">
+  <header><code>instructorReview.processAnalytics.authoredRequestDelayValue</code></header>
+  <p class="vi" lang="vi">{count} phút mô phỏng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} simulated minutes</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.processAnalytics.classCounts">
   <header><code>instructorReview.processAnalytics.classCounts</code></header>
   <p class="vi" lang="vi">Xem số lượng quan sát của lớp</p>
@@ -5111,6 +5151,11 @@
   <p class="vi" lang="vi">Lần kiểm tra bằng chứng</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence inspections</p></details>
 </article>
+  <article class="entry" data-locale-key="instructorReview.processAnalytics.evidenceRequests">
+  <header><code>instructorReview.processAnalytics.evidenceRequests</code></header>
+  <p class="vi" lang="vi">Yêu cầu bằng chứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence requests</p></details>
+</article>
   <article class="entry" data-locale-key="instructorReview.processAnalytics.heading">
   <header><code>instructorReview.processAnalytics.heading</code></header>
   <p class="vi" lang="vi">Quan sát quá trình ra quyết định</p>
@@ -5118,8 +5163,8 @@
 </article>
   <article class="entry" data-locale-key="instructorReview.processAnalytics.help">
   <header><code>instructorReview.processAnalytics.help</code></header>
-  <p class="vi" lang="vi">Báo cáo mô tả này liên kết việc kiểm tra bằng chứng, tham khảo chính sách, trích dẫn, gửi quyết định, bị từ chối và khắc phục với các sự kiện có thẩm quyền. Báo cáo chỉ nhận diện chuỗi hành động quan sát được, không suy diễn đặc điểm người học.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This descriptive report follows inspections, consultations, citations, submissions, rejections, and mitigation to their authoritative events. It identifies observable sequences, not learner traits.</p></details>
+  <p class="vi" lang="vi">Báo cáo mô tả này liên kết việc yêu cầu bằng chứng, kiểm tra bằng chứng, tham khảo chính sách, trích dẫn, gửi quyết định, bị từ chối và khắc phục với các sự kiện có thẩm quyền. Báo cáo chỉ nhận diện chuỗi hành động quan sát được, không suy diễn đặc điểm người học.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This descriptive report follows evidence requests, inspections, consultations, citations, submissions, rejections, and mitigation to their authoritative events. It identifies observable sequences, not learner traits.</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.processAnalytics.limitations">
   <header><code>instructorReview.processAnalytics.limitations</code></header>
@@ -14200,7 +14245,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>4d57b411022f95c26bfd2485c14e7251f756018c</code> · SHA-256 nguồn: <code>290cf52e1a176581103585856e56d8b4e473b3fa94e13ac3d4532a1fba0ec4aa</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>387c8655131ecb4df2018bd8ef51febbc8384c53</code> · SHA-256 nguồn: <code>c20e4f98508d44f881ff517675de1d7d352560a24a0c2a83782cf18a13fb673a</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

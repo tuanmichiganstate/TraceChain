@@ -137,9 +137,24 @@ append-only run event; metadata does not imply that the learner opened or
 cited an item.
 
 Evidence authored as `AVAILABLE` must have zero acquisition delay and cost and
-must not reference a permission policy. `REQUEST_REQUIRED` supports bounded
-future workflows, but no current pack pretends to implement an evidence
-request merely because the metadata can describe one.
+must not reference a permission policy. Evidence authored as
+`REQUEST_REQUIRED` must be introduced by a reachable `EVIDENCE_RELEASE` node,
+and at least one supported mode must allow evidence requests. The release node
+makes that evidence requestable; it does not expose the record content.
+
+At a decision node, an authorized learner may submit `REQUEST_EVIDENCE`. The
+generic hosted runtime records `EVIDENCE_REQUESTED` and
+`EVIDENCE_RELEASED` in one durable event batch, including the authored
+simulated delay, cost, and availability time. Only the second event adds the
+record to the role-visible information projection. Duplicate command delivery
+is idempotent, replay regenerates the same acquisition record, and the request
+does not alter academic scoring by itself. Permission-policy references must
+name a supported authorization policy; unsupported policy shapes fail closed.
+
+The pharmaceutical transfer case uses this boundary for the manufacturer's
+product-stability assessment. Its calibration record is released
+automatically, while the stability assessment remains hidden until the learner
+chooses to incur the authored 45-minute simulated delay and two cost units.
 
 Signature status, ledger anchoring, and reliability remain distinct. A valid
 signature or intact hash does not by itself establish authorization,

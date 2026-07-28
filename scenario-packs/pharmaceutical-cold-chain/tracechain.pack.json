@@ -2,7 +2,7 @@
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
   "schemaVersion": "1.10.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -59,9 +59,9 @@
       "platformPack.pharmaColdChain.transfer.node.hold.message": "The shipment remains available for investigation. Distribution is delayed, but the unresolved physical-condition evidence is not ignored.",
       "platformPack.pharmaColdChain.transfer.node.release.title": "Shipment released before investigation",
       "platformPack.pharmaColdChain.transfer.node.release.message": "The intact custody record was treated as proof of acceptable temperature. A distributor query now forces a delayed investigation after release.",
-      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Investigation evidence arrives",
+      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Review the investigation records",
       "platformPack.pharmaColdChain.transfer.node.disposition.title": "Decide the final disposition",
-      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "The logger calibration had expired, but the measured excursion also exceeds the product's approved stability evidence. Choose a proportionate response.",
+      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "The logger calibration had expired. Decide whether the available evidence supports a proportionate disposition; you may request the manufacturer's product-stability assessment before committing.",
       "platformPack.pharmaColdChain.transfer.field.disposition.prompt": "Final shipment disposition",
       "platformPack.pharmaColdChain.transfer.option.quarantine": "Quarantine this affected shipment",
       "platformPack.pharmaColdChain.transfer.option.recallAll": "Recall every shipment of this product",
@@ -155,9 +155,9 @@
       "platformPack.pharmaColdChain.transfer.node.hold.message": "Lô hàng vẫn sẵn sàng để điều tra. Việc phân phối bị chậm lại, nhưng bằng chứng chưa được giải quyết về điều kiện vật lý không bị bỏ qua.",
       "platformPack.pharmaColdChain.transfer.node.release.title": "Đã xuất hàng trước khi điều tra",
       "platformPack.pharmaColdChain.transfer.node.release.message": "Hồ sơ chuyển giao còn nguyên vẹn đã bị xem là bằng chứng về nhiệt độ phù hợp. Một yêu cầu từ nhà phân phối hiện buộc phải điều tra muộn sau khi xuất hàng.",
-      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Đã có bằng chứng điều tra",
+      "platformPack.pharmaColdChain.transfer.node.investigationEvidence.title": "Xem xét các hồ sơ điều tra",
       "platformPack.pharmaColdChain.transfer.node.disposition.title": "Quyết định cách xử lý cuối cùng",
-      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "Hiệu chuẩn của thiết bị ghi đã hết hạn, nhưng sai lệch đo được cũng vượt quá bằng chứng độ ổn định đã phê duyệt của sản phẩm. Hãy chọn biện pháp tương xứng.",
+      "platformPack.pharmaColdChain.transfer.node.disposition.prompt": "Hiệu chuẩn của thiết bị ghi đã hết hạn. Hãy đánh giá liệu bằng chứng hiện có có đủ để chọn cách xử lý tương xứng hay không; bạn có thể yêu cầu đánh giá độ ổn định của sản phẩm từ nhà sản xuất trước khi cam kết.",
       "platformPack.pharmaColdChain.transfer.field.disposition.prompt": "Cách xử lý cuối cùng đối với lô hàng",
       "platformPack.pharmaColdChain.transfer.option.quarantine": "Cách ly lô hàng bị ảnh hưởng này",
       "platformPack.pharmaColdChain.transfer.option.recallAll": "Thu hồi mọi lô hàng của sản phẩm này",
@@ -793,7 +793,7 @@
     },
     {
       "scenarioId": "SCN_PHARMA_COLD_CHAIN_TRANSFER",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "status": "draft",
       "title": {
         "localizationKey": "platformPack.pharmaColdChain.transfer.scenario.title"
@@ -1102,9 +1102,9 @@
             "completeness": "COMPLETE",
             "access": {
               "classification": "ROLE_RESTRICTED",
-              "acquisitionMode": "AVAILABLE",
-              "delayMinutes": 0,
-              "costUnits": 0
+              "acquisitionMode": "REQUEST_REQUIRED",
+              "delayMinutes": 45,
+              "costUnits": 2
             }
           },
           "assessmentMetadata": {

@@ -65,7 +65,7 @@ const report: HostedAssignmentReportV1 = {
           runId: "RUN_ANALYTICS_001",
           learnerUserId: "USER_LEARNER_001",
           status: "active",
-          eventCount: 4,
+          eventCount: 5,
           startedAt: "2026-07-26T01:01:00.000Z",
           lastActivityAt: "2026-07-26T01:04:00.000Z",
           completedAt: null,
@@ -123,13 +123,19 @@ describe("assignment process analytics", () => {
       report,
       events: [
         event(1, "RUN_CREATED", {}),
-        event(2, "EVIDENCE_INSPECTED", {
+        event(2, "EVIDENCE_REQUESTED", {
+          evidenceId: "EVIDENCE_STABILITY_ASSESSMENT",
+          simulatedAvailableAt: "2026-07-26T01:47:00.000Z",
+          delayMinutes: 45,
+          costUnits: 2,
+        }),
+        event(3, "EVIDENCE_INSPECTED", {
           evidenceId: "EVIDENCE_SENSOR",
         }),
-        event(3, "POLICY_CONSULTED", {
+        event(4, "POLICY_CONSULTED", {
           policyId: "POLICY_RELEASE",
         }),
-        event(4, "DECISION_SUBMITTED", {
+        event(5, "DECISION_SUBMITTED", {
           decision: {
             commandType: "SUBMIT_STRUCTURED_DECISION",
             decisionId: "DECISION_RELEASE",
@@ -151,25 +157,40 @@ describe("assignment process analytics", () => {
     expect(analytics).toMatchObject({
       interpretation:
         "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-      ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+      ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
       summary: {
+        evidenceRequestCounts: {
+          EVIDENCE_STABILITY_ASSESSMENT: 1,
+        },
         evidenceInspectionCounts: { EVIDENCE_SENSOR: 1 },
         evidenceCitationCounts: { EVIDENCE_SENSOR: 1 },
         policyConsultationCounts: { POLICY_RELEASE: 1 },
         decisionSubmissionCounts: { DECISION_RELEASE: 1 },
+        authoredRequestDelayMinutesTotal: 45,
+        authoredRequestCostUnitsTotal: 2,
       },
     });
     expect(analytics.runs[0]).toMatchObject({
-      evidenceInspectionOrder: [
+      evidenceRequestOrder: [
         {
           eventId: "EVENT_ANALYTICS_2",
           sequenceNumber: 2,
+          itemId: "EVIDENCE_STABILITY_ASSESSMENT",
+          delayMinutes: 45,
+          costUnits: 2,
+          simulatedAvailableAt: "2026-07-26T01:47:00.000Z",
+        },
+      ],
+      evidenceInspectionOrder: [
+        {
+          eventId: "EVENT_ANALYTICS_3",
+          sequenceNumber: 3,
           itemId: "EVIDENCE_SENSOR",
         },
       ],
       decisions: [
         {
-          eventId: "EVENT_ANALYTICS_4",
+          eventId: "EVENT_ANALYTICS_5",
           decisionId: "DECISION_RELEASE",
           elapsedSincePreviousSubmissionSeconds: null,
         },
@@ -181,6 +202,39 @@ describe("assignment process analytics", () => {
     expect(analytics.limitations).toContain(
       "ELAPSED_INTERVAL_IS_NOT_ATTENTION",
     );
+  });
+
+  it("fails closed when an evidence request lacks bounded acquisition metadata", () => {
+    const singleEventReport: HostedAssignmentReportV1 = {
+      ...report,
+      learners: [
+        {
+          ...report.learners[0]!,
+          runs: [
+            {
+              ...report.learners[0]!.runs[0]!,
+              eventCount: 1,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() =>
+      createAssignmentProcessAnalytics({
+        report: singleEventReport,
+        events: [
+          event(1, "EVIDENCE_REQUESTED", {
+            evidenceId: "EVIDENCE_STABILITY_ASSESSMENT",
+            delayMinutes: -1,
+            costUnits: 2,
+            simulatedAvailableAt:
+              "2026-07-26T02:47:00.000Z",
+          }),
+        ],
+        generatedAt: "2026-07-26T02:00:00.000Z",
+      }),
+    ).toThrow("invalid authored acquisition metadata");
   });
 
   it("rejects an event from another content version", () => {

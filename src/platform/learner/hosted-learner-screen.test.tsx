@@ -22,6 +22,7 @@ import {
   HostedEvidenceValue,
   HostedLearnerApiError,
   HostedLearnerScreen,
+  HostedRunActionControls,
   type HostedLearnerApi,
 } from "./hosted-learner-screen";
 
@@ -226,6 +227,101 @@ describe("hosted learner workspace", () => {
     expect(
       screen.getByText(/exceeds the approved 10°C limit/),
     ).toBeInTheDocument();
+  });
+
+  it("submits an authored evidence request without exposing the record content", async () => {
+    const requestProjection: LearnerRunProjectionV1 = {
+      ...projection("REQUEST_EVIDENCE"),
+      roleId: "QUALITY_MANAGER",
+      informationState: [],
+      presentation: {
+        scenarioTitle: {
+          localizationKey: "pharma.scenario",
+          valuesByLocale: { en: "Cold-chain transfer case" },
+        },
+        roleName: {
+          localizationKey: "pharma.role",
+          valuesByLocale: { en: "Quality manager" },
+        },
+        currentNode: {
+          nodeId: "NODE_PHARMA_TRANSFER_DISPOSITION",
+          nodeType: "DECISION",
+          title: {
+            localizationKey: "pharma.disposition",
+            valuesByLocale: { en: "Decide the final disposition" },
+          },
+        },
+        evidenceTitles: {
+          EVID_PHARMA_TRANSFER_STABILITY: {
+            localizationKey: "pharma.evidence.stability",
+            valuesByLocale: {
+              en: "Product stability assessment",
+            },
+          },
+        },
+        evidenceRequests: [
+          {
+            evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+            status: "REQUESTABLE",
+            learnerMetadata: {
+              signatureStatus: "NOT_APPLICABLE",
+              ledgerStatus: "OFF_CHAIN",
+              completeness: "COMPLETE",
+              access: {
+                classification: "ROLE_RESTRICTED",
+                acquisitionMode: "REQUEST_REQUIRED",
+                delayMinutes: 45,
+                costUnits: 2,
+              },
+            },
+            delayMinutes: 45,
+            costUnits: 2,
+          },
+        ],
+        policyTitles: {},
+        instructorIncidents: [],
+        professionalConsequences: [],
+        modeConfiguration: {
+          mode: "tutorial",
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate",
+          showScores: true,
+          outcomeStrategy: "forced",
+          seedPolicy: "generated",
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+      },
+    };
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={requestProjection}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+    expect(
+      screen.queryByText(/supports release/u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("option", {
+        name: "Product stability assessment",
+      }),
+    ).toBeInTheDocument();
+
+    await userEvent.setup().click(
+      screen.getByRole("button", { name: "Submit" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      commandType: "REQUEST_EVIDENCE",
+      evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
+    });
   });
 
   it("opens one stable assignment link without starting an attempt", async () => {

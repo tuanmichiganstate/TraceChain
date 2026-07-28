@@ -874,13 +874,13 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentProcessAnalytics: vi.fn().mockResolvedValue({
-        schemaVersion: "1.0.0",
+        schemaVersion: "1.1.0",
         reportType:
           "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
         interpretation:
           "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
         ruleVersion:
-          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.0.0",
+          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
         assignmentId: "ASSIGNMENT_EXPORT_001",
         packId: "PACK_STANDARD_COFFEE_STAGE3",
         packVersion: "1.4.0",
@@ -891,6 +891,18 @@ describe("instructor review screen", () => {
           {
             runId: "RUN_EXPORT_001",
             learnerUserId: "USER_LEARNER_001",
+            evidenceRequestOrder: [
+              {
+                eventId: "HEVT_EXPORT_003",
+                sequenceNumber: 3,
+                recordedAt: "2026-07-24T08:04:30.000Z",
+                itemId: "EVID_STABILITY_ASSESSMENT",
+                simulatedAvailableAt:
+                  "2026-07-24T08:49:30.000Z",
+                delayMinutes: 45,
+                costUnits: 2,
+              },
+            ],
             evidenceInspectionOrder: [
               {
                 eventId: "HEVT_EXPORT_002",
@@ -909,6 +921,9 @@ describe("instructor review screen", () => {
         ],
         summary: {
           runCount: 1,
+          evidenceRequestCounts: {
+            EVID_STABILITY_ASSESSMENT: 1,
+          },
           evidenceInspectionCounts: {
             EVID_CERTIFICATE_RECORD: 1,
           },
@@ -917,6 +932,8 @@ describe("instructor review screen", () => {
           decisionSubmissionCounts: {},
           rejectedAttemptCount: 1,
           mitigationCount: 1,
+          authoredRequestDelayMinutesTotal: 45,
+          authoredRequestCostUnitsTotal: 2,
         },
         limitations: [
           "ELAPSED_INTERVAL_IS_NOT_ATTENTION",
@@ -1182,6 +1199,13 @@ describe("instructor review screen", () => {
     ).toBeVisible();
     expect(
       report.getAllByText("Rejected attempts")[0],
+    ).toBeVisible();
+    expect(
+      report.getAllByText("Evidence requests")[0],
+    ).toBeVisible();
+    expect(report.getByText("45 simulated minutes")).toBeVisible();
+    expect(
+      report.getByText("Authored request cost units"),
     ).toBeVisible();
     expect(
       report.getByRole("heading", {
