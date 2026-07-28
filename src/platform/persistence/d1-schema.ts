@@ -13,6 +13,7 @@ const resetStatements = [
   "DROP TABLE IF EXISTS counterfactual_reflections",
   "DROP TABLE IF EXISTS rubric_moderation_resolutions",
   "DROP TABLE IF EXISTS rubric_rating_revisions",
+  "DROP TABLE IF EXISTS lti_ags_score_deliveries",
   "DROP TABLE IF EXISTS assignment_learners",
   "DROP TABLE IF EXISTS counterfactual_runs",
   "DROP TABLE IF EXISTS lti_sessions",

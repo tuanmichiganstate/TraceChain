@@ -3005,6 +3005,24 @@ export class HostedStage3RunService {
     return (await this.loadRun(runId)).state;
   }
 
+  async officialGrade(runId: string) {
+    const state = await this.loadState(runId);
+    if (state.status !== "completed") return null;
+    const score =
+      hostedCoffeeCounterfactualMetrics(state).ACADEMIC_SCORE;
+    if (typeof score !== "number") {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The completed coffee run has no numeric academic score.",
+      );
+    }
+    return {
+      gradingProgress: "FullyGraded" as const,
+      scoreGiven: score,
+      scoreMaximum: 100 as const,
+    };
+  }
+
   private async loadRun(runId: string): Promise<LoadedStage3Run> {
     if (this.counterfactualBranches !== undefined) {
       try {

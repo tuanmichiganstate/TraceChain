@@ -26,8 +26,10 @@ An LTI launch uses a separate HTTP-only session and carries the verified
 issuer, client, deployment, course context, and resource-link identity.
 Assignments created in that session are bound to the course context, and
 assignment-, run-, and counterfactual-specific API requests cannot cross into
-another Moodle course. LTI Core does not synchronize the Moodle roster, read
-SCORM attempts, or return grades. See
+another Moodle course. LTI does not synchronize the Moodle roster or read
+SCORM attempts. For activities created through Deep Linking, AGS returns final
+completion and an existing automatic score when the runtime has one; generic
+evidence-based runs remain pending manual grading. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 An LTI Deep Linking launch is narrower than the instructor workspace. It lists

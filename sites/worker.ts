@@ -57,6 +57,10 @@ import {
   createDeepLinkResponseJwt,
   deepLinkAutoSubmitResponse,
 } from "../src/platform/hosted/lti-deep-linking";
+import {
+  deliverLtiAgsScore,
+  supportsLtiAgsScore,
+} from "../src/platform/hosted/lti-ags";
 import { provisionBootstrapAdministrator } from "../src/platform/hosted/bootstrap-principal";
 import {
   HostedAuthorizationError,
@@ -95,6 +99,9 @@ import {
   D1LtiAuthenticationRepository,
   LtiAuthenticationRepositoryError,
 } from "../src/platform/persistence/d1-lti-authentication-repository";
+import {
+  D1LtiAgsRepository,
+} from "../src/platform/persistence/d1-lti-ags-repository";
 import {
   ApplicationAccessRepositoryError,
   D1ApplicationAccessRepository,
@@ -1333,6 +1340,96 @@ async function hostedServiceForRun(
         : { auditVariantAssignment }),
     }),
   };
+}
+
+type LtiGradeReturnResponse =
+  | {
+      readonly status: "unavailable";
+    }
+  | {
+      readonly status:
+        | "pending"
+        | "delivered"
+        | "failed";
+      readonly attemptCount: number;
+    };
+
+async function deliverCompletedRunToLtiAgs(options: {
+  readonly environment: WorkerEnvironment;
+  readonly sessionToken: string;
+  readonly runId: string;
+  readonly service: HostedRuntimeService;
+  readonly assignmentId: string;
+}): Promise<LtiGradeReturnResponse> {
+  const clock = new SystemUtcClock();
+  try {
+    const context =
+      await new D1LtiAuthenticationRepository(
+        options.environment.DB,
+        clock,
+      ).findActiveAgsContext(sha256Hex(options.sessionToken));
+    if (
+      context === null ||
+      context.assignmentId !== options.assignmentId ||
+      !supportsLtiAgsScore(context)
+    ) {
+      return { status: "unavailable" };
+    }
+    const grade = await options.service.officialGrade(options.runId);
+    if (grade === null) return { status: "unavailable" };
+    const events = await new D1RunEventStore(
+      options.environment.DB,
+    ).load(options.runId);
+    const completedAt = events
+      .filter((event) => event.eventType === "RUN_COMPLETED")
+      .at(-1)?.serverTimestampUtc;
+    if (completedAt === undefined) {
+      return { status: "failed", attemptCount: 0 };
+    }
+    const registration = parseLtiPlatformRegistrations(
+      options.environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+    ).find(
+      (candidate) =>
+        candidate.registrationId === context.registrationId,
+    );
+    if (registration === undefined) {
+      return { status: "failed", attemptCount: 0 };
+    }
+    const publicJwks = parseToolPublicJwks(
+      options.environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+    );
+    const privateJwk = parseToolPrivateJwk(
+      options.environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      publicJwks,
+    );
+    const delivery = await deliverLtiAgsScore({
+      runId: options.runId,
+      completedAt,
+      grade,
+      context,
+      registration,
+      privateJwk,
+      repository: new D1LtiAgsRepository(
+        options.environment.DB,
+        clock,
+      ),
+      clock,
+      ids: new WebCryptoIdGenerator(),
+    });
+    return {
+      status:
+        delivery.status === "delivering"
+          ? "pending"
+          : delivery.status,
+      attemptCount: delivery.attemptCount,
+    };
+  } catch (error) {
+    console.error(
+      "TraceChain LTI AGS delivery failed",
+      error instanceof Error ? error.name : "UnknownError",
+    );
+    return { status: "failed", attemptCount: 0 };
+  }
 }
 
 async function counterfactualSourceContext(
@@ -4812,6 +4909,18 @@ async function apiResponse(
       principal,
       body as unknown as HostedRuntimeCommand,
     );
+    const ltiGradeReturn =
+      result.state.status === "completed" &&
+      principal.authenticationSource === "lti" &&
+      sessionToken !== null
+        ? await deliverCompletedRunToLtiAgs({
+            environment,
+            sessionToken,
+            runId: commandRunId,
+            service,
+            assignmentId: result.state.assignmentId,
+          })
+        : undefined;
     return jsonResponse(200, {
       projection: await service.learnerProjection(
         principal,
@@ -4819,6 +4928,9 @@ async function apiResponse(
       ),
       appendedEventIds: result.appendedEventIds,
       wasIdempotentReplay: result.wasIdempotentReplay,
+      ...(ltiGradeReturn === undefined
+        ? {}
+        : { ltiGradeReturn }),
     });
   }
 

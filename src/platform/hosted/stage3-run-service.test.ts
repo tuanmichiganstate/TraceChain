@@ -1680,6 +1680,16 @@ describe("server-authoritative hosted Stage 3 run", () => {
     });
     expect(debriefed.state.status).toBe("completed");
     expect(debriefed.state.workflowStep).toBe("complete");
+    const officialGrade = await service.officialGrade(
+      distributed.runId,
+    );
+    expect(officialGrade).toMatchObject({
+      gradingProgress: "FullyGraded",
+      scoreMaximum: 100,
+    });
+    expect(officialGrade?.scoreGiven).toEqual(
+      expect.any(Number),
+    );
     expect(await serviceFor(store).loadState(distributed.runId)).toEqual(
       debriefed.state,
     );

@@ -60,7 +60,10 @@ learner launch additionally requires the signed
 `tracechain_assignment_id` custom claim and is authorized only for that
 course-bound assignment. Deep Linking lets a verified instructor select one
 active assignment from that course and returns the binding to Moodle in a
-signed resource link. See `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
+signed resource link. When Moodle accepts a line item, the resource launch
+binds the signed AGS endpoint to the learner session and the completed run's
+existing score is returned through a durable server-side delivery. See
+`docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 For an empty deployment, the optional runtime variable
 `TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS` may contain a comma-separated email

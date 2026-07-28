@@ -2,6 +2,7 @@ import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
   LtiApplicationRole,
+  LtiAgsEndpointV1,
   LtiDeepLinkingSettingsV1,
   LtiLaunchType,
   LtiLearningContextV2,
@@ -102,14 +103,17 @@ const INSERT_SESSION = `INSERT INTO lti_sessions (
     deep_link_data,
     deep_link_accept_types_json,
     deep_link_accept_targets_json,
+    deep_link_accept_lineitem,
     deep_link_response_nonce,
     deep_link_response_jwt,
+    ags_lineitem_url,
+    ags_scopes_json,
     platform_roles_json,
     application_role,
     assignment_id,
     issued_at_utc,
     expires_at_utc
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 const DELETE_FINISHED_SESSIONS = `DELETE FROM lti_sessions
   WHERE expires_at_utc <= ?
     OR revoked_at_utc IS NOT NULL`;
@@ -161,6 +165,7 @@ const FIND_ACTIVE_DEEP_LINK_SESSION = `SELECT
     sessions.deep_link_data,
     sessions.deep_link_accept_types_json,
     sessions.deep_link_accept_targets_json,
+    sessions.deep_link_accept_lineitem,
     sessions.deep_link_response_nonce,
     sessions.deep_link_assignment_id,
     sessions.deep_link_completed_at_utc,
@@ -171,6 +176,23 @@ const FIND_ACTIVE_DEEP_LINK_SESSION = `SELECT
   WHERE sessions.session_token_hash = ?
     AND sessions.launch_type = 'deep-linking'
     AND sessions.application_role = 'instructor'
+    AND sessions.revoked_at_utc IS NULL
+    AND sessions.expires_at_utc > ?
+    AND users.status = 'active'`;
+const FIND_ACTIVE_AGS_CONTEXT = `SELECT
+    sessions.registration_id,
+    sessions.subject,
+    sessions.assignment_id,
+    sessions.ags_lineitem_url,
+    sessions.ags_scopes_json
+  FROM lti_sessions AS sessions
+  JOIN application_users AS users
+    ON users.user_id = sessions.user_id
+  WHERE sessions.session_token_hash = ?
+    AND sessions.launch_type = 'resource-link'
+    AND sessions.application_role = 'learner'
+    AND sessions.ags_lineitem_url IS NOT NULL
+    AND sessions.ags_scopes_json IS NOT NULL
     AND sessions.revoked_at_utc IS NULL
     AND sessions.expires_at_utc > ?
     AND users.status = 'active'`;
@@ -235,10 +257,19 @@ interface DeepLinkSessionRow {
   readonly deep_link_data: string | null;
   readonly deep_link_accept_types_json: string;
   readonly deep_link_accept_targets_json: string;
+  readonly deep_link_accept_lineitem: number;
   readonly deep_link_response_nonce: string;
   readonly deep_link_assignment_id: string | null;
   readonly deep_link_completed_at_utc: string | null;
   readonly deep_link_response_jwt: string | null;
+}
+
+interface AgsContextRow {
+  readonly registration_id: string;
+  readonly subject: string;
+  readonly assignment_id: string;
+  readonly ags_lineitem_url: string;
+  readonly ags_scopes_json: string;
 }
 
 export interface ConsumedLtiLoginState {
@@ -269,6 +300,7 @@ export interface LtiSessionInput extends LtiIdentityInput {
   readonly assignmentId?: string;
   readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
   readonly deepLinkResponseNonce?: string;
+  readonly agsEndpoint?: LtiAgsEndpointV1;
   readonly issuedAt: string;
   readonly expiresAt: string;
 }
@@ -286,6 +318,13 @@ export interface ActiveLtiDeepLinkSession {
   readonly selectedAssignmentId?: string;
   readonly completedAt?: string;
   readonly responseJwt?: string;
+}
+
+export interface ActiveLtiAgsContext {
+  readonly registrationId: string;
+  readonly platformUserId: string;
+  readonly assignmentId: string;
+  readonly endpoint: LtiAgsEndpointV1;
 }
 
 export interface LtiUserProvisioningInput extends LtiIdentityInput {
@@ -574,6 +613,17 @@ export class D1LtiAuthenticationRepository {
         recoveryPath,
       );
     }
+    if (
+      input.agsEndpoint !== undefined &&
+      (input.launchType !== "resource-link" ||
+        input.applicationRole !== "learner")
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "LTI AGS may be bound only to a learner resource-link session.",
+        recoveryPath,
+      );
+    }
     const results = await this.database.batch([
       this.database
         .prepare(DELETE_FINISHED_SESSIONS)
@@ -607,8 +657,15 @@ export class D1LtiAuthenticationRepository {
                 input.deepLinkingSettings
                   .acceptedPresentationTargets,
               ),
+          input.deepLinkingSettings === undefined
+            ? null
+            : Number(input.deepLinkingSettings.acceptsLineItem),
           input.deepLinkResponseNonce ?? null,
           null,
+          input.agsEndpoint?.lineItemUrl ?? null,
+          input.agsEndpoint === undefined
+            ? null
+            : JSON.stringify(input.agsEndpoint.scopes),
           JSON.stringify(input.platformRoles),
           input.applicationRole,
           input.assignmentId ?? null,
@@ -723,6 +780,7 @@ export class D1LtiAuthenticationRepository {
           : { data: row.deep_link_data }),
         acceptedTypes,
         acceptedPresentationTargets,
+        acceptsLineItem: row.deep_link_accept_lineitem === 1,
       },
       responseNonce: row.deep_link_response_nonce,
       ...(row.deep_link_assignment_id === null
@@ -737,6 +795,46 @@ export class D1LtiAuthenticationRepository {
       ...(row.deep_link_response_jwt === null
         ? {}
         : { responseJwt: row.deep_link_response_jwt }),
+    };
+  }
+
+  async findActiveAgsContext(
+    sessionTokenHash: string,
+  ): Promise<ActiveLtiAgsContext | null> {
+    const row = await this.database
+      .prepare(FIND_ACTIVE_AGS_CONTEXT)
+      .bind(sessionTokenHash, this.clock.now())
+      .first<AgsContextRow>();
+    if (row === null) return null;
+    let scopes: unknown;
+    try {
+      scopes = JSON.parse(row.ags_scopes_json);
+    } catch {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI AGS scopes are invalid.",
+        "/learner",
+      );
+    }
+    if (
+      !Array.isArray(scopes) ||
+      scopes.length === 0 ||
+      !scopes.every((scope) => typeof scope === "string")
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "Stored LTI AGS scopes are invalid.",
+        "/learner",
+      );
+    }
+    return {
+      registrationId: row.registration_id,
+      platformUserId: row.subject,
+      assignmentId: row.assignment_id,
+      endpoint: {
+        lineItemUrl: row.ags_lineitem_url,
+        scopes,
+      },
     };
   }
 

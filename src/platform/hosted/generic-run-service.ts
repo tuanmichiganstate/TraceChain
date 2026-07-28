@@ -1466,6 +1466,13 @@ export class GenericHostedRunService {
     return (await this.loadRun(runId)).state;
   }
 
+  async officialGrade(runId: string) {
+    const state = await this.loadState(runId);
+    return state.status === "completed"
+      ? { gradingProgress: "PendingManual" as const }
+      : null;
+  }
+
   private async loadRun(runId: string): Promise<LoadedGenericRun> {
     if (this.counterfactualBranches !== undefined) {
       try {

@@ -39,6 +39,34 @@ describe("LTI registration validation", () => {
     );
   });
 
+  it("validates the optional AGS OAuth token endpoint", () => {
+    const [parsed] = parseLtiPlatformRegistrations(
+      JSON.stringify([
+        registration({
+          tokenEndpoint:
+            "https://moodle.example/mod/lti/token.php",
+        }),
+      ]),
+    );
+    expect(parsed?.tokenEndpoint).toBe(
+      "https://moodle.example/mod/lti/token.php",
+    );
+    expect(() =>
+      parseLtiPlatformRegistrations(
+        JSON.stringify([
+          registration({
+            tokenEndpoint:
+              "https://user:secret@attacker.example/token",
+          }),
+        ]),
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "LTI_REGISTRATION_CONFIGURATION_INVALID",
+      }),
+    );
+  });
+
   it("rejects private material in a public keyset", () => {
     expect(() =>
       parseToolPublicJwks(

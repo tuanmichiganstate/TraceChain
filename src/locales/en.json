@@ -264,7 +264,7 @@
   "instructorReview.assignmentCreated": "Assignment {assignmentId} was created.",
   "instructorReview.assignmentAccessHeading": "Assignment access",
   "instructorReview.institutionalLaunch": "Open stable learner link",
-  "instructorReview.institutionalLaunchHelp": "This stable deep link opens only this assignment for the authenticated learner. Authentication, roster provisioning, and grade return remain owned by the institution.",
+  "instructorReview.institutionalLaunchHelp": "This stable deep link opens only this assignment for the authenticated learner. When Moodle launches it through LTI, Moodle controls access and TraceChain returns final completion and available scores through the activity's grade service.",
   "instructorReview.assignmentStatus.active": "Active — new attempts follow the assignment availability window.",
   "instructorReview.assignmentStatus.closed": "Closed — no new attempts may start.",
   "instructorReview.assignmentCloseHelp": "Closing is one-way. It blocks new attempts but preserves existing runs and their evidence.",

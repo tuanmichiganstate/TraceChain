@@ -88,6 +88,18 @@ export async function createDeepLinkResponseJwt(options: {
             presentation: {
               documentTarget: "window",
             },
+            ...(options.session.settings.acceptsLineItem
+              ? {
+                  lineItem: {
+                    scoreMaximum: 100,
+                    label: options.assignment.title,
+                    resourceId:
+                      options.assignment.assignmentId,
+                    tag: "tracechain-final-score",
+                    gradesReleased: true,
+                  },
+                }
+              : {}),
           },
         ];
   try {

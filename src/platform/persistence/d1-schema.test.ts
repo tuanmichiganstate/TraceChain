@@ -121,6 +121,16 @@ describe("D1 current-schema installer", () => {
         )
         .get(),
     ).toEqual({ count: 1 });
+    expect(
+      database.sqlite
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM sqlite_master
+           WHERE type = 'table'
+             AND name = 'lti_ags_score_deliveries'`,
+        )
+        .get(),
+    ).toEqual({ count: 1 });
   });
 
   it("resets a development database without current schema metadata", async () => {

@@ -8,6 +8,7 @@ import {
 import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
+  LTI_AGS_ENDPOINT_CLAIM,
   LTI_CONTEXT_CLAIM,
   LTI_CUSTOM_CLAIM,
   LTI_DEEP_LINKING_SETTINGS_CLAIM,
@@ -20,6 +21,7 @@ import {
   LTI_ROLES_CLAIM,
   LTI_VERSION_CLAIM,
   type LtiApplicationRole,
+  type LtiAgsEndpointV1,
   type LtiDeepLinkingSettingsV1,
   type LtiLaunchType,
   type LtiLearningContextV2,
@@ -495,6 +497,15 @@ function deepLinkingSettings(
       "The LTI Deep Linking multiple-selection setting is invalid.",
     );
   }
+  if (
+    settings.accept_lineitem !== undefined &&
+    typeof settings.accept_lineitem !== "boolean"
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_DEEP_LINK_UNSUPPORTED",
+      "The LTI Deep Linking line-item setting is invalid.",
+    );
+  }
   const data = optionalClaimText(settings.data, 8 * 1024);
   if (
     settings.data !== undefined &&
@@ -513,6 +524,69 @@ function deepLinkingSettings(
     ...(data === undefined ? {} : { data }),
     acceptedTypes,
     acceptedPresentationTargets,
+    acceptsLineItem: settings.accept_lineitem === true,
+  };
+}
+
+function agsEndpoint(
+  payload: JWTPayload,
+  registration: LtiPlatformRegistrationV1,
+): LtiAgsEndpointV1 | undefined {
+  const value = payload[LTI_AGS_ENDPOINT_CLAIM];
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      `${LTI_AGS_ENDPOINT_CLAIM} must be an object claim.`,
+      "/learner",
+    );
+  }
+  const endpoint = value as Readonly<Record<string, unknown>>;
+  const lineItem = claimText(
+    endpoint.lineitem,
+    `${LTI_AGS_ENDPOINT_CLAIM}.lineitem`,
+  );
+  const scopes = claimTextArray(
+    endpoint.scope,
+    `${LTI_AGS_ENDPOINT_CLAIM}.scope`,
+  );
+  let lineItemUrl: URL;
+  let issuerUrl: URL;
+  try {
+    lineItemUrl = new URL(lineItem);
+    issuerUrl = new URL(registration.issuer);
+  } catch {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      "The LTI AGS line-item URL is invalid.",
+      "/learner",
+    );
+  }
+  const loopback =
+    lineItemUrl.hostname === "localhost" ||
+    lineItemUrl.hostname === "127.0.0.1" ||
+    lineItemUrl.hostname === "::1";
+  if (
+    lineItemUrl.origin !== issuerUrl.origin ||
+    (lineItemUrl.protocol !== "https:" &&
+      !(loopback && lineItemUrl.protocol === "http:")) ||
+    lineItemUrl.username.length > 0 ||
+    lineItemUrl.password.length > 0 ||
+    lineItemUrl.hash.length > 0
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_TOKEN_INVALID",
+      "The LTI AGS line-item URL must use the registered Moodle origin.",
+      "/learner",
+    );
+  }
+  return {
+    lineItemUrl: lineItemUrl.toString(),
+    scopes,
   };
 }
 
@@ -526,6 +600,7 @@ function learningContext(
   readonly launchType: LtiLaunchType;
   readonly assignmentId?: string;
   readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
+  readonly agsEndpoint?: LtiAgsEndpointV1;
 } {
   if (payload[LTI_VERSION_CLAIM] !== "1.3.0") {
     throw new LtiAuthenticationError(
@@ -647,6 +722,11 @@ function learningContext(
     launchType === "deep-linking"
       ? deepLinkingSettings(payload, registration)
       : undefined;
+  const selectedAgsEndpoint =
+    launchType === "resource-link" &&
+    applicationRole === "learner"
+      ? agsEndpoint(payload, registration)
+      : undefined;
   return {
     roles: [...new Set(rolesValue)].sort(),
     applicationRole,
@@ -655,6 +735,9 @@ function learningContext(
     ...(selectedDeepLinkingSettings === undefined
       ? {}
       : { deepLinkingSettings: selectedDeepLinkingSettings }),
+    ...(selectedAgsEndpoint === undefined
+      ? {}
+      : { agsEndpoint: selectedAgsEndpoint }),
     context: {
       schemaVersion: "2.0.0",
       provider: "lti-1.3",
@@ -722,6 +805,7 @@ export async function completeLtiLaunch(options: {
     launchType,
     assignmentId,
     deepLinkingSettings: selectedDeepLinkingSettings,
+    agsEndpoint: selectedAgsEndpoint,
   } = learningContext(payload, registration);
   const assignment =
     applicationRole === "learner" && assignmentId !== undefined
@@ -783,6 +867,9 @@ export async function completeLtiLaunch(options: {
             deepLinkingSettings: selectedDeepLinkingSettings,
             deepLinkResponseNonce: opaqueToken(),
           }),
+      ...(selectedAgsEndpoint === undefined
+        ? {}
+        : { agsEndpoint: selectedAgsEndpoint }),
       issuedAt,
       expiresAt,
     },

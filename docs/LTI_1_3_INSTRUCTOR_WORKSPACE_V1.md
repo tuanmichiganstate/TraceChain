@@ -1,7 +1,7 @@
-# LTI 1.3 Core and Deep Linking V3
+# LTI 1.3 Core, Deep Linking, and AGS V4
 
-Status: implemented locally; Deep Linking has not been registered in Moodle or
-deployed.
+Status: implemented locally; the current LTI integration has not been
+registered in Moodle or deployed.
 
 ## Purpose and boundary
 
@@ -12,8 +12,9 @@ API, D1 database, assignment model, simulation engine, reporting services, and
 static client assets. LTI does not create a parallel application or
 authentication system.
 
-The implementation supports LTI 1.3 Core launch plus a bounded LTI Deep
-Linking 2.0 content-selection flow:
+The implementation supports LTI 1.3 Core launch, a bounded LTI Deep Linking
+2.0 content-selection flow, and final Assignment and Grade Services 2.0
+outcome return:
 
 - OpenID Connect login initiation;
 - signed `id_token` verification against the registered Moodle JWKS;
@@ -30,6 +31,17 @@ Linking 2.0 content-selection flow:
   course;
 - an RS256-signed `LtiDeepLinkingResponse` containing one
   `ltiResourceLink` and its server-authored assignment custom parameter;
+- a 100-point line item in that resource link only when Moodle declares
+  `accept_lineitem: true`;
+- validation of the signed AGS line-item URL and granted scopes on the learner
+  resource-link launch;
+- OAuth 2.0 client-credentials access using a short-lived RS256
+  `private_key_jwt`;
+- one durable, idempotent final score-delivery record per hosted run;
+- final completion and existing academic-score return for Coffee, Audit, and
+  Technical Laboratory runs;
+- completed generic evidence-based runs reported as `PendingManual` without
+  inventing an automatic score;
 - an empty signed response when the instructor cancels; and
 - localized launch recovery plus instructor return-to-Moodle and sign-out
   controls.
@@ -37,17 +49,20 @@ Linking 2.0 content-selection flow:
 It deliberately does not implement:
 
 - Names and Role Provisioning Services (NRPS);
-- Assignment and Grade Services (AGS);
+- AGS line-item creation or update outside the Deep Linking response;
+- interim score, manual-rubric grade, or multiple-attempt aggregation
+  services;
 - access to Moodle SCORM attempt data;
 - automatic SCORM upload or activity creation;
 - dynamic LTI registration;
 - Google sign-in; or
 - a separate instructor deployment.
 
-Moodle continues to own activity availability, enrolment rules, SCORM
-attempts, grades, and completion. TraceChain LTI launch authenticates access to
-the hosted platform. It does not turn a SCORM package into an instructor
-module, synchronize a Moodle roster, or return a grade.
+Moodle continues to own activity availability, enrolment rules, attempt
+aggregation, and the gradebook. TraceChain authenticates hosted-platform
+access and returns one run's final completion and available score to the exact
+line item supplied by Moodle. It does not turn a SCORM package into an
+instructor module, synchronize a Moodle roster, or read Moodle SCORM attempts.
 
 ## Why one hosted site remains appropriate
 
@@ -94,6 +109,10 @@ After registration, Moodle supplies the platform issuer, client ID, deployment
 ID, authentication endpoint, token endpoint, and public-keyset URL. Copy those
 values exactly into the server-owned registration configuration. The issuer is
 an exact identifier: do not add or remove a trailing slash.
+
+The token endpoint is optional only when AGS is not used. A learner launch
+that grants the AGS score scope cannot deliver an outcome unless the matching
+registration includes that endpoint and the tool private key is configured.
 
 Name and email claims are optional display metadata. They are not trusted as
 the durable identity. TraceChain keys each external identity by:
@@ -175,9 +194,10 @@ Only public JWK members are accepted. Private RSA or symmetric key material is
 rejected by this public-key configuration.
 
 `TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON` contains the one RSA private key used to
-sign Deep Linking responses. Store it as a deployment secret, never in a
-runtime file or committed environment file. Its `kid`, `n`, and `e` values must
-match one RS256 signing key in the public keyset:
+sign Deep Linking responses and AGS OAuth client assertions. Store it as a
+deployment secret, never in a runtime file or committed environment file. Its
+`kid`, `n`, and `e` values must match one RS256 signing key in the public
+keyset:
 
 ```json
 {
@@ -215,6 +235,7 @@ Moodle External tool
        open /instructor
   -> Learner:
        read assignment ID from the verified custom claim
+       validate the optional AGS endpoint and exact granted scopes
        resolve the exact course-bound assignment
        provision learner identity and assignment membership
        bind the session to that assignment
@@ -223,7 +244,14 @@ Moodle External tool
        validate deep_linking_settings
        bind a purpose-limited session to the course
        list active assignments from that exact course
-       return one signed ltiResourceLink or an empty cancellation
+       return one signed ltiResourceLink, with a line item when accepted,
+       or an empty cancellation
+  -> Completed learner run:
+       reconstruct the existing authoritative score
+       store one exact pending AGS payload
+       obtain a scoped OAuth access token with private_key_jwt
+       POST the score to the Moodle line item's /scores endpoint
+       mark the durable delivery delivered or failed for retry
   -> Secure, HttpOnly, SameSite=Lax session cookie
 ```
 
@@ -241,6 +269,19 @@ Every launch token must contain:
 A learner resource-link launch additionally requires a bounded
 `tracechain_assignment_id` value in the standard LTI custom claim.
 
+When Moodle supplies the standard AGS endpoint claim, TraceChain validates:
+
+- a bounded absolute `lineitem` URL;
+- the exact Moodle issuer origin;
+- HTTPS, except for explicit local loopback development;
+- no URL credentials or fragment; and
+- a bounded scope list.
+
+Only the exact
+`https://purl.imsglobal.org/spec/lti-ags/scope/score` grant enables passback.
+The platform user ID in the score is the verified LTI `sub`; it never comes
+from a learner request body.
+
 A Deep Linking request additionally requires:
 
 - message type `LtiDeepLinkingRequest`;
@@ -248,6 +289,10 @@ A Deep Linking request additionally requires:
 - a same-platform `deep_link_return_url`;
 - `ltiResourceLink` among the accepted content types; and
 - `window` among the accepted presentation targets.
+
+If `accept_lineitem` is true, the returned resource link declares one
+100-point line item with the assignment ID as its stable `resourceId`. If the
+setting is false or absent, no line-item object is returned.
 
 The response is a short-lived RS256 Tool JWT. It returns Moodle's opaque
 `data` claim unchanged, binds the exact deployment, and includes one assignment
@@ -306,6 +351,45 @@ administration list because their durable identifier is not an email address.
 Their active or disabled state is checked whenever a session is resolved.
 Dedicated external-identity administration is deferred.
 
+## Final outcome return
+
+TraceChain posts only after the authoritative run event log contains
+`RUN_COMPLETED`. Learner completion is never rolled back because Moodle is
+temporarily unavailable.
+
+The score payload uses the completion event's immutable timestamp:
+
+```json
+{
+  "userId": "verified-lti-sub",
+  "timestamp": "2026-07-28T09:15:00.000Z",
+  "activityProgress": "Completed",
+  "gradingProgress": "FullyGraded",
+  "scoreGiven": 82,
+  "scoreMaximum": 100
+}
+```
+
+Coffee uses its existing academic scoring engine, Audit uses its existing
+final audit report score, and Technical Laboratory uses its existing replay
+score. No points, maxima, pass thresholds, or rubric judgments are added by
+LTI. A generic hosted scenario currently produces evidence for manual review,
+so its completion payload uses `gradingProgress: "PendingManual"` and omits
+`scoreGiven` and `scoreMaximum`.
+
+Before posting, the worker stores the exact payload, line-item URL, verified
+platform subject, assignment, registration, and run in an outbox. A run has
+one stable delivery identity. A repeated completion command returns the same
+record and does not create another payload. Failed deliveries may be reclaimed
+and retried; an abandoned in-progress claim becomes reclaimable after five
+minutes. If Moodle accepted a score but the response was lost, retrying the
+same payload and timestamp is safe because it represents the same final
+result.
+
+The OAuth access token is never stored or returned to the browser. The client
+assertion uses `iss` and `sub` equal to the registered tool client ID, the
+exact token endpoint as `aud`, a five-minute lifetime, and a fresh `jti`.
+
 ## Persistence
 
 The current fresh-install D1 schema contains:
@@ -315,7 +399,10 @@ The current fresh-install D1 schema contains:
 - `lti_sessions`, including launch purpose, the exact application role,
   optional learner assignment binding, bounded Deep Linking settings, and
   exactly-once selection state plus the signed response needed for an exact
-  retry;
+  retry, together with the signed learner launch's optional AGS endpoint and
+  scopes;
+- `lti_ags_score_deliveries`, containing one bounded final payload and durable
+  delivery state per hosted run;
 - Moodle context columns on `assignments`; and
 - the existing `assignment_learners` relation used for idempotent LTI learner
   enrollment.
@@ -348,14 +435,24 @@ Before enabling real Moodle learner activities:
 11. Save the activity, launch as an enrolled Moodle learner, and confirm the
     exact assignment.
 12. Confirm a second learner launch is idempotent.
-13. Confirm Deep Linking cancellation returns no content item.
-14. Confirm a second identical Deep Linking response is byte-identical.
-15. Confirm another assignment and another Moodle course are denied.
-16. Confirm a missing learner custom parameter fails with localized recovery.
-17. Confirm a replayed state and invalid platform or tool signature are
+13. Confirm a Moodle activity that accepts a line item receives the expected
+    100-point item, and one that does not accept it receives none.
+14. Confirm Deep Linking cancellation returns no content item.
+15. Confirm a second identical Deep Linking response is byte-identical.
+16. Confirm another assignment and another Moodle course are denied.
+17. Confirm a missing learner custom parameter fails with localized recovery.
+18. Confirm a cross-origin AGS line-item URL is rejected before identity
+    provisioning.
+19. Complete a Coffee, Audit, and Technical Laboratory run and confirm each
+    existing score reaches the exact Moodle line item.
+20. Complete a generic evidence-based run and confirm Moodle receives
+    completion with grading pending manual review and no invented score.
+21. Confirm an unavailable Moodle endpoint leaves a failed durable delivery
+    and an identical retry reuses it.
+22. Confirm a replayed state and invalid platform or tool signature are
     rejected.
-18. Confirm instructor return-to-Moodle and sign-out behavior.
-19. Confirm direct hosted sessions and SCORM activities behave as before.
+23. Confirm instructor return-to-Moodle and sign-out behavior.
+24. Confirm direct hosted sessions and SCORM activities behave as before.
 
 This repository change does not perform registration or deployment
 automatically.

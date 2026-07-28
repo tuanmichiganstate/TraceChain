@@ -1041,6 +1041,28 @@ export class AuditHostedRunService {
     });
   }
 
+  async officialGrade(runId: string) {
+    const state = await this.loadState(runId);
+    if (state.status !== "completed") return null;
+    if (state.conclusion === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "A completed audit run must retain its submitted conclusion.",
+      );
+    }
+    const report = createAuditReport({
+      auditCase: this.auditCase,
+      sourceStateHash: state.sourceStateHash,
+      findings: state.findings,
+      conclusion: state.conclusion,
+    });
+    return {
+      gradingProgress: "FullyGraded" as const,
+      scoreGiven: report.score,
+      scoreMaximum: 100 as const,
+    };
+  }
+
   async loadState(runId: string): Promise<AuditHostedRunStateV1> {
     return this.replay(await this.requireEvents(runId));
   }

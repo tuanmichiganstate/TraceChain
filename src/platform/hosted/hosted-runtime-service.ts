@@ -91,6 +91,16 @@ export interface HostedRuntimeRunResult {
   readonly wasIdempotentReplay: boolean;
 }
 
+export type HostedRuntimeOfficialGradeV1 =
+  | {
+      readonly gradingProgress: "FullyGraded";
+      readonly scoreGiven: number;
+      readonly scoreMaximum: 100;
+    }
+  | {
+      readonly gradingProgress: "PendingManual";
+    };
+
 export interface HostedRuntimeService {
   readonly runtimeKind: HostedRuntimeKind;
   createRun(
@@ -173,6 +183,9 @@ export interface HostedRuntimeService {
     principal: ApplicationPrincipal | null,
     runId: string,
   ): Promise<readonly RubricEvidenceProjection[]>;
+  officialGrade(
+    runId: string,
+  ): Promise<HostedRuntimeOfficialGradeV1 | null>;
   loadState(runId: string): Promise<HostedRuntimeStateSummary>;
 }
 
@@ -277,6 +290,7 @@ export function createHostedRuntimeService(options: {
         service.learnerAuthoredFeedback(principal, runId),
       rubricEvidence: (principal, runId) =>
         service.rubricEvidence(principal, runId),
+      officialGrade: (runId) => service.officialGrade(runId),
       loadState: (runId) => service.loadState(runId),
     };
   }
@@ -350,6 +364,7 @@ export function createHostedRuntimeService(options: {
       learnerAuthoredFeedback: async () => [],
       rubricEvidence: (principal, runId) =>
         service.rubricEvidence(principal, runId),
+      officialGrade: (runId) => service.officialGrade(runId),
       loadState: (runId) => service.loadState(runId),
     };
   }
@@ -415,6 +430,7 @@ export function createHostedRuntimeService(options: {
       learnerAuthoredFeedback: async () => [],
       rubricEvidence: (principal, runId) =>
         service.rubricEvidence(principal, runId),
+      officialGrade: (runId) => service.officialGrade(runId),
       loadState: (runId) => service.loadState(runId),
     };
   }
@@ -505,6 +521,7 @@ export function createHostedRuntimeService(options: {
     learnerAuthoredFeedback: async () => [],
     rubricEvidence: (principal, runId) =>
       service.rubricEvidence(principal, runId),
+    officialGrade: (runId) => service.officialGrade(runId),
     loadState: (runId) => service.loadState(runId),
   };
 }

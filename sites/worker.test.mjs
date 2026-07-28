@@ -569,6 +569,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       deploymentId,
       authorizationEndpoint: `${issuer}/mod/lti/auth.php`,
       jwksUri: `${issuer}/mod/lti/certs.php`,
+      tokenEndpoint: `${issuer}/mod/lti/token.php`,
       platformJwks: { keys: [publicJwk] },
     },
   ]);
@@ -622,6 +623,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     email = "instructor@example.edu",
     name = "Course instructor",
     signingKey = privateKey,
+    agsEndpoint,
   }) {
     const now = Math.floor(Date.now() / 1_000);
     const idToken = await new SignJWT({
@@ -653,6 +655,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         : {
             "https://purl.imsglobal.org/spec/lti/claim/custom":
               custom,
+          }),
+      ...(agsEndpoint === undefined
+        ? {}
+        : {
+            "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint":
+              agsEndpoint,
           }),
     })
       .setProtectedHeader({
@@ -907,6 +915,13 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       subject: "MOODLE_LEARNER_77",
       email: "learner@example.edu",
       name: "Course learner",
+      agsEndpoint: {
+        lineitem:
+          `${issuer}/mod/lti/services.php/42/lineitems/7?type_id=3`,
+        scope: [
+          "https://purl.imsglobal.org/spec/lti-ags/scope/score",
+        ],
+      },
     });
     assert.equal(learnerLaunch.status, 303);
     const learnerLocation = new URL(
@@ -941,6 +956,24 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     assert.equal(
       learnerSessionBody.learningContext.resourceLinkId,
       "RESOURCE_TRACECHAIN_LEARNER",
+    );
+    assert.deepEqual(
+      {
+        ...database.sqlite
+          .prepare(
+            `SELECT ags_lineitem_url, ags_scopes_json
+             FROM lti_sessions
+             WHERE assignment_id = ?`,
+          )
+          .get("ASSIGNMENT_SAME_COURSE"),
+      },
+      {
+        ags_lineitem_url:
+          `${issuer}/mod/lti/services.php/42/lineitems/7?type_id=3`,
+        ags_scopes_json: JSON.stringify([
+          "https://purl.imsglobal.org/spec/lti-ags/scope/score",
+        ]),
+      },
     );
     assert.deepEqual(
       database.sqlite
@@ -1101,6 +1134,43 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       0,
     );
 
+    const unsafeAgsLogin = await initiateLogin();
+    const unsafeAgsLaunch = await launch({
+      ...unsafeAgsLogin,
+      roles: [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+      ],
+      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_UNSAFE_AGS",
+      custom: {
+        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+      },
+      subject: "MOODLE_LEARNER_UNSAFE_AGS",
+      agsEndpoint: {
+        lineitem:
+          "https://attacker.example/collect/lineitems/7",
+        scope: [
+          "https://purl.imsglobal.org/spec/lti-ags/scope/score",
+        ],
+      },
+    });
+    assert.equal(unsafeAgsLaunch.status, 303);
+    assert.equal(
+      new URL(
+        unsafeAgsLaunch.headers.get("location"),
+      ).searchParams.get("ltiError"),
+      "LTI_TOKEN_INVALID",
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM external_user_identities
+           WHERE subject = ?`,
+        )
+        .get("MOODLE_LEARNER_UNSAFE_AGS").count,
+      0,
+    );
+
     const invalidLogin = await initiateLogin();
     const { privateKey: wrongSigningKey } =
       await generateKeyPair("RS256");
@@ -1178,6 +1248,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       deploymentId,
       authorizationEndpoint: `${issuer}/mod/lti/auth.php`,
       jwksUri: `${issuer}/mod/lti/certs.php`,
+      tokenEndpoint: `${issuer}/mod/lti/token.php`,
       platformJwks: { keys: [platformPublicJwk] },
     },
   ]);
@@ -1216,6 +1287,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     state,
     contextId = "COURSE_ACCOUNTING_101",
     acceptTypes = ["ltiResourceLink"],
+    acceptLineItem = true,
   }) {
     const now = Math.floor(Date.now() / 1_000);
     const idToken = await new SignJWT({
@@ -1241,6 +1313,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
           accept_types: acceptTypes,
           accept_presentation_document_targets: ["window"],
           accept_multiple: false,
+          accept_lineitem: acceptLineItem,
           data: "MOODLE_OPAQUE_DEEP_LINK_DATA",
           deep_link_return_url:
             `${issuer}/mod/lti/contentitem_return.php`,
@@ -1493,6 +1566,13 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
           presentation: {
             documentTarget: "window",
           },
+          lineItem: {
+            scoreMaximum: 100,
+            label: "Certificate evidence case",
+            resourceId: "ASSIGNMENT_DEEP_LINK",
+            tag: "tracechain-final-score",
+            gradesReleased: true,
+          },
         },
       ],
     );
@@ -1531,6 +1611,51 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     );
     env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
       JSON.stringify(toolPrivateJwk);
+
+    const noLineItemLogin = await initiateLogin();
+    const noLineItemLaunch = await deepLinkLaunch({
+      ...noLineItemLogin,
+      acceptLineItem: false,
+    });
+    const noLineItemCookie = noLineItemLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const noLineItemResponse = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/lti/v1/deep-links/response",
+        {
+          method: "POST",
+          headers: {
+            cookie: noLineItemCookie,
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://tracechain.example",
+          },
+          body: new URLSearchParams({
+            assignment_id: "ASSIGNMENT_DEEP_LINK",
+          }),
+        },
+      ),
+      env,
+    );
+    const noLineItemJwt = /name="JWT" value="([^"]+)"/u.exec(
+      await noLineItemResponse.text(),
+    )?.[1];
+    assert.ok(noLineItemJwt);
+    const noLineItemVerified = await jwtVerify(
+      noLineItemJwt,
+      createLocalJWKSet({ keys: [toolPublicJwk] }),
+      {
+        algorithms: ["RS256"],
+        issuer: clientId,
+        audience: issuer,
+      },
+    );
+    assert.equal(
+      noLineItemVerified.payload[
+        "https://purl.imsglobal.org/spec/lti-dl/claim/content_items"
+      ][0].lineItem,
+      undefined,
+    );
 
     const cancelLogin = await initiateLogin();
     const cancelLaunch = await deepLinkLaunch(cancelLogin);

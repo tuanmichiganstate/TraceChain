@@ -169,8 +169,10 @@ launch, provisions exactly the verified instructor or learner role, scopes
 records to the verified course context, and binds a learner session to the
 single assignment named by the signed activity custom claim. LTI Deep Linking
 lets a verified instructor select one active course assignment and returns a
-signed, assignment-bound resource link to Moodle. NRPS, grade services, and
-Moodle SCORM-attempt access remain deferred.
+signed, assignment-bound resource link with a 100-point line item when Moodle
+accepts one. AGS returns final completion and the existing score for Coffee,
+Audit, and Technical Lab runs; evidence-only generic runs remain pending
+manual grading. NRPS and Moodle SCORM-attempt access remain deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.

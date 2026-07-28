@@ -369,6 +369,9 @@ describe("GenericHostedRunService", () => {
       "NODE_PHARMA_COMPLETE",
     );
     expect(completed.state.competencyEvidence).toHaveLength(1);
+    expect(
+      await service.officialGrade(completed.state.runId),
+    ).toEqual({ gradingProgress: "PendingManual" });
 
     const projection = await service.learnerProjection(
       learner,

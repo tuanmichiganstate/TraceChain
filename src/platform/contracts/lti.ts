@@ -20,6 +20,10 @@ export const LTI_DEEP_LINKING_DATA_CLAIM =
   "https://purl.imsglobal.org/spec/lti-dl/claim/data";
 export const LTI_DEEP_LINKING_CONTENT_ITEMS_CLAIM =
   "https://purl.imsglobal.org/spec/lti-dl/claim/content_items";
+export const LTI_AGS_ENDPOINT_CLAIM =
+  "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
+export const LTI_AGS_SCORE_SCOPE =
+  "https://purl.imsglobal.org/spec/lti-ags/scope/score";
 
 export const LTI_INSTRUCTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
@@ -81,6 +85,7 @@ export interface LtiDeepLinkingSettingsV1 {
   readonly data?: string;
   readonly acceptedTypes: readonly string[];
   readonly acceptedPresentationTargets: readonly string[];
+  readonly acceptsLineItem: boolean;
 }
 
 export interface LtiDeepLinkAssignmentOptionV1 {
@@ -90,4 +95,48 @@ export interface LtiDeepLinkAssignmentOptionV1 {
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly mode: string;
+}
+
+export interface LtiAgsEndpointV1 {
+  readonly lineItemUrl: string;
+  readonly scopes: readonly string[];
+}
+
+export type LtiAgsActivityProgress =
+  | "Initialized"
+  | "Started"
+  | "InProgress"
+  | "Submitted"
+  | "Completed";
+
+export type LtiAgsGradingProgress =
+  | "NotReady"
+  | "Failed"
+  | "Pending"
+  | "PendingManual"
+  | "FullyGraded";
+
+export interface LtiAgsScoreV1 {
+  readonly userId: string;
+  readonly timestamp: string;
+  readonly activityProgress: LtiAgsActivityProgress;
+  readonly gradingProgress: LtiAgsGradingProgress;
+  readonly scoreGiven?: number;
+  readonly scoreMaximum?: number;
+}
+
+export type LtiAgsDeliveryStatus =
+  | "pending"
+  | "delivering"
+  | "delivered"
+  | "failed";
+
+export interface LtiAgsDeliveryProjectionV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly deliveryId: string;
+  readonly runId: string;
+  readonly assignmentId: string;
+  readonly status: LtiAgsDeliveryStatus;
+  readonly attemptCount: number;
+  readonly deliveredAt?: string;
 }

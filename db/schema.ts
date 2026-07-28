@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-28-lti-deep-linking-v1";
+  "2026-07-28-lti-ags-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -266,12 +266,24 @@ export const schemaStatements = [
       deep_link_accept_targets_json IS NULL
       OR json_valid(deep_link_accept_targets_json)
     ),
+    deep_link_accept_lineitem INTEGER CHECK (
+      deep_link_accept_lineitem IS NULL
+      OR deep_link_accept_lineitem IN (0, 1)
+    ),
     deep_link_response_nonce TEXT,
     deep_link_assignment_id TEXT,
     deep_link_completed_at_utc TEXT,
     deep_link_response_jwt TEXT CHECK (
       deep_link_response_jwt IS NULL
       OR length(deep_link_response_jwt) <= 32768
+    ),
+    ags_lineitem_url TEXT CHECK (
+      ags_lineitem_url IS NULL
+      OR length(ags_lineitem_url) BETWEEN 1 AND 2048
+    ),
+    ags_scopes_json TEXT CHECK (
+      ags_scopes_json IS NULL
+      OR json_valid(ags_scopes_json)
     ),
     platform_roles_json TEXT NOT NULL
       CHECK (json_valid(platform_roles_json)),
@@ -301,10 +313,33 @@ export const schemaStatements = [
         AND deep_link_data IS NULL
         AND deep_link_accept_types_json IS NULL
         AND deep_link_accept_targets_json IS NULL
+        AND deep_link_accept_lineitem IS NULL
         AND deep_link_response_nonce IS NULL
         AND deep_link_assignment_id IS NULL
         AND deep_link_completed_at_utc IS NULL
         AND deep_link_response_jwt IS NULL
+        AND (
+          (
+            application_role = 'instructor'
+            AND ags_lineitem_url IS NULL
+            AND ags_scopes_json IS NULL
+          )
+          OR
+          (
+            application_role = 'learner'
+            AND (
+              (
+                ags_lineitem_url IS NULL
+                AND ags_scopes_json IS NULL
+              )
+              OR
+              (
+                ags_lineitem_url IS NOT NULL
+                AND ags_scopes_json IS NOT NULL
+              )
+            )
+          )
+        )
       )
       OR
       (
@@ -314,7 +349,10 @@ export const schemaStatements = [
         AND deep_link_return_url IS NOT NULL
         AND deep_link_accept_types_json IS NOT NULL
         AND deep_link_accept_targets_json IS NOT NULL
+        AND deep_link_accept_lineitem IS NOT NULL
         AND deep_link_response_nonce IS NOT NULL
+        AND ags_lineitem_url IS NULL
+        AND ags_scopes_json IS NULL
         AND (
           (
             deep_link_assignment_id IS NULL
@@ -336,6 +374,44 @@ export const schemaStatements = [
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS lti_sessions_user_expiry
     ON lti_sessions(user_id, expires_at_utc, revoked_at_utc)`,
+  `CREATE TABLE IF NOT EXISTS lti_ags_score_deliveries (
+    delivery_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL UNIQUE,
+    assignment_id TEXT NOT NULL,
+    registration_id TEXT NOT NULL,
+    platform_user_id TEXT NOT NULL,
+    lineitem_url TEXT NOT NULL
+      CHECK (length(lineitem_url) BETWEEN 1 AND 2048),
+    score_payload_json TEXT NOT NULL
+      CHECK (
+        json_valid(score_payload_json)
+        AND length(score_payload_json) <= 8192
+      ),
+    status TEXT NOT NULL
+      CHECK (status IN (
+        'pending',
+        'delivering',
+        'delivered',
+        'failed'
+      )),
+    attempt_count INTEGER NOT NULL DEFAULT 0
+      CHECK (attempt_count >= 0),
+    created_at_utc TEXT NOT NULL,
+    updated_at_utc TEXT NOT NULL,
+    last_attempt_at_utc TEXT,
+    delivered_at_utc TEXT,
+    last_error TEXT CHECK (
+      last_error IS NULL OR length(last_error) <= 1000
+    ),
+    CHECK (
+      (status = 'delivered' AND delivered_at_utc IS NOT NULL)
+      OR
+      (status != 'delivered' AND delivered_at_utc IS NULL)
+    ),
+    FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id)
+  ) STRICT`,
+  `CREATE INDEX IF NOT EXISTS lti_ags_score_deliveries_status
+    ON lti_ags_score_deliveries(status, updated_at_utc)`,
   `CREATE TABLE IF NOT EXISTS hosted_run_events (
     run_id TEXT NOT NULL,
     sequence_number INTEGER NOT NULL CHECK (sequence_number >= 1),

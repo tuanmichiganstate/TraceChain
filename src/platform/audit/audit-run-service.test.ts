@@ -223,6 +223,13 @@ describe("AuditHostedRunService", () => {
     expect(result.state.status).toBe("completed");
     expect(completed.audit?.findings[0]?.feedback).toBeDefined();
     expect(completed.audit?.report).toBeDefined();
+    expect(
+      await service.officialGrade(result.state.runId),
+    ).toEqual({
+      gradingProgress: "FullyGraded",
+      scoreGiven: completed.audit?.report?.score,
+      scoreMaximum: 100,
+    });
   });
 
   it("keeps the source process immutable and separates attempt records from ledger projection", async () => {

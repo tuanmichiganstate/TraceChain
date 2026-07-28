@@ -640,6 +640,16 @@ export class HostedTechnicalLabRunService {
     return this.summary(await this.loadDetailedState(runId));
   }
 
+  async officialGrade(runId: string) {
+    const state = await this.loadDetailedState(runId);
+    if (state.status !== "completed") return null;
+    return {
+      gradingProgress: "FullyGraded" as const,
+      scoreGiven: state.replay.score.totalScore,
+      scoreMaximum: 100 as const,
+    };
+  }
+
   private async competencyEvidence(
     runId: string,
   ): Promise<readonly CompetencyEvidenceProjection[]> {

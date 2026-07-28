@@ -162,6 +162,11 @@ describe("hosted Technical Laboratory runtime", () => {
       totalScore: 100,
       passed: true,
     });
+    expect(await service.officialGrade("RUN_LAB_001")).toEqual({
+      gradingProgress: "FullyGraded",
+      scoreGiven: 100,
+      scoreMaximum: 100,
+    });
     const events = await store.load("RUN_LAB_001");
     expect(events.at(-1)?.eventType).toBe("RUN_COMPLETED");
     expect(

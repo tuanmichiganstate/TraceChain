@@ -264,7 +264,7 @@
   "instructorReview.assignmentCreated": "Đã tạo bài tập {assignmentId}.",
   "instructorReview.assignmentAccessHeading": "Quyền bắt đầu bài tập",
   "instructorReview.institutionalLaunch": "Mở liên kết ổn định cho người học",
-  "instructorReview.institutionalLaunchHelp": "Liên kết sâu ổn định này chỉ mở bài tập này cho người học đã xác thực. Xác thực, cấp danh sách người học và trả điểm vẫn thuộc trách nhiệm của cơ sở đào tạo.",
+  "instructorReview.institutionalLaunchHelp": "Liên kết sâu ổn định này chỉ mở bài tập này cho người học đã xác thực. Khi Moodle mở liên kết qua LTI, Moodle kiểm soát quyền truy cập và TraceChain gửi trạng thái hoàn thành cùng điểm hiện có về dịch vụ điểm của hoạt động.",
   "instructorReview.assignmentStatus.active": "Đang hoạt động — lượt mới tuân theo khoảng thời gian của bài tập.",
   "instructorReview.assignmentStatus.closed": "Đã đóng — không thể bắt đầu lượt mới.",
   "instructorReview.assignmentCloseHelp": "Việc đóng là một chiều. Thao tác này chặn lượt mới nhưng giữ nguyên các lượt đã bắt đầu và bằng chứng của chúng.",
