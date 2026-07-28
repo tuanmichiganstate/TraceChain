@@ -135,21 +135,21 @@ return remain outside the bounded deep-link integration. See
 
 ## 2026-07-28 decision-process evidence checkpoint
 
-The hosted generic runtime now turns evidence inspection and policy
-consultation into real, append-only process evidence. Released evidence exposes
-its title and learner-visible metadata, but the learner API withholds record
-content until the contextual inspection command is durably recorded. Each
-record permits one first-inspection event, and only inspected evidence may be
-cited. Learners also see a bounded authored policy library, submit
-`CONSULT_POLICY` through the same authoritative command pipeline, and may cite
-only rules they actually consulted. Each current policy carries a localized
-learner-readable statement that is withheld until consultation; raw
-configuration stays out of the main learner flow. Duplicate delivery is
-idempotent, exact replay reconstructs both sets, and process analytics derive
-inspection, consultation, and citation counts from the authoritative events
-rather than a parallel tracking system. The pharmaceutical transfer case
-exercises both boundaries before its consequential decisions. This checkpoint
-adds no score, SCORM behavior, migration path, or new operating mode.
+The hosted runtime now turns evidence inspection and policy consultation into
+real, append-only process evidence. Released evidence exposes its title and
+learner-visible metadata, but the learner API withholds record content until
+the contextual inspection command is durably recorded. Each record permits one
+first-inspection event, and only inspected evidence may be cited. Learners also
+see a bounded authored policy library, submit `CONSULT_POLICY` through the same
+authoritative command pipeline, and may cite only rules they actually
+consulted. Each current policy carries a localized learner-readable statement
+that is withheld until consultation; raw configuration stays out of the main
+learner flow. Duplicate delivery is idempotent, exact replay reconstructs both
+sets, and process analytics derive inspection, consultation, and citation
+counts from the authoritative events rather than a parallel tracking system.
+The native coffee certificate flow and pharmaceutical transfer case exercise
+both boundaries before their consequential decisions. This checkpoint adds no
+score, SCORM behavior, migration path, or new operating mode.
 
 ## Ranked investments
 

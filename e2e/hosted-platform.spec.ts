@@ -34,7 +34,7 @@ const certificateStaffProfile = {
 test("runs an assigned hosted learner action from role-filtered server state", async ({
   page,
 }) => {
-  let submittedCommand: Record<string, unknown> | null = null;
+  const submittedCommands: Record<string, unknown>[] = [];
   const assignment = {
     schemaVersion: "1.0.0",
     assignmentId: "ASSIGNMENT_BROWSER_001",
@@ -86,7 +86,7 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     informationState: [
       {
         recordId: "EVID_CERTIFICATE_RECORD",
-        value: { certificateStatus: "visible" },
+        value: { inspected: false },
       },
     ],
     policyState: [],
@@ -100,6 +100,25 @@ test("runs an assigned hosted learner action from role-filtered server state", a
   const decisionProjection = {
     ...initialProjection,
     version: 4,
+    informationState: [
+      {
+        recordId: "EVID_CERTIFICATE_RECORD",
+        value: {
+          inspected: true,
+          content: {
+            assetId: "BAT_GREEN_COFFEE_001",
+            certificateContentStatus: "VALID",
+            issuedAt: "2026-01-15T03:00:00.000Z",
+            expiresAt: "2027-01-15T03:00:00.000Z",
+            decisionReviewAt: "2026-01-15T03:00:00.000Z",
+            issuerOrganizationId: "ORG_CERTIFICATION_BODY",
+            issuerRegistryStatus: "RECOGNIZED_ACTIVE",
+            issuerPermittedActions: ["ISSUE_CERTIFICATE"],
+            documentStoragePolicy: "OFF_CHAIN_WITH_SHA256_ANCHOR",
+          },
+        },
+      },
+    ],
     policyState: [
       {
         recordId: "DECISION_RESPONSE_REQUIREMENTS",
@@ -133,12 +152,38 @@ test("runs an assigned hosted learner action from role-filtered server state", a
           policyType: "RUNTIME_POLICY",
           titleKey:
             "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
+          consulted: false,
         },
       },
     ],
     workflowState: {
       currentNodeId: "certificate-decision",
       completedNodeIds: ["certificate-evidence"],
+      permittedActionIds: [
+        "CONSULT_POLICY",
+        "SUBMIT_CERTIFICATE_DECISION",
+      ],
+    },
+  };
+  const consultedProjection = {
+    ...decisionProjection,
+    version: 5,
+    policyState: decisionProjection.policyState.map((record) =>
+      record.recordId ===
+      "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE"
+        ? {
+            ...record,
+            value: {
+              ...record.value,
+              consulted: true,
+              learnerStatementKey:
+                "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.statement",
+            },
+          }
+        : record,
+    ),
+    workflowState: {
+      ...decisionProjection.workflowState,
       permittedActionIds: ["SUBMIT_CERTIFICATE_DECISION"],
     },
   };
@@ -192,8 +237,17 @@ test("runs an assigned hosted learner action from role-filtered server state", a
       pathname === "/api/v1/runs/RUN_BROWSER_001/commands" &&
       request.method() === "POST"
     ) {
-      submittedCommand = request.postDataJSON() as Record<string, unknown>;
-      await route.fulfill({ json: { projection: decisionProjection } });
+      const submittedCommand =
+        request.postDataJSON() as Record<string, unknown>;
+      submittedCommands.push(submittedCommand);
+      await route.fulfill({
+        json: {
+          projection:
+            submittedCommand.commandType === "INSPECT_EVIDENCE"
+              ? decisionProjection
+              : consultedProjection,
+        },
+      });
       return;
     }
     await route.fulfill({
@@ -204,7 +258,9 @@ test("runs an assigned hosted learner action from role-filtered server state", a
 
   await page.goto("/learner?locale=en");
   await page.getByRole("button", { name: "Start" }).click();
-  await expect(page.getByText("Quality certificate record")).toBeVisible();
+  await expect(
+    page.getByText("Quality certificate record", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Traceability workspace" }),
   ).toBeVisible();
@@ -218,23 +274,45 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     .click();
   await expect(page.getByText("REGISTER_ASSET")).toBeVisible();
 
-  const action = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Submit the current action" }),
-  });
-  await action.getByRole("button", { name: "Submit" }).click();
-  await expect(
-    action.getByLabel("Certificate content and validity"),
-  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Inspect Quality certificate record",
+    })
+    .click();
 
-  expect(submittedCommand).toMatchObject({
+  expect(submittedCommands[0]).toMatchObject({
     commandType: "INSPECT_EVIDENCE",
     runId: "RUN_BROWSER_001",
     expectedRunVersion: 2,
     evidenceId: "EVID_CERTIFICATE_RECORD",
   });
-  expect(submittedCommand).not.toHaveProperty("actorId");
-  expect(submittedCommand).not.toHaveProperty("organizationId");
-  expect(submittedCommand).not.toHaveProperty("roleId");
+  expect(submittedCommands[0]).not.toHaveProperty("actorId");
+  expect(submittedCommands[0]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[0]).not.toHaveProperty("roleId");
+
+  await page
+    .getByRole("button", {
+      name: "Consult Certificate-issuer authorization",
+    })
+    .click();
+  expect(submittedCommands[1]).toMatchObject({
+    commandType: "CONSULT_POLICY",
+    runId: "RUN_BROWSER_001",
+    expectedRunVersion: 4,
+    policyId: "AUTH_ISSUE_CERTIFICATE",
+  });
+  expect(submittedCommands[1]).not.toHaveProperty("actorId");
+  expect(submittedCommands[1]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[1]).not.toHaveProperty("roleId");
+
+  const action = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "Submit the current action",
+    }),
+  });
+  await expect(
+    action.getByLabel("Certificate content and validity"),
+  ).toBeVisible();
 
   await action
     .getByLabel("Decision justification")
@@ -255,18 +333,18 @@ test("runs an assigned hosted learner action from role-filtered server state", a
     .fill("20");
   await action.getByRole("button", { name: "Submit" }).click();
 
-  expect(submittedCommand).toMatchObject({
+  expect(submittedCommands[2]).toMatchObject({
     commandType: "SUBMIT_CERTIFICATE_DECISION",
     runId: "RUN_BROWSER_001",
-    expectedRunVersion: 4,
+    expectedRunVersion: 5,
     citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
     citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
     confidenceRating: 4,
     adverseEventProbabilityPercent: 20,
   });
-  expect(submittedCommand).not.toHaveProperty("actorId");
-  expect(submittedCommand).not.toHaveProperty("organizationId");
-  expect(submittedCommand).not.toHaveProperty("roleId");
+  expect(submittedCommands[2]).not.toHaveProperty("actorId");
+  expect(submittedCommands[2]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[2]).not.toHaveProperty("roleId");
 });
 
 test("completes an authored pharmaceutical decision through the generic runtime UI", async ({

@@ -69,15 +69,16 @@ reference and learner metadata. Record content remains withheld until the
 learner durably submits the contextual inspection action. It does not wait in
 real time, expose hidden assessment metadata, or create an academic score item.
 
-Policy consultation is a separate decision-process action and is available at
-generic hosted decision nodes in every profile. The scenario's policy titles
-form the bounded library. The learner projection withholds the authored rule
-statement until `CONSULT_POLICY` is durably recorded, then presents that
-localized statement in the main decision flow. Raw policy configuration is
-reserved for optional technical traceability. A structured decision may cite
-only policies already present in that reconstructed consultation history.
-Profile selection does not silently waive this evidence requirement, and
-consultation itself does not change the academic score.
+Policy consultation is a separate decision-process action in the native coffee
+certificate decision and at generic hosted decision nodes in every profile.
+The scenario's policy titles form the bounded library. The learner projection
+withholds the authored rule statement until `CONSULT_POLICY` is durably
+recorded, then presents that localized statement in the main decision flow.
+Raw policy configuration is reserved for optional technical traceability. A
+structured decision may cite only policies already present in that
+reconstructed consultation history. Profile selection does not silently waive
+this evidence requirement, and consultation itself does not change the
+academic score.
 
 ## Assignment counterfactual controls
 

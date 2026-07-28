@@ -620,7 +620,12 @@ export function HostedEvidenceLibrary({
 }): ReactNode {
   const t = useTranslator();
   const presentation = projection.presentation;
-  const contextualInspection = presentation !== undefined;
+  const contextualInspection =
+    presentation !== undefined ||
+    projection.informationState.some(
+      (record) =>
+        typeof asObject(record.value)?.inspected === "boolean",
+    );
   const canInspect =
     contextualInspection &&
     projection.workflowState.permittedActionIds.includes(
@@ -1278,12 +1283,22 @@ function RunWorkspace({
   const isExpired = projection.timing?.status === "expired";
   const presentation = projection.presentation;
   const currentNode = presentation?.currentNode;
-  const actionControls =
-    presentation === undefined
-      ? actions
-      : actions.filter(
-          (action) => action !== "INSPECT_EVIDENCE",
-        );
+  const hasContextualEvidence =
+    presentation !== undefined ||
+    projection.informationState.some(
+      (record) =>
+        typeof asObject(record.value)?.inspected === "boolean",
+    );
+  const hasContextualPolicies =
+    (presentation?.policyReferences?.length ?? 0) > 0 ||
+    decisionPolicyReferences(projection).length > 0;
+  const actionControls = actions.filter(
+    (action) =>
+      (action !== "INSPECT_EVIDENCE" ||
+        !hasContextualEvidence) &&
+      (action !== "CONSULT_POLICY" ||
+        !hasContextualPolicies),
+  );
   return (
     <>
       {projection.staffProfile === undefined ? null : (
@@ -1390,7 +1405,11 @@ function RunWorkspace({
           </dl>
         </section>
       )}
-      <HostedPolicyLibrary projection={projection} />
+      <HostedPolicyLibrary
+        projection={projection}
+        busy={busy || isExpired}
+        onSubmit={onSubmit}
+      />
       <section className="card card--reference">
         <h2>{t("hostedLearner.traceability")}</h2>
         <details>
@@ -1455,40 +1474,91 @@ function RunWorkspace({
 
 export function HostedPolicyLibrary({
   projection,
+  busy = false,
+  onSubmit,
 }: {
   readonly projection: LearnerRunProjectionV1;
+  readonly busy?: boolean;
+  readonly onSubmit?: (
+    input: Readonly<Record<string, unknown>>,
+  ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
   const presentation = projection.presentation;
-  if ((presentation?.policyReferences?.length ?? 0) === 0) {
+  const references =
+    presentation?.policyReferences?.map((reference) => {
+      const authored = presentation.policyTitles[reference.policyId];
+      return {
+        policyId: reference.policyId,
+        title:
+          authored === undefined
+            ? reference.policyId
+            : runText(authored, t),
+        status: reference.status,
+        ...(reference.status === "CONSULTED"
+          ? {
+              learnerStatement: runText(
+                reference.learnerStatement,
+                t,
+              ),
+            }
+          : {}),
+      };
+    }) ??
+    decisionPolicyReferences(projection).map((reference) => ({
+      policyId: reference.policyId,
+      title: t(reference.titleKey),
+      status: reference.status,
+      ...(reference.learnerStatementKey === undefined
+        ? {}
+        : {
+            learnerStatement: t(
+              reference.learnerStatementKey,
+            ),
+          }),
+    }));
+  if (references.length === 0) {
     return null;
   }
+  const canConsult =
+    onSubmit !== undefined &&
+    projection.workflowState.permittedActionIds.includes(
+      "CONSULT_POLICY",
+    );
   return (
     <section className="card card--reference">
       <h2>{t("hostedLearner.policyLibrary")}</h2>
       <p>{t("hostedLearner.policyLibraryHelp")}</p>
       <ul>
-        {presentation?.policyReferences?.map((reference) => {
-          const authored =
-            presentation.policyTitles[reference.policyId];
-          const title =
-            authored === undefined
-              ? reference.policyId
-              : runText(authored, t);
-          return (
-            <li key={reference.policyId}>
-              <p><strong>{title}</strong></p>
-              <p>
-                {reference.status === "CONSULTED"
-                  ? t("hostedLearner.policyConsulted")
-                  : t("hostedLearner.policyAvailable")}
-              </p>
-              {reference.status === "CONSULTED" ? (
-                <p>{runText(reference.learnerStatement, t)}</p>
-              ) : null}
-            </li>
-          );
-        })}
+        {references.map((reference) => (
+          <li key={reference.policyId}>
+            <p><strong>{reference.title}</strong></p>
+            <p>
+              {reference.status === "CONSULTED"
+                ? t("hostedLearner.policyConsulted")
+                : t("hostedLearner.policyAvailable")}
+            </p>
+            {reference.learnerStatement === undefined ? null : (
+              <p>{reference.learnerStatement}</p>
+            )}
+            {reference.status === "AVAILABLE" && canConsult ? (
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void onSubmit({
+                    commandType: "CONSULT_POLICY",
+                    policyId: reference.policyId,
+                  })}
+              >
+                {t("hostedLearner.consultPolicy", {
+                  policy: reference.title,
+                })}
+              </button>
+            ) : null}
+          </li>
+        ))}
       </ul>
     </section>
   );
@@ -1774,6 +1844,8 @@ function structuredDecisionResponseConfiguration(
 interface DecisionPolicyReference {
   readonly policyId: string;
   readonly titleKey: string;
+  readonly status: "AVAILABLE" | "CONSULTED";
+  readonly learnerStatementKey?: string;
 }
 
 function decisionPolicyReferences(
@@ -1791,11 +1863,21 @@ function decisionPolicyReferences(
       Record<string, unknown>
     >;
     return typeof candidate.policyId === "string" &&
-      typeof candidate.titleKey === "string"
+      typeof candidate.titleKey === "string" &&
+      typeof candidate.consulted === "boolean"
       ? [
           {
             policyId: candidate.policyId,
             titleKey: candidate.titleKey,
+            status: candidate.consulted
+              ? "CONSULTED"
+              : "AVAILABLE",
+            ...(typeof candidate.learnerStatementKey === "string"
+              ? {
+                  learnerStatementKey:
+                    candidate.learnerStatementKey,
+                }
+              : {}),
           },
         ]
       : [];
@@ -2452,7 +2534,9 @@ function CertificateDecisionForm({
   const policyCitations =
     responseConfiguration?.policyCitations;
   const availablePolicies =
-    decisionPolicyReferences(projection);
+    decisionPolicyReferences(projection).filter(
+      (policy) => policy.status === "CONSULTED",
+    );
   const confidence =
     responseConfiguration?.confidenceRating;
   const adverseProbability =

@@ -19,6 +19,7 @@ import { permissionedFoundationsLabBundle } from "../../technical-lab/permission
 import type { LearnerRunProjectionV1 } from "../contracts/run-events";
 import {
   HostedDecisionEvidenceGuide,
+  HostedEvidenceLibrary,
   HostedEvidenceValue,
   HostedLearnerApiError,
   HostedLearnerScreen,
@@ -66,6 +67,73 @@ function projection(
 }
 
 describe("hosted learner workspace", () => {
+  it("reveals inspected native coffee evidence without requiring a generic presentation", () => {
+    render(
+      <LocaleProvider locale="en">
+        <HostedEvidenceLibrary
+          projection={{
+            ...projection("SUBMIT_CERTIFICATE_DECISION"),
+            workflowState: {
+              currentNodeId: "certificate-decision",
+              completedNodeIds: ["certificate-evidence"],
+              permittedActionIds: [
+                "SUBMIT_CERTIFICATE_DECISION",
+              ],
+            },
+            informationState: [
+              {
+                recordId: "EVID_CERTIFICATE_RECORD",
+                value: {
+                  inspected: true,
+                  learnerMetadata: {
+                    ownerOrganizationId:
+                      "ORG_CERTIFICATION_BODY",
+                    signatureStatus: "NOT_APPLICABLE",
+                    ledgerStatus: "HASH_ANCHORED",
+                    completeness: "COMPLETE",
+                    access: {
+                      classification: "ROLE_RESTRICTED",
+                      acquisitionMode: "AVAILABLE",
+                      delayMinutes: 0,
+                      costUnits: 0,
+                    },
+                  },
+                  content: {
+                    assetId: "BAT_GREEN_COFFEE_001",
+                    certificateContentStatus: "VALID",
+                    issuedAt: "2026-01-15T03:00:00.000Z",
+                    expiresAt: "2027-01-15T03:00:00.000Z",
+                    decisionReviewAt:
+                      "2026-01-15T03:00:00.000Z",
+                    issuerOrganizationId:
+                      "ORG_CERTIFICATION_BODY",
+                    issuerRegistryStatus: "RECOGNIZED_ACTIVE",
+                    issuerPermittedActions: [
+                      "ISSUE_CERTIFICATE",
+                    ],
+                    documentStoragePolicy:
+                      "OFF_CHAIN_WITH_SHA256_ANCHOR",
+                  },
+                },
+              },
+            ],
+          }}
+          busy={false}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        "Recognized as an active network organization",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("May issue quality certificates"),
+    ).toBeInTheDocument();
+  });
+
   it("renders certificate registry facts and decision guides as learner-readable evidence", () => {
     const { rerender } = render(
       <LocaleProvider locale="en">
@@ -610,9 +678,39 @@ describe("hosted learner workspace", () => {
         },
       ])
       .mockResolvedValueOnce([]);
-    const submit = vi.fn().mockResolvedValue({
+    const certificateEvidence = {
+      recordId: "EVID_CERTIFICATE_RECORD",
+      value: {
+        inspected: true,
+        learnerMetadata: {
+          ownerOrganizationId: "ORG_CERTIFICATION_BODY",
+          signatureStatus: "NOT_APPLICABLE",
+          ledgerStatus: "HASH_ANCHORED",
+          completeness: "COMPLETE",
+          access: {
+            classification: "ROLE_RESTRICTED",
+            acquisitionMode: "AVAILABLE",
+            delayMinutes: 0,
+            costUnits: 0,
+          },
+        },
+        content: {
+          assetId: "BAT_GREEN_COFFEE_001",
+          certificateContentStatus: "VALID",
+          issuedAt: "2026-01-15T03:00:00.000Z",
+          expiresAt: "2027-01-15T03:00:00.000Z",
+          decisionReviewAt: "2026-01-15T03:00:00.000Z",
+          issuerOrganizationId: "ORG_CERTIFICATION_BODY",
+          issuerRegistryStatus: "RECOGNIZED_ACTIVE",
+          issuerPermittedActions: ["ISSUE_CERTIFICATE"],
+          documentStoragePolicy: "OFF_CHAIN_WITH_SHA256_ANCHOR",
+        },
+      },
+    };
+    const postInspectionProjection = {
       ...projection("SUBMIT_CERTIFICATE_DECISION"),
       version: 4,
+      informationState: [certificateEvidence],
       policyState: [
         {
           recordId: "DECISION_RESPONSE_REQUIREMENTS",
@@ -646,15 +744,46 @@ describe("hosted learner workspace", () => {
             policyType: "RUNTIME_POLICY",
             titleKey:
               "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.title",
+            consulted: false,
           },
         },
       ],
       workflowState: {
         currentNodeId: "certificate-decision",
         completedNodeIds: ["certificate-evidence"],
+        permittedActionIds: [
+          "CONSULT_POLICY",
+          "SUBMIT_CERTIFICATE_DECISION",
+        ],
+      },
+    } satisfies LearnerRunProjectionV1;
+    const postConsultationProjection = {
+      ...postInspectionProjection,
+      version: 5,
+      policyState: postInspectionProjection.policyState.map(
+        (record) =>
+          record.recordId ===
+          "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE"
+            ? {
+                ...record,
+                value: {
+                  ...record.value,
+                  consulted: true,
+                  learnerStatementKey:
+                    "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.statement",
+                },
+              }
+            : record,
+      ),
+      workflowState: {
+        ...postInspectionProjection.workflowState,
         permittedActionIds: ["SUBMIT_CERTIFICATE_DECISION"],
       },
-    });
+    } satisfies LearnerRunProjectionV1;
+    const submit = vi.fn()
+      .mockResolvedValueOnce(postInspectionProjection)
+      .mockResolvedValueOnce(postConsultationProjection)
+      .mockResolvedValue(postConsultationProjection);
     const api: HostedLearnerApi = {
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_LEARNER_001",
@@ -663,7 +792,18 @@ describe("hosted learner workspace", () => {
       }),
       loadAssignments,
       startRun: vi.fn().mockResolvedValue("RUN_LEARNER_001"),
-      loadRun: vi.fn().mockResolvedValue(projection()),
+      loadRun: vi.fn().mockResolvedValue({
+        ...projection(),
+        informationState: [
+          {
+            ...certificateEvidence,
+            value: {
+              ...certificateEvidence.value,
+              inspected: false,
+            },
+          },
+        ],
+      }),
       loadFeedback: vi.fn(),
       submit,
     };
@@ -680,12 +820,10 @@ describe("hosted learner workspace", () => {
     await user.click(
       within(assignments).getByRole("button", { name: "Start" }),
     );
-    const actionSection = (await screen.findByRole("heading", {
-      name: "Submit the current action",
-    })).closest("section");
-    if (actionSection === null) throw new Error("Expected action section.");
     await user.click(
-      within(actionSection).getByRole("button", { name: "Submit" }),
+      await screen.findByRole("button", {
+        name: "Inspect Quality certificate record",
+      }),
     );
 
     expect(api.startRun).toHaveBeenCalledWith("ASSIGNMENT_001");
@@ -696,6 +834,22 @@ describe("hosted learner workspace", () => {
         evidenceId: "EVID_CERTIFICATE_RECORD",
       }),
     );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Consult Certificate-issuer authorization",
+      }),
+    );
+    expect(submit).toHaveBeenLastCalledWith(
+      "RUN_LEARNER_001",
+      expect.objectContaining({
+        commandType: "CONSULT_POLICY",
+        policyId: "AUTH_ISSUE_CERTIFICATE",
+      }),
+    );
+    const actionSection = (await screen.findByRole("heading", {
+      name: "Submit the current action",
+    })).closest("section");
+    if (actionSection === null) throw new Error("Expected action section.");
     expect(
       within(actionSection).getByLabelText(
         "Certificate content and validity",
@@ -1369,6 +1523,12 @@ describe("hosted learner workspace", () => {
   it("keeps an expired run reviewable while disabling further submissions", async () => {
     const expiredProjection: LearnerRunProjectionV1 = {
       ...projection(),
+      informationState: [
+        {
+          recordId: "EVID_CERTIFICATE_RECORD",
+          value: { inspected: false },
+        },
+      ],
       timing: {
         status: "expired",
         startedAt: "2026-07-24T08:00:00.000Z",
@@ -1467,7 +1627,9 @@ describe("hosted learner workspace", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Submit" }),
+      screen.getByRole("button", {
+        name: "Inspect Quality certificate record",
+      }),
     ).toBeDisabled();
     expect(api.loadFeedback).not.toHaveBeenCalled();
   });

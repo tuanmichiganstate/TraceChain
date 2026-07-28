@@ -171,6 +171,7 @@ export interface HostedStage3RunState {
   readonly workflowStep: Stage3WorkflowStep;
   readonly releasedEvidenceIds: readonly string[];
   readonly inspectedEvidenceIds: readonly string[];
+  readonly consultedPolicyIds: readonly string[];
   readonly decision: HostedStage3Decision | null;
   readonly transactionStatus:
     | "not-started"
@@ -259,6 +260,12 @@ export interface InspectStage3EvidenceCommand
   extends HostedStage3CommandBase {
   readonly commandType: "INSPECT_EVIDENCE";
   readonly evidenceId: string;
+}
+
+export interface ConsultStage3PolicyCommand
+  extends HostedStage3CommandBase {
+  readonly commandType: "CONSULT_POLICY";
+  readonly policyId: string;
 }
 
 export interface SubmitHostedStage3DecisionCommand
@@ -408,6 +415,7 @@ export interface ResubmitHostedAuthorizedRecallCommand
 
 export type HostedStage3Command =
   | InspectStage3EvidenceCommand
+  | ConsultStage3PolicyCommand
   | SubmitHostedStage3DecisionCommand
   | SubmitHostedStage3TransactionCommand
   | CreateHostedCustodyProposalCommand

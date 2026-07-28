@@ -662,6 +662,7 @@
   "hostedLearner.policyLibraryHelp": "Hãy tham khảo quy tắc áp dụng trước khi viện dẫn trong quyết định. Việc tham khảo được ghi nhận như một phần của quá trình ra quyết định.",
   "hostedLearner.policyAvailable": "Có thể tham khảo",
   "hostedLearner.policyConsulted": "Đã tham khảo",
+  "hostedLearner.consultPolicy": "Tham khảo {policy}",
   "hostedLearner.instructorIncidents": "Sự cố do giảng viên công bố",
   "hostedLearner.instructorIncidentReleasedAt": "Được công bố lúc {releasedAt}.",
   "hostedLearner.professionalConsequences": "Hệ quả nghề nghiệp",

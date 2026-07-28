@@ -105,7 +105,14 @@ async function progressToDecision(
     expectedRunVersion: created.state.version,
     evidenceId: "EVID_CERTIFICATE_RECORD",
   });
-  return inspected.state;
+  const consulted = await service.submit(learner, {
+    commandType: "CONSULT_POLICY",
+    commandId: `COMMAND_CONSULT_POLICY_${created.state.runId}`,
+    runId: created.state.runId,
+    expectedRunVersion: inspected.state.version,
+    policyId: "AUTH_ISSUE_CERTIFICATE",
+  });
+  return consulted.state;
 }
 
 async function progressToTransaction(
@@ -325,6 +332,157 @@ class ReadOnlyEventStore implements RunEventStore {
 }
 
 describe("server-authoritative hosted Stage 3 run", () => {
+  it("does not accept a policy citation before the learner consults that policy", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const created = await service.createRun(
+      instructor,
+      createRequest(
+        "authorized-certifier",
+        "RUN_POLICY_CONSULTATION_REQUIRED",
+      ),
+    );
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_POLICY_REQUIRED",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    const ready = inspected.state;
+    const beforeEvents = await store.load(ready.runId);
+
+    await expect(
+      service.submit(learner, {
+        commandType: "SUBMIT_CERTIFICATE_DECISION",
+        commandId: "COMMAND_CITE_UNCONSULTED_POLICY",
+        runId: ready.runId,
+        expectedRunVersion: ready.version,
+        decision: {
+          certificateAssessment: "VALID",
+          issuerAssessment: "RECOGNIZED_AUTHORIZED",
+          storageChoice: "HASH_OFF_CHAIN",
+          lotDisposition: "CONTINUE",
+        },
+        justification:
+          "The evidence and issuer rule support continuing the lot.",
+        citedEvidenceIds: ["EVID_CERTIFICATE_RECORD"],
+        citedPolicyIds: ["AUTH_ISSUE_CERTIFICATE"],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 20,
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_COMMAND",
+    });
+    expect(await store.load(ready.runId)).toEqual(beforeEvents);
+  });
+
+  it("records one replayable policy consultation before certificate submission", async () => {
+    const store = new MemoryRunEventStore();
+    const service = serviceFor(store);
+    const created = await service.createRun(
+      instructor,
+      createRequest(
+        "authorized-certifier",
+        "RUN_POLICY_CONSULTATION_REPLAY",
+      ),
+    );
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_BEFORE_CONSULT",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+    });
+    const beforeProjection = await service.learnerProjection(
+      learner,
+      created.state.runId,
+    );
+    expect(beforeProjection.workflowState.permittedActionIds).toEqual([
+      "CONSULT_POLICY",
+      "SUBMIT_CERTIFICATE_DECISION",
+    ]);
+    expect(
+      beforeProjection.policyState.find(
+        (record) =>
+          record.recordId ===
+          "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+      )?.value,
+    ).toMatchObject({
+      policyId: "AUTH_ISSUE_CERTIFICATE",
+      consulted: false,
+    });
+    expect(
+      JSON.stringify(beforeProjection.policyState),
+    ).not.toContain("learnerStatementKey");
+
+    const consulted = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_CERTIFICATE_POLICY",
+      runId: created.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "AUTH_ISSUE_CERTIFICATE",
+    });
+    const afterEvents = await store.load(created.state.runId);
+    const afterProjection = await service.learnerProjection(
+      learner,
+      created.state.runId,
+    );
+
+    expect(consulted.state.consultedPolicyIds).toEqual([
+      "AUTH_ISSUE_CERTIFICATE",
+    ]);
+    expect(afterEvents.at(-1)).toMatchObject({
+      eventType: "POLICY_CONSULTED",
+      causationId: "COMMAND_CONSULT_CERTIFICATE_POLICY",
+      payload: {
+        policyId: "AUTH_ISSUE_CERTIFICATE",
+      },
+    });
+    expect(afterProjection.workflowState.permittedActionIds).toEqual([
+      "SUBMIT_CERTIFICATE_DECISION",
+    ]);
+    expect(
+      afterProjection.policyState.find(
+        (record) =>
+          record.recordId ===
+          "DECISION_POLICY_AUTH_ISSUE_CERTIFICATE",
+      )?.value,
+    ).toMatchObject({
+      policyId: "AUTH_ISSUE_CERTIFICATE",
+      consulted: true,
+      learnerStatementKey:
+        "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.statement",
+    });
+    expect(await service.loadState(created.state.runId)).toEqual(
+      consulted.state,
+    );
+
+    const repeated = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_CERTIFICATE_POLICY",
+      runId: created.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "AUTH_ISSUE_CERTIFICATE",
+    });
+    expect(repeated.wasIdempotentReplay).toBe(true);
+    expect(await store.load(created.state.runId)).toHaveLength(
+      afterEvents.length,
+    );
+
+    await expect(
+      service.submit(learner, {
+        commandType: "CONSULT_POLICY",
+        commandId: "COMMAND_CONSULT_CERTIFICATE_POLICY_AGAIN",
+        runId: created.state.runId,
+        expectedRunVersion: consulted.state.version,
+        policyId: "AUTH_ISSUE_CERTIFICATE",
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PRECONDITION_FAILED",
+    });
+  });
+
   it("runs a coffee alternative from the exact pre-decision fork without copying source events", async () => {
     const store = new MemoryRunEventStore();
     const pack = publishedPack();
@@ -718,7 +876,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
     expect(final.status).toBe("active");
     expect(final.workflowStep).toBe("custody-proposal");
     expect(final.activeTrustedContext.contextId).toBe("CTX_PRODUCER");
-    expect(final.version).toBe(10);
+    expect(final.version).toBe(11);
     expect(final.transactionStatus).toBe("committed");
     expect(final.transactions).toHaveLength(2);
     expect(final.transactions.every((item) => item.isAccepted)).toBe(true);
@@ -1894,7 +2052,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
       final.runId,
     );
     expect(timeline.map((item) => item.sequenceNumber)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
     ]);
     expect(
       timeline.find(
@@ -1973,7 +2131,7 @@ describe("server-authoritative hosted Stage 3 run", () => {
       runId: state.runId,
       learnerUserId: learner.userId,
       status: "active",
-      eventCount: 4,
+      eventCount: 5,
       currentStageId: "certificate-decision",
       activeRoleId: "CERTIFICATION_OFFICER",
       elapsedSeconds: 120,

@@ -114,13 +114,15 @@ requirements into the learner's role-visible policy state. The learner submits
 the business judgment, bounded rationale, inspected-evidence citations,
 confidence, and adverse-event probability estimate atomically. The server
 validates those fields against the exact scenario version before appending the
-decision event.
+decision event. Its applicable issuer-authorization rule begins as an available
+reference. The learner must durably submit `CONSULT_POLICY` before the
+localized rule statement is revealed or may be cited.
 
-For generic hosted cases, release makes the evidence title and
-learner-visible attributes available but not its record content. The
-contextual evidence control first appends `EVIDENCE_INSPECTED`; only the
-resulting projection contains the content and permits it to be cited. One
-evidence item creates at most one first-inspection event, while duplicate
+For the coffee certificate flow and generic hosted cases, release makes the
+evidence title and learner-visible attributes available but not its record
+content. The contextual evidence control first appends `EVIDENCE_INSPECTED`;
+only the resulting projection contains the content and permits it to be cited.
+One evidence item creates at most one first-inspection event, while duplicate
 delivery of the same command remains idempotent.
 
 The API returns `LearnerRunProjectionV1`, which excludes actual state,

@@ -1279,6 +1279,35 @@ export class HostedStage3RunService {
           state = evidence.nextState;
         }
         break;
+      case "CONSULT_POLICY":
+        this.requireWorkflow(state, "certificate-decision");
+        if (
+          !this.certificateDecisionPolicyIds().includes(
+            command.policyId,
+          ) ||
+          state.consultedPolicyIds.includes(command.policyId)
+        ) {
+          throw new HostedRunCommandError(
+            "WORKFLOW_PRECONDITION_FAILED",
+            "The requested policy is not available for consultation in the current run state.",
+          );
+        }
+        {
+          const consulted = await this.buildEvent({
+            runId: command.runId,
+            state,
+            principal: learner,
+            context: state.activeTrustedContext,
+            commandId: command.commandId,
+            commandDigest: digest,
+            batchIndex: built.length,
+            eventType: "POLICY_CONSULTED",
+            payload: { policyId: command.policyId },
+          });
+          built.push(consulted);
+          state = consulted.nextState;
+        }
+        break;
       case "SUBMIT_CERTIFICATE_DECISION":
         this.requireWorkflow(state, "certificate-decision");
         {
@@ -3290,6 +3319,7 @@ export class HostedStage3RunService {
           workflowStep: "certificate-evidence",
           releasedEvidenceIds: [],
           inspectedEvidenceIds: [],
+          consultedPolicyIds: [],
           decision: null,
           transactionStatus: "not-started",
           transactions: [],
@@ -3412,6 +3442,29 @@ export class HostedStage3RunService {
             ...new Set([...state.inspectedEvidenceIds, evidenceId]),
           ],
           workflowStep: "certificate-decision",
+        });
+      }
+      case "POLICY_CONSULTED": {
+        const state = this.stateOrThrow(current);
+        const policyId = requiredString(
+          event.payload.policyId,
+          "policyId",
+        );
+        if (
+          state.workflowStep !== "certificate-decision" ||
+          !this.certificateDecisionPolicyIds().includes(policyId) ||
+          state.consultedPolicyIds.includes(policyId)
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Consulted policy was not available in the exact scenario and workflow state.",
+          );
+        }
+        return this.updateRequiredState(current, event, {
+          consultedPolicyIds: [
+            ...state.consultedPolicyIds,
+            policyId,
+          ],
         });
       }
       case "DECISION_SUBMITTED":
@@ -4885,6 +4938,12 @@ export class HostedStage3RunService {
             `Cited policy ${policyId} is not applicable to this decision.`,
           );
         }
+        if (!state.consultedPolicyIds.includes(policyId)) {
+          throw new HostedRunCommandError(
+            "INVALID_COMMAND",
+            `Cited policy ${policyId} was not consulted for this decision.`,
+          );
+        }
       }
     }
 
@@ -5187,6 +5246,16 @@ export class HostedStage3RunService {
                 policyId: policy.policyId,
                 policyType: policy.policyType,
                 titleKey: policy.title.localizationKey,
+                consulted:
+                  state.consultedPolicyIds.includes(policy.policyId),
+                ...(state.consultedPolicyIds.includes(
+                  policy.policyId,
+                )
+                  ? {
+                      learnerStatementKey:
+                        policy.learnerStatement.localizationKey,
+                    }
+                  : {}),
               } satisfies JsonValue,
             };
           });
@@ -5289,7 +5358,15 @@ export class HostedStage3RunService {
       state.workflowStep === "certificate-evidence"
         ? ["INSPECT_EVIDENCE"]
         : state.workflowStep === "certificate-decision"
-          ? ["SUBMIT_CERTIFICATE_DECISION"]
+          ? [
+              ...(this.certificateDecisionPolicyIds().some(
+                (policyId) =>
+                  !state.consultedPolicyIds.includes(policyId),
+              )
+                ? ["CONSULT_POLICY"]
+                : []),
+              "SUBMIT_CERTIFICATE_DECISION",
+            ]
           : state.workflowStep === "certificate-transaction"
             ? ["SUBMIT_CERTIFICATE_TRANSACTION"]
             : state.workflowStep === "custody-proposal"

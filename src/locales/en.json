@@ -662,6 +662,7 @@
   "hostedLearner.policyLibraryHelp": "Consult the applicable rule before citing it in a decision. Consultation is recorded as part of your decision process.",
   "hostedLearner.policyAvailable": "Available to consult",
   "hostedLearner.policyConsulted": "Consulted",
+  "hostedLearner.consultPolicy": "Consult {policy}",
   "hostedLearner.instructorIncidents": "Instructor-released incident",
   "hostedLearner.instructorIncidentReleasedAt": "Released at {releasedAt}.",
   "hostedLearner.professionalConsequences": "Professional consequences",

@@ -3681,6 +3681,30 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       },
     );
 
+    const policyConsultation = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "learner@example.edu",
+        body: {
+          commandType: "CONSULT_POLICY",
+          commandId: "COMMAND_SITE_POLICY_001",
+          runId,
+          expectedRunVersion: 4,
+          policyId: "AUTH_ISSUE_CERTIFICATE",
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      policyConsultation.status,
+      200,
+      await policyConsultation.clone().text(),
+    );
+    assert.equal(
+      (await policyConsultation.json()).projection.version,
+      5,
+    );
+
     const decision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
         method: "POST",
@@ -3689,7 +3713,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_CERTIFICATE_DECISION",
           commandId: "COMMAND_SITE_DECISION_001",
           runId,
-          expectedRunVersion: 4,
+          expectedRunVersion: 5,
           decision: {
             certificateAssessment: "VALID",
             issuerAssessment: "RECOGNIZED_AUTHORIZED",
@@ -3707,7 +3731,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       env,
     );
     assert.equal(decision.status, 200, await decision.clone().text());
-    assert.equal((await decision.json()).projection.version, 6);
+    assert.equal((await decision.json()).projection.version, 7);
 
     const transaction = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3717,7 +3741,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_CERTIFICATE_TRANSACTION",
           commandId: "COMMAND_SITE_TRANSACTION_001",
           runId,
-          expectedRunVersion: 6,
+          expectedRunVersion: 7,
         },
       }),
       env,
@@ -3728,7 +3752,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await transaction.clone().text(),
     );
     const certificate = await transaction.json();
-    assert.equal(certificate.projection.version, 10);
+    assert.equal(certificate.projection.version, 11);
     assert.equal(
       certificate.projection.workflowState.currentNodeId,
       "custody-proposal",
@@ -3748,7 +3772,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
           commandId: "COMMAND_SITE_CUSTODY_REJECTED_001",
           runId,
-          expectedRunVersion: 10,
+          expectedRunVersion: 11,
           alsoTransfersOwnership: true,
         },
       }),
@@ -3761,7 +3785,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       (await rejectedCustody.json()).projection.version,
-      11,
+      12,
     );
 
     const custodyProposal = await worker.fetch(
@@ -3772,7 +3796,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "CREATE_CUSTODY_TRANSFER_PROPOSAL",
           commandId: "COMMAND_SITE_CUSTODY_PROPOSAL_001",
           runId,
-          expectedRunVersion: 11,
+          expectedRunVersion: 12,
           alsoTransfersOwnership: false,
         },
       }),
@@ -3784,7 +3808,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await custodyProposal.clone().text(),
     );
     const proposed = await custodyProposal.json();
-    assert.equal(proposed.projection.version, 12);
+    assert.equal(proposed.projection.version, 13);
     const custodyPolicy = proposed.projection.policyState.find(
       (record) => record.recordId === "CUSTODY_PROPOSAL_POLICY",
     );
@@ -3799,7 +3823,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "ENDORSE_CUSTODY_TRANSFER",
           commandId: "COMMAND_SITE_CUSTODY_ENDORSE_001",
           runId,
-          expectedRunVersion: 12,
+          expectedRunVersion: 13,
           proposalId,
         },
       }),
@@ -3810,7 +3834,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await endorsement.clone().text(),
     );
-    assert.equal((await endorsement.json()).projection.version, 14);
+    assert.equal((await endorsement.json()).projection.version, 15);
 
     const commitment = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3820,7 +3844,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "COMMIT_CUSTODY_TRANSFER",
           commandId: "COMMAND_SITE_CUSTODY_COMMIT_001",
           runId,
-          expectedRunVersion: 14,
+          expectedRunVersion: 15,
           proposalId,
         },
       }),
@@ -3831,7 +3855,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await commitment.clone().text(),
     );
-    assert.equal((await commitment.json()).projection.version, 15);
+    assert.equal((await commitment.json()).projection.version, 16);
 
     const transport = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3841,14 +3865,14 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "RECORD_TRANSPORT_CONDITION",
           commandId: "COMMAND_SITE_TRANSPORT_001",
           runId,
-          expectedRunVersion: 15,
+          expectedRunVersion: 16,
         },
       }),
       env,
     );
     assert.equal(transport.status, 200, await transport.clone().text());
     const transported = await transport.json();
-    assert.equal(transported.projection.version, 18);
+    assert.equal(transported.projection.version, 19);
     assert.equal(
       transported.projection.workflowState.currentNodeId,
       "receipt-transaction",
@@ -3862,13 +3886,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "RECEIVE_BATCH",
           commandId: "COMMAND_SITE_RECEIVE_001",
           runId,
-          expectedRunVersion: 18,
+          expectedRunVersion: 19,
         },
       }),
       env,
     );
     assert.equal(receipt.status, 200, await receipt.clone().text());
-    assert.equal((await receipt.json()).projection.version, 19);
+    assert.equal((await receipt.json()).projection.version, 20);
 
     const purchase = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3878,13 +3902,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "PURCHASE_ON_RECEIPT",
           commandId: "COMMAND_SITE_PURCHASE_001",
           runId,
-          expectedRunVersion: 19,
+          expectedRunVersion: 20,
         },
       }),
       env,
     );
     assert.equal(purchase.status, 200, await purchase.clone().text());
-    assert.equal((await purchase.json()).projection.version, 20);
+    assert.equal((await purchase.json()).projection.version, 21);
 
     const discrepancy = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3894,7 +3918,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_DISCREPANCY_DECISION",
           commandId: "COMMAND_SITE_DISCREPANCY_001",
           runId,
-          expectedRunVersion: 20,
+          expectedRunVersion: 21,
           decision: {
             action: "OVERWRITE",
             causeCode: "TYPING_ERROR",
@@ -3908,7 +3932,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await discrepancy.clone().text(),
     );
-    assert.equal((await discrepancy.json()).projection.version, 22);
+    assert.equal((await discrepancy.json()).projection.version, 23);
 
     const investigation = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3918,7 +3942,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "INVESTIGATE_DISCREPANCY",
           commandId: "COMMAND_SITE_INVESTIGATE_001",
           runId,
-          expectedRunVersion: 22,
+          expectedRunVersion: 23,
         },
       }),
       env,
@@ -3928,7 +3952,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await investigation.clone().text(),
     );
-    assert.equal((await investigation.json()).projection.version, 23);
+    assert.equal((await investigation.json()).projection.version, 24);
 
     const correctionProposal = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -3938,7 +3962,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "CREATE_CORRECTION_PROPOSAL",
           commandId: "COMMAND_SITE_CORRECTION_PROPOSAL_001",
           runId,
-          expectedRunVersion: 23,
+          expectedRunVersion: 24,
           reason:
             "The processor investigated the manifest and confirmed a typing error.",
         },
@@ -3951,7 +3975,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await correctionProposal.clone().text(),
     );
     const proposedCorrection = await correctionProposal.json();
-    assert.equal(proposedCorrection.projection.version, 24);
+    assert.equal(proposedCorrection.projection.version, 25);
     const correctionPolicy =
       proposedCorrection.projection.policyState.find(
         (record) =>
@@ -3969,7 +3993,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "ENDORSE_CORRECTION",
           commandId: "COMMAND_SITE_CORRECTION_ENDORSE_001",
           runId,
-          expectedRunVersion: 24,
+          expectedRunVersion: 25,
           proposalId: correctionProposalId,
         },
       }),
@@ -3982,7 +4006,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       (await correctionEndorsement.json()).projection.version,
-      26,
+      27,
     );
 
     const correctionCommit = await worker.fetch(
@@ -3993,7 +4017,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "COMMIT_CORRECTION",
           commandId: "COMMAND_SITE_CORRECTION_COMMIT_001",
           runId,
-          expectedRunVersion: 26,
+          expectedRunVersion: 27,
           proposalId: correctionProposalId,
         },
       }),
@@ -4005,7 +4029,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await correctionCommit.clone().text(),
     );
     const corrected = await correctionCommit.json();
-    assert.equal(corrected.projection.version, 29);
+    assert.equal(corrected.projection.version, 30);
     assert.equal(
       corrected.projection.workflowState.currentNodeId,
       "transformation-transaction",
@@ -4019,7 +4043,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "TRANSFORM_BATCH",
           commandId: "COMMAND_SITE_TRANSFORM_001",
           runId,
-          expectedRunVersion: 29,
+          expectedRunVersion: 30,
         },
       }),
       env,
@@ -4029,7 +4053,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await transformation.clone().text(),
     );
-    assert.equal((await transformation.json()).projection.version, 31);
+    assert.equal((await transformation.json()).projection.version, 32);
 
     const provenanceDecision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4039,7 +4063,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_KNOWLEDGE_DECISION",
           commandId: "COMMAND_SITE_PROVENANCE_001",
           runId,
-          expectedRunVersion: 31,
+          expectedRunVersion: 32,
           decisionId: "INT_TRANSFORMATION_PROVENANCE",
           selectedOptionId: "OPT_LINKED_TO_INPUT",
         },
@@ -4053,7 +4077,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       (await provenanceDecision.json()).projection.version,
-      33,
+      34,
     );
 
     const packaging = await worker.fetch(
@@ -4064,13 +4088,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "PACKAGE_BATCH",
           commandId: "COMMAND_SITE_PACKAGE_001",
           runId,
-          expectedRunVersion: 33,
+          expectedRunVersion: 34,
         },
       }),
       env,
     );
     assert.equal(packaging.status, 200, await packaging.clone().text());
-    assert.equal((await packaging.json()).projection.version, 34);
+    assert.equal((await packaging.json()).projection.version, 35);
 
     const ownership = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4080,13 +4104,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "TRANSFER_DISTRIBUTION_OWNERSHIP",
           commandId: "COMMAND_SITE_DISTRIBUTION_OWNERSHIP_001",
           runId,
-          expectedRunVersion: 34,
+          expectedRunVersion: 35,
         },
       }),
       env,
     );
     assert.equal(ownership.status, 200, await ownership.clone().text());
-    assert.equal((await ownership.json()).projection.version, 35);
+    assert.equal((await ownership.json()).projection.version, 36);
 
     const dispatch = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4096,14 +4120,14 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "DISPATCH_BATCH",
           commandId: "COMMAND_SITE_DISPATCH_001",
           runId,
-          expectedRunVersion: 35,
+          expectedRunVersion: 36,
         },
       }),
       env,
     );
     assert.equal(dispatch.status, 200, await dispatch.clone().text());
     const distributed = await dispatch.json();
-    assert.equal(distributed.projection.version, 38);
+    assert.equal(distributed.projection.version, 39);
     assert.equal(
       distributed.projection.workflowState.currentNodeId,
       "tamper-demonstration",
@@ -4117,13 +4141,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "RUN_TAMPER_DEMONSTRATION",
           commandId: "COMMAND_SITE_TAMPER_001",
           runId,
-          expectedRunVersion: 38,
+          expectedRunVersion: 39,
         },
       }),
       env,
     );
     assert.equal(tamper.status, 200, await tamper.clone().text());
-    assert.equal((await tamper.json()).projection.version, 40);
+    assert.equal((await tamper.json()).projection.version, 41);
 
     const tamperDecision = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4133,7 +4157,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_KNOWLEDGE_DECISION",
           commandId: "COMMAND_SITE_TAMPER_DECISION_001",
           runId,
-          expectedRunVersion: 40,
+          expectedRunVersion: 41,
           decisionId: "INT_TAMPER_DEMONSTRATION",
           selectedOptionId: "OPT_MAKES_EDIT_DETECTABLE",
         },
@@ -4145,7 +4169,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await tamperDecision.clone().text(),
     );
-    assert.equal((await tamperDecision.json()).projection.version, 42);
+    assert.equal((await tamperDecision.json()).projection.version, 43);
 
     const governance = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4155,7 +4179,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_DATA_GOVERNANCE_DECISION",
           commandId: "COMMAND_SITE_GOVERNANCE_001",
           runId,
-          expectedRunVersion: 42,
+          expectedRunVersion: 43,
           decisionId: "INT_DATA_GOVERNANCE_CLASSIFICATION",
           categoryByItem: {
             ITEM_BATCH_ID: "CAT_ON_CHAIN",
@@ -4174,7 +4198,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       200,
       await governance.clone().text(),
     );
-    assert.equal((await governance.json()).projection.version, 44);
+    assert.equal((await governance.json()).projection.version, 45);
 
     const scope = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4184,7 +4208,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_RECALL_SCOPE_DECISION",
           commandId: "COMMAND_SITE_RECALL_SCOPE_001",
           runId,
-          expectedRunVersion: 44,
+          expectedRunVersion: 45,
           decisionId: "INT_RECALL_SCOPE",
           selectedAssetIds: [
             "BAT_PACKAGED_COFFEE_001",
@@ -4195,7 +4219,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       env,
     );
     assert.equal(scope.status, 200, await scope.clone().text());
-    assert.equal((await scope.json()).projection.version, 46);
+    assert.equal((await scope.json()).projection.version, 47);
 
     const unauthorizedRecall = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4205,7 +4229,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_RECALL_TRANSACTION",
           commandId: "COMMAND_SITE_UNAUTHORIZED_RECALL_001",
           runId,
-          expectedRunVersion: 46,
+          expectedRunVersion: 47,
         },
       }),
       env,
@@ -4217,7 +4241,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       (await unauthorizedRecall.json()).projection.version,
-      48,
+      49,
     );
 
     const handoff = await worker.fetch(
@@ -4228,13 +4252,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "REQUEST_RECALL_HANDOFF",
           commandId: "COMMAND_SITE_RECALL_HANDOFF_001",
           runId,
-          expectedRunVersion: 48,
+          expectedRunVersion: 49,
         },
       }),
       env,
     );
     assert.equal(handoff.status, 200, await handoff.clone().text());
-    assert.equal((await handoff.json()).projection.version, 49);
+    assert.equal((await handoff.json()).projection.version, 50);
 
     const authorizedRecall = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -4244,7 +4268,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "RESUBMIT_AUTHORIZED_RECALL",
           commandId: "COMMAND_SITE_AUTHORIZED_RECALL_001",
           runId,
-          expectedRunVersion: 49,
+          expectedRunVersion: 50,
         },
       }),
       env,
@@ -4256,7 +4280,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       (await authorizedRecall.json()).projection.version,
-      51,
+      52,
     );
 
     const debrief = await worker.fetch(
@@ -4267,7 +4291,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           commandType: "SUBMIT_KNOWLEDGE_DECISION",
           commandId: "COMMAND_SITE_DEBRIEF_001",
           runId,
-          expectedRunVersion: 51,
+          expectedRunVersion: 52,
           decisionId: "INT_BLOCKCHAIN_NECESSITY",
           selectedOptionId: "OPT_INDEPENDENT_ORGANIZATIONS",
         },
@@ -4276,7 +4300,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(debrief.status, 200, await debrief.clone().text());
     const completed = await debrief.json();
-    assert.equal(completed.projection.version, 54);
+    assert.equal(completed.projection.version, 55);
     assert.equal(
       completed.projection.workflowState.currentNodeId,
       "complete",
@@ -4647,7 +4671,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
         )
         .get(runId).count,
-      54,
+      55,
     );
     assert.equal(
       database.sqlite
@@ -4717,7 +4741,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
         )
         .get(runId).count,
-      54,
+      55,
     );
 
     const comparisonResponse = await worker.fetch(
@@ -5206,7 +5230,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         runId,
         learnerUserId: "USER_LEARNER_001",
         status: "completed",
-        eventCount: 54,
+        eventCount: 55,
         ratings: [rated.rating],
         moderationResolutions: [moderated.resolution],
       },
@@ -5325,7 +5349,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "USER_LEARNER_001",
     );
     assert.equal(monitoredRun.status, "completed");
-    assert.equal(monitoredRun.eventCount, 54);
+    assert.equal(monitoredRun.eventCount, 55);
     assert.equal(monitoredRun.currentStageId, "complete");
     assert.equal(monitoredRun.activeRoleId, "REGULATORY_AUDITOR");
     assert.equal(monitoredRun.elapsedSeconds >= 0, true);
@@ -5452,13 +5476,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       ),
       false,
     );
-    assert.equal(exportedEvidence.events.length, 54);
+    assert.equal(exportedEvidence.events.length, 55);
     assert.deepEqual(exportedEvidence.runs[0], {
       assignmentId: "ASSIGNMENT_SITE_001",
       runId,
       learnerUserId: "USER_LEARNER_001",
       status: "completed",
-      eventCount: 54,
+      eventCount: 55,
       startedAt: reportedRun.startedAt,
       lastActivityAt: reportedRun.lastActivityAt,
       completedAt: reportedRun.completedAt,
@@ -5642,7 +5666,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       await timelineResponse.clone().text(),
     );
     const timeline = (await timelineResponse.json()).timeline;
-    assert.equal(timeline.length, 54);
+    assert.equal(timeline.length, 55);
     assert.equal(
       timeline.some(
         (event) =>
@@ -5679,7 +5703,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       {
         runId,
         throughSequenceNumber: 2,
-        totalEventCount: 54,
+        totalEventCount: 55,
         packId: pack.packId,
         packVersion: pack.version,
         scenarioId: pack.scenarios[0].scenarioId,
@@ -5748,7 +5772,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
           "SELECT COUNT(*) AS count FROM hosted_run_events WHERE run_id = ?",
         )
         .get(runId).count,
-      54,
+      55,
     );
   } finally {
     database.close();
