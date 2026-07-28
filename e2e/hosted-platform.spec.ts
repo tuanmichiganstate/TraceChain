@@ -1444,13 +1444,13 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       await route.fulfill({
         json: {
           analytics: {
-            schemaVersion: "1.1.0",
+            schemaVersion: "1.2.0",
             reportType:
               "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
             interpretation:
               "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
             ruleVersion:
-              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
+              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
             assignmentId,
             packId: assignment.packId,
             packVersion: assignment.packVersion,
@@ -1464,6 +1464,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
               evidenceInspectionCounts: {},
               evidenceCitationCounts: {},
               policyConsultationCounts: {},
+              policyCitationCounts: {},
               decisionSubmissionCounts: {},
               rejectedAttemptCount: 0,
               mitigationCount: 0,
@@ -1475,6 +1476,25 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
               "NO_MOTIVATION_OR_ABILITY_INFERENCE",
               "NO_AUTOMATED_HIGH_STAKES_DECISION",
             ],
+          },
+        },
+      });
+      return;
+    }
+    if (
+      pathname ===
+      `/api/v1/assignments/${assignmentId}/evidence-catalog`
+    ) {
+      await route.fulfill({
+        json: {
+          evidenceCatalog: {
+            schemaVersion: "1.0.0",
+            assignmentId,
+            packId: assignment.packId,
+            packVersion: assignment.packVersion,
+            scenarioId: assignment.scenarioId,
+            scenarioVersion: assignment.scenarioVersion,
+            evidenceDefinitions: [],
           },
         },
       });
