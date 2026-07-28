@@ -1229,6 +1229,16 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.equal(previewBody.packId, pack.packId);
     assert.equal(previewBody.roleId, "LOGISTICS_COORDINATOR");
     assert.equal(previewBody.modeConfiguration.feedbackTiming, "final");
+    assert.equal(previewBody.schemaVersion, "2.0.0");
+    assert.equal(
+      previewBody.evidenceDefinitions[0].assessmentMetadata
+        .reliability,
+      "RELIABLE",
+    );
+    assert.equal(
+      Object.hasOwn(previewBody.evidenceDefinitions[0], "content"),
+      false,
+    );
     assert.equal(Object.hasOwn(previewBody, "actualState"), false);
 
     const published = await worker.fetch(
@@ -1429,6 +1439,63 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       201,
       await directorAssignment.clone().text(),
     );
+    const evidenceCatalogPath =
+      "/api/v1/assignments/ASSIGNMENT_PHARMA_DIRECTOR_001/evidence-catalog";
+    const learnerEvidenceCatalog = await worker.fetch(
+      apiRequest(evidenceCatalogPath, {
+        email: "pharma-learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(learnerEvidenceCatalog.status, 403);
+    const instructorEvidenceCatalog = await worker.fetch(
+      apiRequest(evidenceCatalogPath, {
+        email: "pharma-author@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      instructorEvidenceCatalog.status,
+      200,
+      await instructorEvidenceCatalog.clone().text(),
+    );
+    const evidenceCatalog = (
+      await instructorEvidenceCatalog.json()
+    ).evidenceCatalog;
+    assert.equal(
+      evidenceCatalog.assignmentId,
+      "ASSIGNMENT_PHARMA_DIRECTOR_001",
+    );
+    assert.equal(evidenceCatalog.packVersion, pack.version);
+    assert.equal(
+      evidenceCatalog.scenarioVersion,
+      transferScenario.version,
+    );
+    assert.equal(
+      evidenceCatalog.evidenceDefinitions.length > 0,
+      true,
+    );
+    assert.equal(
+      Object.hasOwn(
+        evidenceCatalog.evidenceDefinitions[0],
+        "assessmentMetadata",
+      ),
+      true,
+    );
+    assert.equal(
+      Object.hasOwn(
+        evidenceCatalog.evidenceDefinitions[0],
+        "content",
+      ),
+      false,
+    );
+    const outsideEvidenceCatalog = await worker.fetch(
+      apiRequest(evidenceCatalogPath, {
+        email: "pharma-outside-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(outsideEvidenceCatalog.status, 403);
     const directorRunId = "RUN_PHARMA_DIRECTOR_001";
     const directorStart = await worker.fetch(
       apiRequest(
@@ -2844,7 +2911,16 @@ test("creates an exact published assignment for a provisioned learner", async ()
       await researchExportResponse.clone().text(),
     );
     const researchExport = await researchExportResponse.json();
-    assert.equal(researchExport.schemaVersion, "2.0.0");
+    assert.equal(researchExport.schemaVersion, "3.0.0");
+    assert.equal(
+      researchExport.evidenceDefinitions.length > 0,
+      true,
+    );
+    assert.equal(
+      researchExport.evidenceDefinitions[0].assessmentMetadata
+        .reliability,
+      "RELIABLE",
+    );
     assert.equal(
       researchExport.researchMetadata.experimentalConditionId,
       "CONDITION_STANDARD",
@@ -5304,6 +5380,15 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(learnerCompetencyReport.status, 403);
 
+    const outsideJsonExport = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json",
+        { email: "outside-instructor@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(outsideJsonExport.status, 403);
+
     const jsonExport = await worker.fetch(
       apiRequest(
         "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json",
@@ -5318,11 +5403,11 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       jsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v2.json"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v3.json"',
     );
     const exportedEvidence = await jsonExport.json();
-    assert.equal(exportedEvidence.schemaVersion, "2.0.0");
-    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "2.0.0");
+    assert.equal(exportedEvidence.schemaVersion, "3.0.0");
+    assert.equal(exportedEvidence.dataDictionary.schemaVersion, "3.0.0");
     assert.equal(
       exportedEvidence.exportType,
       "TRACECHAIN_ASSIGNMENT_EVIDENCE",
@@ -5335,6 +5420,18 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.equal(
       exportedEvidence.assignment.scenarioVersion,
       pack.scenarios[0].version,
+    );
+    assert.equal(exportedEvidence.evidenceDefinitions.length, 1);
+    assert.equal(
+      exportedEvidence.evidenceDefinitions[0].evidenceId,
+      "EVID_CERTIFICATE_RECORD",
+    );
+    assert.equal(
+      Object.hasOwn(
+        exportedEvidence.evidenceDefinitions[0],
+        "content",
+      ),
+      false,
     );
     assert.equal(exportedEvidence.events.length, 54);
     assert.deepEqual(exportedEvidence.runs[0], {
@@ -5380,6 +5477,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       ),
       [
         "assignment",
+        "evidenceDefinitions",
         "participants",
         "runs",
         "events",
@@ -5402,7 +5500,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousJsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v2.json"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.json"',
     );
     const pseudonymousJsonText =
       await pseudonymousJsonExport.text();
@@ -5436,7 +5534,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousCsvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v2.csv"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.csv"',
     );
     const pseudonymousCsvText = await pseudonymousCsvExport.text();
     assert.doesNotMatch(
@@ -5478,7 +5576,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       csvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v2.csv"',
+      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v3.csv"',
     );
     const exportedCsv = await csvExport.text();
     assert.match(

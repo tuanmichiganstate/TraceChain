@@ -250,7 +250,7 @@ describe("scenario author workspace", () => {
     };
     const publish = vi.fn().mockResolvedValue(undefined);
     const preview = vi.fn().mockResolvedValue({
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       packId: pack.packId,
       packVersion: pack.version,
       scenarioId: scenario.scenarioId,
@@ -277,6 +277,42 @@ describe("scenario author workspace", () => {
           title: "Nhiệm vụ chứng nhận",
           visibleEvidenceIds: [],
           transitionNodeIds: ["certificate-evidence"],
+        },
+      ],
+      evidenceDefinitions: [
+        {
+          evidenceId: "EVID_CERTIFICATE_RECORD",
+          evidenceType: "DOCUMENT_REFERENCE",
+          title: {
+            localizationKey: "unused.evidence.title",
+            valuesByLocale: {
+              en: "Certificate record",
+              vi: "Hồ sơ chứng nhận",
+            },
+          },
+          sourceOrganizationId: "ORG_CERTIFICATION_BODY",
+          visibleToRoleIds: [
+            scenario.roles[0]?.roleId ?? "PRODUCER_MANAGER",
+          ],
+          learnerMetadata: {
+            signatureStatus: "VALID",
+            ledgerStatus: "HASH_ANCHORED",
+            completeness: "COMPLETE",
+            access: {
+              classification: "ROLE_RESTRICTED",
+              acquisitionMode: "AVAILABLE",
+              delayMinutes: 0,
+              costUnits: 0,
+            },
+          },
+          assessmentMetadata: {
+            reliability: "RELIABLE",
+            contentStatus: "ACCURATE",
+            limitationCodes: [
+              "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
+            ],
+            hiddenConditionReferences: [],
+          },
         },
       ],
     });
@@ -332,6 +368,16 @@ describe("scenario author workspace", () => {
     expect(
       await within(previewSection).findByText(
         "Nhiệm vụ chứng nhận",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection).getByRole("heading", {
+        name: "Evidence interpretation contract",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection).getByText(
+        "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
       ),
     ).toBeInTheDocument();
 

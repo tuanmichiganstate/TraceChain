@@ -1,4 +1,4 @@
-# Assignment evidence export V2
+# Assignment evidence export V3
 
 Status: implemented for the hosted instructor platform.
 
@@ -9,6 +9,8 @@ assignment. It preserves the identifiers and versions required to interpret
 the evidence and contains:
 
 - assignment lifecycle and feedback-release metadata;
+- exact scenario-version evidence definitions, including learner-visible source
+  attributes and assessment-only interpretation metadata;
 - the provisioned learner roster;
 - hosted run status, event counts, authoritative event-span timing, and
   event-derived activity counts and rejection findings;
@@ -23,7 +25,8 @@ events.
 ## Authorization and routes
 
 Only an authenticated `instructor`, `rater`, or `administrator` may download an
-assignment export.
+assignment export. A non-administrator instructor is restricted to assignments
+they created. Learners cannot call these routes.
 
 ```text
 GET /api/v1/assignments/{assignmentId}/export.json
@@ -35,25 +38,24 @@ GET /api/v1/assignments/{assignmentId}/export.csv?identity=pseudonymous
 Both responses use `Cache-Control: no-store` and an attachment filename:
 
 ```text
-TraceChain_{assignmentId}_evidence_v2.json
-TraceChain_{assignmentId}_evidence_v2.csv
-TraceChain_{assignmentId}_pseudonymous_evidence_v2.json
-TraceChain_{assignmentId}_pseudonymous_evidence_v2.csv
+TraceChain_{assignmentId}_evidence_v3.json
+TraceChain_{assignmentId}_evidence_v3.csv
+TraceChain_{assignmentId}_pseudonymous_evidence_v3.json
+TraceChain_{assignmentId}_pseudonymous_evidence_v3.csv
 ```
-
-Learners cannot call these routes.
 
 ## JSON contract
 
 The JSON document has:
 
 ```text
-schemaVersion       2.0.0
+schemaVersion       3.0.0
 exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
 identityMode        identified or pseudonymous
 researchMetadata    null or bounded controlled-study metadata
 generatedAt         UTC export timestamp
 assignment          exact HostedAssignmentV1
+evidenceDefinitions exact pack/version evidence interpretation definitions
 participants        assignment, learner, and optional research-participant identifiers
 runs                learner, status, event count, timing, and activity
 events              complete RunEventV1 envelopes
@@ -88,8 +90,19 @@ run deadline contributes the stable `RUN_TIME_LIMIT_EXCEEDED` finding. These
 findings are diagnostic evidence,
 not a second grade or a technical-error classification.
 
+Each `evidenceDefinitions` record contains the stable evidence ID and type,
+localized title, source organization, visible roles, learner metadata, and
+assessment metadata from the assignment's exact immutable scenario version.
+It intentionally excludes the evidence `content` object and hidden actual
+state. Assessment metadata includes reliability, content status, limitation
+codes, and authored hidden-condition references for authorized interpretation.
+These fields are never added to learner projections.
+
 Generation fails as an invariant error if:
 
+- the evidence catalog assignment, pack, or scenario identity differs from the
+  assignment;
+- an evidence identifier appears more than once;
 - an event belongs to a run outside the assignment;
 - an event's pack or scenario version differs from the assignment;
 - a report event count differs from the authoritative event stream;
@@ -106,7 +119,7 @@ different content versions.
 The CSV layout identifier is:
 
 ```text
-TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2
+TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V3
 ```
 
 CSV uses RFC 4180 quoting and CRLF line endings. It is one normalized table so
@@ -116,6 +129,7 @@ it can be opened directly without an archive or a second export service.
 | `record_type` | Meaning |
 |---|---|
 | `assignment` | Exact assignment and version metadata |
+| `evidence_definition` | One exact-version evidence interpretation definition |
 | `participant` | One provisioned learner |
 | `run` | One hosted learner run |
 | `event` | One authoritative append-only run event |
@@ -134,6 +148,8 @@ run_id
 sequence_number
 event_id
 event_type
+evidence_id
+evidence_type
 recorded_at
 authenticated_user_id
 simulation_actor_id
@@ -175,7 +191,10 @@ JSON. Text beginning with a spreadsheet formula prefix is escaped with a
 leading apostrophe in CSV only. The JSON export retains the original text.
 The assignment row's `payload_json` includes `exportIdentityMode` so a renamed
 CSV remains self-describing.
-For a `run` row, `recorded_at` is `startedAt` and `payload_json` contains
+For an `evidence_definition` row, `payload_json` contains the same bounded
+definition as the JSON export and the common version columns identify its exact
+pack and scenario. For a `run` row, `recorded_at` is `startedAt` and
+`payload_json` contains
 `startedAt`, `lastActivityAt`, nullable `completedAt`, `elapsedSeconds`, and
 the event-derived `activity` object.
 
@@ -206,7 +225,7 @@ the event-derived `activity` object.
   assessment records.
 - All authoritative run, rating, and moderation timestamps are UTC.
 - A newer export may contain later events, rating revisions, or resolutions.
-- The JSON data dictionary and this document define export schema V2.
+- The JSON data dictionary and this document define export schema V3.
 - Export access does not imply that learners may see withheld feedback.
 
 Changing column meaning, record types, or required JSON fields requires a new

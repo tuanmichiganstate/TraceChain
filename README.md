@@ -116,7 +116,9 @@ latest 100 append-only access changes without editing that history. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
 revisions, event-derived learner activity counts, deterministic rejection
-findings, and a data dictionary.
+findings, exact-version evidence interpretation definitions, and a data
+dictionary. Assessment-only reliability and content judgments are available to
+authorized authors and instructors without entering learner projections.
 Audit assignments additionally provide exact-case class summaries, direct
 finding-event replay, curated-variant distribution, and review-only
 calibration measures that never rescale scores or change official grades.

@@ -23,6 +23,7 @@ import type {
   HostedRunMode,
   ScenarioPackV1,
 } from "../contracts/scenario-pack";
+import { EvidenceAssessmentCatalog } from "../components/evidence-assessment-catalog";
 
 const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
 
@@ -749,6 +750,15 @@ export function ScenarioAuthorScreen({
                     </li>
                   ))}
                 </ol>
+                <EvidenceAssessmentCatalog
+                  evidenceDefinitions={
+                    preview.evidenceDefinitions
+                  }
+                  packId={preview.packId}
+                  packVersion={preview.packVersion}
+                  scenarioId={preview.scenarioId}
+                  scenarioVersion={preview.scenarioVersion}
+                />
               </div>
             )}
 

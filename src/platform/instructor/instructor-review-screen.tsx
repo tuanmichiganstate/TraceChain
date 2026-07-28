@@ -46,6 +46,9 @@ import type {
 import type {
   AssignmentProcessAnalyticsV1,
 } from "../contracts/process-analytics";
+import type {
+  AssignmentEvidenceAssessmentCatalogV1,
+} from "../contracts/evidence-assessment";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import { HostedStaffIdentity } from "../components/hosted-staff-identity";
 import type {
@@ -68,6 +71,7 @@ import {
 import { CounterfactualExplorer } from "../counterfactual/counterfactual-explorer";
 import { HostedRunActionControls } from "../learner/hosted-learner-screen";
 import { HostedAuditReport } from "../audit/hosted-audit-workspace";
+import { EvidenceAssessmentCatalog } from "../components/evidence-assessment-catalog";
 import type { AuditAssignmentReportV1 } from "../reporting/audit-assignment-report";
 import type {
   TechnicalLabAssignmentReportV1,
@@ -159,6 +163,9 @@ export interface InstructorReviewApi {
   loadAssignmentProcessAnalytics?(
     assignmentId: string,
   ): Promise<AssignmentProcessAnalyticsV1>;
+  loadAssignmentEvidenceCatalog?(
+    assignmentId: string,
+  ): Promise<AssignmentEvidenceAssessmentCatalogV1>;
   loadAssignmentAuditReport?(
     assignmentId: string,
   ): Promise<AuditAssignmentReportV1 | null>;
@@ -430,6 +437,16 @@ export function createInstructorReviewApi(
         `/api/v1/assignments/${encodeURIComponent(assignmentId)}/process-analytics`,
       );
       return result.analytics;
+    },
+    async loadAssignmentEvidenceCatalog(assignmentId) {
+      const result = await responseJson<{
+        readonly evidenceCatalog:
+          AssignmentEvidenceAssessmentCatalogV1;
+      }>(
+        fetcher,
+        `/api/v1/assignments/${encodeURIComponent(assignmentId)}/evidence-catalog`,
+      );
+      return result.evidenceCatalog;
     },
     async loadAssignmentAuditReport(assignmentId) {
       const result = await responseJson<{
@@ -2234,6 +2251,8 @@ function AssignmentReport({
     useState<HostedAssignmentDecisionOutcomeReportV1 | null>(null);
   const [processAnalytics, setProcessAnalytics] =
     useState<AssignmentProcessAnalyticsV1 | null>(null);
+  const [evidenceCatalog, setEvidenceCatalog] =
+    useState<AssignmentEvidenceAssessmentCatalogV1 | null>(null);
   const [auditReport, setAuditReport] =
     useState<AuditAssignmentReportV1 | null>(null);
   const [technicalLabReport, setTechnicalLabReport] =
@@ -2252,6 +2271,7 @@ function AssignmentReport({
     setCurriculumCrosswalks(null);
     setDecisionOutcomes(null);
     setProcessAnalytics(null);
+    setEvidenceCatalog(null);
     setAuditReport(null);
     setTechnicalLabReport(null);
     setErrorKey(null);
@@ -2264,6 +2284,7 @@ function AssignmentReport({
         loadedCurriculumCrosswalks,
         loadedDecisionOutcomes,
         loadedProcessAnalytics,
+        loadedEvidenceCatalog,
         loadedAuditReport,
         loadedTechnicalLabReport,
       ] =
@@ -2280,6 +2301,9 @@ function AssignmentReport({
           api.loadAssignmentProcessAnalytics?.(
             requestedAssignmentId,
           ) ?? Promise.resolve(null),
+          api.loadAssignmentEvidenceCatalog?.(
+            requestedAssignmentId,
+          ) ?? Promise.resolve(null),
           api.loadAssignmentAuditReport?.(
             requestedAssignmentId,
           ) ?? Promise.resolve(null),
@@ -2293,6 +2317,7 @@ function AssignmentReport({
       setCurriculumCrosswalks(loadedCurriculumCrosswalks);
       setDecisionOutcomes(loadedDecisionOutcomes);
       setProcessAnalytics(loadedProcessAnalytics);
+      setEvidenceCatalog(loadedEvidenceCatalog);
       setAuditReport(loadedAuditReport);
       setTechnicalLabReport(loadedTechnicalLabReport);
     } catch (error) {
@@ -2459,6 +2484,17 @@ function AssignmentReport({
               monitor={monitor}
               isRefreshing={isMonitorLoading}
               onRefresh={refreshMonitor}
+            />
+          )}
+          {evidenceCatalog === null ? null : (
+            <EvidenceAssessmentCatalog
+              evidenceDefinitions={
+                evidenceCatalog.evidenceDefinitions
+              }
+              packId={evidenceCatalog.packId}
+              packVersion={evidenceCatalog.packVersion}
+              scenarioId={evidenceCatalog.scenarioId}
+              scenarioVersion={evidenceCatalog.scenarioVersion}
             />
           )}
           <div className="instructor-review__export">

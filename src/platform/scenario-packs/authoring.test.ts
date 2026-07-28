@@ -66,6 +66,7 @@ describe("scenario authoring services", () => {
         "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
       ],
     );
+    expect(preview.schemaVersion).toBe("2.0.0");
     expect(preview.modeConfiguration).toMatchObject({
       allowHints: false,
       feedbackTiming: "final",
@@ -77,6 +78,33 @@ describe("scenario authoring services", () => {
     );
     expect(release?.visibleEvidenceIds).toContain(
       "EVID_CERTIFICATE_RECORD",
+    );
+    expect(preview.evidenceDefinitions).toEqual([
+      expect.objectContaining({
+        evidenceId: "EVID_CERTIFICATE_RECORD",
+        title: {
+          localizationKey:
+            "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.evidenceItems.EVID_CERTIFICATE_RECORD.title",
+          valuesByLocale: expect.objectContaining({
+            en: expect.any(String),
+            vi: expect.any(String),
+          }),
+        },
+        learnerMetadata: expect.objectContaining({
+          ledgerStatus: "HASH_ANCHORED",
+        }),
+        assessmentMetadata: {
+          reliability: "RELIABLE",
+          contentStatus: "ACCURATE",
+          limitationCodes: [
+            "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
+          ],
+          hiddenConditionReferences: [],
+        },
+      }),
+    ]);
+    expect(JSON.stringify(preview.evidenceDefinitions)).not.toContain(
+      '"content"',
     );
     expect(JSON.stringify(preview)).not.toContain("actualState");
   });

@@ -12,6 +12,9 @@ import type {
 } from "../contracts/scenario-pack";
 import { modeConfigurationFor } from "../runs/mode-configuration";
 import { validateScenarioPack } from "./validation";
+import {
+  createScenarioEvidenceAssessmentCatalog,
+} from "./evidence-assessment-catalog";
 
 export class ScenarioAuthoringError extends Error {
   constructor(
@@ -168,8 +171,16 @@ export function createScenarioRolePreview(options: {
       ),
     }),
   );
+  const evidenceCatalog =
+    createScenarioEvidenceAssessmentCatalog({
+      pack: options.pack,
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.version,
+      localizationCatalogs: options.localizationCatalogs,
+      visibleToRoleId: options.roleId,
+    });
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     packId: options.pack.packId,
     packVersion: options.pack.version,
     scenarioId: scenario.scenarioId,
@@ -201,6 +212,7 @@ export function createScenarioRolePreview(options: {
         modeConfiguration.allowEvidenceRequests,
     },
     nodes,
+    evidenceDefinitions: evidenceCatalog.evidenceDefinitions,
   };
 }
 

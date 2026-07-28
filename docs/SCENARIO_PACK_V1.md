@@ -121,9 +121,20 @@ learner:
 The learner projection serializes only `learnerMetadata`. It never serializes
 `assessmentMetadata`, limitation codes, or hidden-condition references.
 Instructor and author services resolve those assessment fields from the exact
-immutable pack version instead of copying them into learner events. Evidence
-inspection remains an append-only run event; metadata does not imply that the
-learner opened or cited an item.
+immutable pack version instead of copying them into learner events. The
+role-preview API returns only the selected role's evidence definitions, while
+the authenticated assignment evidence-catalog route returns the complete
+scenario catalog to authorized staff:
+
+```text
+GET /api/v1/assignments/{assignmentId}/evidence-catalog
+```
+
+Assignment export schema V3 embeds the same bounded definitions with exact
+pack and scenario provenance. The staff catalog and export omit the evidence
+`content` object and hidden actual state. Evidence inspection remains an
+append-only run event; metadata does not imply that the learner opened or
+cited an item.
 
 Evidence authored as `AVAILABLE` must have zero acquisition delay and cost and
 must not reference a permission policy. `REQUEST_REQUIRED` supports bounded

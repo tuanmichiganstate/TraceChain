@@ -5,6 +5,10 @@ import type {
   RubricModerationResolutionV1,
 } from "./assessment";
 import type { RunEventV1 } from "./run-events";
+import type {
+  AssignmentEvidenceAssessmentCatalogV1,
+  ScenarioEvidenceAssessmentDefinitionV1,
+} from "./evidence-assessment";
 
 export type AssignmentExportIdentityMode =
   | "identified"
@@ -39,6 +43,7 @@ export interface ExportFieldDefinitionV1 {
 export interface ExportDatasetDefinitionV1 {
   readonly id:
     | "assignment"
+    | "evidenceDefinitions"
     | "participants"
     | "runs"
     | "events"
@@ -49,13 +54,13 @@ export interface ExportDatasetDefinitionV1 {
 }
 
 export interface AssignmentExportDataDictionaryV1 {
-  readonly schemaVersion: "2.0.0";
-  readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2";
+  readonly schemaVersion: "3.0.0";
+  readonly csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V3";
   readonly datasets: readonly ExportDatasetDefinitionV1[];
 }
 
 export interface AssignmentEvidenceExportV1 {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE";
   readonly identityMode: AssignmentExportIdentityMode;
   readonly researchMetadata:
@@ -74,6 +79,8 @@ export interface AssignmentEvidenceExportV1 {
       };
   readonly generatedAt: string;
   readonly assignment: HostedAssignmentV1;
+  readonly evidenceDefinitions:
+    readonly ScenarioEvidenceAssessmentDefinitionV1[];
   readonly participants: readonly AssignmentExportParticipantV1[];
   readonly runs: readonly AssignmentExportRunV1[];
   readonly events: readonly RunEventV1[];
@@ -82,3 +89,6 @@ export interface AssignmentEvidenceExportV1 {
     readonly RubricModerationResolutionV1[];
   readonly dataDictionary: AssignmentExportDataDictionaryV1;
 }
+
+export type AssignmentEvidenceCatalogExportInputV1 =
+  AssignmentEvidenceAssessmentCatalogV1;

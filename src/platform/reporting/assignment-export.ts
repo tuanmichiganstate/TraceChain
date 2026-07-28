@@ -7,6 +7,7 @@ import type {
 } from "../contracts/assessment";
 import type {
   AssignmentExportIdentityMode,
+  AssignmentEvidenceCatalogExportInputV1,
   AssignmentEvidenceExportV1,
   AssignmentExportDataDictionaryV1,
   AssignmentExportRunV1,
@@ -28,8 +29,8 @@ export class AssignmentExportError extends Error {
 }
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
-  schemaVersion: "2.0.0",
-  csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V2",
+  schemaVersion: "3.0.0",
+  csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V3",
   datasets: [
     {
       id: "assignment",
@@ -96,6 +97,40 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           type: "string",
           required: true,
           description: "Resolved case and outcome-selection strategy.",
+        },
+      ],
+    },
+    {
+      id: "evidenceDefinitions",
+      description:
+        "Exact scenario-version evidence definitions, including learner-visible source attributes and assessment-only reliability, content-status, limitation, and hidden-condition references.",
+      fields: [
+        {
+          name: "evidenceId",
+          type: "string",
+          required: true,
+          description: "Stable scenario evidence identifier.",
+        },
+        {
+          name: "title",
+          type: "object",
+          required: true,
+          description:
+            "Versioned localization key and resolved values supplied by the exact scenario pack.",
+        },
+        {
+          name: "learnerMetadata",
+          type: "object",
+          required: true,
+          description:
+            "Source, access, signature, ledger, and completeness attributes available for learner interpretation.",
+        },
+        {
+          name: "assessmentMetadata",
+          type: "object",
+          required: true,
+          description:
+            "Instructor and researcher interpretation metadata that is excluded from learner projections.",
         },
       ],
     },
@@ -282,6 +317,7 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
 
 export interface CreateAssignmentEvidenceExportInput {
   readonly report: HostedAssignmentReportV1;
+  readonly evidenceCatalog: AssignmentEvidenceCatalogExportInputV1;
   readonly events: readonly RunEventV1[];
   readonly ratingRevisions: readonly ManualRubricRatingV1[];
   readonly moderationResolutions:
@@ -346,6 +382,31 @@ export function createAssignmentEvidenceExport(
   input: CreateAssignmentEvidenceExportInput,
 ): AssignmentEvidenceExportV1 {
   const { assignment } = input.report;
+  if (
+    input.evidenceCatalog.assignmentId !== assignment.assignmentId ||
+    input.evidenceCatalog.packId !== assignment.packId ||
+    input.evidenceCatalog.packVersion !== assignment.packVersion ||
+    input.evidenceCatalog.scenarioId !== assignment.scenarioId ||
+    input.evidenceCatalog.scenarioVersion !==
+      assignment.scenarioVersion
+  ) {
+    sourceMismatch(
+      "Evidence definitions do not match the assignment's exact content version.",
+    );
+  }
+  const evidenceIds = new Set(
+    input.evidenceCatalog.evidenceDefinitions.map(
+      (evidence) => evidence.evidenceId,
+    ),
+  );
+  if (
+    evidenceIds.size !==
+    input.evidenceCatalog.evidenceDefinitions.length
+  ) {
+    sourceMismatch(
+      "Evidence definitions contain a duplicate evidence identifier.",
+    );
+  }
   const identityMode = input.identityMode ?? "identified";
   const roster = new Set(assignment.learnerUserIds);
   if (roster.size !== assignment.learnerUserIds.length) {
@@ -482,7 +543,7 @@ export function createAssignmentEvidenceExport(
   };
 
   return {
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
     identityMode,
     researchMetadata:
@@ -518,6 +579,8 @@ export function createAssignmentEvidenceExport(
         : null,
     generatedAt: input.generatedAt,
     assignment: protectedAssignment,
+    evidenceDefinitions:
+      input.evidenceCatalog.evidenceDefinitions,
     participants: assignment.learnerUserIds.map((learnerUserId) => ({
       assignmentId: assignment.assignmentId,
       learnerUserId:
@@ -568,6 +631,8 @@ const CSV_COLUMNS = [
   "sequence_number",
   "event_id",
   "event_type",
+  "evidence_id",
+  "evidence_type",
   "recorded_at",
   "authenticated_user_id",
   "simulation_actor_id",
@@ -665,6 +730,21 @@ function csvRows(exported: AssignmentEvidenceExportV1): readonly CsvRow[] {
         exportIdentityMode: exported.identityMode,
       }),
     },
+    ...exported.evidenceDefinitions.map(
+      (evidence): CsvRow => ({
+        export_schema_version: exported.schemaVersion,
+        record_type: "evidence_definition",
+        assignment_id: assignment.assignmentId,
+        evidence_id: evidence.evidenceId,
+        evidence_type: evidence.evidenceType,
+        organization_id: evidence.sourceOrganizationId,
+        pack_id: assignment.packId,
+        pack_version: assignment.packVersion,
+        scenario_id: assignment.scenarioId,
+        scenario_version: assignment.scenarioVersion,
+        payload_json: canonicalize(evidence),
+      }),
+    ),
     ...exported.participants.map(
       (participant): CsvRow => ({
         export_schema_version: exported.schemaVersion,
@@ -791,5 +871,5 @@ export function assignmentEvidenceFilename(
   );
   const identityLabel =
     identityMode === "pseudonymous" ? "_pseudonymous" : "";
-  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v2.${extension}`;
+  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v3.${extension}`;
 }

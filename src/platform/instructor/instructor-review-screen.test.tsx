@@ -924,6 +924,51 @@ describe("instructor review screen", () => {
           "NO_AUTOMATED_HIGH_STAKES_DECISION",
         ],
       }),
+      loadAssignmentEvidenceCatalog: vi.fn().mockResolvedValue({
+        schemaVersion: "1.0.0",
+        assignmentId: "ASSIGNMENT_EXPORT_001",
+        packId: "PACK_STANDARD_COFFEE_STAGE3",
+        packVersion: "1.4.0",
+        scenarioId: "SCN_COFFEE_001",
+        scenarioVersion: "2.2.0",
+        evidenceDefinitions: [
+          {
+            evidenceId: "EVID_CERTIFICATE_RECORD",
+            evidenceType: "DOCUMENT_REFERENCE",
+            title: {
+              localizationKey: "unused.evidence.title",
+              valuesByLocale: {
+                en: "Certificate record",
+                vi: "Hồ sơ chứng nhận",
+              },
+            },
+            sourceOrganizationId:
+              "ORG_CERTIFICATION_BODY",
+            visibleToRoleIds: [
+              "LOGISTICS_COORDINATOR",
+            ],
+            learnerMetadata: {
+              signatureStatus: "VALID",
+              ledgerStatus: "HASH_ANCHORED",
+              completeness: "COMPLETE",
+              access: {
+                classification: "ROLE_RESTRICTED",
+                acquisitionMode: "AVAILABLE",
+                delayMinutes: 0,
+                costUnits: 0,
+              },
+            },
+            assessmentMetadata: {
+              reliability: "RELIABLE",
+              contentStatus: "ACCURATE",
+              limitationCodes: [
+                "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
+              ],
+              hiddenConditionReferences: [],
+            },
+          },
+        ],
+      }),
       loadAssignmentAuditReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
         reportType: "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
@@ -1155,6 +1200,15 @@ describe("instructor review screen", () => {
       report.getByRole("heading", {
         name: "Decision-process observations",
       }),
+    ).toBeInTheDocument();
+    expect(
+      report.getByRole("heading", {
+        name: "Evidence interpretation contract",
+      }),
+    ).toBeInTheDocument();
+    expect(report.getByText("Certificate record")).toBeInTheDocument();
+    expect(
+      report.getByText("HASH_DOES_NOT_PROVE_SOURCE_TRUTH"),
     ).toBeInTheDocument();
     expect(
       report.getByRole("heading", {

@@ -176,6 +176,10 @@ import {
   ScenarioAuthoringError,
   scenarioPackValidationReport,
 } from "../src/platform/scenario-packs/authoring";
+import {
+  createAssignmentEvidenceAssessmentCatalog,
+  EvidenceAssessmentCatalogError,
+} from "../src/platform/scenario-packs/evidence-assessment-catalog";
 import { hasRegisteredHostedRuntime } from "../src/platform/hosted/runtime-registry";
 import {
   isTechnicalLabHostedContent,
@@ -735,7 +739,8 @@ function errorResponse(error: unknown): Response {
   }
   if (
     error instanceof AssignmentExportError ||
-    error instanceof CounterfactualExportError
+    error instanceof CounterfactualExportError ||
+    error instanceof EvidenceAssessmentCatalogError
   ) {
     return jsonResponse(500, {
       error: { code: error.code },
@@ -2542,6 +2547,64 @@ async function apiResponse(
     return jsonResponse(200, { report });
   }
 
+  const evidenceCatalogAssignmentId = pathAssignmentId(
+    url.pathname,
+    "evidence-catalog",
+  );
+  if (
+    request.method === "GET" &&
+    evidenceCatalogAssignmentId !== null
+  ) {
+    const catalogActor = requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    const assignment = await repository.find(
+      evidenceCatalogAssignmentId,
+    );
+    if (assignment === null) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_NOT_FOUND",
+        `Assignment ${evidenceCatalogAssignmentId} does not exist.`,
+      );
+    }
+    if (
+      catalogActor.roles.includes("instructor") &&
+      !catalogActor.roles.includes("administrator") &&
+      assignment.createdByUserId !== catalogActor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The evidence catalog is outside the instructor's assignment scope.",
+      );
+    }
+    const pack = await findHostedContentPack(
+      environment,
+      catalogActor.userId,
+      assignment.packId,
+      assignment.packVersion,
+    );
+    if (pack === null) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The evidence catalog requires the assignment's exact scenario pack.",
+      );
+    }
+    return jsonResponse(200, {
+      evidenceCatalog:
+        createAssignmentEvidenceAssessmentCatalog({
+          assignment,
+          pack,
+          localizationCatalogs: scenarioPackCatalogs,
+        }),
+    });
+  }
+
   const auditReportAssignmentId = pathAssignmentId(
     url.pathname,
     "audit-report",
@@ -3172,7 +3235,7 @@ async function apiResponse(
   const exportAssignmentId =
     jsonExportAssignmentId ?? csvExportAssignmentId;
   if (request.method === "GET" && exportAssignmentId !== null) {
-    requireApplicationRole(principal, [
+    const exportActor = requireApplicationRole(principal, [
       "instructor",
       "rater",
       "administrator",
@@ -3184,6 +3247,34 @@ async function apiResponse(
     );
     const identityMode = assignmentExportIdentityMode(url);
     const report = await repository.report(exportAssignmentId);
+    if (
+      exportActor.roles.includes("instructor") &&
+      !exportActor.roles.includes("administrator") &&
+      report.assignment.createdByUserId !== exportActor.userId
+    ) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The evidence export is outside the instructor's assignment scope.",
+      );
+    }
+    const pack = await findHostedContentPack(
+      environment,
+      exportActor.userId,
+      report.assignment.packId,
+      report.assignment.packVersion,
+    );
+    if (pack === null) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The evidence export requires the assignment's exact scenario pack.",
+      );
+    }
+    const evidenceCatalog =
+      createAssignmentEvidenceAssessmentCatalog({
+        assignment: report.assignment,
+        pack,
+        localizationCatalogs: scenarioPackCatalogs,
+      });
     const eventStore = new D1RunEventStore(environment.DB);
     const events = (
       await Promise.all(
@@ -3194,6 +3285,7 @@ async function apiResponse(
     ).flat();
     const exported = createAssignmentEvidenceExport({
       report,
+      evidenceCatalog,
       events,
       ratingRevisions: await repository.ratingHistory(
         exportAssignmentId,

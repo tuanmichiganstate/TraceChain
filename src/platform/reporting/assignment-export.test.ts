@@ -142,10 +142,54 @@ const ratingRevision: ManualRubricRatingV1 = {
   ratedAt: "2026-07-24T08:20:00.000Z",
 };
 
+const evidenceCatalog = {
+  schemaVersion: "1.0.0",
+  assignmentId: "ASSIGNMENT_EXPORT_001",
+  packId: "PACK_STANDARD_COFFEE_STAGE3",
+  packVersion: "1.4.0",
+  scenarioId: "SCN_COFFEE_001",
+  scenarioVersion: "2.2.0",
+  evidenceDefinitions: [
+    {
+      evidenceId: "EVID_CERTIFICATE_RECORD",
+      evidenceType: "DOCUMENT_REFERENCE",
+      title: {
+        localizationKey: "evidence.certificate.title",
+        valuesByLocale: {
+          en: "Certificate record",
+          vi: "Hồ sơ chứng nhận",
+        },
+      },
+      sourceOrganizationId: "ORG_CERTIFICATION_BODY",
+      visibleToRoleIds: ["LOGISTICS_COORDINATOR"],
+      learnerMetadata: {
+        signatureStatus: "VALID",
+        ledgerStatus: "HASH_ANCHORED",
+        completeness: "COMPLETE",
+        access: {
+          classification: "ROLE_RESTRICTED",
+          acquisitionMode: "AVAILABLE",
+          delayMinutes: 0,
+          costUnits: 0,
+        },
+      },
+      assessmentMetadata: {
+        reliability: "RELIABLE",
+        contentStatus: "ACCURATE",
+        limitationCodes: [
+          "HASH_DOES_NOT_PROVE_SOURCE_TRUTH",
+        ],
+        hiddenConditionReferences: [],
+      },
+    },
+  ],
+} as const;
+
 describe("assignment evidence export", () => {
   it("retains exact interpretation versions and observable evidence", () => {
     const exported = createAssignmentEvidenceExport({
       report: assignmentReport,
+      evidenceCatalog,
       events: [runEvent],
       ratingRevisions: [ratingRevision],
       moderationResolutions: [],
@@ -153,7 +197,7 @@ describe("assignment evidence export", () => {
     });
 
     expect(exported).toMatchObject({
-      schemaVersion: "2.0.0",
+      schemaVersion: "3.0.0",
       exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
       identityMode: "identified",
       generatedAt: "2026-07-24T09:00:00.000Z",
@@ -184,11 +228,13 @@ describe("assignment evidence export", () => {
         },
       ],
       events: [runEvent],
+      evidenceDefinitions: evidenceCatalog.evidenceDefinitions,
       ratingRevisions: [ratingRevision],
     });
     expect(exported.dataDictionary.datasets.map((dataset) => dataset.id)).toEqual(
       [
         "assignment",
+        "evidenceDefinitions",
         "participants",
         "runs",
         "events",
@@ -209,7 +255,7 @@ describe("assignment evidence export", () => {
         "activity",
       ]),
     );
-    expect(exported.dataDictionary.schemaVersion).toBe("2.0.0");
+    expect(exported.dataDictionary.schemaVersion).toBe("3.0.0");
     const serialized = JSON.parse(
       serializeAssignmentEvidenceJson(exported),
     ) as typeof exported;
@@ -221,6 +267,7 @@ describe("assignment evidence export", () => {
   it("writes a stable flat CSV and neutralizes spreadsheet formulas", () => {
     const exported = createAssignmentEvidenceExport({
       report: assignmentReport,
+      evidenceCatalog,
       events: [runEvent],
       ratingRevisions: [ratingRevision],
       moderationResolutions: [],
@@ -233,6 +280,13 @@ describe("assignment evidence export", () => {
     );
     expect(csv).toContain(
       "event,ASSIGNMENT_EXPORT_001,USER_LEARNER_001,,RUN_EXPORT_001,1,EVENT_EXPORT_001,RUN_CREATED",
+    );
+    expect(csv).toContain(
+      "evidence_definition,ASSIGNMENT_EXPORT_001",
+    );
+    expect(csv).toContain("EVID_CERTIFICATE_RECORD");
+    expect(csv).toContain(
+      '"contentStatus"":""ACCURATE""',
     );
     expect(csv).toContain('"elapsedSeconds"":0');
     expect(csv).toContain('"rejectedAttemptCount"":1');
@@ -249,6 +303,7 @@ describe("assignment evidence export", () => {
   it("can replace learner identities with deterministic assignment-scoped pseudonyms", () => {
     const input = {
       report: assignmentReport,
+      evidenceCatalog,
       events: [runEvent],
       ratingRevisions: [ratingRevision],
       moderationResolutions: [],
@@ -309,6 +364,11 @@ describe("assignment evidence export", () => {
     };
     const exported = createAssignmentEvidenceExport({
       report: researchReport,
+      evidenceCatalog: {
+        ...evidenceCatalog,
+        assignmentId:
+          researchReport.assignment.assignmentId,
+      },
       events: [runEvent],
       ratingRevisions: [ratingRevision],
       moderationResolutions: [],

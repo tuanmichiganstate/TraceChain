@@ -2,6 +2,9 @@ import type {
   HostedRunMode,
   ScenarioNodeV1,
 } from "./scenario-pack";
+import type {
+  ScenarioEvidenceAssessmentDefinitionV1,
+} from "./evidence-assessment";
 
 export interface ScenarioPackListItemV1 {
   readonly schemaVersion: "1.0.0";
@@ -43,7 +46,7 @@ export interface ScenarioPreviewNodeV1 {
 }
 
 export interface ScenarioRolePreviewV1 {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly packId: string;
   readonly packVersion: string;
   readonly scenarioId: string;
@@ -65,6 +68,8 @@ export interface ScenarioRolePreviewV1 {
     readonly allowEvidenceRequests: boolean;
   };
   readonly nodes: readonly ScenarioPreviewNodeV1[];
+  readonly evidenceDefinitions:
+    readonly ScenarioEvidenceAssessmentDefinitionV1[];
 }
 
 export interface ScenarioPackComparisonV1 {

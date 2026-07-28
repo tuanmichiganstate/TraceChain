@@ -28,7 +28,7 @@ current implementation contract.
 - [Hosted coffee API](HOSTED_STAGE3_API.md)
 - [LTI 1.3 instructor workspace](LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md)
 - [Scenario-pack contract](SCENARIO_PACK_V1.md)
-- [Assignment evidence export](ASSIGNMENT_EXPORT_V2.md)
+- [Assignment evidence export](ASSIGNMENT_EXPORT_V3.md)
 - [Run replay](RUN_REPLAY_V1.md)
 - [Rubric moderation](RUBRIC_MODERATION_V1.md)
 - [Competency reporting](COMPETENCY_REPORT_V1.md)
