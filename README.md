@@ -163,11 +163,12 @@ comparison metrics, reuses valid downstream commands, pauses on divergence,
 captures reflection, and provides role-filtered branch and assignment
 analytics exports. The
 hosted work does not alter the current SCORM activity.
-The hosted instructor workspace also supports an LTI 1.3 Core resource-link
-launch from Moodle. It verifies the signed Moodle launch, provisions only an
-external instructor identity, and scopes assignment records to the verified
-course context. NRPS, grade services, Deep Linking, hosted learner launch, and
-Moodle SCORM-attempt access remain deferred.
+The hosted instructor and learner workspaces support bounded LTI 1.3 Core
+resource-link launches from Moodle. TraceChain verifies the signed Moodle
+launch, provisions exactly the verified instructor or learner role, scopes
+records to the verified course context, and binds a learner session to the
+single assignment named by the signed activity custom claim. NRPS, grade
+services, Deep Linking, and Moodle SCORM-attempt access remain deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.

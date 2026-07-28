@@ -41,7 +41,8 @@ import {
 
 interface LearnerSession {
   readonly userId: string;
-  readonly email: string;
+  readonly email?: string;
+  readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
 }
 
@@ -803,6 +804,7 @@ export function HostedLearnerScreen({
   readonly initialAssignmentId?: string | null;
 }): ReactNode {
   const t = useTranslator();
+  const ltiLaunchMessageKey = initialLtiLaunchMessageKey();
   const [session, setSession] = useState<LearnerSession | null>(null);
   const [assignments, setAssignments] =
     useState<readonly HostedLearnerAssignmentV1[]>([]);
@@ -815,6 +817,7 @@ export function HostedLearnerScreen({
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (ltiLaunchMessageKey !== null) return;
     let active = true;
     void Promise.all([api.loadSession(), api.loadAssignments()]).then(
       ([loadedSession, loadedAssignments]) => {
@@ -829,7 +832,7 @@ export function HostedLearnerScreen({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, ltiLaunchMessageKey]);
 
   async function openRun(requestedRunId: string) {
     setBusy(true);
@@ -945,7 +948,11 @@ export function HostedLearnerScreen({
           <p className="start__subtitle">{t("hostedLearner.subtitle")}</p>
         </header>
 
-        {session === null ? (
+        {ltiLaunchMessageKey !== null ? (
+          <p className="notice notice--standalone" role="alert">
+            {t(ltiLaunchMessageKey)}
+          </p>
+        ) : session === null ? (
           <p role="status">{t("hostedLearner.loading")}</p>
         ) : !isLearner ? (
           <p className="notice notice--standalone" role="alert">
@@ -954,7 +961,11 @@ export function HostedLearnerScreen({
         ) : (
           <section className="card card--reference">
             <h2>{t("hostedLearner.account")}</h2>
-            <p>{session.email}</p>
+            <p>
+              {session.email ??
+                session.displayName ??
+                session.userId}
+            </p>
           </section>
         )}
 
@@ -1087,6 +1098,21 @@ export function HostedLearnerScreen({
       </div>
     </main>
   );
+}
+
+function initialLtiLaunchMessageKey(): string | null {
+  if (typeof window === "undefined") return null;
+  const code = new URLSearchParams(window.location.search).get(
+    "ltiError",
+  );
+  if (code === null) return null;
+  if (code === "LTI_ASSIGNMENT_REQUIRED") {
+    return "hostedLearner.lti.assignmentRequired";
+  }
+  if (code === "LTI_ASSIGNMENT_ACCESS_DENIED") {
+    return "hostedLearner.lti.assignmentAccessDenied";
+  }
+  return "hostedLearner.lti.launchFailed";
 }
 
 function assignmentIdFromLocation(): string | null {

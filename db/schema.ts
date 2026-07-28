@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-27-technical-lab-hosted-v1";
+  "2026-07-28-lti-learner-launch-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -254,11 +254,26 @@ export const schemaStatements = [
     return_url TEXT,
     platform_roles_json TEXT NOT NULL
       CHECK (json_valid(platform_roles_json)),
+    application_role TEXT NOT NULL
+      CHECK (application_role IN ('instructor', 'learner')),
+    assignment_id TEXT,
     issued_at_utc TEXT NOT NULL,
     expires_at_utc TEXT NOT NULL,
     revoked_at_utc TEXT,
     CHECK (issued_at_utc < expires_at_utc),
-    FOREIGN KEY (user_id) REFERENCES application_users(user_id)
+    CHECK (
+      (
+        application_role = 'instructor'
+        AND assignment_id IS NULL
+      )
+      OR
+      (
+        application_role = 'learner'
+        AND assignment_id IS NOT NULL
+      )
+    ),
+    FOREIGN KEY (user_id) REFERENCES application_users(user_id),
+    FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id)
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS lti_sessions_user_expiry
     ON lti_sessions(user_id, expires_at_utc, revoked_at_utc)`,

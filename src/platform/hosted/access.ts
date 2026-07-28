@@ -8,6 +8,7 @@ export interface ApplicationPrincipal {
   readonly roles: readonly ApplicationRole[];
   readonly authenticationSource?: "sites" | "lti";
   readonly learningContext?: LtiLearningContextV1;
+  readonly ltiAssignmentId?: string;
 }
 
 export class HostedAuthorizationError extends Error {

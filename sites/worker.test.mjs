@@ -610,13 +610,18 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor",
     ],
     contextId = "COURSE_ACCOUNTING_101",
+    resourceLinkId = "RESOURCE_TRACECHAIN_INSTRUCTOR",
+    custom,
+    subject = "MOODLE_USER_42",
+    email = "instructor@example.edu",
+    name = "Course instructor",
     signingKey = privateKey,
   }) {
     const now = Math.floor(Date.now() / 1_000);
     const idToken = await new SignJWT({
       nonce,
-      email: "instructor@example.edu",
-      name: "Course instructor",
+      email,
+      name,
       locale: "en-US",
       "https://purl.imsglobal.org/spec/lti/claim/version":
         "1.3.0",
@@ -631,12 +636,18 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         title: "Accounting 101",
       },
       "https://purl.imsglobal.org/spec/lti/claim/resource_link": {
-        id: "RESOURCE_TRACECHAIN_INSTRUCTOR",
+        id: resourceLinkId,
       },
       "https://purl.imsglobal.org/spec/lti/claim/launch_presentation":
         {
           return_url: `${issuer}/course/view.php?id=42`,
         },
+      ...(custom === undefined
+        ? {}
+        : {
+            "https://purl.imsglobal.org/spec/lti/claim/custom":
+              custom,
+          }),
     })
       .setProtectedHeader({
         alg: "RS256",
@@ -644,7 +655,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       })
       .setIssuer(issuer)
       .setAudience(clientId)
-      .setSubject("MOODLE_USER_42")
+      .setSubject(subject)
       .setIssuedAt(now)
       .setExpirationTime(now + 120)
       .sign(signingKey);
@@ -708,9 +719,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       null,
     );
 
-    const modeConfiguration = (
-      await standardCoffeePack()
-    ).scenarios[0].modeConfigurations.find(
+    const publishedPack = await standardCoffeePack();
+    const modeConfiguration =
+      publishedPack.scenarios[0].modeConfigurations.find(
       (configuration) => configuration.mode === "standard",
     );
     const experience = standardHostedExperienceFixture({
@@ -795,6 +806,41 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       sessionBody.userId,
     );
 
+    const emptyRosterAssignment = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/assignments", {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "application/json",
+          origin: "https://tracechain.example",
+        },
+        body: JSON.stringify({
+          commandId: "COMMAND_LTI_EMPTY_ROSTER",
+          assignmentId: "ASSIGNMENT_LTI_EMPTY_ROSTER",
+          title: "LTI learner launch",
+          packId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          packVersion: "1.0.0",
+          scenarioId: "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
+          scenarioVersion: "1.0.0",
+          mode: "tutorial",
+          counterfactualReplay:
+            disabledCounterfactualReplay,
+          research: { enabled: false },
+          learnerUserIds: [],
+        }),
+      }),
+      env,
+    );
+    assert.equal(
+      emptyRosterAssignment.status,
+      201,
+      await emptyRosterAssignment.clone().text(),
+    );
+    assert.deepEqual(
+      (await emptyRosterAssignment.json()).assignment.learnerUserIds,
+      [],
+    );
+
     const sameCourse = await worker.fetch(
       new Request(
         "https://tracechain.example/api/v1/assignments/ASSIGNMENT_SAME_COURSE",
@@ -848,13 +894,205 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
+      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER",
+      custom: {
+        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+      },
+      subject: "MOODLE_LEARNER_77",
+      email: "learner@example.edu",
+      name: "Course learner",
     });
     assert.equal(learnerLaunch.status, 303);
+    const learnerLocation = new URL(
+      learnerLaunch.headers.get("location"),
+      "https://tracechain.example",
+    );
+    assert.equal(learnerLocation.pathname, "/learner");
     assert.equal(
-      new URL(learnerLaunch.headers.get("location")).searchParams.get(
-        "ltiError",
+      learnerLocation.searchParams.get("assignmentId"),
+      "ASSIGNMENT_SAME_COURSE",
+    );
+    assert.equal(
+      learnerLocation.searchParams.get("locale"),
+      "en",
+    );
+    const learnerCookie = learnerLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const learnerSession = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie: learnerCookie },
+      }),
+      env,
+    );
+    assert.equal(learnerSession.status, 200);
+    const learnerSessionBody = await learnerSession.json();
+    assert.deepEqual(learnerSessionBody.roles, ["learner"]);
+    assert.equal(
+      learnerSessionBody.ltiAssignmentId,
+      "ASSIGNMENT_SAME_COURSE",
+    );
+    assert.equal(
+      learnerSessionBody.learningContext.resourceLinkId,
+      "RESOURCE_TRACECHAIN_LEARNER",
+    );
+    assert.deepEqual(
+      database.sqlite
+        .prepare(
+          `SELECT assignment_id, learner_user_id
+           FROM assignment_learners
+           WHERE assignment_id = ?`,
+        )
+        .all("ASSIGNMENT_SAME_COURSE")
+        .map((row) => ({ ...row })),
+      [
+        {
+          assignment_id: "ASSIGNMENT_SAME_COURSE",
+          learner_user_id: learnerSessionBody.userId,
+        },
+      ],
+    );
+
+    const learnerAssignments = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/learner/assignments",
+        { headers: { cookie: learnerCookie } },
       ),
-      "LTI_INSTRUCTOR_ROLE_REQUIRED",
+      env,
+    );
+    assert.equal(
+      learnerAssignments.status,
+      200,
+      await learnerAssignments.clone().text(),
+    );
+    assert.deepEqual(
+      (await learnerAssignments.json()).assignments.map(
+        ({ assignment }) => assignment.assignmentId,
+      ),
+      ["ASSIGNMENT_SAME_COURSE"],
+    );
+
+    const repeatedLearnerLogin = await initiateLogin();
+    const repeatedLearnerLaunch = await launch({
+      ...repeatedLearnerLogin,
+      roles: [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+      ],
+      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER",
+      custom: {
+        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+      },
+      subject: "MOODLE_LEARNER_77",
+      email: "learner@example.edu",
+      name: "Course learner",
+    });
+    assert.equal(repeatedLearnerLaunch.status, 303);
+    const repeatedLearnerCookie = repeatedLearnerLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const repeatedLearnerSession = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie: repeatedLearnerCookie },
+      }),
+      env,
+    );
+    assert.equal(repeatedLearnerSession.status, 200);
+    assert.equal(
+      (await repeatedLearnerSession.json()).userId,
+      learnerSessionBody.userId,
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM assignment_learners
+           WHERE assignment_id = ?
+             AND learner_user_id = ?`,
+        )
+        .get(
+          "ASSIGNMENT_SAME_COURSE",
+          learnerSessionBody.userId,
+        ).count,
+      1,
+    );
+
+    const wrongAssignment = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_LTI_EMPTY_ROSTER/start-run",
+        {
+          method: "POST",
+          headers: {
+            cookie: learnerCookie,
+            "content-type": "application/json",
+            origin: "https://tracechain.example",
+          },
+          body: JSON.stringify({
+            commandId: "COMMAND_WRONG_ASSIGNMENT",
+            runId: "RUN_WRONG_ASSIGNMENT",
+          }),
+        },
+      ),
+      env,
+    );
+    assert.equal(wrongAssignment.status, 403);
+    assert.equal(
+      (await wrongAssignment.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
+    const missingAssignmentLogin = await initiateLogin();
+    const missingAssignmentLaunch = await launch({
+      ...missingAssignmentLogin,
+      roles: [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+      ],
+      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_MISSING",
+      subject: "MOODLE_LEARNER_78",
+      email: "learner-78@example.edu",
+      name: "Course learner 78",
+    });
+    assert.equal(missingAssignmentLaunch.status, 303);
+    const missingAssignmentLocation = new URL(
+      missingAssignmentLaunch.headers.get("location"),
+    );
+    assert.equal(missingAssignmentLocation.pathname, "/learner");
+    assert.equal(
+      missingAssignmentLocation.searchParams.get("ltiError"),
+      "LTI_ASSIGNMENT_REQUIRED",
+    );
+
+    const crossCourseLogin = await initiateLogin();
+    const crossCourseLaunch = await launch({
+      ...crossCourseLogin,
+      roles: [
+        "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
+      ],
+      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_CROSS_COURSE",
+      custom: {
+        tracechain_assignment_id: "ASSIGNMENT_OTHER_COURSE",
+      },
+      subject: "MOODLE_LEARNER_79",
+      email: "learner-79@example.edu",
+      name: "Course learner 79",
+    });
+    assert.equal(crossCourseLaunch.status, 303);
+    const crossCourseLocation = new URL(
+      crossCourseLaunch.headers.get("location"),
+    );
+    assert.equal(crossCourseLocation.pathname, "/learner");
+    assert.equal(
+      crossCourseLocation.searchParams.get("ltiError"),
+      "LTI_ASSIGNMENT_ACCESS_DENIED",
+    );
+    assert.equal(
+      database.sqlite
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM external_user_identities
+           WHERE subject IN (?, ?)`,
+        )
+        .get("MOODLE_LEARNER_78", "MOODLE_LEARNER_79").count,
+      0,
     );
 
     const invalidLogin = await initiateLogin();
@@ -2405,6 +2643,24 @@ test("creates an exact published assignment for a provisioned learner", async ()
       availableUntil: "2999-01-01T00:00:00.000Z",
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
     };
+    const emptyDirectRoster = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "assignment-instructor@example.edu",
+        body: {
+          ...assignmentBody,
+          commandId: "COMMAND_ASSIGNMENT_EMPTY_DIRECT",
+          assignmentId: "ASSIGNMENT_EMPTY_DIRECT",
+          learnerUserIds: [],
+        },
+      }),
+      env,
+    );
+    assert.equal(emptyDirectRoster.status, 400);
+    assert.equal(
+      (await emptyDirectRoster.json()).error.code,
+      "INVALID_ASSIGNMENT",
+    );
     const unknownCounterfactualPoint = await worker.fetch(
       apiRequest("/api/v1/assignments", {
         method: "POST",

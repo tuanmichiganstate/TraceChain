@@ -9,16 +9,20 @@ import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   LTI_CONTEXT_CLAIM,
+  LTI_CUSTOM_CLAIM,
   LTI_DEPLOYMENT_ID_CLAIM,
   LTI_INSTRUCTOR_ROLE,
   LTI_LAUNCH_PRESENTATION_CLAIM,
+  LTI_LEARNER_ROLE,
   LTI_MESSAGE_TYPE_CLAIM,
   LTI_RESOURCE_LINK_CLAIM,
   LTI_ROLES_CLAIM,
   LTI_VERSION_CLAIM,
+  type LtiApplicationRole,
   type LtiLearningContextV1,
   type LtiPlatformRegistrationV1,
 } from "../contracts/lti";
+import type { HostedAssignmentV1 } from "../contracts/assessment";
 import {
   D1LtiAuthenticationRepository,
   type ConsumedLtiLoginState,
@@ -45,8 +49,12 @@ export class LtiAuthenticationError extends Error {
       | "LTI_TOKEN_INVALID"
       | "LTI_INSTRUCTOR_ROLE_REQUIRED"
       | "LTI_CONTEXT_REQUIRED"
-      | "LTI_SESSION_REQUIRED",
+      | "LTI_SESSION_REQUIRED"
+      | "LTI_ASSIGNMENT_REQUIRED"
+      | "LTI_ASSIGNMENT_ACCESS_DENIED",
     message: string,
+    readonly recoveryPath: "/instructor" | "/learner" =
+      "/instructor",
   ) {
     super(message);
     this.name = "LtiAuthenticationError";
@@ -402,6 +410,8 @@ function learningContext(
 ): {
   readonly context: LtiLearningContextV1;
   readonly roles: readonly string[];
+  readonly applicationRole: LtiApplicationRole;
+  readonly assignmentId?: string;
 } {
   if (payload[LTI_VERSION_CLAIM] !== "1.3.0") {
     throw new LtiAuthenticationError(
@@ -426,14 +436,24 @@ function learningContext(
   const rolesValue = payload[LTI_ROLES_CLAIM];
   if (
     !Array.isArray(rolesValue) ||
-    !rolesValue.every((role) => typeof role === "string") ||
-    !rolesValue.includes(LTI_INSTRUCTOR_ROLE)
+    !rolesValue.every((role) => typeof role === "string")
   ) {
     throw new LtiAuthenticationError(
       "LTI_INSTRUCTOR_ROLE_REQUIRED",
-      "The Moodle launch does not carry the Instructor role.",
+      "The Moodle launch does not carry a supported application role.",
     );
   }
+  const applicationRole: LtiApplicationRole =
+    rolesValue.includes(LTI_INSTRUCTOR_ROLE)
+      ? "instructor"
+      : rolesValue.includes(LTI_LEARNER_ROLE)
+        ? "learner"
+        : (() => {
+            throw new LtiAuthenticationError(
+              "LTI_INSTRUCTOR_ROLE_REQUIRED",
+              "The Moodle launch does not carry a supported TraceChain role.",
+            );
+          })();
   const contextClaim = objectClaim(payload, LTI_CONTEXT_CLAIM);
   const contextId = claimText(
     contextClaim.id,
@@ -463,8 +483,40 @@ function learningContext(
     launchPresentation.return_url,
     registration,
   );
+  let assignmentId: string | undefined;
+  if (applicationRole === "learner") {
+    const custom = payload[LTI_CUSTOM_CLAIM];
+    if (
+      typeof custom !== "object" ||
+      custom === null ||
+      Array.isArray(custom)
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_ASSIGNMENT_REQUIRED",
+        "A learner launch must identify one TraceChain assignment.",
+        "/learner",
+      );
+    }
+    const candidate = (custom as Readonly<Record<string, unknown>>)
+      .tracechain_assignment_id;
+    if (
+      typeof candidate !== "string" ||
+      candidate.trim().length === 0 ||
+      candidate.length > 128 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(candidate.trim())
+    ) {
+      throw new LtiAuthenticationError(
+        "LTI_ASSIGNMENT_REQUIRED",
+        "The learner launch assignment identifier is missing or invalid.",
+        "/learner",
+      );
+    }
+    assignmentId = candidate.trim();
+  }
   return {
     roles: [...new Set(rolesValue)].sort(),
+    applicationRole,
+    ...(assignmentId === undefined ? {} : { assignmentId }),
     context: {
       schemaVersion: "1.0.0",
       provider: "lti-1.3",
@@ -480,11 +532,30 @@ function learningContext(
   };
 }
 
+function assignmentMatchesLaunch(
+  assignment: HostedAssignmentV1,
+  context: LtiLearningContextV1,
+): boolean {
+  const assignedContext = assignment.learningContext;
+  return (
+    assignedContext !== undefined &&
+    assignedContext.issuer === context.issuer &&
+    assignedContext.clientId === context.clientId &&
+    assignedContext.deploymentId === context.deploymentId &&
+    assignedContext.contextId === context.contextId
+  );
+}
+
+export interface LtiLearnerAssignmentResolver {
+  find(assignmentId: string): Promise<HostedAssignmentV1 | null>;
+}
+
 export async function completeLtiLaunch(options: {
   readonly idToken: string;
   readonly state: string;
   readonly registrations: readonly LtiPlatformRegistrationV1[];
   readonly repository: D1LtiAuthenticationRepository;
+  readonly assignmentResolver: LtiLearnerAssignmentResolver;
   readonly clock: Clock;
 }): Promise<Response> {
   const loginState = await options.repository.consumeLoginState(
@@ -505,17 +576,47 @@ export async function completeLtiLaunch(options: {
     loginState,
     registration,
   });
-  const { context, roles } = learningContext(payload, registration);
+  const {
+    context,
+    roles,
+    applicationRole,
+    assignmentId,
+  } = learningContext(payload, registration);
+  const assignment =
+    applicationRole === "learner" && assignmentId !== undefined
+      ? await options.assignmentResolver.find(assignmentId)
+      : undefined;
+  if (
+    applicationRole === "learner" &&
+    (assignment === null ||
+      assignment === undefined ||
+      !assignmentMatchesLaunch(assignment, context))
+  ) {
+    throw new LtiAuthenticationError(
+      "LTI_ASSIGNMENT_ACCESS_DENIED",
+      "The learner launch is not bound to this Moodle course and TraceChain assignment.",
+      "/learner",
+    );
+  }
   const subject = claimText(payload.sub, "sub", 512);
   const email = optionalClaimText(payload.email, 320);
   const displayName = optionalClaimText(payload.name, 200);
-  const userId = await options.repository.resolveOrProvisionInstructor({
+  const userId = await options.repository.resolveOrProvisionUser({
     issuer: registration.issuer,
     clientId: registration.clientId,
     deploymentId: registration.deploymentId,
     subject,
     ...(email === undefined ? {} : { email }),
     ...(displayName === undefined ? {} : { displayName }),
+    applicationRole,
+    ...(assignment === undefined || assignment === null
+      ? {}
+      : {
+          assignment: {
+            assignmentId: assignment.assignmentId,
+            assignedByUserId: assignment.createdByUserId,
+          },
+        }),
   });
   const sessionToken = opaqueToken(48);
   const issuedAt = options.clock.now();
@@ -532,6 +633,8 @@ export async function completeLtiLaunch(options: {
       ...(displayName === undefined ? {} : { displayName }),
       context,
       platformRoles: roles,
+      applicationRole,
+      ...(assignmentId === undefined ? {} : { assignmentId }),
       issuedAt,
       expiresAt,
     },
@@ -542,11 +645,17 @@ export async function completeLtiLaunch(options: {
     payload.locale.toLowerCase().startsWith("en")
       ? "en"
       : "vi";
+  const location =
+    applicationRole === "instructor"
+      ? `/instructor?locale=${locale}`
+      : `/learner?assignmentId=${encodeURIComponent(
+          assignmentId!,
+        )}&locale=${locale}`;
   return new Response(null, {
     status: 303,
     headers: {
       "cache-control": "no-store",
-      location: `/instructor?locale=${locale}`,
+      location,
       "set-cookie": sessionCookie(
         sessionToken,
         Math.floor(LTI_SESSION_LIFETIME_MS / 1_000),

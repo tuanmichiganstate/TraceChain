@@ -288,6 +288,93 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
   });
 
+  it("allows a Moodle assignment to rely on verified learner launch instead of a preselected roster", async () => {
+    const createAssignment = vi.fn().mockResolvedValue({
+      schemaVersion: "2.0.0",
+      assignmentId: "ASSIGNMENT_LTI_001",
+      title: "Moodle learner activity",
+      packId: publishedCoffeeOption.packId,
+      packVersion: publishedCoffeeOption.packVersion,
+      scenarioId: publishedCoffeeOption.scenarioId,
+      scenarioVersion: publishedCoffeeOption.scenarioVersion,
+      mode: "tutorial",
+      runConfiguration:
+        publishedCoffeeOption.modeConfigurations[0]!,
+      counterfactualReplay:
+        disabledCounterfactualReplay,
+      research: { enabled: false },
+      learnerUserIds: [],
+      status: "active",
+      feedbackReleaseStatus: "withheld",
+      createdAt: "2026-07-28T08:00:00.000Z",
+      createdByUserId: "USER_LTI_001",
+    });
+    const api: InstructorReviewApi = {
+      createAssignment,
+      closeAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([
+        publishedCoffeeOption,
+      ]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
+      loadAssignmentReport: vi.fn(),
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_001",
+        displayName: "Course instructor",
+        roles: ["instructor"],
+        authenticationSource: "lti",
+        learningContext: {
+          schemaVersion: "1.0.0",
+          provider: "lti-1.3",
+          issuer: "https://moodle.example",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_ACCOUNTING_101",
+          resourceLinkId: "RESOURCE_INSTRUCTOR",
+        },
+      }),
+      loadRunReplay: vi.fn(),
+      loadRunReview: vi.fn(),
+      releaseFeedback: vi.fn(),
+      saveModeration: vi.fn(),
+      saveRating: vi.fn(),
+    };
+    renderScreen(api);
+
+    const section = (
+      await screen.findByRole("heading", {
+        name: "Create an assignment",
+      })
+    ).closest("section");
+    if (section === null) throw new Error("Expected assignment section.");
+    const form = within(section);
+    expect(
+      form.getByText(/enrolled automatically only after Moodle opens/),
+    ).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.type(
+      form.getByLabelText("Assignment ID"),
+      "ASSIGNMENT_LTI_001",
+    );
+    await user.type(
+      form.getByLabelText("Assignment title"),
+      "Moodle learner activity",
+    );
+    await user.click(
+      form.getByRole("button", { name: "Create assignment" }),
+    );
+
+    expect(createAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignmentId: "ASSIGNMENT_LTI_001",
+        learnerUserIds: [],
+      }),
+    );
+  });
+
   it("generates an accepted assessment package through the hosted job API", async () => {
     const createScormPackageJob = vi.fn().mockResolvedValue({
       schemaVersion: "1.0.0",

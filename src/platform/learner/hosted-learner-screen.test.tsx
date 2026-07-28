@@ -67,6 +67,39 @@ function projection(
 }
 
 describe("hosted learner workspace", () => {
+  it("shows a localized recovery message for an LTI activity without an assignment binding", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/learner?ltiError=LTI_ASSIGNMENT_REQUIRED",
+    );
+    const loadSession = vi.fn();
+    const loadAssignments = vi.fn();
+    const api: HostedLearnerApi = {
+      loadSession,
+      loadAssignments,
+      startRun: vi.fn(),
+      loadRun: vi.fn(),
+      loadFeedback: vi.fn(),
+      submit: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        /does not identify a TraceChain assignment/,
+      ),
+    ).toBeInTheDocument();
+    expect(loadSession).not.toHaveBeenCalled();
+    expect(loadAssignments).not.toHaveBeenCalled();
+    window.history.replaceState({}, "", "/learner");
+  });
+
   it("reveals inspected native coffee evidence without requiring a generic presentation", () => {
     render(
       <LocaleProvider locale="en">

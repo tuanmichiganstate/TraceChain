@@ -1,6 +1,9 @@
 import type { Clock } from "../../domain/simulation/environment";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
-import type { LtiLearningContextV1 } from "../contracts/lti";
+import type {
+  LtiApplicationRole,
+  LtiLearningContextV1,
+} from "../contracts/lti";
 import type { ApplicationPrincipal } from "../hosted/access";
 import type { D1DatabaseLike } from "./d1-types";
 
@@ -49,12 +52,18 @@ const INSERT_LTI_USER = `INSERT OR IGNORE INTO application_users (
     status,
     created_at_utc
   ) VALUES (?, ?, ?, 'active', ?)`;
-const INSERT_INSTRUCTOR_ROLE = `INSERT OR IGNORE INTO application_role_assignments (
+const INSERT_APPLICATION_ROLE = `INSERT OR IGNORE INTO application_role_assignments (
     user_id,
     application_role,
     assigned_at_utc,
     assigned_by_user_id
-  ) VALUES (?, 'instructor', ?, ?)`;
+  ) VALUES (?, ?, ?, ?)`;
+const INSERT_ASSIGNMENT_LEARNER = `INSERT OR IGNORE INTO assignment_learners (
+    assignment_id,
+    learner_user_id,
+    assigned_at_utc,
+    assigned_by_user_id
+  ) VALUES (?, ?, ?, ?)`;
 const INSERT_EXTERNAL_IDENTITY = `INSERT OR IGNORE INTO external_user_identities (
     identity_id,
     provider,
@@ -87,9 +96,11 @@ const INSERT_SESSION = `INSERT INTO lti_sessions (
     context_title,
     return_url,
     platform_roles_json,
+    application_role,
+    assignment_id,
     issued_at_utc,
     expires_at_utc
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 const DELETE_FINISHED_SESSIONS = `DELETE FROM lti_sessions
   WHERE expires_at_utc <= ?
     OR revoked_at_utc IS NOT NULL`;
@@ -103,6 +114,8 @@ const FIND_ACTIVE_SESSION = `SELECT
     sessions.context_label,
     sessions.context_title,
     sessions.return_url,
+    sessions.application_role,
+    sessions.assignment_id,
     users.user_id,
     COALESCE(identities.email_claim, users.email) AS email,
     COALESCE(
@@ -121,11 +134,11 @@ const FIND_ACTIVE_SESSION = `SELECT
     AND identities.subject = sessions.subject
   JOIN application_role_assignments AS roles
     ON roles.user_id = users.user_id
+    AND roles.application_role = sessions.application_role
   WHERE sessions.session_token_hash = ?
     AND sessions.revoked_at_utc IS NULL
     AND sessions.expires_at_utc > ?
-    AND users.status = 'active'
-    AND roles.application_role = 'instructor'`;
+    AND users.status = 'active'`;
 const REVOKE_SESSION = `UPDATE lti_sessions
   SET revoked_at_utc = ?
   WHERE session_token_hash = ?
@@ -157,6 +170,8 @@ interface SessionRow {
   readonly context_label: string | null;
   readonly context_title: string | null;
   readonly return_url: string | null;
+  readonly application_role: LtiApplicationRole;
+  readonly assignment_id: string | null;
   readonly user_id: string;
   readonly email: string | null;
   readonly display_name: string | null;
@@ -185,8 +200,18 @@ export interface LtiSessionInput extends LtiIdentityInput {
   readonly registrationId: string;
   readonly context: LtiLearningContextV1;
   readonly platformRoles: readonly string[];
+  readonly applicationRole: LtiApplicationRole;
+  readonly assignmentId?: string;
   readonly issuedAt: string;
   readonly expiresAt: string;
+}
+
+export interface LtiUserProvisioningInput extends LtiIdentityInput {
+  readonly applicationRole: LtiApplicationRole;
+  readonly assignment?: {
+    readonly assignmentId: string;
+    readonly assignedByUserId: string;
+  };
 }
 
 export class LtiAuthenticationRepositoryError extends Error {
@@ -197,6 +222,8 @@ export class LtiAuthenticationRepositoryError extends Error {
       | "LTI_IDENTITY_DISABLED"
       | "LTI_STORAGE_FAILED",
     message: string,
+    readonly recoveryPath: "/instructor" | "/learner" =
+      "/instructor",
   ) {
     super(message);
     this.name = "LtiAuthenticationRepositoryError";
@@ -296,9 +323,23 @@ export class D1LtiAuthenticationRepository {
     };
   }
 
-  async resolveOrProvisionInstructor(
-    input: LtiIdentityInput,
+  async resolveOrProvisionUser(
+    input: LtiUserProvisioningInput,
   ): Promise<string> {
+    const recoveryPath =
+      input.applicationRole === "learner"
+        ? "/learner"
+        : "/instructor";
+    if (
+      (input.applicationRole === "learner") !==
+      (input.assignment !== undefined)
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "A learner LTI identity requires one exact assignment.",
+        recoveryPath,
+      );
+    }
     const existing = await this.database
       .prepare(FIND_EXTERNAL_IDENTITY)
       .bind(
@@ -316,21 +357,46 @@ export class D1LtiAuthenticationRepository {
         throw new LtiAuthenticationRepositoryError(
           "LTI_IDENTITY_DISABLED",
           "The linked TraceChain identity is disabled.",
+          recoveryPath,
         );
       }
-      const updated = await this.database
-        .prepare(UPDATE_EXTERNAL_IDENTITY)
-        .bind(
-          email ?? null,
-          displayName ?? null,
-          now,
-          existing.identity_id,
-        )
-        .run();
-      if (!updated.success) {
+      const results = await this.database.batch([
+        this.database
+          .prepare(UPDATE_EXTERNAL_IDENTITY)
+          .bind(
+            email ?? null,
+            displayName ?? null,
+            now,
+            existing.identity_id,
+          ),
+        this.database
+          .prepare(INSERT_APPLICATION_ROLE)
+          .bind(
+            existing.user_id,
+            input.applicationRole,
+            now,
+            existing.user_id,
+          ),
+        ...(input.assignment === undefined
+          ? []
+          : [
+              this.database
+                .prepare(INSERT_ASSIGNMENT_LEARNER)
+                .bind(
+                  input.assignment.assignmentId,
+                  existing.user_id,
+                  now,
+                  input.assignment.assignedByUserId,
+                ),
+            ]),
+      ]);
+      const failure = results.find((result) => !result.success);
+      if (failure !== undefined) {
         throw new LtiAuthenticationRepositoryError(
           "LTI_STORAGE_FAILED",
-          updated.error ?? "LTI identity metadata could not be updated.",
+          failure.error ??
+            "LTI identity metadata could not be updated.",
+          recoveryPath,
         );
       }
       return existing.user_id;
@@ -343,14 +409,15 @@ export class D1LtiAuthenticationRepository {
     const userId = `USER_LTI_${digest.slice(0, 24)}`;
     const identityId = `LTI_IDENTITY_${digest.slice(0, 32)}`;
     const safeDisplayName =
-      displayName ?? `Moodle instructor ${digest.slice(0, 8)}`;
+      displayName ??
+      `Moodle ${input.applicationRole} ${digest.slice(0, 8)}`;
     const results = await this.database.batch([
       this.database
         .prepare(INSERT_LTI_USER)
         .bind(userId, null, safeDisplayName, now),
       this.database
-        .prepare(INSERT_INSTRUCTOR_ROLE)
-        .bind(userId, now, userId),
+        .prepare(INSERT_APPLICATION_ROLE)
+        .bind(userId, input.applicationRole, now, userId),
       this.database
         .prepare(INSERT_EXTERNAL_IDENTITY)
         .bind(
@@ -365,12 +432,25 @@ export class D1LtiAuthenticationRepository {
           now,
           now,
         ),
+      ...(input.assignment === undefined
+        ? []
+        : [
+            this.database
+              .prepare(INSERT_ASSIGNMENT_LEARNER)
+              .bind(
+                input.assignment.assignmentId,
+                userId,
+                now,
+                input.assignment.assignedByUserId,
+              ),
+          ]),
     ]);
     const failure = results.find((result) => !result.success);
     if (failure !== undefined) {
       throw new LtiAuthenticationRepositoryError(
         "LTI_STORAGE_FAILED",
         failure.error ?? "LTI identity could not be provisioned.",
+        recoveryPath,
       );
     }
     return userId;
@@ -380,6 +460,20 @@ export class D1LtiAuthenticationRepository {
     input: LtiSessionInput,
     userId: string,
   ): Promise<void> {
+    const recoveryPath =
+      input.applicationRole === "learner"
+        ? "/learner"
+        : "/instructor";
+    if (
+      (input.applicationRole === "learner") !==
+      (input.assignmentId !== undefined)
+    ) {
+      throw new LtiAuthenticationRepositoryError(
+        "LTI_STORAGE_FAILED",
+        "A learner LTI session requires one exact assignment.",
+        recoveryPath,
+      );
+    }
     const results = await this.database.batch([
       this.database
         .prepare(DELETE_FINISHED_SESSIONS)
@@ -400,6 +494,8 @@ export class D1LtiAuthenticationRepository {
           input.context.contextTitle ?? null,
           input.context.returnUrl ?? null,
           JSON.stringify(input.platformRoles),
+          input.applicationRole,
+          input.assignmentId ?? null,
           input.issuedAt,
           input.expiresAt,
         ),
@@ -409,6 +505,7 @@ export class D1LtiAuthenticationRepository {
       throw new LtiAuthenticationRepositoryError(
         "LTI_STORAGE_FAILED",
         failure.error ?? "LTI session could not be stored.",
+        recoveryPath,
       );
     }
   }
@@ -427,8 +524,11 @@ export class D1LtiAuthenticationRepository {
       ...(row.display_name === null
         ? {}
         : { displayName: row.display_name }),
-      roles: ["instructor"],
+      roles: [row.application_role],
       authenticationSource: "lti",
+      ...(row.assignment_id === null
+        ? {}
+        : { ltiAssignmentId: row.assignment_id }),
       learningContext: {
         schemaVersion: "1.0.0",
         provider: "lti-1.3",

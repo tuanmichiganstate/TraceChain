@@ -11,6 +11,7 @@ simulation identity.
 |---|---|---|
 | `/platform` | any provisioned role | Show only the workspaces granted by server-owned roles |
 | `/learner` | learner | List own assignments, start or resume own run, inspect role-visible evidence, and submit the bounded command path |
+| `/learner` | Moodle LTI learner | The same learner workspace, restricted to the one verified course assignment carried by the signed activity launch |
 | `/instructor` | instructor | Select a published runnable scenario and learner roster, create and close assignments, monitor reports, replay runs, rate evidence, release feedback, export records, and generate SCORM packages |
 | `/instructor` | Moodle LTI instructor | The same instructor workspace under the verified Moodle course context; no learner, author, rater, or administrator role is inferred |
 | `/instructor` | rater | Review evidence and save append-only ratings without assignment, publication, moderation, or package controls |
@@ -131,9 +132,11 @@ scenario seeds, outcome draws, authored correctness, and unreleased feedback.
 ## Current administrative boundary
 
 Application-user and role provisioning are available in the administrator
-workspace. Direct hosted access still uses the hosting layer's verified email;
-Moodle instructor access may instead use a verified LTI 1.3 subject and course
-context. TraceChain does not implement passwords, institutional directory
-synchronization, Moodle roster synchronization, multi-tenant administration,
-or collaborative multi-learner runs.
+workspace. Direct hosted access still uses the hosting layer's verified email.
+Moodle instructor and learner access may instead use a verified LTI 1.3
+subject, role, and course context. A learner activity grants access only to the
+exact assignment in its signed custom claim; it is not Moodle roster
+synchronization. TraceChain does not implement passwords, institutional
+directory synchronization, NRPS roster synchronization, multi-tenant
+administration, or collaborative multi-learner runs.
 See `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md`.

@@ -12,13 +12,19 @@ export const LTI_RESOURCE_LINK_CLAIM =
   "https://purl.imsglobal.org/spec/lti/claim/resource_link";
 export const LTI_LAUNCH_PRESENTATION_CLAIM =
   "https://purl.imsglobal.org/spec/lti/claim/launch_presentation";
+export const LTI_CUSTOM_CLAIM =
+  "https://purl.imsglobal.org/spec/lti/claim/custom";
 
 export const LTI_INSTRUCTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
+export const LTI_LEARNER_ROLE =
+  "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
 export const LTI_CONTENT_DEVELOPER_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#ContentDeveloper";
 export const LTI_MENTOR_ROLE =
   "http://purl.imsglobal.org/vocab/lis/v2/membership#Mentor";
+
+export type LtiApplicationRole = "instructor" | "learner";
 
 export interface JsonWebKeySetV1 {
   readonly keys: readonly Readonly<Record<string, unknown>>[];
@@ -56,5 +62,7 @@ export interface LtiLearningContextV1 {
 export interface LtiSessionProjectionV1 {
   readonly authenticationSource: "lti";
   readonly displayName?: string;
+  readonly applicationRole: LtiApplicationRole;
+  readonly ltiAssignmentId?: string;
   readonly learningContext: LtiLearningContextV1;
 }

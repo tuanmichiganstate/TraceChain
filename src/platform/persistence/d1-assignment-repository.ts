@@ -781,17 +781,40 @@ function normalizeLearningContext(
   };
 }
 
+function learningContextMatchesPrincipal(
+  assignmentContext: LtiLearningContextV1,
+  principalContext: LtiLearningContextV1,
+): boolean {
+  return (
+    assignmentContext.issuer === principalContext.issuer &&
+    assignmentContext.clientId === principalContext.clientId &&
+    assignmentContext.deploymentId ===
+      principalContext.deploymentId &&
+    assignmentContext.contextId === principalContext.contextId &&
+    assignmentContext.resourceLinkId ===
+      principalContext.resourceLinkId &&
+    assignmentContext.contextLabel ===
+      principalContext.contextLabel &&
+    assignmentContext.contextTitle ===
+      principalContext.contextTitle
+  );
+}
+
 function normalizeRequest(
   request: CreateHostedAssignmentRequest,
 ): CreateHostedAssignmentRequest {
+  const learningContext = normalizeLearningContext(
+    request.learningContext,
+  );
   if (
     !Array.isArray(request.learnerUserIds) ||
-    request.learnerUserIds.length === 0 ||
+    (request.learnerUserIds.length === 0 &&
+      learningContext === undefined) ||
     request.learnerUserIds.length > 200
   ) {
     throw new AssignmentRepositoryError(
       "INVALID_ASSIGNMENT",
-      "learnerUserIds must contain 1 to 200 provisioned learners.",
+      "learnerUserIds must contain 1 to 200 provisioned learners unless the assignment uses verified LTI learner launch.",
     );
   }
   const learnerUserIds = [
@@ -869,9 +892,6 @@ function normalizeRequest(
   const availableUntil = optionalUtcTimestamp(
     request.availableUntil,
     "availableUntil",
-  );
-  const learningContext = normalizeLearningContext(
-    request.learningContext,
   );
   if (
     availableFrom !== undefined &&
@@ -1374,6 +1394,22 @@ export class D1AssignmentRepository {
     principal: ApplicationPrincipal,
   ): Promise<HostedAssignmentCreationResult> {
     const normalized = normalizeRequest(request);
+    if (
+      normalized.learningContext !== undefined &&
+      (
+        principal.authenticationSource !== "lti" ||
+        principal.learningContext === undefined ||
+        !learningContextMatchesPrincipal(
+          normalized.learningContext,
+          principal.learningContext,
+        )
+      )
+    ) {
+      throw new AssignmentRepositoryError(
+        "INVALID_ASSIGNMENT",
+        "Only a verified LTI session may bind an assignment to its exact learning context.",
+      );
+    }
     const existingRow = await this.database
       .prepare(FIND_ASSIGNMENT)
       .bind(normalized.assignmentId)

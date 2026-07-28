@@ -781,7 +781,14 @@ export function InstructorReviewScreen({
             </section>
           ) : null}
 
-          {mayManage ? <AssignmentCreation api={api} /> : null}
+          {mayManage ? (
+            <AssignmentCreation
+              api={api}
+              allowLtiLearnerLaunch={
+                session?.authenticationSource === "lti"
+              }
+            />
+          ) : null}
 
           {mayManage ? <ScormPackageBuilder api={api} /> : null}
 
@@ -1452,8 +1459,10 @@ function ModeConfigurationSummary({
 
 function AssignmentCreation({
   api,
+  allowLtiLearnerLaunch,
 }: {
   readonly api: InstructorReviewApi;
+  readonly allowLtiLearnerLaunch: boolean;
 }): ReactNode {
   const t = useTranslator();
   const [assignmentId, setAssignmentId] = useState("");
@@ -2094,7 +2103,11 @@ function AssignmentCreation({
             </div>
           )}
           <span className="field__hint">
-            {t("instructorReview.learnersHint")}
+            {t(
+              allowLtiLearnerLaunch
+                ? "instructorReview.learnersLtiHint"
+                : "instructorReview.learnersHint",
+            )}
           </span>
         </fieldset>
         <div className="instructor-review__form-actions">
@@ -2104,7 +2117,8 @@ function AssignmentCreation({
             disabled={
               isSaving ||
               selectedScenario === undefined ||
-              selectedLearnerIds.length === 0 ||
+              (!allowLtiLearnerLaunch &&
+                selectedLearnerIds.length === 0) ||
               (counterfactualEnabled &&
                 (counterfactualDecisionNodeIds.length === 0 ||
                   maximumCounterfactualBranches < 1 ||

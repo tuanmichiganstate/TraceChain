@@ -520,7 +520,12 @@ function ltiErrorResponse(
     pathname === "/api/lti/v1/login" ||
     pathname === "/api/lti/v1/launch"
   ) {
-    const location = new URL("/instructor", request.url);
+    const recoveryPath =
+      error instanceof LtiAuthenticationError ||
+      error instanceof LtiAuthenticationRepositoryError
+        ? error.recoveryPath
+        : "/instructor";
+    const location = new URL(recoveryPath, request.url);
     location.searchParams.set("ltiError", code);
     return withSecurityHeaders(
       new Response(null, {
@@ -595,6 +600,10 @@ async function ltiResponse(
         ),
         registrations,
         repository,
+        assignmentResolver: new D1AssignmentRepository(
+          environment.DB,
+          clock,
+        ),
         clock,
       }),
     );
@@ -938,7 +947,7 @@ async function enforceLtiCourseRequestScope(options: {
   if (options.principal.learningContext === undefined) {
     throw new HostedAuthorizationError(
       "RUN_ACCESS_DENIED",
-      "The LTI instructor session has no Moodle course context.",
+      "The LTI session has no Moodle course context.",
     );
   }
   if (options.pathname === "/api/v1/runs") {
@@ -990,6 +999,15 @@ async function enforceLtiCourseRequestScope(options: {
     );
   }
   if (assignmentId === null) return;
+  if (
+    options.principal.roles.includes("learner") &&
+    options.principal.ltiAssignmentId !== assignmentId
+  ) {
+    throw new HostedAuthorizationError(
+      "RUN_ACCESS_DENIED",
+      "The Moodle learner launch is bound to another TraceChain assignment.",
+    );
+  }
   const assignment = await new D1AssignmentRepository(
     options.environment.DB,
     new SystemUtcClock(),
@@ -1444,6 +1462,9 @@ async function apiResponse(
       ...(principal.learningContext === undefined
         ? {}
         : { learningContext: principal.learningContext }),
+      ...(principal.ltiAssignmentId === undefined
+        ? {}
+        : { ltiAssignmentId: principal.ltiAssignmentId }),
     });
   }
 
@@ -1561,7 +1582,17 @@ async function apiResponse(
       environment.DB,
       new SystemUtcClock(),
     ).listForLearner(learner.userId);
-    return jsonResponse(200, { assignments });
+    return jsonResponse(200, {
+      assignments:
+        learner.authenticationSource === "lti" &&
+        learner.ltiAssignmentId !== undefined
+          ? assignments.filter(
+              ({ assignment }) =>
+                assignment.assignmentId ===
+                learner.ltiAssignmentId,
+            )
+          : assignments,
+    });
   }
 
   if (
