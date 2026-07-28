@@ -874,13 +874,13 @@ describe("instructor review screen", () => {
         ],
       }),
       loadAssignmentProcessAnalytics: vi.fn().mockResolvedValue({
-        schemaVersion: "1.1.0",
+        schemaVersion: "1.2.0",
         reportType:
           "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
         interpretation:
           "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
         ruleVersion:
-          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
+          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
         assignmentId: "ASSIGNMENT_EXPORT_001",
         packId: "PACK_STANDARD_COFFEE_STAGE3",
         packVersion: "1.4.0",
@@ -929,6 +929,9 @@ describe("instructor review screen", () => {
           },
           evidenceCitationCounts: {},
           policyConsultationCounts: {},
+          policyCitationCounts: {
+            POLICY_RELEASE: 1,
+          },
           decisionSubmissionCounts: {},
           rejectedAttemptCount: 1,
           mitigationCount: 1,
@@ -1203,6 +1206,15 @@ describe("instructor review screen", () => {
     expect(
       report.getAllByText("Evidence requests")[0],
     ).toBeVisible();
+    await user.click(
+      report.getByText("View class observation counts", {
+        selector: "summary",
+      }),
+    );
+    expect(
+      report.getByText("Policy citations"),
+    ).toBeVisible();
+    expect(report.getByText("POLICY_RELEASE")).toBeVisible();
     expect(report.getByText("45 simulated minutes")).toBeVisible();
     expect(
       report.getByText("Authored request cost units"),

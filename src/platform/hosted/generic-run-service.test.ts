@@ -245,7 +245,7 @@ describe("GenericHostedRunService", () => {
   });
 
   it("runs a second discipline from authored nodes without a scenario adapter", async () => {
-    const { service } = createService();
+    const { service, store } = createService();
     const created = await service.createRun(instructor, {
       commandId: "COMMAND_CREATE_PHARMA_001",
       runId: "RUN_PHARMA_001",
@@ -273,6 +273,19 @@ describe("GenericHostedRunService", () => {
     expect(advanced.state.releasedEvidenceIds).toEqual([
       "EVID_PHARMA_SENSOR_SUMMARY",
     ]);
+    const beforeInspection = await service.learnerProjection(
+      learner,
+      advanced.state.runId,
+    );
+    expect(beforeInspection.informationState[0]?.value).toMatchObject({
+      inspected: false,
+      learnerMetadata: expect.objectContaining({
+        ownerOrganizationId: "ORG_HEALTHCARE_DISTRIBUTOR",
+      }),
+    });
+    expect(beforeInspection.informationState[0]?.value).not.toHaveProperty(
+      "content",
+    );
 
     const inspected = await service.submit(learner, {
       commandType: "INSPECT_EVIDENCE",
@@ -281,6 +294,36 @@ describe("GenericHostedRunService", () => {
       expectedRunVersion: advanced.state.version,
       evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
     });
+    const afterInspection = await service.learnerProjection(
+      learner,
+      inspected.state.runId,
+    );
+    expect(afterInspection.informationState[0]?.value).toMatchObject({
+      inspected: true,
+      content: expect.objectContaining({
+        maximumTemperatureC: 12.4,
+      }),
+    });
+    expect(
+      afterInspection.workflowState.permittedActionIds,
+    ).not.toContain("INSPECT_EVIDENCE");
+    const eventCountAfterInspection = (
+      await store.load(inspected.state.runId)
+    ).length;
+    await expect(
+      service.submit(learner, {
+        commandType: "INSPECT_EVIDENCE",
+        commandId: "COMMAND_REINSPECT_PHARMA_001",
+        runId: inspected.state.runId,
+        expectedRunVersion: inspected.state.version,
+        evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PRECONDITION_FAILED",
+    });
+    expect(await store.load(inspected.state.runId)).toHaveLength(
+      eventCountAfterInspection,
+    );
     const decided = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_DECIDE_PHARMA_001",
@@ -435,11 +478,22 @@ describe("GenericHostedRunService", () => {
       expectedRunVersion: sensorInspected.state.version,
       evidenceId: "EVID_PHARMA_TRANSFER_CUSTODY",
     });
+    const investigationPolicyConsulted = await service.submit(
+      learner,
+      {
+        commandType: "CONSULT_POLICY",
+        commandId: "COMMAND_CONSULT_TRANSFER_INVESTIGATION_POLICY",
+        runId: custodyInspected.state.runId,
+        expectedRunVersion: custodyInspected.state.version,
+        policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+      },
+    );
     const held = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_DECIDE_TRANSFER_TRIAGE",
-      runId: custodyInspected.state.runId,
-      expectedRunVersion: custodyInspected.state.version,
+      runId: investigationPolicyConsulted.state.runId,
+      expectedRunVersion:
+        investigationPolicyConsulted.state.version,
       decisionId: "DECISION_PHARMA_TRANSFER_TRIAGE",
       responses: {
         triageAction: ["HOLD_AND_INVESTIGATE"],
@@ -491,6 +545,7 @@ describe("GenericHostedRunService", () => {
     ).toEqual([
       "INSPECT_EVIDENCE",
       "REQUEST_EVIDENCE",
+      "CONSULT_POLICY",
       "SUBMIT_STRUCTURED_DECISION",
     ]);
     const beforeRequest = await service.learnerProjection(
@@ -513,11 +568,21 @@ describe("GenericHostedRunService", () => {
       expectedRunVersion: disposition.state.version,
       evidenceId: "EVID_PHARMA_TRANSFER_CALIBRATION",
     });
+    const dispositionPolicyConsulted = await service.submit(
+      learner,
+      {
+        commandType: "CONSULT_POLICY",
+        commandId: "COMMAND_CONSULT_TRANSFER_DISPOSITION_POLICY",
+        runId: calibrationInspected.state.runId,
+        expectedRunVersion: calibrationInspected.state.version,
+        policyId: "POLICY_PHARMA_TRANSFER_DISPOSITION",
+      },
+    );
     const requestCommand = {
       commandType: "REQUEST_EVIDENCE" as const,
       commandId: "COMMAND_REQUEST_TRANSFER_STABILITY",
-      runId: calibrationInspected.state.runId,
-      expectedRunVersion: calibrationInspected.state.version,
+      runId: dispositionPolicyConsulted.state.runId,
+      expectedRunVersion: dispositionPolicyConsulted.state.version,
       evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
     };
     const stabilityRequested = await service.submit(
@@ -704,6 +769,137 @@ describe("GenericHostedRunService", () => {
         ],
       },
     ]);
+  });
+
+  it("requires an append-only policy consultation before a policy may be cited", async () => {
+    const { service, store } = createTransferService();
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_POLICY_CONSULTATION",
+      runId: "RUN_POLICY_CONSULTATION",
+      assignmentId: "ASSIGNMENT_POLICY_CONSULTATION",
+      learnerUserId: learner.userId,
+      mode: "tutorial",
+    });
+    const triage = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_POLICY_CONSULTATION",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const sensorInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_POLICY_SENSOR",
+      runId: triage.state.runId,
+      expectedRunVersion: triage.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_SENSOR",
+    });
+    const custodyInspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_POLICY_CUSTODY",
+      runId: sensorInspected.state.runId,
+      expectedRunVersion: sensorInspected.state.version,
+      evidenceId: "EVID_PHARMA_TRANSFER_CUSTODY",
+    });
+    const beforeConsultation = await service.learnerProjection(
+      learner,
+      custodyInspected.state.runId,
+    );
+    expect(beforeConsultation.policyState).toEqual([]);
+    expect(beforeConsultation.presentation?.policyReferences).toEqual([
+      {
+        policyId: "POLICY_PHARMA_TRANSFER_DISPOSITION",
+        status: "AVAILABLE",
+      },
+      {
+        policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+        status: "AVAILABLE",
+      },
+    ]);
+
+    const eventCountBeforeRejectedCitation = (
+      await store.load(created.state.runId)
+    ).length;
+    await expect(
+      service.submit(learner, {
+        commandType: "SUBMIT_STRUCTURED_DECISION",
+        commandId: "COMMAND_CITE_UNCONSULTED_POLICY",
+        runId: custodyInspected.state.runId,
+        expectedRunVersion: custodyInspected.state.version,
+        decisionId: "DECISION_PHARMA_TRANSFER_TRIAGE",
+        responses: {
+          triageAction: ["HOLD_AND_INVESTIGATE"],
+        },
+        justification:
+          "The physical-condition evidence remains unresolved.",
+        citedEvidenceIds: [
+          "EVID_PHARMA_TRANSFER_SENSOR",
+          "EVID_PHARMA_TRANSFER_CUSTODY",
+        ],
+        citedPolicyIds: [
+          "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+        ],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 35,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
+    expect(await store.load(created.state.runId)).toHaveLength(
+      eventCountBeforeRejectedCitation,
+    );
+
+    const consultationCommand = {
+      commandType: "CONSULT_POLICY" as const,
+      commandId: "COMMAND_CONSULT_INVESTIGATION_POLICY",
+      runId: custodyInspected.state.runId,
+      expectedRunVersion: custodyInspected.state.version,
+      policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+    };
+    const consulted = await service.submit(
+      learner,
+      consultationCommand,
+    );
+    const repeated = await service.submit(
+      learner,
+      consultationCommand,
+    );
+    expect(repeated.wasIdempotentReplay).toBe(true);
+    expect(repeated.state).toEqual(consulted.state);
+    expect(consulted.state.consultedPolicyIds).toEqual([
+      "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+    ]);
+    const afterConsultation = await service.learnerProjection(
+      learner,
+      consulted.state.runId,
+    );
+    expect(afterConsultation.policyState).toEqual([
+      expect.objectContaining({
+        recordId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+      }),
+    ]);
+    expect(afterConsultation.presentation?.policyReferences).toEqual([
+      {
+        policyId: "POLICY_PHARMA_TRANSFER_DISPOSITION",
+        status: "AVAILABLE",
+      },
+      {
+        policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+        status: "CONSULTED",
+        learnerStatement: expect.objectContaining({
+          valuesByLocale: expect.objectContaining({
+            en: expect.stringContaining(
+              "Custody-record integrity does not establish",
+            ),
+            vi: expect.stringContaining(
+              "Tính toàn vẹn của hồ sơ chuyển giao",
+            ),
+          }),
+        }),
+      },
+    ]);
+    expect(
+      (await store.load(created.state.runId)).filter(
+        (event) => event.eventType === "POLICY_CONSULTED",
+      ),
+    ).toHaveLength(1);
   });
 
   it("releases one authored instructor incident without rewriting workflow or hidden state", async () => {

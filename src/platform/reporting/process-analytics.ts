@@ -193,6 +193,7 @@ export function createAssignmentProcessAnalytics(input: {
   const evidenceInspectionCounts: Record<string, number> = {};
   const evidenceCitationCounts: Record<string, number> = {};
   const policyConsultationCounts: Record<string, number> = {};
+  const policyCitationCounts: Record<string, number> = {};
   const decisionSubmissionCounts: Record<string, number> = {};
   let rejectedAttemptCount = 0;
   let mitigationCount = 0;
@@ -215,6 +216,9 @@ export function createAssignmentProcessAnalytics(input: {
       increment(decisionSubmissionCounts, derived.decisionId);
       derived.citedEvidenceIds.forEach((evidenceId) =>
         increment(evidenceCitationCounts, evidenceId),
+      );
+      derived.citedPolicyIds.forEach((policyId) =>
+        increment(policyCitationCounts, policyId),
       );
     }
     const evidenceRequestOrder = events.flatMap((event) => {
@@ -276,11 +280,11 @@ export function createAssignmentProcessAnalytics(input: {
   }
 
   return {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     reportType: "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
     interpretation:
       "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-    ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
+    ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
     assignmentId: assignment.assignmentId,
     packId: assignment.packId,
     packVersion: assignment.packVersion,
@@ -294,6 +298,7 @@ export function createAssignmentProcessAnalytics(input: {
       evidenceInspectionCounts,
       evidenceCitationCounts,
       policyConsultationCounts,
+      policyCitationCounts,
       decisionSubmissionCounts,
       rejectedAttemptCount,
       mitigationCount,

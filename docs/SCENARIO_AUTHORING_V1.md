@@ -84,9 +84,14 @@ temperature excursion. The calibration record is then released, while the
 manufacturer's stability assessment is available only through the bounded
 evidence-request workflow. The request records a 45-minute simulated delay and
 two cost units before the learner chooses a proportionate disposition. Both
-decision submissions capture bounded evidence citations, a policy citation,
-confidence, and an adverse-event risk estimate. The case has its own rubric
-and declarative evidence rules.
+decision submissions capture bounded evidence citations, a consulted-policy
+citation, confidence, and an adverse-event risk estimate. The learner must
+consult the investigation rule before the triage decision and the disposition
+rule before the final decision; those append-only events become process
+evidence without changing the score. Released records expose only their
+learner-visible attributes until a contextual inspection is durably recorded;
+only inspected records may then be cited. The case has its own rubric and
+declarative evidence rules.
 
 Course and program outcome mappings deliberately do not live in this pack.
 The repository's independent demonstration overlays reference the pack's exact

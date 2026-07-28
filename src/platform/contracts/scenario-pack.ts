@@ -224,6 +224,7 @@ export interface ScenarioPolicyV1 {
     | "BUSINESS_RULE"
     | "RUNTIME_POLICY";
   readonly title: LocalizedText;
+  readonly learnerStatement: LocalizedText;
   readonly configuration: JsonObject;
 }
 
@@ -555,7 +556,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.10.0";
+  readonly schemaVersion: "1.11.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;

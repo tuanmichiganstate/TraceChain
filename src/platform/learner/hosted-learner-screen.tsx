@@ -585,21 +585,171 @@ function HostedEvidenceContent({
 export function HostedEvidenceValue({
   recordId,
   value,
+  showMetadata = true,
 }: {
   readonly recordId: string;
   readonly value: unknown;
+  readonly showMetadata?: boolean;
 }): ReactNode {
   const record = asObject(value);
   return (
     <div className="stack">
-      <EvidenceMetadataSummary
-        metadata={record?.learnerMetadata}
-      />
+      {showMetadata ? (
+        <EvidenceMetadataSummary
+          metadata={record?.learnerMetadata}
+        />
+      ) : null}
       <HostedEvidenceContent
         recordId={recordId}
         value={value}
       />
     </div>
+  );
+}
+
+export function HostedEvidenceLibrary({
+  projection,
+  busy,
+  onSubmit,
+}: {
+  readonly projection: LearnerRunProjectionV1;
+  readonly busy: boolean;
+  readonly onSubmit: (
+    input: Readonly<Record<string, unknown>>,
+  ) => Promise<void>;
+}): ReactNode {
+  const t = useTranslator();
+  const presentation = projection.presentation;
+  const contextualInspection = presentation !== undefined;
+  const canInspect =
+    contextualInspection &&
+    projection.workflowState.permittedActionIds.includes(
+      "INSPECT_EVIDENCE",
+    );
+  return (
+    <section className="card card--reference">
+      <h2>{t("hostedLearner.evidence")}</h2>
+      {contextualInspection ? (
+        <p>{t("hostedLearner.evidenceInspectionHelp")}</p>
+      ) : null}
+      {projection.informationState.length === 0 ? (
+        <p>{t("hostedLearner.none")}</p>
+      ) : (
+        <ul>
+          {projection.informationState.map((record) => {
+            const authoredTitle =
+              presentation?.evidenceTitles[record.recordId];
+            const title =
+              authoredTitle === undefined
+                ? t(
+                    evidenceLocalizationKeys[record.recordId] ??
+                      "hostedLearner.evidenceUnknown",
+                    { evidenceId: record.recordId },
+                  )
+                : runText(authoredTitle, t);
+            const recordValue = asObject(record.value);
+            const inspected = recordValue?.inspected === true;
+            return (
+              <li key={record.recordId}>
+                {!contextualInspection ? (
+                  title
+                ) : inspected ? (
+                  <>
+                    <p role="status">
+                      {t("hostedLearner.evidenceInspected")}
+                    </p>
+                    <details open>
+                      <summary>{title}</summary>
+                      <div>
+                        <HostedEvidenceValue
+                          recordId={record.recordId}
+                          value={record.value}
+                        />
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <>
+                    <p><strong>{title}</strong></p>
+                    <EvidenceMetadataSummary
+                      metadata={recordValue?.learnerMetadata}
+                    />
+                    <p>
+                      {t("hostedLearner.evidenceNotInspected")}
+                    </p>
+                    {canInspect ? (
+                      <button
+                        className="button button--secondary"
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          void onSubmit({
+                            commandType: "INSPECT_EVIDENCE",
+                            evidenceId: record.recordId,
+                          })}
+                      >
+                        {t("hostedLearner.inspectEvidence", {
+                          evidence: title,
+                        })}
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {(presentation?.evidenceRequests?.length ?? 0) === 0
+        ? null
+        : (
+            <>
+              <h3>{t("hostedLearner.evidenceRequests")}</h3>
+              <p>{t("hostedLearner.evidenceRequestsHelp")}</p>
+              <ul>
+                {presentation?.evidenceRequests?.map((request) => {
+                  const authoredTitle =
+                    presentation.evidenceTitles[
+                      request.evidenceId
+                    ];
+                  const title =
+                    authoredTitle === undefined
+                      ? t("hostedLearner.evidenceUnknown", {
+                          evidenceId: request.evidenceId,
+                        })
+                      : runText(authoredTitle, t);
+                  return (
+                    <li key={request.evidenceId}>
+                      <p><strong>{title}</strong></p>
+                      <EvidenceMetadataSummary
+                        metadata={request.learnerMetadata}
+                      />
+                      <p>
+                        {request.status === "REQUESTABLE"
+                          ? t(
+                              "hostedLearner.evidenceRequestAvailable",
+                            )
+                          : t(
+                              "hostedLearner.evidenceRequestFulfilled",
+                              {
+                                requestedAt:
+                                  request.requestedAt ?? "",
+                                availableAt:
+                                  request.simulatedAvailableAt ??
+                                  "",
+                                delayMinutes:
+                                  request.delayMinutes,
+                                costUnits: request.costUnits,
+                              },
+                            )}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+    </section>
   );
 }
 
@@ -1128,6 +1278,12 @@ function RunWorkspace({
   const isExpired = projection.timing?.status === "expired";
   const presentation = projection.presentation;
   const currentNode = presentation?.currentNode;
+  const actionControls =
+    presentation === undefined
+      ? actions
+      : actions.filter(
+          (action) => action !== "INSPECT_EVIDENCE",
+        );
   return (
     <>
       {projection.staffProfile === undefined ? null : (
@@ -1203,93 +1359,11 @@ function RunWorkspace({
           ))}
         </section>
       )}
-      <section className="card card--reference">
-        <h2>{t("hostedLearner.evidence")}</h2>
-        {projection.informationState.length === 0 ? (
-          <p>{t("hostedLearner.none")}</p>
-        ) : (
-          <ul>
-            {projection.informationState.map((record) => {
-              const authoredTitle =
-                presentation?.evidenceTitles[record.recordId];
-              const title =
-                authoredTitle === undefined
-                  ? t(
-                      evidenceLocalizationKeys[record.recordId] ??
-                        "hostedLearner.evidenceUnknown",
-                      { evidenceId: record.recordId },
-                    )
-                  : runText(authoredTitle, t);
-              return (
-                <li key={record.recordId}>
-                  {presentation === undefined ? (
-                    title
-                  ) : (
-                    <details>
-                      <summary>{title}</summary>
-                      <div>
-                        <HostedEvidenceValue
-                          recordId={record.recordId}
-                          value={record.value}
-                        />
-                      </div>
-                    </details>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {(presentation?.evidenceRequests?.length ?? 0) === 0
-          ? null
-          : (
-              <>
-                <h3>{t("hostedLearner.evidenceRequests")}</h3>
-                <p>{t("hostedLearner.evidenceRequestsHelp")}</p>
-                <ul>
-                  {presentation?.evidenceRequests?.map((request) => {
-                    const authoredTitle =
-                      presentation.evidenceTitles[
-                        request.evidenceId
-                      ];
-                    const title =
-                      authoredTitle === undefined
-                        ? t("hostedLearner.evidenceUnknown", {
-                            evidenceId: request.evidenceId,
-                          })
-                        : runText(authoredTitle, t);
-                    return (
-                      <li key={request.evidenceId}>
-                        <p><strong>{title}</strong></p>
-                        <EvidenceMetadataSummary
-                          metadata={request.learnerMetadata}
-                        />
-                        <p>
-                          {request.status === "REQUESTABLE"
-                            ? t(
-                                "hostedLearner.evidenceRequestAvailable",
-                              )
-                            : t(
-                                "hostedLearner.evidenceRequestFulfilled",
-                                {
-                                  requestedAt:
-                                    request.requestedAt ?? "",
-                                  availableAt:
-                                    request.simulatedAvailableAt ??
-                                    "",
-                                  delayMinutes:
-                                    request.delayMinutes,
-                                  costUnits: request.costUnits,
-                                },
-                              )}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}
-      </section>
+      <HostedEvidenceLibrary
+        projection={projection}
+        busy={busy || isExpired}
+        onSubmit={onSubmit}
+      />
       {(presentation?.professionalConsequences.length ?? 0) === 0 ? null : (
         <section className="card card--reference">
           <h2>{t("hostedLearner.professionalConsequences")}</h2>
@@ -1316,6 +1390,7 @@ function RunWorkspace({
           </dl>
         </section>
       )}
+      <HostedPolicyLibrary projection={projection} />
       <section className="card card--reference">
         <h2>{t("hostedLearner.traceability")}</h2>
         <details>
@@ -1360,8 +1435,10 @@ function RunWorkspace({
               ? runText(currentNode.title, t)
               : t("hostedLearner.complete")}
           </p>
+        ) : actionControls.length === 0 ? (
+          <p>{t("hostedLearner.inspectEvidenceAbove")}</p>
         ) : (
-          actions.map((action) => (
+          actionControls.map((action) => (
             <ActionControl
               key={action}
               action={action}
@@ -1373,6 +1450,47 @@ function RunWorkspace({
         )}
       </section>
     </>
+  );
+}
+
+export function HostedPolicyLibrary({
+  projection,
+}: {
+  readonly projection: LearnerRunProjectionV1;
+}): ReactNode {
+  const t = useTranslator();
+  const presentation = projection.presentation;
+  if ((presentation?.policyReferences?.length ?? 0) === 0) {
+    return null;
+  }
+  return (
+    <section className="card card--reference">
+      <h2>{t("hostedLearner.policyLibrary")}</h2>
+      <p>{t("hostedLearner.policyLibraryHelp")}</p>
+      <ul>
+        {presentation?.policyReferences?.map((reference) => {
+          const authored =
+            presentation.policyTitles[reference.policyId];
+          const title =
+            authored === undefined
+              ? reference.policyId
+              : runText(authored, t);
+          return (
+            <li key={reference.policyId}>
+              <p><strong>{title}</strong></p>
+              <p>
+                {reference.status === "CONSULTED"
+                  ? t("hostedLearner.policyConsulted")
+                  : t("hostedLearner.policyAvailable")}
+              </p>
+              {reference.status === "CONSULTED" ? (
+                <p>{runText(reference.learnerStatement, t)}</p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -1746,6 +1864,32 @@ function ActionControl({
       />
     );
   }
+  if (action === "CONSULT_POLICY") {
+    return (
+      <SelectActionForm
+        action={action}
+        options={(projection.presentation?.policyReferences ?? [])
+          .filter((reference) => reference.status === "AVAILABLE")
+          .map((reference) => {
+            const title =
+              projection.presentation?.policyTitles[
+                reference.policyId
+              ];
+            return {
+              value: reference.policyId,
+              labelKey: null,
+              ...(title === undefined
+                ? {}
+                : { label: runText(title, t) }),
+            };
+          })}
+        busy={busy}
+        onSubmit={(policyId) =>
+          onSubmit({ commandType: action, policyId })
+        }
+      />
+    );
+  }
   if (action === "SUBMIT_CERTIFICATE_DECISION") {
     return (
       <CertificateDecisionForm
@@ -1961,6 +2105,9 @@ function GenericDecisionForm({
 
   const evidenceCitations =
     responseConfiguration?.evidenceCitations;
+  const inspectedEvidence = projection.informationState.filter(
+    (record) => asObject(record.value)?.inspected === true,
+  );
   const policyCitations =
     responseConfiguration?.policyCitations;
   const confidence = responseConfiguration?.confidenceRating;
@@ -2148,7 +2295,7 @@ function GenericDecisionForm({
               maximum: evidenceCitations.maximumItems,
             })}
           </p>
-          {projection.informationState.map((record) => {
+          {inspectedEvidence.map((record) => {
             const checked = citedEvidenceIds.includes(
               record.recordId,
             );

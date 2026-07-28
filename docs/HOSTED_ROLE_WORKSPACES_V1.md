@@ -78,6 +78,12 @@ current rubric comments, and source-event references. It can load and focus a
 referenced event in the existing run timeline. It does not derive a second
 score or claim stable competence from one run.
 
+The separate process-analytics projection distinguishes policy consultation
+from policy citation. Consultation counts come from `POLICY_CONSULTED`; citation
+counts come from the bounded `citedPolicyIds` recorded by
+`DECISION_SUBMITTED`. Both remain linked to the immutable source events and
+neither changes the academic score.
+
 Assignment evidence downloads are identified by default. An instructor may
 instead request deterministic assignment-scoped learner pseudonyms in JSON or
 CSV. Staff, run, event, evidence, and simulation-role identifiers remain
@@ -109,6 +115,13 @@ the business judgment, bounded rationale, inspected-evidence citations,
 confidence, and adverse-event probability estimate atomically. The server
 validates those fields against the exact scenario version before appending the
 decision event.
+
+For generic hosted cases, release makes the evidence title and
+learner-visible attributes available but not its record content. The
+contextual evidence control first appends `EVIDENCE_INSPECTED`; only the
+resulting projection contains the content and permits it to be cited. One
+evidence item creates at most one first-inspection event, while duplicate
+delivery of the same command remains idempotent.
 
 The API returns `LearnerRunProjectionV1`, which excludes actual state,
 scenario seeds, outcome draws, authored correctness, and unreleased feedback.

@@ -155,9 +155,10 @@ describe("assignment process analytics", () => {
     });
 
     expect(analytics).toMatchObject({
+      schemaVersion: "1.2.0",
       interpretation:
         "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-      ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.1.0",
+      ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
       summary: {
         evidenceRequestCounts: {
           EVIDENCE_STABILITY_ASSESSMENT: 1,
@@ -165,6 +166,7 @@ describe("assignment process analytics", () => {
         evidenceInspectionCounts: { EVIDENCE_SENSOR: 1 },
         evidenceCitationCounts: { EVIDENCE_SENSOR: 1 },
         policyConsultationCounts: { POLICY_RELEASE: 1 },
+        policyCitationCounts: { POLICY_RELEASE: 1 },
         decisionSubmissionCounts: { DECISION_RELEASE: 1 },
         authoredRequestDelayMinutesTotal: 45,
         authoredRequestCostUnitsTotal: 2,

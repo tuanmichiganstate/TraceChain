@@ -64,9 +64,20 @@ of mode configuration.
 request-required records remain outside the learner projection and no request
 command is offered. When enabled, a reachable evidence-release node may make
 those records requestable at a decision. A successful request records the
-authored simulated delay and cost before releasing the role-visible content.
-It does not wait in real time, expose hidden assessment metadata, or create an
-academic score item.
+authored simulated delay and cost before releasing the role-visible evidence
+reference and learner metadata. Record content remains withheld until the
+learner durably submits the contextual inspection action. It does not wait in
+real time, expose hidden assessment metadata, or create an academic score item.
+
+Policy consultation is a separate decision-process action and is available at
+generic hosted decision nodes in every profile. The scenario's policy titles
+form the bounded library. The learner projection withholds the authored rule
+statement until `CONSULT_POLICY` is durably recorded, then presents that
+localized statement in the main decision flow. Raw policy configuration is
+reserved for optional technical traceability. A structured decision may cite
+only policies already present in that reconstructed consultation history.
+Profile selection does not silently waive this evidence requirement, and
+consultation itself does not change the academic score.
 
 ## Assignment counterfactual controls
 

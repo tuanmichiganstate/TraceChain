@@ -3674,6 +3674,19 @@ function ClassProcessAnalyticsReport({
               <tr>
                 <th scope="row">
                   {t(
+                    "instructorReview.processAnalytics.policyCitations",
+                  )}
+                </th>
+                <td>
+                  <ProcessAnalyticsCounts
+                    counts={report.summary.policyCitationCounts}
+                    emptyLabel={t("instructorReview.none")}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  {t(
                     "instructorReview.processAnalytics.decisionSubmissions",
                   )}
                 </th>

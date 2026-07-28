@@ -27,6 +27,31 @@ function validPack(): ScenarioPackV1 {
 }
 
 describe("scenario-pack validation", () => {
+  it("requires every policy to provide a localized learner statement", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        policies: Array<{
+          learnerStatement?: unknown;
+        }>;
+      }>;
+    };
+    delete invalid.scenarios[0]!.policies[0]!.learnerStatement;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "EXPECTED_OBJECT",
+          path: "$.scenarios[0].policies[0].learnerStatement",
+        }),
+      );
+    }
+  });
+
   it("accepts separately authored learner and assessment evidence metadata", () => {
     const enriched = structuredClone(pharmaceuticalPackJson) as unknown as {
       scenarios: Array<{

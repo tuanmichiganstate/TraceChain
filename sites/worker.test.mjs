@@ -1753,6 +1753,13 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       ),
       ["EVID_PHARMA_SENSOR_SUMMARY"],
     );
+    assert.equal(
+      Object.hasOwn(
+        decisionProjection.informationState[0].value,
+        "content",
+      ),
+      false,
+    );
 
     const inspected = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
@@ -1769,7 +1776,19 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       env,
     );
     assert.equal(inspected.status, 200, await inspected.clone().text());
-    assert.equal((await inspected.json()).projection.version, 5);
+    const inspectedProjection = (await inspected.json()).projection;
+    assert.equal(inspectedProjection.version, 5);
+    assert.equal(
+      inspectedProjection.informationState[0].value.content
+        .maximumTemperatureC,
+      12.4,
+    );
+    assert.equal(
+      inspectedProjection.workflowState.permittedActionIds.includes(
+        "INSPECT_EVIDENCE",
+      ),
+      false,
+    );
 
     const decided = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {

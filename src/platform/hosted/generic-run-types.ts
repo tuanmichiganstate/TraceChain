@@ -34,7 +34,7 @@ export interface GenericEvidenceRequestRecord {
 }
 
 export interface GenericHostedRunState {
-  readonly schemaVersion: "1.1.0";
+  readonly schemaVersion: "1.2.0";
   readonly runtimeKind: "generic-v1";
   readonly runId: string;
   readonly assignmentId: string;
@@ -59,6 +59,7 @@ export interface GenericHostedRunState {
   readonly ledgerState: JsonObject;
   readonly releasedEvidenceIds: readonly string[];
   readonly inspectedEvidenceIds: readonly string[];
+  readonly consultedPolicyIds: readonly string[];
   readonly evidenceRequests:
     readonly GenericEvidenceRequestRecord[];
   readonly releasedInstructorIncidents: readonly {
@@ -117,6 +118,12 @@ export interface RequestGenericEvidenceCommand
   readonly evidenceId: string;
 }
 
+export interface ConsultGenericPolicyCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "CONSULT_POLICY";
+  readonly policyId: string;
+}
+
 export interface SubmitGenericDecisionCommand
   extends GenericHostedCommandBase {
   readonly commandType: "SUBMIT_STRUCTURED_DECISION";
@@ -135,6 +142,7 @@ export type GenericHostedCommand =
   | AdvanceGenericWorkflowCommand
   | InspectGenericEvidenceCommand
   | RequestGenericEvidenceCommand
+  | ConsultGenericPolicyCommand
   | SubmitGenericDecisionCommand;
 
 export interface GenericHostedRunResult {

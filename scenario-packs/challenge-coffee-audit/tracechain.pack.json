@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.10.0",
+  "schemaVersion": "1.11.0",
   "packId": "PACK_CHALLENGE_COFFEE_AUDIT",
   "version": "1.0.0",
   "status": "draft",
@@ -65,9 +65,13 @@
       "platformPack.guidedAudit.conclusion.adverse": "Controls did not operate effectively",
       "platformPack.guidedAudit.conclusion.insufficient": "Evidence is insufficient for a conclusion",
       "platformPack.guidedAudit.policy.certificate": "Certificate acceptance policy",
+      "platformPack.guidedAudit.policy.certificate.statement": "Accept a certificate only when it is active and its issuer is both recognized and authorized for the certification action.",
       "platformPack.guidedAudit.policy.correction": "Quantity-correction control",
+      "platformPack.guidedAudit.policy.correction.statement": "Correct a quantity through an append-only record supported by an investigation and endorsed by both the producer and processor.",
       "platformPack.guidedAudit.policy.recall": "Recall authorization policy",
+      "platformPack.guidedAudit.policy.recall.statement": "A recall may be committed only under the authorized regulatory role; rejected attempts remain audit evidence but do not enter the ledger.",
       "platformPack.guidedAudit.policy.custody": "Custody endorsement policy",
+      "platformPack.guidedAudit.policy.custody.statement": "A custody transfer requires approval from both the current custodian and the receiving custodian over the same proposal.",
       "platformPack.guidedAudit.evidence.certificate": "Certificate validity record",
       "platformPack.guidedAudit.evidence.registry": "Certifier recognition registry",
       "platformPack.guidedAudit.evidence.receipt": "Receiving and discrepancy report",
@@ -218,9 +222,13 @@
       "platformPack.guidedAudit.conclusion.adverse": "Các kiểm soát không vận hành hiệu quả",
       "platformPack.guidedAudit.conclusion.insufficient": "Bằng chứng không đủ để kết luận",
       "platformPack.guidedAudit.policy.certificate": "Chính sách chấp nhận chứng nhận",
+      "platformPack.guidedAudit.policy.certificate.statement": "Chỉ chấp nhận chứng nhận còn hiệu lực và do đơn vị vừa được công nhận vừa có thẩm quyền đối với hoạt động chứng nhận đó cấp.",
       "platformPack.guidedAudit.policy.correction": "Kiểm soát sửa số lượng",
+      "platformPack.guidedAudit.policy.correction.statement": "Điều chỉnh số lượng bằng hồ sơ chỉ ghi thêm, có kết quả điều tra hỗ trợ và được cả bên sản xuất lẫn bên chế biến xác nhận.",
       "platformPack.guidedAudit.policy.recall": "Chính sách thẩm quyền thu hồi",
+      "platformPack.guidedAudit.policy.recall.statement": "Chỉ vai trò quản lý có thẩm quyền mới được ghi nhận lệnh thu hồi; lần thử bị từ chối vẫn là bằng chứng kiểm toán nhưng không vào sổ cái.",
       "platformPack.guidedAudit.policy.custody": "Chính sách xác nhận chuyển giao lưu giữ",
+      "platformPack.guidedAudit.policy.custody.statement": "Việc chuyển giao quyền lưu giữ phải được cả bên đang lưu giữ và bên nhận cùng phê duyệt trên một đề xuất.",
       "platformPack.guidedAudit.evidence.certificate": "Hồ sơ hiệu lực chứng nhận",
       "platformPack.guidedAudit.evidence.registry": "Sổ đăng ký công nhận đơn vị cấp",
       "platformPack.guidedAudit.evidence.receipt": "Biên bản nhận hàng và chênh lệch",
@@ -555,7 +563,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_A",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "fe7bed8b60c914927e9e69adfdd7e25f1f8ced9cd39204669f5fa8946a90afc4",
+          "contentHash": "63c71b5fa485a81393a3b0385298c63ef55f939f02bcaea175a2e173454f9047",
           "answerPatternHash": "62a563b1601dd291d14f7a96f2f8feb545ecdd0fba36d6ddd72112b9b63d7790",
           "estimatedMinutes": 30,
           "complexityBand": "INTERMEDIATE"
@@ -568,7 +576,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_B",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "6a00abb64390dfb1928599b8e30a185c169f629c4118566cf8b05748d2311b27",
+          "contentHash": "1d6073e09c8219a151d65105d181c86a9fc7f3271c1e55efa670662b88610fa5",
           "answerPatternHash": "f8757ffa5c7c78007f184ef43ad6d3aa59afcf16ffbde0ac2a1edd54a8a6da82",
           "estimatedMinutes": 35,
           "complexityBand": "INTERMEDIATE"
@@ -581,7 +589,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_C",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "9ae71fe60aa3d4c54e40908592617b85e176848d96d8d280e027de61a13496a2",
+          "contentHash": "dc8f18be298978f2a9b8b2081d7c48c1c2edf43ea49b975b0062dc03cc5e329c",
           "answerPatternHash": "21e05a9385f6ddf23a610350c0faf4aeeb7808c1d0ace0da3ac23d4529078f6c",
           "estimatedMinutes": 40,
           "complexityBand": "INTERMEDIATE"
@@ -715,6 +723,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.certificate"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.certificate.statement"
+          },
           "configuration": {
             "requiresActiveDocument": true,
             "requiresRecognizedIssuer": true,
@@ -726,6 +737,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.correction"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.correction.statement"
           },
           "configuration": {
             "appendOnly": true,
@@ -742,6 +756,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.recall"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.recall.statement"
+          },
           "configuration": {
             "authorizedRoleId": "REGULATORY_AUDITOR"
           }
@@ -751,6 +768,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.custody"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.custody.statement"
           },
           "configuration": {
             "requiresSender": true,
@@ -1784,6 +1804,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.certificate"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.certificate.statement"
+          },
           "configuration": {
             "requiresActiveDocument": true,
             "requiresRecognizedIssuer": true,
@@ -1795,6 +1818,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.correction"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.correction.statement"
           },
           "configuration": {
             "appendOnly": true,
@@ -1811,6 +1837,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.recall"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.recall.statement"
+          },
           "configuration": {
             "authorizedRoleId": "REGULATORY_AUDITOR"
           }
@@ -1820,6 +1849,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.custody"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.custody.statement"
           },
           "configuration": {
             "requiresSender": true,
@@ -2861,6 +2893,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.certificate"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.certificate.statement"
+          },
           "configuration": {
             "requiresActiveDocument": true,
             "requiresRecognizedIssuer": true,
@@ -2872,6 +2907,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.correction"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.correction.statement"
           },
           "configuration": {
             "appendOnly": true,
@@ -2888,6 +2926,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.recall"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.recall.statement"
+          },
           "configuration": {
             "authorizedRoleId": "REGULATORY_AUDITOR"
           }
@@ -2897,6 +2938,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.custody"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.custody.statement"
           },
           "configuration": {
             "requiresSender": true,

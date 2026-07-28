@@ -102,7 +102,14 @@ only the signed-in learner's
 assignments and runs the complete bounded coffee command path from
 role-filtered server state. The certificate decision now records the
 scenario-required rationale, cited evidence, cited policy, confidence, and
-adverse-event probability estimate as one atomic submission. The `/author`
+adverse-event probability estimate as one atomic submission. Generic hosted
+cases also record evidence requests, first inspections, and policy
+consultations through the same append-only event history. Released evidence
+projects its title and learner-visible attributes, while record content is
+withheld until inspection is durably recorded. Only inspected evidence and
+consulted policies may be cited, without changing the academic score.
+Instructor process analytics report inspection, consultation, and citation as
+separate evidence. The `/author`
 route imports bounded JSON, YAML, or ZIP packs, provides a compact visual draft
 editor, pharmaceutical cold-chain starter, and complete Audit case-bank
 starter with an explicit finding, decoy, evidence, policy, scoring, and

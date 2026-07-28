@@ -305,7 +305,6 @@ test("completes an authored pharmaceutical decision through the generic runtime 
       {
         recordId: "EVID_PHARMA_SENSOR_SUMMARY",
         value: {
-          content: { maximumTemperatureC: 12.4 },
           inspected: false,
         },
       },
@@ -383,13 +382,35 @@ test("completes an authored pharmaceutical decision through the generic runtime 
       modeConfiguration,
     },
   };
-  const consequenceProjection = {
+  const inspectedProjection = {
     ...decisionProjection,
+    version: 5,
+    informationState: [
+      {
+        recordId: "EVID_PHARMA_SENSOR_SUMMARY",
+        value: {
+          content: {
+            minimumTemperatureC: 2,
+            maximumTemperatureC: 12.4,
+            permittedMaximumTemperatureC: 8,
+            excursionMinutes: 47,
+          },
+          inspected: true,
+        },
+      },
+    ],
+    workflowState: {
+      ...decisionProjection.workflowState,
+      permittedActionIds: ["SUBMIT_STRUCTURED_DECISION"],
+    },
+  };
+  const consequenceProjection = {
+    ...inspectedProjection,
     version: 8,
     workflowState: {
       currentNodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
       completedNodeIds: [
-        ...decisionProjection.workflowState.completedNodeIds,
+        ...inspectedProjection.workflowState.completedNodeIds,
         "NODE_PHARMA_DECISION",
       ],
       permittedActionIds: ["ADVANCE_WORKFLOW"],
@@ -514,7 +535,9 @@ test("completes an authored pharmaceutical decision through the generic runtime 
           projection:
             submittedCommand.commandType === "ADVANCE_WORKFLOW"
               ? completedProjection
-              : consequenceProjection,
+              : submittedCommand.commandType === "INSPECT_EVIDENCE"
+                ? inspectedProjection
+                : consequenceProjection,
         },
       });
       return;
@@ -540,6 +563,19 @@ test("completes an authored pharmaceutical decision through the generic runtime 
   await expect(
     page.getByText("Temperature excursion review"),
   ).toBeVisible();
+  await expect(page.getByText("2–12.4°C")).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: "Inspect Temperature sensor summary",
+    })
+    .click();
+  expect(submittedCommands[0]).toMatchObject({
+    commandType: "INSPECT_EVIDENCE",
+    runId: "RUN_BROWSER_PHARMA",
+    expectedRunVersion: 4,
+    evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+  });
+  await expect(page.getByText("2–12.4°C")).toBeVisible();
   await page
     .getByLabel("Shipment action")
     .selectOption("HOLD_AND_INVESTIGATE");
@@ -553,10 +589,10 @@ test("completes an authored pharmaceutical decision through the generic runtime 
   });
   await action.getByRole("button", { name: "Submit" }).last().click();
 
-  expect(submittedCommands[0]).toMatchObject({
+  expect(submittedCommands[1]).toMatchObject({
     commandType: "SUBMIT_STRUCTURED_DECISION",
     runId: "RUN_BROWSER_PHARMA",
-    expectedRunVersion: 4,
+    expectedRunVersion: 5,
     decisionId: "DECISION_PHARMA_RELEASE",
     responses: {
       shipmentAction: ["HOLD_AND_INVESTIGATE"],
@@ -564,16 +600,16 @@ test("completes an authored pharmaceutical decision through the generic runtime 
     justification:
       "Hold the shipment while the excursion is investigated.",
   });
-  expect(submittedCommands[0]).not.toHaveProperty("actorId");
-  expect(submittedCommands[0]).not.toHaveProperty("organizationId");
-  expect(submittedCommands[0]).not.toHaveProperty("roleId");
+  expect(submittedCommands[1]).not.toHaveProperty("actorId");
+  expect(submittedCommands[1]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[1]).not.toHaveProperty("roleId");
   await expect(
     page.getByText(
       "Release is paused while the temperature excursion is investigated.",
     ),
   ).toBeVisible();
   await action.getByRole("button", { name: "Continue" }).click();
-  expect(submittedCommands[1]).toMatchObject({
+  expect(submittedCommands[2]).toMatchObject({
     commandType: "ADVANCE_WORKFLOW",
     runId: "RUN_BROWSER_PHARMA",
     expectedRunVersion: 8,

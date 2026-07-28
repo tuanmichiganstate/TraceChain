@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.10.0",
+  "schemaVersion": "1.11.0",
   "packId": "PACK_GUIDED_COFFEE_AUDIT",
   "version": "2.0.0",
   "status": "draft",
@@ -65,9 +65,13 @@
       "platformPack.guidedAudit.conclusion.adverse": "Controls did not operate effectively",
       "platformPack.guidedAudit.conclusion.insufficient": "Evidence is insufficient for a conclusion",
       "platformPack.guidedAudit.policy.certificate": "Certificate acceptance policy",
+      "platformPack.guidedAudit.policy.certificate.statement": "Accept a certificate only when it is active and its issuer is both recognized and authorized for the certification action.",
       "platformPack.guidedAudit.policy.correction": "Quantity-correction control",
+      "platformPack.guidedAudit.policy.correction.statement": "Correct a quantity through an append-only record supported by an investigation and endorsed by both the producer and processor.",
       "platformPack.guidedAudit.policy.recall": "Recall authorization policy",
+      "platformPack.guidedAudit.policy.recall.statement": "A recall may be committed only under the authorized regulatory role; rejected attempts remain audit evidence but do not enter the ledger.",
       "platformPack.guidedAudit.policy.custody": "Custody endorsement policy",
+      "platformPack.guidedAudit.policy.custody.statement": "A custody transfer requires approval from both the current custodian and the receiving custodian over the same proposal.",
       "platformPack.guidedAudit.evidence.certificate": "Certificate validity record",
       "platformPack.guidedAudit.evidence.registry": "Certifier recognition registry",
       "platformPack.guidedAudit.evidence.receipt": "Receiving and discrepancy report",
@@ -149,9 +153,13 @@
       "platformPack.guidedAudit.conclusion.adverse": "Các kiểm soát không vận hành hiệu quả",
       "platformPack.guidedAudit.conclusion.insufficient": "Bằng chứng không đủ để kết luận",
       "platformPack.guidedAudit.policy.certificate": "Chính sách chấp nhận chứng nhận",
+      "platformPack.guidedAudit.policy.certificate.statement": "Chỉ chấp nhận chứng nhận còn hiệu lực và do đơn vị vừa được công nhận vừa có thẩm quyền đối với hoạt động chứng nhận đó cấp.",
       "platformPack.guidedAudit.policy.correction": "Kiểm soát sửa số lượng",
+      "platformPack.guidedAudit.policy.correction.statement": "Điều chỉnh số lượng bằng hồ sơ chỉ ghi thêm, có kết quả điều tra hỗ trợ và được cả bên sản xuất lẫn bên chế biến xác nhận.",
       "platformPack.guidedAudit.policy.recall": "Chính sách thẩm quyền thu hồi",
+      "platformPack.guidedAudit.policy.recall.statement": "Chỉ vai trò quản lý có thẩm quyền mới được ghi nhận lệnh thu hồi; lần thử bị từ chối vẫn là bằng chứng kiểm toán nhưng không vào sổ cái.",
       "platformPack.guidedAudit.policy.custody": "Chính sách xác nhận chuyển giao lưu giữ",
+      "platformPack.guidedAudit.policy.custody.statement": "Việc chuyển giao quyền lưu giữ phải được cả bên đang lưu giữ và bên nhận cùng phê duyệt trên một đề xuất.",
       "platformPack.guidedAudit.evidence.certificate": "Hồ sơ hiệu lực chứng nhận",
       "platformPack.guidedAudit.evidence.registry": "Sổ đăng ký công nhận đơn vị cấp",
       "platformPack.guidedAudit.evidence.receipt": "Biên bản nhận hàng và chênh lệch",
@@ -436,6 +444,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.certificate"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.certificate.statement"
+          },
           "configuration": {
             "requiresActiveDocument": true,
             "requiresRecognizedIssuer": true,
@@ -447,6 +458,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.correction"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.correction.statement"
           },
           "configuration": {
             "appendOnly": true,
@@ -463,6 +477,9 @@
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.recall"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.recall.statement"
+          },
           "configuration": {
             "authorizedRoleId": "REGULATORY_AUDITOR"
           }
@@ -472,6 +489,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.guidedAudit.policy.custody"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.guidedAudit.policy.custody.statement"
           },
           "configuration": {
             "requiresSender": true,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.10",
+  "title": "TraceChain Scenario Pack V1.11",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -22,7 +22,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.10.0" },
+    "schemaVersion": { "const": "1.11.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -441,7 +441,13 @@
     "policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["policyId", "policyType", "title", "configuration"],
+      "required": [
+        "policyId",
+        "policyType",
+        "title",
+        "learnerStatement",
+        "configuration"
+      ],
       "properties": {
         "policyId": { "$ref": "#/$defs/identifier" },
         "policyType": {
@@ -452,6 +458,7 @@
           ]
         },
         "title": { "$ref": "#/$defs/localizedText" },
+        "learnerStatement": { "$ref": "#/$defs/localizedText" },
         "configuration": { "type": "object" }
       }
     },

@@ -22,6 +22,7 @@ import {
   HostedEvidenceValue,
   HostedLearnerApiError,
   HostedLearnerScreen,
+  HostedPolicyLibrary,
   HostedRunActionControls,
   type HostedLearnerApi,
 } from "./hosted-learner-screen";
@@ -322,6 +323,184 @@ describe("hosted learner workspace", () => {
       commandType: "REQUEST_EVIDENCE",
       evidenceId: "EVID_PHARMA_TRANSFER_STABILITY",
     });
+  });
+
+  it("submits a policy consultation from authored policy titles", async () => {
+    const policyProjection: LearnerRunProjectionV1 = {
+      ...projection("CONSULT_POLICY"),
+      roleId: "QUALITY_MANAGER",
+      presentation: {
+        scenarioTitle: {
+          localizationKey: "pharma.scenario",
+          valuesByLocale: { en: "Cold-chain transfer case" },
+        },
+        roleName: {
+          localizationKey: "pharma.role",
+          valuesByLocale: { en: "Quality manager" },
+        },
+        currentNode: {
+          nodeId: "NODE_PHARMA_TRANSFER_TRIAGE",
+          nodeType: "DECISION",
+          title: {
+            localizationKey: "pharma.triage",
+            valuesByLocale: {
+              en: "Make the initial triage decision",
+            },
+          },
+        },
+        evidenceTitles: {},
+        policyTitles: {
+          POLICY_PHARMA_TRANSFER_INVESTIGATION: {
+            localizationKey: "pharma.policy.investigation",
+            valuesByLocale: {
+              en: "Hold while physical-condition evidence is unresolved",
+            },
+          },
+        },
+        policyReferences: [
+          {
+            policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+            status: "AVAILABLE",
+          },
+        ],
+        instructorIncidents: [],
+        professionalConsequences: [],
+        modeConfiguration: {
+          mode: "tutorial",
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate",
+          showScores: true,
+          outcomeStrategy: "forced",
+          seedPolicy: "generated",
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+      },
+    };
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={policyProjection}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByRole("option", {
+        name: "Hold while physical-condition evidence is unresolved",
+      }),
+    ).toBeInTheDocument();
+    await userEvent.setup().click(
+      screen.getByRole("button", { name: "Submit" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      commandType: "CONSULT_POLICY",
+      policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+    });
+  });
+
+  it("reveals an authored policy statement only after consultation", () => {
+    const available: LearnerRunProjectionV1 = {
+      ...projection(),
+      presentation: {
+        scenarioTitle: {
+          localizationKey: "pharma.scenario",
+          valuesByLocale: { en: "Cold-chain transfer case" },
+        },
+        roleName: {
+          localizationKey: "pharma.role",
+          valuesByLocale: { en: "Quality manager" },
+        },
+        currentNode: {
+          nodeId: "NODE_PHARMA_TRANSFER_TRIAGE",
+          nodeType: "DECISION",
+          title: {
+            localizationKey: "pharma.triage",
+            valuesByLocale: { en: "Initial triage" },
+          },
+        },
+        evidenceTitles: {},
+        policyTitles: {
+          POLICY_PHARMA_TRANSFER_INVESTIGATION: {
+            localizationKey: "pharma.policy.investigation",
+            valuesByLocale: {
+              en: "Temperature-excursion investigation rule",
+            },
+          },
+        },
+        policyReferences: [
+          {
+            policyId: "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+            status: "AVAILABLE",
+          },
+        ],
+        instructorIncidents: [],
+        professionalConsequences: [],
+        modeConfiguration: {
+          mode: "tutorial",
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate",
+          showScores: true,
+          outcomeStrategy: "forced",
+          seedPolicy: "generated",
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+      },
+    };
+    const { rerender } = render(
+      <LocaleProvider locale="en">
+        <HostedPolicyLibrary projection={available} />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByText("Available to consult")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Hold the shipment while/u),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedPolicyLibrary
+          projection={{
+            ...available,
+            presentation: {
+              ...available.presentation!,
+              policyReferences: [
+                {
+                  policyId:
+                    "POLICY_PHARMA_TRANSFER_INVESTIGATION",
+                  status: "CONSULTED",
+                  learnerStatement: {
+                    localizationKey:
+                      "pharma.policy.investigation.statement",
+                    valuesByLocale: {
+                      en: "Hold the shipment while physical-condition evidence remains unresolved.",
+                    },
+                  },
+                },
+              ],
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByText("Consulted")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hold the shipment while physical-condition evidence remains unresolved.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/configuration/u)).not.toBeInTheDocument();
   });
 
   it("opens one stable assignment link without starting an attempt", async () => {
@@ -775,9 +954,7 @@ describe("hosted learner workspace", () => {
         {
           recordId: "EVID_PHARMA_SENSOR_SUMMARY",
           value: {
-            content: {
-              maximumTemperatureC: 12.4,
-            },
+            inspected: false,
           },
         },
       ],
@@ -892,8 +1069,26 @@ describe("hosted learner workspace", () => {
         },
       },
     };
-    const consequenceProjection: LearnerRunProjectionV1 = {
+    const inspectedProjection: LearnerRunProjectionV1 = {
       ...genericProjection,
+      version: 5,
+      informationState: [
+        {
+          recordId: "EVID_PHARMA_SENSOR_SUMMARY",
+          value: {
+            inspected: true,
+            content: {
+              minimumTemperatureC: 2,
+              maximumTemperatureC: 12.4,
+              permittedMaximumTemperatureC: 8,
+              excursionMinutes: 47,
+            },
+          },
+        },
+      ],
+    };
+    const consequenceProjection: LearnerRunProjectionV1 = {
+      ...inspectedProjection,
       version: 7,
       workflowState: {
         currentNodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
@@ -926,7 +1121,9 @@ describe("hosted learner workspace", () => {
         },
       },
     };
-    const submit = vi.fn().mockResolvedValue(consequenceProjection);
+    const submit = vi.fn()
+      .mockResolvedValueOnce(inspectedProjection)
+      .mockResolvedValueOnce(consequenceProjection);
     const api: HostedLearnerApi = {
       loadSession: vi.fn().mockResolvedValue({
         userId: "USER_LEARNER_001",
@@ -998,8 +1195,32 @@ describe("hosted learner workspace", () => {
       await screen.findByText("Temperature excursion review"),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", {
+        name: "Inspect Temperature sensor summary",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("2–12.4°C")).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Inspect Temperature sensor summary",
+      }),
+    );
+    expect(submit).toHaveBeenCalledWith(
+      "RUN_PHARMA_001",
+      expect.objectContaining({
+        commandType: "INSPECT_EVIDENCE",
+        evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+      }),
+    );
+    expect(await screen.findByText("2–12.4°C")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", {
+        name: "Inspect evidence",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.getAllByText("Temperature sensor summary"),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     const action = screen.getByLabelText("Shipment action");
     await user.selectOptions(action, "HOLD_AND_INVESTIGATE");
     const form = action.closest("form");

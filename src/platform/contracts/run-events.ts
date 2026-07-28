@@ -233,6 +233,17 @@ export interface LearnerRunEvidenceRequestV1 {
   readonly costUnits: number;
 }
 
+export type LearnerRunPolicyReferenceV1 =
+  | {
+      readonly policyId: string;
+      readonly status: "AVAILABLE";
+    }
+  | {
+      readonly policyId: string;
+      readonly status: "CONSULTED";
+      readonly learnerStatement: LearnerRunLocalizedTextV1;
+    };
+
 export interface LearnerRunPresentationV1 {
   readonly scenarioTitle: LearnerRunLocalizedTextV1;
   readonly roleName: LearnerRunLocalizedTextV1;
@@ -245,6 +256,8 @@ export interface LearnerRunPresentationV1 {
   readonly policyTitles: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;
+  readonly policyReferences?:
+    readonly LearnerRunPolicyReferenceV1[];
   readonly instructorIncidents: readonly {
     readonly incidentId: string;
     readonly title: LearnerRunLocalizedTextV1;

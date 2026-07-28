@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.10.0",
+  "schemaVersion": "1.11.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
   "version": "1.7.0",
   "status": "draft",
@@ -40,13 +40,16 @@
       "platformPack.pharmaColdChain.role.distribution": "Distribution pharmacist",
       "platformPack.pharmaColdChain.asset.shipment": "Medicine shipment",
       "platformPack.pharmaColdChain.policy.release": "Cold-chain release rule",
+      "platformPack.pharmaColdChain.policy.release.statement": "Hold the shipment when a reported temperature excursion remains unresolved; an intact custody record does not establish acceptable storage conditions.",
       "platformPack.pharmaColdChain.evidence.sensor": "Temperature sensor summary",
       "platformPack.pharmaColdChain.transfer.scenario.title": "Cold-chain evidence and disposition transfer case",
       "platformPack.pharmaColdChain.transfer.evidence.custody": "Signed custody record",
       "platformPack.pharmaColdChain.transfer.evidence.calibration": "Sensor calibration record",
       "platformPack.pharmaColdChain.transfer.evidence.stability": "Product stability assessment",
       "platformPack.pharmaColdChain.transfer.policy.investigation": "Temperature-excursion investigation rule",
+      "platformPack.pharmaColdChain.transfer.policy.investigation.statement": "Hold the shipment while physical-condition evidence remains unresolved. Custody-record integrity does not establish that the medicine stayed within its required temperature range.",
       "platformPack.pharmaColdChain.transfer.policy.disposition": "Affected-shipment disposition rule",
+      "platformPack.pharmaColdChain.transfer.policy.disposition.statement": "Match the response to the affected scope. Release requires approved stability evidence that supports the observed temperature and duration.",
       "platformPack.pharmaColdChain.transfer.node.briefing.title": "Assess a vaccine shipment",
       "platformPack.pharmaColdChain.transfer.node.briefing.body": "A vaccine shipment has an intact signed custody history, but its off-chain temperature logger reports an excursion. You are the manufacturer's quality manager and must protect patients while avoiding unsupported action.",
       "platformPack.pharmaColdChain.transfer.node.initialEvidence.title": "Review the arrival evidence",
@@ -136,13 +139,16 @@
       "platformPack.pharmaColdChain.role.distribution": "Dược sĩ phân phối",
       "platformPack.pharmaColdChain.asset.shipment": "Lô thuốc",
       "platformPack.pharmaColdChain.policy.release": "Quy tắc xuất hàng chuỗi lạnh",
+      "platformPack.pharmaColdChain.policy.release.statement": "Giữ lô hàng khi sai lệch nhiệt độ được báo cáo vẫn chưa được giải quyết; hồ sơ chuyển giao còn nguyên vẹn không chứng minh điều kiện bảo quản là phù hợp.",
       "platformPack.pharmaColdChain.evidence.sensor": "Tóm tắt cảm biến nhiệt độ",
       "platformPack.pharmaColdChain.transfer.scenario.title": "Tình huống vận dụng về bằng chứng và xử lý chuỗi lạnh",
       "platformPack.pharmaColdChain.transfer.evidence.custody": "Hồ sơ chuyển giao đã ký",
       "platformPack.pharmaColdChain.transfer.evidence.calibration": "Hồ sơ hiệu chuẩn cảm biến",
       "platformPack.pharmaColdChain.transfer.evidence.stability": "Đánh giá độ ổn định của sản phẩm",
       "platformPack.pharmaColdChain.transfer.policy.investigation": "Quy tắc điều tra sai lệch nhiệt độ",
+      "platformPack.pharmaColdChain.transfer.policy.investigation.statement": "Giữ lô hàng trong khi bằng chứng về điều kiện vật lý vẫn chưa được giải quyết. Tính toàn vẹn của hồ sơ chuyển giao không chứng minh thuốc luôn nằm trong khoảng nhiệt độ yêu cầu.",
       "platformPack.pharmaColdChain.transfer.policy.disposition": "Quy tắc xử lý lô hàng bị ảnh hưởng",
+      "platformPack.pharmaColdChain.transfer.policy.disposition.statement": "Chọn biện pháp tương xứng với phạm vi bị ảnh hưởng. Chỉ xuất hàng khi có bằng chứng độ ổn định đã được phê duyệt và hỗ trợ mức nhiệt độ cùng thời gian đã quan sát.",
       "platformPack.pharmaColdChain.transfer.node.briefing.title": "Đánh giá một lô vắc-xin",
       "platformPack.pharmaColdChain.transfer.node.briefing.body": "Một lô vắc-xin có lịch sử chuyển giao đã ký còn nguyên vẹn, nhưng thiết bị ghi nhiệt độ ngoài chuỗi báo cáo một sai lệch. Bạn là quản lý chất lượng của nhà sản xuất và phải bảo vệ người bệnh mà không thực hiện biện pháp thiếu căn cứ.",
       "platformPack.pharmaColdChain.transfer.node.initialEvidence.title": "Xem xét bằng chứng khi lô hàng đến",
@@ -564,6 +570,9 @@
           "title": {
             "localizationKey": "platformPack.pharmaColdChain.policy.release"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.pharmaColdChain.policy.release.statement"
+          },
           "configuration": {
             "holdWhenTemperatureExcursionUnresolved": true
           }
@@ -953,6 +962,9 @@
           "title": {
             "localizationKey": "platformPack.pharmaColdChain.transfer.policy.investigation"
           },
+          "learnerStatement": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.policy.investigation.statement"
+          },
           "configuration": {
             "holdWhenPhysicalConditionEvidenceIsUnresolved": true,
             "custodyIntegrityDoesNotEstablishProductCondition": true
@@ -963,6 +975,9 @@
           "policyType": "BUSINESS_RULE",
           "title": {
             "localizationKey": "platformPack.pharmaColdChain.transfer.policy.disposition"
+          },
+          "learnerStatement": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.policy.disposition.statement"
           },
           "configuration": {
             "actionMustMatchAffectedScope": true,

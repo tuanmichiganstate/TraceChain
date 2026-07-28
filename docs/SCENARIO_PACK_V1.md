@@ -1,6 +1,6 @@
-# TraceChain scenario-pack V1.10
+# TraceChain scenario-pack V1.11
 
-The V1.10 scenario-pack format is the active contract for the hosted
+The V1.11 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
@@ -134,7 +134,11 @@ Assignment export schema V3 embeds the same bounded definitions with exact
 pack and scenario provenance. The staff catalog and export omit the evidence
 `content` object and hidden actual state. Evidence inspection remains an
 append-only run event; metadata does not imply that the learner opened or
-cited an item.
+cited an item. In the generic hosted learner projection, release exposes the
+title and `learnerMetadata` but withholds `content`. The first authorized
+`INSPECT_EVIDENCE` command appends `EVIDENCE_INSPECTED` before returning the
+content. A second command ID cannot add another first-inspection event, and
+structured decisions may cite only inspected records.
 
 Evidence authored as `AVAILABLE` must have zero acquisition delay and cost and
 must not reference a permission policy. Evidence authored as
@@ -146,7 +150,8 @@ At a decision node, an authorized learner may submit `REQUEST_EVIDENCE`. The
 generic hosted runtime records `EVIDENCE_REQUESTED` and
 `EVIDENCE_RELEASED` in one durable event batch, including the authored
 simulated delay, cost, and availability time. Only the second event adds the
-record to the role-visible information projection. Duplicate command delivery
+record reference and learner-visible metadata to the role-visible information
+projection; its content still requires inspection. Duplicate command delivery
 is idempotent, replay regenerates the same acquisition record, and the request
 does not alter academic scoring by itself. Permission-policy references must
 name a supported authorization policy; unsupported policy shapes fail closed.
@@ -194,9 +199,15 @@ range, and an adverse-event probability percentage range. Each field
 independently declares whether it is required. Runtime validation rejects empty
 definitions, inverted ranges, and a required citation field with a zero-item
 minimum. Hosted command validation then confirms that cited evidence was
-actually inspected and that cited policies are bound to that decision's
-transaction proposal. These fields remain part of the atomic decision event;
-they do not create a second score.
+actually inspected and that cited policies were consulted in the current
+append-only run history. Every policy supplies a localized
+`learnerStatement`. Policy titles are visible as a bounded library, but that
+statement enters the learner projection only after a `CONSULT_POLICY` command
+produces `POLICY_CONSULTED`. Raw policy configuration is available only in the
+optional technical traceability projection. Duplicate command delivery is
+idempotent, replay regenerates the same consulted-policy set, and an
+unconsulted policy cannot be cited. These fields remain part of the atomic
+decision event; policy consultation does not create a second score.
 
 An eligible decision may also declare a bounded `counterfactual` contract. It
 defines the release boundary, permitted creator roles, authored alternative
@@ -265,7 +276,7 @@ the 39/61 operational/knowledge split.
 
 ## Audit cases
 
-The Audit contract introduced in V1.9 remains part of V1.10 without creating a second
+The Audit contract introduced in V1.9 remains part of V1.11 without creating a second
 application or transaction system. A scenario selects
 `tracechain-audit-v1` and references one bounded `auditCase`.
 
@@ -306,7 +317,7 @@ high-stakes equivalence.
 
 ## Curriculum ownership boundary
 
-V1.10 keeps institution-, program-, and course-owned curriculum mappings out of
+V1.11 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 
@@ -376,6 +387,15 @@ materializing later events.
 The learner projection contains only role-visible business, evidence, policy,
 workflow, and shared-ledger state. It never contains `actualState`, `rngState`,
 visibility rules, or actions granted to another role.
+
+Policy projection is evidence of consultation, not a static scenario dump.
+Before consultation the learner receives the authored policy title and
+availability status but not its learner statement or configuration. After
+consultation, the localized learner statement becomes role-visible in the main
+flow and may support a structured citation; raw configuration remains confined
+to optional technical traceability. Instructor process analytics derive
+consultation counts from `POLICY_CONSULTED` and citation counts from the
+decision's `citedPolicyIds`, rather than client-only interactions.
 
 D1 stores the exact ordered event envelope as JSON behind relational run,
 sequence, event, and idempotency constraints. A batch append is atomic.

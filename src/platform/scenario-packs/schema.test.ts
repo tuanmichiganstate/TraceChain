@@ -26,7 +26,7 @@ describe("published scenario-pack JSON Schema", () => {
       "https://json-schema.org/draft/2020-12/schema",
     );
     expect(schema.$id).toContain("tracechain-scenario-pack-v1");
-    expect(schema.title).toBe("TraceChain Scenario Pack V1.10");
+    expect(schema.title).toBe("TraceChain Scenario Pack V1.11");
     expect(schema.properties).toHaveProperty("schemaVersion");
     expect(schema.properties).toHaveProperty("scenarios");
     expect(schema.properties).toHaveProperty("auditVariantBanks");

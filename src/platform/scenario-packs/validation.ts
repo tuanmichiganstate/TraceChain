@@ -3630,7 +3630,13 @@ function validateScenario(
       if (policy === null) return;
       context.allowedKeys(
         policy,
-        ["policyId", "policyType", "title", "configuration"],
+        [
+          "policyId",
+          "policyType",
+          "title",
+          "learnerStatement",
+          "configuration",
+        ],
         policyPath,
       );
       const policyId = context.string(
@@ -3659,6 +3665,12 @@ function validateScenario(
         context,
         policy.title,
         `${policyPath}.title`,
+        supportedLocales,
+      );
+      validateLocalizedText(
+        context,
+        policy.learnerStatement,
+        `${policyPath}.learnerStatement`,
         supportedLocales,
       );
       validateJsonData(
@@ -4769,10 +4781,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.10.0",
+    schemaVersion === "1.11.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.10.0",
+    "requires scenario-pack schema version 1.11.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -5315,10 +5327,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.10.0",
+      pack.schemaVersion === "1.11.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.10.0",
+      "must equal 1.11.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

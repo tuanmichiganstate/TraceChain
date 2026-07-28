@@ -35,6 +35,7 @@ import type {
   ScenarioDefinitionV1,
   ScenarioNodeV1,
   ScenarioPackV1,
+  ScenarioPolicyV1,
   ScenarioTransitionV1,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
@@ -765,11 +766,12 @@ export class GenericHostedRunService {
       if (
         evidence === undefined ||
         !state.releasedEvidenceIds.includes(command.evidenceId) ||
-        !evidence.visibleToRoleIds.includes(context.roleId)
+        !evidence.visibleToRoleIds.includes(context.roleId) ||
+        state.inspectedEvidenceIds.includes(command.evidenceId)
       ) {
         throw new HostedRunCommandError(
-          "INVALID_COMMAND",
-          "The requested evidence is not available to the active role.",
+          "WORKFLOW_PRECONDITION_FAILED",
+          "The requested evidence is unavailable or has already been inspected.",
         );
       }
       const inspected = this.buildEvent({
@@ -846,6 +848,29 @@ export class GenericHostedRunService {
       });
       built.push(released);
       state = released.nextState;
+    } else if (command.commandType === "CONSULT_POLICY") {
+      const policy = this.consultablePolicies(state).find(
+        (candidate) => candidate.policyId === command.policyId,
+      );
+      if (policy === undefined) {
+        throw new HostedRunCommandError(
+          "WORKFLOW_PRECONDITION_FAILED",
+          "The requested policy is not available for consultation in the current run state.",
+        );
+      }
+      const consulted = this.buildEvent({
+        runId: command.runId,
+        state,
+        principal: learner,
+        context,
+        commandId: command.commandId,
+        commandDigest: digest,
+        batchIndex: built.length,
+        eventType: "POLICY_CONSULTED",
+        payload: { policyId: policy.policyId },
+      });
+      built.push(consulted);
+      state = consulted.nextState;
     } else if (command.commandType === "SUBMIT_STRUCTURED_DECISION") {
       const node = this.currentNode(state);
       if (node.nodeType !== "DECISION") {
@@ -1677,7 +1702,7 @@ export class GenericHostedRunService {
           );
         }
         const state: GenericHostedRunState = {
-          schemaVersion: "1.1.0",
+          schemaVersion: "1.2.0",
           runtimeKind: "generic-v1",
           runId: request.runId,
           assignmentId: request.assignmentId,
@@ -1709,6 +1734,7 @@ export class GenericHostedRunService {
           ),
           releasedEvidenceIds: [],
           inspectedEvidenceIds: [],
+          consultedPolicyIds: [],
           evidenceRequests: [],
           releasedInstructorIncidents: [],
           decisions: {},
@@ -1995,6 +2021,28 @@ export class GenericHostedRunService {
             state.inspectedEvidenceIds.includes(evidenceId)
               ? state.inspectedEvidenceIds
               : [...state.inspectedEvidenceIds, evidenceId],
+        });
+      }
+      case "POLICY_CONSULTED": {
+        const state = this.stateOrThrow(current);
+        const policyId = requiredString(
+          event.payload.policyId,
+          "policyId",
+        );
+        const policy = this.consultablePolicies(state).find(
+          (candidate) => candidate.policyId === policyId,
+        );
+        if (policy === undefined) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Consulted policy was not available in the exact scenario and workflow state.",
+          );
+        }
+        return this.updateState(state, event, {
+          consultedPolicyIds: [
+            ...state.consultedPolicyIds,
+            policyId,
+          ],
         });
       }
       case "DECISION_SUBMITTED": {
@@ -2453,7 +2501,7 @@ export class GenericHostedRunService {
     this.validateCitations(
       decision.citedPolicyIds,
       node.structuredResponse?.policyCitations,
-      new Set(this.scenario.policies.map((policy) => policy.policyId)),
+      new Set(state.consultedPolicyIds),
       "policy",
     );
     this.validateNumericResponse(
@@ -2700,6 +2748,25 @@ export class GenericHostedRunService {
     );
   }
 
+  private consultablePolicies(
+    state: GenericHostedRunState,
+  ): readonly ScenarioPolicyV1[] {
+    if (
+      state.status !== "active" ||
+      this.currentNode(state).nodeType !== "DECISION"
+    ) {
+      return [];
+    }
+    return [...this.scenario.policies]
+      .filter(
+        (policy) =>
+          !state.consultedPolicyIds.includes(policy.policyId),
+      )
+      .sort((left, right) =>
+        left.policyId.localeCompare(right.policyId),
+      );
+  }
+
   private evidenceRequestPolicyAllows(
     evidence: ScenarioDefinitionV1["evidenceItems"][number],
     state: GenericHostedRunState,
@@ -2795,17 +2862,26 @@ export class GenericHostedRunService {
     ) {
       actions = ["ADVANCE_WORKFLOW"];
     } else if (node.nodeType === "DECISION") {
-      const visibleEvidenceExists = this.scenario.evidenceItems.some(
-        (evidence) =>
-          state.releasedEvidenceIds.includes(evidence.evidenceId) &&
-          evidence.visibleToRoleIds.includes(
-            state.activeTrustedContext.roleId,
-          ),
-      );
+      const visibleUninspectedEvidenceExists =
+        this.scenario.evidenceItems.some(
+          (evidence) =>
+            state.releasedEvidenceIds.includes(evidence.evidenceId) &&
+            !state.inspectedEvidenceIds.includes(
+              evidence.evidenceId,
+            ) &&
+            evidence.visibleToRoleIds.includes(
+              state.activeTrustedContext.roleId,
+            ),
+        );
       actions = [
-        ...(visibleEvidenceExists ? ["INSPECT_EVIDENCE"] : []),
+        ...(visibleUninspectedEvidenceExists
+          ? ["INSPECT_EVIDENCE"]
+          : []),
         ...(this.requestableEvidence(state).length > 0
           ? ["REQUEST_EVIDENCE"]
+          : []),
+        ...(this.consultablePolicies(state).length > 0
+          ? ["CONSULT_POLICY"]
           : []),
         "SUBMIT_STRUCTURED_DECISION",
       ];
@@ -2900,18 +2976,26 @@ export class GenericHostedRunService {
             inspected: state.inspectedEvidenceIds.includes(
               evidence.evidenceId,
             ),
-            content: evidence.content,
+            ...(state.inspectedEvidenceIds.includes(
+              evidence.evidenceId,
+            )
+              ? { content: evidence.content }
+              : {}),
           },
         }));
     const policyState: VisibleStateRecordV1[] =
-      this.scenario.policies.map((policy) => ({
-        recordId: policy.policyId,
-        visibleToRoleIds: roleIds,
-        value: {
-          policyType: policy.policyType,
-          configuration: policy.configuration,
-        },
-      }));
+      this.scenario.policies
+        .filter((policy) =>
+          state.consultedPolicyIds.includes(policy.policyId),
+        )
+        .map((policy) => ({
+          recordId: policy.policyId,
+          visibleToRoleIds: roleIds,
+          value: {
+            policyType: policy.policyType,
+            configuration: policy.configuration,
+          },
+        }));
     return {
       schemaVersion: "1.0.0" as const,
       runId: state.runId,
@@ -3096,6 +3180,21 @@ export class GenericHostedRunService {
           this.localizedText(policy.title.localizationKey),
         ]),
       ),
+      policyReferences: [...this.scenario.policies]
+        .sort((left, right) =>
+          left.policyId.localeCompare(right.policyId),
+        )
+        .map((policy) => ({
+          policyId: policy.policyId,
+          ...(state.consultedPolicyIds.includes(policy.policyId)
+            ? {
+                status: "CONSULTED" as const,
+                learnerStatement: this.localizedText(
+                  policy.learnerStatement.localizationKey,
+                ),
+              }
+            : { status: "AVAILABLE" as const }),
+        })),
       instructorIncidents: state.releasedInstructorIncidents.flatMap(
         (release) => {
           const incident = this.scenario.instructorIncidents.find(
