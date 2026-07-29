@@ -12309,7 +12309,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL1.summary">
   <header><code>technicalLab.TL1.summary</code></header>
-  <p class="vi" lang="vi">Thay đổi một ký tự và so sánh hai mã băm SHA-256 được tính thật.</p>
+  <p class="vi" lang="vi">Thay đổi một ký tự để quan sát hiệu ứng tuyết lở (avalanche effect) và so sánh hai mã băm SHA-256 (SHA-256 digest) được tính thật.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Change one character and compare two genuine SHA-256 digests.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL1.title">
@@ -12394,7 +12394,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL2.summary">
   <header><code>technicalLab.TL2.summary</code></header>
-  <p class="vi" lang="vi">Biến các bản ghi tương đương thành cùng một chuỗi byte trước khi băm hoặc ký.</p>
+  <p class="vi" lang="vi">Dùng tuần tự hóa chuẩn tắc (canonical serialization) để biến các bản ghi tương đương thành cùng một chuỗi byte trước khi băm hoặc ký.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Make equivalent records produce the same bytes before hashing or signing.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL2.title">
@@ -12479,7 +12479,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL3.summary">
   <header><code>technicalLab.TL3.summary</code></header>
-  <p class="vi" lang="vi">Ký một đề xuất chuẩn tắc bằng Ed25519 rồi thử sửa nội dung và thay khóa.</p>
+  <p class="vi" lang="vi">Tạo chữ ký số (digital signature) bằng Ed25519, rồi thử sửa nội dung và thay khóa công khai (public key).</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Sign a canonical proposal with Ed25519 and test tampering and key substitution.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL3.title">
@@ -12564,7 +12564,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL4.summary">
   <header><code>technicalLab.TL4.summary</code></header>
-  <p class="vi" lang="vi">Kiểm tra chữ ký hợp lệ của đơn vị vận chuyển cho một hành động mà họ không được phép thực hiện.</p>
+  <p class="vi" lang="vi">Phân biệt sự công nhận danh tính (identity recognition) với thẩm quyền (authorization) khi kiểm tra chữ ký hợp lệ của đơn vị vận chuyển cho một hành động mà họ không được phép thực hiện.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Verify a transporter’s valid signature on an action it is not permitted to perform.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL4.title">
@@ -12649,7 +12649,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL5.summary">
   <header><code>technicalLab.TL5.summary</code></header>
-  <p class="vi" lang="vi">Đánh giá SIGNED_BY, ALL_OF, ANY_OF và THRESHOLD trên các chữ ký xác nhận thật.</p>
+  <p class="vi" lang="vi">Đánh giá chính sách xác nhận (endorsement policy) SIGNED_BY, ALL_OF, ANY_OF và THRESHOLD trên các chữ ký xác nhận thật.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evaluate SIGNED_BY, ALL_OF, ANY_OF, and THRESHOLD policies over genuine endorsements.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL5.title">
@@ -12734,7 +12734,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL6.summary">
   <header><code>technicalLab.TL6.summary</code></header>
-  <p class="vi" lang="vi">Quan sát vì sao hai chữ ký hợp lệ trên hai giá trị sửa chữa khác nhau không tạo thành sự đồng thuận.</p>
+  <p class="vi" lang="vi">Quan sát trường hợp nội dung đề xuất không khớp (proposal-content mismatch): hai chữ ký hợp lệ gắn với hai mã băm đề xuất chuẩn tắc (canonical proposal digest) khác nhau không thể đáp ứng cùng một chính sách xác nhận.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Show why two valid signatures over different correction values do not create agreement.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL6.title">
@@ -12819,7 +12819,7 @@
 </article>
   <article class="entry" data-locale-key="technicalLab.TL7.summary">
   <header><code>technicalLab.TL7.summary</code></header>
-  <p class="vi" lang="vi">Xác nhận phiên bản 4, chuyển tài sản sang phiên bản 5 rồi sửa đề xuất và ghi nhận an toàn.</p>
+  <p class="vi" lang="vi">Tạo xung đột phiên bản trạng thái (state-version conflict) để quan sát cách kiểm soát đồng thời lạc quan (optimistic concurrency) từ chối đề xuất phiên bản 4 sau khi tài sản chuyển sang phiên bản 5.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Endorse version 4, advance the asset to version 5, then revise and commit safely.</p></details>
 </article>
   <article class="entry" data-locale-key="technicalLab.TL7.title">
@@ -14440,7 +14440,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>32567373f22942f491bce1c60e23c4b5697e051f</code> · SHA-256 nguồn: <code>47f797b9ae7a5df599ac7dc5ca771e9fdff64ab2cbf6d3e0a33bd7010c77c459</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>931a69ed76cc77b6ed886ecaa8d7971f16ddabe0</code> · SHA-256 nguồn: <code>06d69653556780d76f1924bf3316b044790e4f03796f10df768571e1fc609cbd</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

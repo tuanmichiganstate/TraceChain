@@ -128,7 +128,7 @@ function EvidenceInspector({
   readonly module: TechnicalLabModuleProjection;
 }): ReactNode {
   const t = useTranslator();
-  const [open, setOpen] = useState(module.experimentComplete);
+  const [open, setOpen] = useState(true);
   const visible =
     module.evidence?.fields.filter(
       (field) =>

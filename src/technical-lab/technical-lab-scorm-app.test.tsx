@@ -99,4 +99,15 @@ describe("TechnicalLabScormApp", () => {
       inspectTl1TechnicalLabStoredHeader(storedTl1()),
     ).toEqual(header);
   });
+
+  it("starts with technical evidence expanded", async () => {
+    renderApp();
+
+    const summary = await screen.findByText(
+      "Technical evidence",
+    );
+    const disclosure = summary.closest("details");
+    expect(disclosure).not.toBeNull();
+    expect((disclosure as HTMLDetailsElement).open).toBe(true);
+  });
 });
