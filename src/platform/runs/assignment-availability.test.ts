@@ -44,6 +44,7 @@ const assignment: HostedAssignmentV1 = {
   },
   research: { enabled: false },
   learnerUserIds: ["USER_LEARNER_001"],
+  raterUserIds: [],
   status: "active",
   availableFrom: "2026-08-01T00:00:00.000Z",
   availableUntil: "2026-08-02T00:00:00.000Z",

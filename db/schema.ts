@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-28-lti-nrps-v1";
+  "2026-07-29-assignment-raters-v1";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
@@ -196,6 +196,26 @@ export const schemaStatements = [
   ) STRICT`,
   `CREATE INDEX IF NOT EXISTS assignment_learners_user
     ON assignment_learners(learner_user_id, assignment_id)`,
+  /*
+   * A rater carries no relation to a course, so without this roster the role
+   * would reach every assignment in the deployment. Membership here is what
+   * scopes an assessment-only account to the work it was asked to moderate.
+   */
+  `CREATE TABLE IF NOT EXISTS assignment_raters (
+    assignment_id TEXT NOT NULL,
+    rater_user_id TEXT NOT NULL,
+    assigned_at_utc TEXT NOT NULL,
+    assigned_by_user_id TEXT NOT NULL,
+    PRIMARY KEY (assignment_id, rater_user_id),
+    FOREIGN KEY (assignment_id)
+      REFERENCES assignments(assignment_id),
+    FOREIGN KEY (rater_user_id)
+      REFERENCES application_users(user_id),
+    FOREIGN KEY (assigned_by_user_id)
+      REFERENCES application_users(user_id)
+  ) STRICT`,
+  `CREATE INDEX IF NOT EXISTS assignment_raters_user
+    ON assignment_raters(rater_user_id, assignment_id)`,
   `CREATE INDEX IF NOT EXISTS assignments_learning_context
     ON assignments(
       learning_platform_issuer,

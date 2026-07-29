@@ -718,6 +718,15 @@ describe("instructor review screen", () => {
           source: "APPLICATION_ACCESS",
         },
       ]),
+      loadAssignmentRaterOptions: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: "2.0.0",
+          userId: "USER_RATER_001",
+          displayName: "Rater",
+          email: "rater@example.edu",
+          source: "APPLICATION_ACCESS",
+        },
+      ]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentCurriculumCrosswalks: vi.fn(),
       loadAssignmentDecisionOutcomes: vi.fn(),
@@ -862,6 +871,12 @@ describe("instructor review screen", () => {
         name: "Learner — learner@example.edu (USER_LEARNER_001)",
       }),
     );
+    /* A named rater is what binds an assessment-only account to this work. */
+    await user.click(
+      form.getByRole("checkbox", {
+        name: "Rater — rater@example.edu (USER_RATER_001)",
+      }),
+    );
     await user.click(
       form.getByRole("button", { name: "Create assignment" }),
     );
@@ -878,6 +893,7 @@ describe("instructor review screen", () => {
         assignment.counterfactualReplay,
       research: assignment.research,
       learnerUserIds: assignment.learnerUserIds,
+      raterUserIds: ["USER_RATER_001"],
       availableFrom,
       availableUntil,
     });

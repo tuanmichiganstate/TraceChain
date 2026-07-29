@@ -54,6 +54,7 @@ const assignmentReport: HostedAssignmentReportV1 = {
     },
     research: { enabled: false },
     learnerUserIds: ["USER_LEARNER_001"],
+    raterUserIds: [],
     status: "active",
     feedbackReleaseStatus: "withheld",
     createdAt: "2026-07-24T08:00:00.000Z",

@@ -3448,6 +3448,12 @@ test("creates an exact published assignment for a provisioned learner", async ()
       "disabled-learner@example.edu",
       ["learner"],
     );
+    seedUser(
+      database,
+      "USER_RATER_ASSIGNMENT",
+      "assignment-rater@example.edu",
+      ["rater"],
+    );
     database.sqlite
       .prepare(
         "UPDATE application_users SET status = 'disabled' WHERE user_id = ?",
@@ -3675,6 +3681,7 @@ test("creates an exact published assignment for a provisioned learner", async ()
       counterfactualReplay: disabledCounterfactualReplay,
       research: { enabled: false },
       learnerUserIds: ["USER_LEARNER_ASSIGNMENT"],
+      raterUserIds: [],
       status: "active",
       availableFrom: assignmentBody.availableFrom,
       availableUntil: assignmentBody.availableUntil,
@@ -3684,6 +3691,43 @@ test("creates an exact published assignment for a provisioned learner", async ()
     });
     assert.match(created.assignment.createdAt, /^\d{4}-\d{2}-\d{2}T/u);
     assert.equal(created.wasIdempotentReplay, false);
+
+    /* A rater roster names only provisioned raters, and never a learner of
+       the same assignment. */
+    for (const [raterUserIds, expectedCode] of [
+      /* Rating your own assignment's learner is refused before anything
+         else is checked about the roster. */
+      [["USER_LEARNER_ASSIGNMENT"], "INVALID_ASSIGNMENT"],
+      [["USER_RATER_NEVER_PROVISIONED"], "RATER_NOT_PROVISIONED"],
+      [
+        ["USER_RATER_ASSIGNMENT", "USER_RATER_ASSIGNMENT"],
+        "INVALID_ASSIGNMENT",
+      ],
+    ]) {
+      const rejected = await worker.fetch(
+        apiRequest("/api/v1/assignments", {
+          method: "POST",
+          email: "assignment-instructor@example.edu",
+          body: {
+            ...assignmentBody,
+            commandId: `COMMAND_RATER_${String(expectedCode)}_${String(raterUserIds.length)}`,
+            assignmentId: `ASSIGNMENT_RATER_${String(expectedCode)}_${String(raterUserIds.length)}`,
+            raterUserIds,
+          },
+        }),
+        env,
+      );
+      assert.equal(
+        rejected.status,
+        400,
+        `${JSON.stringify(raterUserIds)} must be refused`,
+      );
+      assert.equal(
+        (await rejected.json()).error.code,
+        expectedCode,
+        `${JSON.stringify(raterUserIds)} must be refused with ${String(expectedCode)}`,
+      );
+    }
 
     const repeated = await worker.fetch(
       apiRequest("/api/v1/assignments", {
@@ -4724,6 +4768,18 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       "outside-instructor@example.edu",
       ["instructor"],
     );
+    seedUser(
+      database,
+      "USER_RATER_ASSIGNED",
+      "assigned-rater@example.edu",
+      ["rater"],
+    );
+    seedUser(
+      database,
+      "USER_RATER_OUTSIDE_ASSIGNMENT",
+      "outside-rater@example.edu",
+      ["rater"],
+    );
 
     const pack = await standardCoffeePack();
     const publish = await worker.fetch(
@@ -4756,6 +4812,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
             instructorCounterfactualReplay,
           research: { enabled: false },
           learnerUserIds: ["USER_LEARNER_001"],
+          raterUserIds: ["USER_RATER_ASSIGNED"],
         },
       }),
       env,
@@ -4764,6 +4821,10 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       assignmentCreate.status,
       201,
       await assignmentCreate.clone().text(),
+    );
+    assert.deepEqual(
+      (await assignmentCreate.clone().json()).assignment.raterUserIds,
+      ["USER_RATER_ASSIGNED"],
     );
     const create = await worker.fetch(
       apiRequest("/api/v1/assignments/ASSIGNMENT_SITE_001/start-run", {
@@ -6354,6 +6415,47 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         (await outsideRead.json()).error.code,
         "RUN_ACCESS_DENIED",
         `${scopedPath} must refuse with RUN_ACCESS_DENIED`,
+      );
+    }
+
+    /*
+     * A rater has no course or authorship relation, so its roster is the only
+     * thing binding it to work: named on the assignment it reads the evidence,
+     * unnamed it reaches nothing.
+     */
+    for (const raterPath of [
+      "/api/v1/assignments/ASSIGNMENT_SITE_001",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/report",
+      "/api/v1/assignments/ASSIGNMENT_SITE_001/export.json",
+      `/api/v1/runs/${runId}/timeline`,
+      `/api/v1/runs/${runId}/ratings`,
+    ]) {
+      const assignedRater = await worker.fetch(
+        apiRequest(raterPath, {
+          email: "assigned-rater@example.edu",
+        }),
+        env,
+      );
+      assert.equal(
+        assignedRater.status,
+        200,
+        `${raterPath} must admit the rater named on the assignment`,
+      );
+      const outsideRater = await worker.fetch(
+        apiRequest(raterPath, {
+          email: "outside-rater@example.edu",
+        }),
+        env,
+      );
+      assert.equal(
+        outsideRater.status,
+        403,
+        `${raterPath} must refuse a rater the assignment never named`,
+      );
+      assert.equal(
+        (await outsideRater.json()).error.code,
+        "RUN_ACCESS_DENIED",
+        `${raterPath} must refuse with RUN_ACCESS_DENIED`,
       );
     }
 

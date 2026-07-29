@@ -69,6 +69,10 @@ interface LearnerRow {
   readonly learner_user_id: string;
 }
 
+interface RaterRow {
+  readonly rater_user_id: string;
+}
+
 interface RatingRow {
   readonly rating_id: string;
   readonly assignment_id: string;
@@ -226,6 +230,19 @@ WHERE users.user_id = ?
   AND users.status = 'active'
   AND roles.application_role = 'learner'`;
 
+const FIND_RATERS = `SELECT rater_user_id
+FROM assignment_raters
+WHERE assignment_id = ?
+ORDER BY rater_user_id`;
+
+const FIND_ACTIVE_RATER = `SELECT users.user_id
+FROM application_users AS users
+JOIN application_role_assignments AS roles
+  ON roles.user_id = users.user_id
+WHERE users.user_id = ?
+  AND users.status = 'active'
+  AND roles.application_role = 'rater'`;
+
 const INSERT_ASSIGNMENT = `INSERT INTO assignments (
   assignment_id,
   creation_command_id,
@@ -262,6 +279,13 @@ const INSERT_ASSIGNMENT = `INSERT INTO assignments (
 const INSERT_LEARNER = `INSERT INTO assignment_learners (
   assignment_id,
   learner_user_id,
+  assigned_at_utc,
+  assigned_by_user_id
+) VALUES (?, ?, ?, ?)`;
+
+const INSERT_RATER = `INSERT INTO assignment_raters (
+  assignment_id,
+  rater_user_id,
   assigned_at_utc,
   assigned_by_user_id
 ) VALUES (?, ?, ?, ?)`;
@@ -548,6 +572,7 @@ export class AssignmentRepositoryError extends Error {
       | "ASSIGNMENT_CONFLICT"
       | "INVALID_ASSIGNMENT"
       | "LEARNER_NOT_PROVISIONED"
+      | "RATER_NOT_PROVISIONED"
       | "ASSIGNMENT_STORAGE_FAILED"
       | "ASSIGNMENT_ALREADY_CLOSED"
       | "ASSIGNMENT_CLOSED"
@@ -846,6 +871,38 @@ function normalizeRequest(
       "learnerUserIds must not contain duplicates.",
     );
   }
+  const requestedRaterUserIds = request.raterUserIds ?? [];
+  if (
+    !Array.isArray(requestedRaterUserIds) ||
+    requestedRaterUserIds.length > 50
+  ) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      "raterUserIds must contain at most 50 provisioned raters.",
+    );
+  }
+  const raterUserIds = [
+    ...new Set(
+      requestedRaterUserIds.map((raterUserId, index) =>
+        identifier(raterUserId, `raterUserIds[${String(index)}]`),
+      ),
+    ),
+  ].sort();
+  if (raterUserIds.length !== requestedRaterUserIds.length) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      "raterUserIds must not contain duplicates.",
+    );
+  }
+  const sharedUserId = raterUserIds.find((raterUserId) =>
+    learnerUserIds.includes(raterUserId),
+  );
+  if (sharedUserId !== undefined) {
+    throw new AssignmentRepositoryError(
+      "INVALID_ASSIGNMENT",
+      `User ${sharedUserId} cannot rate an assignment they are assigned to as a learner.`,
+    );
+  }
   let runConfiguration;
   let experienceConfiguration;
   let experienceConfigurationHash;
@@ -936,6 +993,7 @@ function normalizeRequest(
     research,
     ...(learningContext === undefined ? {} : { learningContext }),
     learnerUserIds,
+    raterUserIds,
     ...(availableFrom === undefined ? {} : { availableFrom }),
     ...(availableUntil === undefined ? {} : { availableUntil }),
   };
@@ -1220,13 +1278,16 @@ function isSameAssignment(
     existing.availableUntil === request.availableUntil &&
     existing.createdByUserId === principal.userId &&
     JSON.stringify(existing.learnerUserIds) ===
-      JSON.stringify(request.learnerUserIds)
+      JSON.stringify(request.learnerUserIds) &&
+    JSON.stringify(existing.raterUserIds) ===
+      JSON.stringify(request.raterUserIds ?? [])
   );
 }
 
 function assignmentFrom(
   row: AssignmentRow,
   learnerUserIds: readonly string[],
+  raterUserIds: readonly string[],
 ): HostedAssignmentV1 {
   const closeMetadata = [
     row.close_command_id,
@@ -1373,6 +1434,7 @@ function assignmentFrom(
     research,
     ...(learningContext === undefined ? {} : { learningContext }),
     learnerUserIds,
+    raterUserIds,
     status: row.lifecycle_status,
     ...(availableFrom === undefined ? {} : { availableFrom }),
     ...(availableUntil === undefined ? {} : { availableUntil }),
@@ -1463,6 +1525,18 @@ export class D1AssignmentRepository {
         );
       }
     }
+    for (const raterUserId of normalized.raterUserIds ?? []) {
+      const rater = await this.database
+        .prepare(FIND_ACTIVE_RATER)
+        .bind(raterUserId)
+        .first<{ readonly user_id: string }>();
+      if (rater === null) {
+        throw new AssignmentRepositoryError(
+          "RATER_NOT_PROVISIONED",
+          `Rater ${raterUserId} is not active and provisioned.`,
+        );
+      }
+    }
     const now = this.clock.now();
     const results = await this.database.batch([
       this.database
@@ -1501,6 +1575,16 @@ export class D1AssignmentRepository {
           .bind(
             normalized.assignmentId,
             learnerUserId,
+            now,
+            principal.userId,
+          ),
+      ),
+      ...(normalized.raterUserIds ?? []).map((raterUserId) =>
+        this.database
+          .prepare(INSERT_RATER)
+          .bind(
+            normalized.assignmentId,
+            raterUserId,
             now,
             principal.userId,
           ),
@@ -2271,9 +2355,20 @@ export class D1AssignmentRepository {
         "Assignment learners could not be loaded.",
       );
     }
+    const raters = await this.database
+      .prepare(FIND_RATERS)
+      .bind(row.assignment_id)
+      .all<RaterRow>();
+    if (!raters.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Assignment raters could not be loaded.",
+      );
+    }
     return assignmentFrom(
       row,
       learners.results.map((learner) => learner.learner_user_id),
+      raters.results.map((rater) => rater.rater_user_id),
     );
   }
 }

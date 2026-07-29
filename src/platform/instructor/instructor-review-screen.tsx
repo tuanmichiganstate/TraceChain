@@ -143,6 +143,9 @@ export interface InstructorReviewApi {
   loadAssignmentLearnerOptions(): Promise<
     readonly HostedAssignmentLearnerOptionV2[]
   >;
+  loadAssignmentRaterOptions?(): Promise<
+    readonly HostedAssignmentLearnerOptionV2[]
+  >;
   loadLtiDeepLinkAssignments?(): Promise<
     readonly LtiDeepLinkAssignmentOptionV1[]
   >;
@@ -392,6 +395,14 @@ export function createInstructorReviewApi(
             readonly HostedAssignmentLearnerOptionV2[];
         }>(fetcher, "/api/v1/assignment-learners")
       ).learners;
+    },
+    async loadAssignmentRaterOptions() {
+      return (
+        await responseJson<{
+          readonly raters:
+            readonly HostedAssignmentLearnerOptionV2[];
+        }>(fetcher, "/api/v1/assignment-raters")
+      ).raters;
     },
     async loadLtiDeepLinkAssignments() {
       return (
@@ -1839,6 +1850,12 @@ function AssignmentCreation({
   >([]);
   const [isLearnerRosterLoading, setLearnerRosterLoading] =
     useState(true);
+  const [raterOptions, setRaterOptions] = useState<
+    readonly HostedAssignmentLearnerOptionV2[]
+  >([]);
+  const [selectedRaterIds, setSelectedRaterIds] = useState<
+    readonly string[]
+  >([]);
   const [learnerRosterError, setLearnerRosterError] =
     useState(false);
   const [isNrpsSyncing, setNrpsSyncing] = useState(false);
@@ -1899,6 +1916,29 @@ function AssignmentCreation({
         setSelectedLearnerIds([]);
         setLearnerRosterError(true);
         setLearnerRosterLoading(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [api]);
+
+  useEffect(() => {
+    const load = api.loadAssignmentRaterOptions;
+    if (load === undefined) return;
+    let active = true;
+    /*
+     * An empty or unavailable rater roster is not an error state: it simply
+     * leaves the assignment closed to raters, which is the safe default.
+     */
+    void load().then(
+      (available) => {
+        if (active) setRaterOptions(available);
+      },
+      () => {
+        if (!active) return;
+        setRaterOptions([]);
+        setSelectedRaterIds([]);
       },
     );
     return () => {
@@ -2015,6 +2055,7 @@ function AssignmentCreation({
               }
             : { enabled: false },
           learnerUserIds: selectedLearnerIds,
+          raterUserIds: selectedRaterIds,
           ...(availableFrom === undefined
             ? {}
             : { availableFrom }),
@@ -2489,6 +2530,59 @@ function AssignmentCreation({
                 ? "instructorReview.learnersLtiHint"
                 : "instructorReview.learnersHint",
             )}
+          </span>
+        </fieldset>
+        <fieldset className="field">
+          <legend>{t("instructorReview.ratersLegend")}</legend>
+          {raterOptions.length === 0 ? (
+            <p>{t("instructorReview.ratersEmpty")}</p>
+          ) : (
+            <div className="instructor-review__learner-options">
+              {raterOptions.map((rater) => {
+                const checked = selectedRaterIds.includes(
+                  rater.userId,
+                );
+                return (
+                  <label key={rater.userId}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={
+                        (!checked && selectedRaterIds.length >= 50) ||
+                        selectedLearnerIds.includes(rater.userId)
+                      }
+                      onChange={(event) => {
+                        setSelectedRaterIds((current) =>
+                          event.target.checked
+                            ? [...current, rater.userId].sort()
+                            : current.filter(
+                                (userId) => userId !== rater.userId,
+                              ),
+                        );
+                      }}
+                    />
+                    <span>
+                      {rater.email === undefined
+                        ? t(
+                            "instructorReview.learnerOptionWithoutEmail",
+                            {
+                              displayName: rater.displayName,
+                              userId: rater.userId,
+                            },
+                          )
+                        : t("instructorReview.learnerOption", {
+                            displayName: rater.displayName,
+                            email: rater.email,
+                            userId: rater.userId,
+                          })}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          <span className="field__hint">
+            {t("instructorReview.ratersHint")}
           </span>
         </fieldset>
         <div className="instructor-review__form-actions">

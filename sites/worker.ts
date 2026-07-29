@@ -1343,29 +1343,33 @@ async function enforceLtiCourseRequestScope(options: {
 }
 
 /**
- * The staff scope of one assignment.
+ * The staff scope of one assignment, stated as what is allowed rather than
+ * what is refused.
  *
- * An administrator sees every assignment. An instructor sees the ones they
- * created. A rater carries no assignment relation of its own, so the roles it
- * is granted alongside decide: a plain rater reaches the assessment endpoints
- * that admit raters, exactly as the evidence export has always allowed.
+ * An administrator reaches every assignment. An instructor reaches the ones
+ * they created. A rater reaches the ones they were named on: the role carries
+ * no course or authorship relation of its own, so its roster is the only thing
+ * that binds an assessment-only account to particular work.
  *
  * Every staff projection of an assignment goes through here. The reports,
- * monitors, replays and exports are all views of the same learner evidence, so
- * a scope enforced on one of them and not the others is not a scope at all.
+ * monitors, replays, ratings and exports are all views of the same learner
+ * evidence, so a scope enforced on one of them and not the others is not a
+ * scope at all.
  */
 function assertAssignmentScope(
   principal: ApplicationPrincipal,
   assignment: HostedAssignmentV1,
 ): HostedAssignmentV1 {
-  if (
-    principal.roles.includes("instructor") &&
-    !principal.roles.includes("administrator") &&
-    assignment.createdByUserId !== principal.userId
-  ) {
+  const permitted =
+    principal.roles.includes("administrator") ||
+    (principal.roles.includes("instructor") &&
+      assignment.createdByUserId === principal.userId) ||
+    (principal.roles.includes("rater") &&
+      assignment.raterUserIds.includes(principal.userId));
+  if (!permitted) {
     throw new HostedAuthorizationError(
       "RUN_ACCESS_DENIED",
-      "The assignment is outside the instructor's assignment scope.",
+      "The assignment is outside the authenticated user's assignment scope.",
     );
   }
   return assignment;
@@ -2710,6 +2714,44 @@ async function apiResponse(
         });
     }
     return jsonResponse(200, { learners });
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/assignment-raters"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "administrator",
+    ]);
+    /*
+     * Raters are application-provisioned rather than course-derived: an NRPS
+     * roster describes a Moodle course's learners and never names a rater, so
+     * both authentication sources select from the same provisioned accounts.
+     */
+    const raters = (
+      await new D1ApplicationAccessRepository(
+        environment.DB,
+        clock,
+      ).list()
+    )
+      .filter(
+        (user) =>
+          user.status === "active" && user.roles.includes("rater"),
+      )
+      .map<HostedAssignmentLearnerOptionV2>((user) => ({
+        schemaVersion: "2.0.0",
+        userId: user.userId,
+        displayName: user.email,
+        email: user.email,
+        source: "APPLICATION_ACCESS",
+      }))
+      .sort((left, right) => {
+        const leftKey = `${left.displayName}\u0000${left.userId}`;
+        const rightKey = `${right.displayName}\u0000${right.userId}`;
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+      });
+    return jsonResponse(200, { raters });
   }
 
   if (
@@ -5167,9 +5209,17 @@ async function apiResponse(
     /*
      * The bare run path is the learner's own projection, which the runtime
      * scopes to the assigned learner. Every suffix below it is a staff view of
-     * that learner's evidence and carries the assignment scope.
+     * that learner's evidence: the role decides whether the caller may hold
+     * such a view at all, and the assignment scope decides which ones. Asking
+     * in that order keeps a learner's refusal about their role rather than
+     * about someone else's assignment.
      */
     if (learnerRunId === null) {
+      requireApplicationRole(principal, [
+        "instructor",
+        "rater",
+        "administrator",
+      ]);
       await assertScopedRunAssignment(environment, principal, runId);
     }
     const pack = await findHostedContentPack(

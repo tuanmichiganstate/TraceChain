@@ -68,6 +68,12 @@ export interface HostedAssignmentV1 {
   readonly research: AssignmentResearchConfigurationV1;
   readonly learningContext?: LtiLearningContextV2;
   readonly learnerUserIds: readonly string[];
+  /**
+   * The assessment-only accounts allowed to read this assignment's evidence
+   * and record rubric ratings against it. A rater has no course relation of
+   * its own, so an empty roster means no rater reaches this assignment.
+   */
+  readonly raterUserIds: readonly string[];
   readonly status: "active" | "closed";
   readonly availableFrom?: string;
   readonly availableUntil?: string;
@@ -102,6 +108,8 @@ export interface CreateHostedAssignmentRequest {
    */
   readonly learningContext?: LtiLearningContextV2;
   readonly learnerUserIds: readonly string[];
+  /** Optional. Omitted or empty leaves the assignment closed to raters. */
+  readonly raterUserIds?: readonly string[];
   readonly availableFrom?: string;
   readonly availableUntil?: string;
 }
