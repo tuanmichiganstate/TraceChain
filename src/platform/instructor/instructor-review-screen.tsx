@@ -2490,8 +2490,9 @@ function AssignmentCreation({
                       type="checkbox"
                       checked={checked}
                       disabled={
-                        !checked &&
-                        selectedLearnerIds.length >= 200
+                        (!checked &&
+                          selectedLearnerIds.length >= 200) ||
+                        selectedRaterIds.includes(learner.userId)
                       }
                       onChange={(event) => {
                         setSelectedLearnerIds((current) =>

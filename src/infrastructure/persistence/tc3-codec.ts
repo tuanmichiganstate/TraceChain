@@ -228,6 +228,13 @@ function hintsFromBitmap(field: string, schema: Tc3CodecSchema): string[] {
     (total, character) => total * 36n + BigInt(Number.parseInt(character, 36)),
     0n,
   );
+  const maximumBitmap =
+    (1n << BigInt(schema.hintIds.length)) - 1n;
+  if (bitmap > maximumBitmap) {
+    throw new PersistenceError(
+      "TC3 hint bitmap contains an unknown hint",
+    );
+  }
   return schema.hintIds.filter(
     (_hint, index) => (bitmap & (1n << BigInt(index))) !== 0n,
   );
@@ -713,15 +720,28 @@ function assertWireShape(
     Number.isInteger(entry[1]) &&
     Number.isInteger(entry[2]) &&
     Array.isArray(entry[3]);
+  const completedStageBitmap = wire[6];
+  const maximumStageBitmap =
+    2 ** SCENARIO_STAGE_ORDER.length - 1;
+  const flags = wire[10];
+  const sessionId = wire[4];
   if (
-    wire.slice(0, 5).some((field) => typeof field !== "string") ||
+    wire.slice(0, 4).some((field) => typeof field !== "string") ||
+    typeof sessionId !== "string" ||
+    !IDENTIFIER_PATTERN.test(sessionId) ||
     !Number.isInteger(wire[5]) ||
-    !Number.isInteger(wire[6]) ||
+    typeof completedStageBitmap !== "number" ||
+    !Number.isInteger(completedStageBitmap) ||
+    completedStageBitmap < 0 ||
+    completedStageBitmap > maximumStageBitmap ||
     !Array.isArray(wire[7]) ||
     typeof wire[8] !== "string" ||
     !Array.isArray(wire[9]) ||
     !wire[9].every(isJournalEntry) ||
-    !Number.isInteger(wire[10])
+    typeof flags !== "number" ||
+    !Number.isInteger(flags) ||
+    flags < 0 ||
+    (flags & ~3) !== 0
   ) {
     throw new PersistenceError("TC3 payload has a malformed field");
   }

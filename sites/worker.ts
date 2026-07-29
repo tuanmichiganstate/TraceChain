@@ -1347,9 +1347,10 @@ async function enforceLtiCourseRequestScope(options: {
  * what is refused.
  *
  * An administrator reaches every assignment. An instructor reaches the ones
- * they created. A rater reaches the ones they were named on: the role carries
- * no course or authorship relation of its own, so its roster is the only thing
- * that binds an assessment-only account to particular work.
+ * they created. On endpoints that explicitly admit raters, a rater reaches
+ * the assignments they were named on. Keeping that endpoint permission
+ * explicit prevents a dual-role instructor/rater from using rater membership
+ * to perform instructor-only mutations on somebody else's assignment.
  *
  * Every staff projection of an assignment goes through here. The reports,
  * monitors, replays, ratings and exports are all views of the same learner
@@ -1359,12 +1360,16 @@ async function enforceLtiCourseRequestScope(options: {
 function assertAssignmentScope(
   principal: ApplicationPrincipal,
   assignment: HostedAssignmentV1,
+  options: {
+    readonly allowAssignedRater?: boolean;
+  } = {},
 ): HostedAssignmentV1 {
   const permitted =
     principal.roles.includes("administrator") ||
     (principal.roles.includes("instructor") &&
       assignment.createdByUserId === principal.userId) ||
-    (principal.roles.includes("rater") &&
+    (options.allowAssignedRater === true &&
+      principal.roles.includes("rater") &&
       assignment.raterUserIds.includes(principal.userId));
   if (!permitted) {
     throw new HostedAuthorizationError(
@@ -1379,6 +1384,9 @@ async function assertScopedAssignment(
   environment: WorkerEnvironment,
   principal: ApplicationPrincipal,
   assignmentId: string,
+  options?: {
+    readonly allowAssignedRater?: boolean;
+  },
 ): Promise<HostedAssignmentV1> {
   const assignment = await new D1AssignmentRepository(
     environment.DB,
@@ -1390,13 +1398,16 @@ async function assertScopedAssignment(
       `Assignment ${assignmentId} does not exist.`,
     );
   }
-  return assertAssignmentScope(principal, assignment);
+  return assertAssignmentScope(principal, assignment, options);
 }
 
 async function assertScopedRunAssignment(
   environment: WorkerEnvironment,
   principal: ApplicationPrincipal,
   runId: string,
+  options?: {
+    readonly allowAssignedRater?: boolean;
+  },
 ): Promise<HostedAssignmentV1> {
   const assignment = await new D1AssignmentRepository(
     environment.DB,
@@ -1408,7 +1419,7 @@ async function assertScopedRunAssignment(
       "Run is not linked to an assignment.",
     );
   }
-  return assertAssignmentScope(principal, assignment);
+  return assertAssignmentScope(principal, assignment, options);
 }
 
 function byteHash(bytes: ArrayBuffer): Promise<string> {
@@ -2950,6 +2961,7 @@ async function apiResponse(
         environment,
         principal,
         assignmentId,
+        { allowAssignedRater: true },
       ),
     });
   }
@@ -3025,6 +3037,9 @@ async function apiResponse(
         "ASSIGNMENT_NOT_FOUND",
         `Assignment ${startRunAssignmentId} does not exist.`,
       );
+    }
+    if (!runCreator.roles.includes("learner")) {
+      assertAssignmentScope(runCreator, assignment);
     }
     const learnerUserId = runCreator.roles.includes("learner")
       ? runCreator.userId
@@ -3163,6 +3178,7 @@ async function apiResponse(
       environment,
       principal,
       reportAssignmentId,
+      { allowAssignedRater: true },
     );
     const report = await new D1AssignmentRepository(
       environment.DB,
@@ -3188,6 +3204,7 @@ async function apiResponse(
       environment,
       catalogActor,
       evidenceCatalogAssignmentId,
+      { allowAssignedRater: true },
     );
     const pack = await findHostedContentPack(
       environment,
@@ -3232,7 +3249,9 @@ async function apiResponse(
     const report = await repository.report(
       auditReportAssignmentId,
     );
-    assertAssignmentScope(reportActor, report.assignment);
+    assertAssignmentScope(reportActor, report.assignment, {
+      allowAssignedRater: true,
+    });
     const pack = await findHostedContentPack(
       environment,
       reportActor.userId,
@@ -3323,7 +3342,9 @@ async function apiResponse(
       environment.DB,
       clock,
     ).report(technicalLabReportAssignmentId);
-    assertAssignmentScope(reportActor, report.assignment);
+    assertAssignmentScope(reportActor, report.assignment, {
+      allowAssignedRater: true,
+    });
     if (
       !isTechnicalLabHostedContent(
         report.assignment.packId,
@@ -3396,6 +3417,7 @@ async function apiResponse(
       environment,
       principal,
       decisionOutcomeAssignmentId,
+      { allowAssignedRater: true },
     );
     const report = await repository.report(
       decisionOutcomeAssignmentId,
@@ -3526,6 +3548,7 @@ async function apiResponse(
       environment,
       principal,
       monitorAssignmentId,
+      { allowAssignedRater: true },
     );
     const report = await repository.report(monitorAssignmentId);
     const pack = await findHostedContentPack(
@@ -3612,6 +3635,7 @@ async function apiResponse(
       environment,
       principal,
       competencyAssignmentId,
+      { allowAssignedRater: true },
     );
     const report = await repository.report(competencyAssignmentId);
     const pack = await findHostedContentPack(
@@ -3683,6 +3707,7 @@ async function apiResponse(
       environment,
       principal,
       requestedCurriculumCrosswalkAssignmentId,
+      { allowAssignedRater: true },
     );
     const assignmentReport = await repository.report(
       requestedCurriculumCrosswalkAssignmentId,
@@ -3838,7 +3863,9 @@ async function apiResponse(
     );
     const identityMode = assignmentExportIdentityMode(url);
     const report = await repository.report(exportAssignmentId);
-    assertAssignmentScope(exportActor, report.assignment);
+    assertAssignmentScope(exportActor, report.assignment, {
+      allowAssignedRater: true,
+    });
     const pack = await findHostedContentPack(
       environment,
       exportActor.userId,
@@ -3953,6 +3980,7 @@ async function apiResponse(
       environment,
       principal,
       ratingRunId,
+      { allowAssignedRater: true },
     );
     return jsonResponse(200, {
       assignment,
@@ -3981,6 +4009,7 @@ async function apiResponse(
       environment,
       principal,
       ratingRunId,
+      { allowAssignedRater: true },
     );
     const { pack, service } = await hostedServiceForRun(
       environment,
@@ -5220,7 +5249,12 @@ async function apiResponse(
         "rater",
         "administrator",
       ]);
-      await assertScopedRunAssignment(environment, principal, runId);
+      await assertScopedRunAssignment(
+        environment,
+        principal,
+        runId,
+        { allowAssignedRater: true },
+      );
     }
     const pack = await findHostedContentPack(
       environment,

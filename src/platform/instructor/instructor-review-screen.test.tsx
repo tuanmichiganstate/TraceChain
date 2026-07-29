@@ -726,6 +726,13 @@ describe("instructor review screen", () => {
           email: "rater@example.edu",
           source: "APPLICATION_ACCESS",
         },
+        {
+          schemaVersion: "2.0.0",
+          userId: "USER_LEARNER_001",
+          displayName: "Dual-role user",
+          email: "dual-role@example.edu",
+          source: "APPLICATION_ACCESS",
+        },
       ]),
       loadAssignmentCompetencies: vi.fn(),
       loadAssignmentCurriculumCrosswalks: vi.fn(),
@@ -866,10 +873,17 @@ describe("instructor review screen", () => {
         name: "Mark exported ratings for blinded-rater handling",
       }),
     );
+    const dualRoleRater = form.getByRole("checkbox", {
+      name: "Dual-role user — dual-role@example.edu (USER_LEARNER_001)",
+    });
+    const dualRoleLearner = form.getByRole("checkbox", {
+      name: "Learner — learner@example.edu (USER_LEARNER_001)",
+    });
+    await user.click(dualRoleRater);
+    expect(dualRoleLearner).toBeDisabled();
+    await user.click(dualRoleRater);
     await user.click(
-      form.getByRole("checkbox", {
-        name: "Learner — learner@example.edu (USER_LEARNER_001)",
-      }),
+      dualRoleLearner,
     );
     /* A named rater is what binds an assessment-only account to this work. */
     await user.click(

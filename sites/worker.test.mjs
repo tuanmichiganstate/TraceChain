@@ -4772,7 +4772,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       database,
       "USER_RATER_ASSIGNED",
       "assigned-rater@example.edu",
-      ["rater"],
+      ["instructor", "rater"],
     );
     seedUser(
       database,
@@ -6459,6 +6459,48 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       );
     }
 
+    const assignedRaterInstructorClose = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/close",
+        {
+          method: "POST",
+          email: "assigned-rater@example.edu",
+          body: {
+            commandId: "COMMAND_ASSIGNED_RATER_CLOSE_001",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(assignedRaterInstructorClose.status, 403);
+    assert.equal(
+      (await assignedRaterInstructorClose.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
+    const outsideInstructorStartRun = await worker.fetch(
+      apiRequest(
+        "/api/v1/assignments/ASSIGNMENT_SITE_001/start-run",
+        {
+          method: "POST",
+          email: "outside-instructor@example.edu",
+          body: {
+            commandId: "COMMAND_OUTSIDE_START_RUN_001",
+            runId: "RUN_OUTSIDE_START_001",
+            learnerUserId: "USER_LEARNER_001",
+            scenarioSeed: "outside-start-seed",
+            caseVariant: "authorized-certifier",
+          },
+        },
+      ),
+      env,
+    );
+    assert.equal(outsideInstructorStartRun.status, 403);
+    assert.equal(
+      (await outsideInstructorStartRun.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
+
     /* The one-way writes answer to the same scope as the reads. */
     for (const [scopedPath, scopedBody] of [
       [
@@ -6474,12 +6516,12 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         {
           commandId: "COMMAND_OUTSIDE_RATING_001",
           runId,
-          rubricId: "RUBRIC_COFFEE_STAGE3",
-          criterionId: "CRIT_EVIDENCE_USE",
+          rubricId: rated.rating.rubricId,
+          criterionId: rated.rating.criterionId,
           levelValue: 3,
           comment: "",
-          linkedEvidenceIds: [],
-          expectedRevision: 0,
+          linkedEvidenceIds: rated.rating.linkedEvidenceIds,
+          expectedRevision: rated.rating.revision,
         },
       ],
       [
@@ -6487,12 +6529,12 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         {
           commandId: "COMMAND_OUTSIDE_MODERATION_001",
           runId,
-          rubricId: "RUBRIC_COFFEE_STAGE3",
-          criterionId: "CRIT_EVIDENCE_USE",
+          rubricId: moderated.resolution.rubricId,
+          criterionId: moderated.resolution.criterionId,
           levelValue: 3,
           comment: "",
-          sourceRatingIds: [],
-          expectedRevision: 0,
+          sourceRatingIds: [rated.rating.ratingId],
+          expectedRevision: moderated.resolution.revision,
         },
       ],
     ]) {
@@ -6515,6 +6557,31 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         `${scopedPath} must refuse with RUN_ACCESS_DENIED`,
       );
     }
+
+    const outsideRaterWrite = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/ratings`, {
+        method: "POST",
+        email: "outside-rater@example.edu",
+        body: {
+          commandId: "COMMAND_OUTSIDE_RATER_RATING_001",
+          runId,
+          rubricId: "RUBRIC_CERTIFICATE_DECISION",
+          criterionId: "CRITERION_AUTHORIZATION_JUDGMENT",
+          levelValue: 3,
+          comment: "",
+          linkedEvidenceIds: [
+            rated.rating.linkedEvidenceIds[0],
+          ],
+          expectedRevision: 0,
+        },
+      }),
+      env,
+    );
+    assert.equal(outsideRaterWrite.status, 403);
+    assert.equal(
+      (await outsideRaterWrite.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
 
     const activityTimelineResponse = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/timeline`, {
@@ -7153,6 +7220,32 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
         (event) => event.eventType === "DECISION_REJECTED",
       ),
       true,
+    );
+    const assignedRaterRating = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/ratings`, {
+        method: "POST",
+        email: "assigned-rater@example.edu",
+        body: {
+          commandId: "COMMAND_ASSIGNED_RATER_RATING_001",
+          runId,
+          rubricId: "RUBRIC_CERTIFICATE_DECISION",
+          criterionId: "CRITERION_AUTHORIZATION_JUDGMENT",
+          levelValue: 3,
+          comment: "",
+          linkedEvidenceIds: [timeline[0].eventId],
+          expectedRevision: 0,
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      assignedRaterRating.status,
+      201,
+      await assignedRaterRating.clone().text(),
+    );
+    assert.equal(
+      (await assignedRaterRating.json()).rating.raterUserId,
+      "USER_RATER_ASSIGNED",
     );
     assert.equal(
       database.sqlite

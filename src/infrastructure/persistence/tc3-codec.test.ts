@@ -268,12 +268,21 @@ describe("TC3 attempt codec", () => {
     const valid = decodedWire(encodeTc3Attempt(snapshot(), schema));
     const corruptions: readonly (readonly [number, unknown])[] = [
       [4, 17],
+      [4, "session id with spaces"],
       [5, "not-a-stage-index"],
       [6, "not-a-bitmap"],
+      [6, -1],
+      [6, 2 ** SCENARIO_STAGE_ORDER.length],
       [7, "not-a-decision-vector"],
       [8, 1234],
+      [
+        8,
+        (1n << BigInt(schema.hintIds.length)).toString(36),
+      ],
       [9, "not-a-journal"],
       [10, "not-a-flag-set"],
+      [10, -1],
+      [10, 4],
     ];
     for (const [index, corruption] of corruptions) {
       const wire = [...valid];

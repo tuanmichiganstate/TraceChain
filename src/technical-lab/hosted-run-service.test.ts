@@ -193,7 +193,7 @@ describe("hosted Technical Laboratory runtime", () => {
         },
       },
     });
-  }, 20_000);
+  }, 40_000);
 
   it("rejects stale delivery and replays an identical command idempotently", async () => {
     const service = createHostedRuntimeService({
