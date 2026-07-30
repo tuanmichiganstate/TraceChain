@@ -297,6 +297,15 @@ describe("instructor review screen", () => {
     expect(
       await screen.findByText("Course instructor"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Manage TraceChain activities",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Instructor", { selector: "dd" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Accounting 101")).toBeInTheDocument();
     expect(screen.getByText("Moodle course launch")).toBeInTheDocument();
     expect(
@@ -420,6 +429,7 @@ describe("instructor review screen", () => {
         disabledCounterfactualReplay,
       research: { enabled: false },
       learnerUserIds: [],
+      raterUserIds: [],
       status: "active",
       feedbackReleaseStatus: "withheld",
       createdAt: "2026-07-28T08:00:00.000Z",
@@ -695,6 +705,7 @@ describe("instructor review screen", () => {
         retentionPolicyReference: "RETENTION_POLICY_001",
       } as const,
       learnerUserIds: ["USER_LEARNER_001"],
+      raterUserIds: ["USER_RATER_001"],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
       availableFrom,
@@ -772,7 +783,7 @@ describe("instructor review screen", () => {
       availableFromLocal,
     );
     await user.type(
-      form.getByLabelText("Available until (optional)"),
+      form.getByLabelText("Close new starts before (optional)"),
       availableUntilLocal,
     );
     const scenarioSelect = await form.findByLabelText(
@@ -940,6 +951,7 @@ describe("instructor review screen", () => {
       } as const,
       research: { enabled: false } as const,
       learnerUserIds: ["USER_LEARNER_001"],
+      raterUserIds: [],
       status: "active" as const,
       feedbackReleaseStatus: "withheld" as const,
       createdAt: "2026-07-24T08:00:00.000Z",
@@ -975,6 +987,20 @@ describe("instructor review screen", () => {
     const api: InstructorReviewApi = {
       createAssignment: vi.fn(),
       closeAssignment,
+      loadAccessibleAssignments: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: "1.0.0",
+          assignmentId: assignment.assignmentId,
+          title: assignment.title,
+          scenarioId: assignment.scenarioId,
+          scenarioVersion: assignment.scenarioVersion,
+          mode: assignment.mode,
+          status: assignment.status,
+          assignedLearnerCount: assignment.learnerUserIds.length,
+          assignedRaterCount: assignment.raterUserIds.length,
+          createdAt: assignment.createdAt,
+        },
+      ]),
       loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
       loadAssignmentCompetencies: vi.fn().mockResolvedValue({
@@ -1458,12 +1484,12 @@ describe("instructor review screen", () => {
     if (section === null) throw new Error("Expected report section.");
     const report = within(section);
     const user = userEvent.setup();
-    await user.type(
-      report.getByLabelText("Assignment ID"),
+    await user.selectOptions(
+      await report.findByLabelText("Accessible assignment"),
       "ASSIGNMENT_EXPORT_001",
     );
     await user.click(
-      report.getByRole("button", { name: "Load report" }),
+      report.getByRole("button", { name: "View report" }),
     );
 
     expect(api.loadAssignmentMonitor).toHaveBeenCalledWith(
@@ -1825,6 +1851,7 @@ describe("instructor review screen", () => {
           counterfactualReplay:
             disabledCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_001"],
+          raterUserIds: [],
           status: "active",
           feedbackReleaseStatus: "withheld",
           createdAt: "2026-07-24T08:00:00.000Z",
@@ -1915,7 +1942,7 @@ describe("instructor review screen", () => {
     expect(await screen.findByText("instructor@example.edu")).toBeInTheDocument();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Run ID"), "RUN_STAGE3_001");
-    await user.click(screen.getByRole("button", { name: "Load run" }));
+    await user.click(screen.getByRole("button", { name: "Open run" }));
 
     expect(api.loadRunReview).toHaveBeenCalledWith("RUN_STAGE3_001");
     expect(await screen.findByText("TRANSACTION_REJECTED")).toBeInTheDocument();
@@ -2060,6 +2087,7 @@ describe("instructor review screen", () => {
           counterfactualReplay:
             disabledCounterfactualReplay,
           learnerUserIds: ["USER_LEARNER_001"],
+          raterUserIds: [],
           status: "active",
           feedbackReleaseStatus: "withheld",
           createdAt: "2026-07-24T08:00:00.000Z",
@@ -2106,7 +2134,7 @@ describe("instructor review screen", () => {
       screen.getByLabelText("Run ID"),
       sourceRating.runId,
     );
-    await user.click(screen.getByRole("button", { name: "Load run" }));
+    await user.click(screen.getByRole("button", { name: "Open run" }));
 
     await user.selectOptions(
       await screen.findByLabelText("Resolved level"),
@@ -2159,7 +2187,7 @@ describe("instructor review screen", () => {
 
     expect(
       await screen.findByText(
-        "Your TraceChain account does not have permission to review runs.",
+        "Your TraceChain account does not have an instructor, rater, or administrator role.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Run ID")).not.toBeInTheDocument();
@@ -2190,6 +2218,23 @@ describe("instructor review screen", () => {
                     displayName: "Learner",
                     email: "learner@example.edu",
                     source: "APPLICATION_ACCESS",
+                  },
+                ],
+              }
+          : path === "/api/v1/assignments"
+            ? {
+                assignments: [
+                  {
+                    schemaVersion: "1.0.0",
+                    assignmentId: "ASSIGNMENT_001",
+                    title: "Coffee cohort",
+                    scenarioId: "SCN_COFFEE_001",
+                    scenarioVersion: "2.2.0",
+                    mode: "standard",
+                    status: "active",
+                    assignedLearnerCount: 1,
+                    assignedRaterCount: 0,
+                    createdAt: "2026-07-24T08:00:00.000Z",
                   },
                 ],
               }
@@ -2236,6 +2281,7 @@ describe("instructor review screen", () => {
                       counterfactualReplay:
                         disabledCounterfactualReplay,
                       learnerUserIds: ["USER_LEARNER_001"],
+                      raterUserIds: [],
                       status: "active",
                       feedbackReleaseStatus: "withheld",
                       createdAt: "2026-07-24T08:00:00.000Z",
@@ -2264,6 +2310,20 @@ describe("instructor review screen", () => {
         source: "APPLICATION_ACCESS",
       },
     ]);
+    expect(await api.loadAccessibleAssignments?.()).toEqual([
+      {
+        schemaVersion: "1.0.0",
+        assignmentId: "ASSIGNMENT_001",
+        title: "Coffee cohort",
+        scenarioId: "SCN_COFFEE_001",
+        scenarioVersion: "2.2.0",
+        mode: "standard",
+        status: "active",
+        assignedLearnerCount: 1,
+        assignedRaterCount: 0,
+        createdAt: "2026-07-24T08:00:00.000Z",
+      },
+    ]);
     await api.closeAssignment("ASSIGNMENT / 001");
     await api.loadRunReview("RUN / 001");
     await api.loadRunReplay("RUN / 001", 2);
@@ -2285,6 +2345,7 @@ describe("instructor review screen", () => {
       "/api/v1/session",
       "/api/v1/assignment-options",
       "/api/v1/assignment-learners",
+      "/api/v1/assignments",
       "/api/v1/assignments/ASSIGNMENT%20%2F%20001/close",
       "/api/v1/runs/RUN%20%2F%20001/timeline",
       "/api/v1/runs/RUN%20%2F%20001/competencies",

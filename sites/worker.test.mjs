@@ -10,6 +10,9 @@ import { DatabaseSync } from "node:sqlite";
 import test, { after } from "node:test";
 import { build } from "esbuild";
 import {
+  prepareHostedAppShell,
+} from "../scripts/hosted-app-shell.mjs";
+import {
   createLocalJWKSet,
   exportJWK,
   generateKeyPair,
@@ -60,6 +63,21 @@ test("permits the hosted Deep Linking picker to post only to its own origin", as
   );
   assert.match(indexHtml, /form-action 'self'/u);
   assert.doesNotMatch(indexHtml, /form-action 'none'/u);
+});
+
+test("keeps SCORM strict while allowing the hosted Cloudflare bootstrap", async () => {
+  const indexHtml = await readFile(
+    new URL("../index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(indexHtml, /script-src 'self';/u);
+  assert.doesNotMatch(indexHtml, /script-src 'self' 'unsafe-inline'/u);
+  const hostedHtml = prepareHostedAppShell(indexHtml);
+  assert.match(
+    hostedHtml,
+    /script-src 'self' 'unsafe-inline';/u,
+  );
+  assert.doesNotMatch(hostedHtml, /script-src 'self';/u);
 });
 
 function canonicalJson(value) {
@@ -4825,6 +4843,58 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     assert.deepEqual(
       (await assignmentCreate.clone().json()).assignment.raterUserIds,
       ["USER_RATER_ASSIGNED"],
+    );
+    const ownerDirectory = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        email: "instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      ownerDirectory.status,
+      200,
+      await ownerDirectory.clone().text(),
+    );
+    assert.deepEqual(
+      (await ownerDirectory.json()).assignments.map(
+        ({ assignmentId }) => assignmentId,
+      ),
+      ["ASSIGNMENT_SITE_001"],
+    );
+    const outsideDirectory = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        email: "outside-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(outsideDirectory.status, 200);
+    assert.deepEqual(
+      (await outsideDirectory.json()).assignments,
+      [],
+    );
+    const assignedRaterDirectory = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        email: "assigned-rater@example.edu",
+      }),
+      env,
+    );
+    assert.equal(assignedRaterDirectory.status, 200);
+    assert.deepEqual(
+      (await assignedRaterDirectory.json()).assignments.map(
+        ({ assignmentId }) => assignmentId,
+      ),
+      ["ASSIGNMENT_SITE_001"],
+    );
+    const outsideRaterDirectory = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        email: "outside-rater@example.edu",
+      }),
+      env,
+    );
+    assert.equal(outsideRaterDirectory.status, 200);
+    assert.deepEqual(
+      (await outsideRaterDirectory.json()).assignments,
+      [],
     );
     const create = await worker.fetch(
       apiRequest("/api/v1/assignments/ASSIGNMENT_SITE_001/start-run", {

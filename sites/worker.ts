@@ -2766,6 +2766,40 @@ async function apiResponse(
   }
 
   if (
+    request.method === "GET" &&
+    url.pathname === "/api/v1/assignments"
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "rater",
+      "administrator",
+    ]);
+    const repository = new D1AssignmentRepository(
+      environment.DB,
+      new SystemUtcClock(),
+    );
+    const assignments = (await repository.listForStaff(principal))
+      .filter(
+        (assignment) =>
+          principal.authenticationSource !== "lti" ||
+          ltiContextMatchesAssignment(principal, assignment),
+      )
+      .map((assignment) => ({
+        schemaVersion: "1.0.0" as const,
+        assignmentId: assignment.assignmentId,
+        title: assignment.title,
+        scenarioId: assignment.scenarioId,
+        scenarioVersion: assignment.scenarioVersion,
+        mode: assignment.mode,
+        status: assignment.status,
+        assignedLearnerCount: assignment.learnerUserIds.length,
+        assignedRaterCount: assignment.raterUserIds.length,
+        createdAt: assignment.createdAt,
+      }));
+    return jsonResponse(200, { assignments });
+  }
+
+  if (
     request.method === "POST" &&
     url.pathname === "/api/v1/assignments"
   ) {

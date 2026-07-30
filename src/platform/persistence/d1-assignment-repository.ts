@@ -178,6 +178,20 @@ WHERE learning_platform_issuer = ?
   AND lifecycle_status = 'active'
 ORDER BY created_at_utc DESC, assignment_id`;
 
+const LIST_ALL_ASSIGNMENT_IDS = `SELECT assignment_id
+FROM assignments
+ORDER BY created_at_utc DESC, assignment_id`;
+
+const LIST_STAFF_ASSIGNMENT_IDS = `SELECT assignment_id
+FROM assignments
+WHERE created_by_user_id = ?
+  OR assignment_id IN (
+    SELECT assignment_id
+    FROM assignment_raters
+    WHERE rater_user_id = ?
+  )
+ORDER BY created_at_utc DESC, assignment_id`;
+
 const LIST_LEARNER_ASSIGNMENTS = `SELECT
   assignments.assignment_id,
   assignments.creation_command_id,
@@ -1644,6 +1658,41 @@ export class D1AssignmentRepository {
       );
     }
     return assignment;
+  }
+
+  async listForStaff(
+    principal: ApplicationPrincipal,
+  ): Promise<readonly HostedAssignmentV1[]> {
+    const administrator =
+      principal.roles.includes("administrator");
+    const statement = this.database.prepare(
+      administrator
+        ? LIST_ALL_ASSIGNMENT_IDS
+        : LIST_STAFF_ASSIGNMENT_IDS,
+    );
+    const result = administrator
+      ? await statement.all<{ readonly assignment_id: string }>()
+      : await statement
+          .bind(principal.userId, principal.userId)
+          .all<{ readonly assignment_id: string }>();
+    if (!result.success) {
+      throw new AssignmentRepositoryError(
+        "ASSIGNMENT_STORAGE_FAILED",
+        "Staff assignments could not be loaded.",
+      );
+    }
+    const assignments: HostedAssignmentV1[] = [];
+    for (const row of result.results) {
+      const assignment = await this.find(row.assignment_id);
+      if (assignment === null) {
+        throw new AssignmentRepositoryError(
+          "ASSIGNMENT_STORAGE_FAILED",
+          "A staff assignment could not be reloaded.",
+        );
+      }
+      assignments.push(assignment);
+    }
+    return assignments;
   }
 
   async listActiveForLtiContext(

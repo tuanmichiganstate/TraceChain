@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { prepareHostedAppShell } from "./hosted-app-shell.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const buildDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
@@ -38,8 +39,14 @@ for (const entry of clientEntries) {
   );
 }
 
-const hostedAppShell = await readFile(
+const hostedAppShell = prepareHostedAppShell(await readFile(
   join(clientDirectory, "index.html"),
+  "utf8",
+));
+await writeFile(
+  join(clientDirectory, "index.html"),
+  hostedAppShell,
+  "utf8",
 );
 for (const route of [
   "platform",
@@ -52,6 +59,7 @@ for (const route of [
   await writeFile(
     join(clientDirectory, `${route}.html`),
     hostedAppShell,
+    "utf8",
   );
 }
 

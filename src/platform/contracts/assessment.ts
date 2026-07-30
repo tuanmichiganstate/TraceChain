@@ -86,6 +86,26 @@ export interface HostedAssignmentV1 {
   readonly createdByUserId: string;
 }
 
+/**
+ * Bounded staff-facing assignment discovery record.
+ *
+ * The directory deliberately omits learner and rater identities, research
+ * metadata, and configuration payloads. Those remain available only after an
+ * authorized staff member opens the exact assignment report.
+ */
+export interface HostedAssignmentDirectoryItemV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly assignmentId: string;
+  readonly title: string;
+  readonly scenarioId: string;
+  readonly scenarioVersion: string;
+  readonly mode: AssignmentRunMode;
+  readonly status: "active" | "closed";
+  readonly assignedLearnerCount: number;
+  readonly assignedRaterCount: number;
+  readonly createdAt: string;
+}
+
 export interface CreateHostedAssignmentRequest {
   readonly commandId: string;
   readonly assignmentId: string;

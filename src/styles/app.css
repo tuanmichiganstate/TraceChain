@@ -182,6 +182,10 @@
   margin-bottom: var(--space-5);
 }
 
+.instructor-review .card {
+  scroll-margin-block-start: var(--space-4);
+}
+
 .instructor-review__facts {
   display: grid;
   gap: var(--space-3);
@@ -202,6 +206,27 @@
 .instructor-review__facts dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.instructor-review__session-card .instructor-review__form-actions {
+  margin-block-start: var(--space-4);
+}
+
+.instructor-review__workspace-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--colour-border);
+}
+
+.instructor-review__workspace-nav a {
+  padding: var(--space-2) var(--space-3);
+  color: var(--colour-navy);
+  font-weight: 650;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
 }
 
 .instructor-review__activity {
@@ -265,7 +290,13 @@
 
 .instructor-review__form-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
+  gap: var(--space-2);
+}
+
+.instructor-review__form-grid > .instructor-review__form-actions {
+  grid-column: 1 / -1;
 }
 
 .instructor-review__mode-settings {
@@ -281,6 +312,27 @@
 
 .instructor-review__mode-settings .instructor-review__facts {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
+.instructor-review__mode-settings .instructor-review__package-facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.instructor-review__optional-settings {
+  grid-column: 1 / -1;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-medium);
+}
+
+.instructor-review__optional-settings summary {
+  padding: var(--space-3) var(--space-4);
+  color: var(--colour-navy-strong);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.instructor-review__optional-settings-content {
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .instructor-review__learner-picker {
@@ -465,6 +517,30 @@
 
 .instructor-review__inline-form .field {
   flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.instructor-review__inline-form .field__control {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+#instructor-assignment-report > .notice {
+  max-width: none;
+}
+
+@media (min-width: 48rem) {
+  .instructor-review__session-card .instructor-review__facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .instructor-review__assignment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .instructor-review__package-content {
+    grid-column: span 2;
+  }
 }
 
 .instructor-review__rating {

@@ -33,9 +33,11 @@ import type {
   AssignmentRunMode,
   AssignmentCounterfactualConfigurationV1,
   CreateHostedAssignmentRequest,
+  HostedAssignmentDirectoryItemV1,
   HostedAssignmentLearnerOptionV2,
   HostedAssignmentMonitorV1,
   HostedAssignmentReportV1,
+  HostedAssignmentRunSummary,
   HostedAssignmentScenarioOptionV1,
   HostedAssignmentV1,
   ManualRubricRatingV1,
@@ -145,6 +147,9 @@ export interface InstructorReviewApi {
   >;
   loadAssignmentRaterOptions?(): Promise<
     readonly HostedAssignmentLearnerOptionV2[]
+  >;
+  loadAccessibleAssignments?(): Promise<
+    readonly HostedAssignmentDirectoryItemV1[]
   >;
   loadLtiDeepLinkAssignments?(): Promise<
     readonly LtiDeepLinkAssignmentOptionV1[]
@@ -403,6 +408,14 @@ export function createInstructorReviewApi(
             readonly HostedAssignmentLearnerOptionV2[];
         }>(fetcher, "/api/v1/assignment-raters")
       ).raters;
+    },
+    async loadAccessibleAssignments() {
+      return (
+        await responseJson<{
+          readonly assignments:
+            readonly HostedAssignmentDirectoryItemV1[];
+        }>(fetcher, "/api/v1/assignments")
+      ).assignments;
     },
     async loadLtiDeepLinkAssignments() {
       return (
@@ -722,11 +735,11 @@ function errorMessageKey(error: unknown): string {
     ) {
       return "instructorReview.error.feedback";
     }
-    if (
-      error.code === "APPLICATION_ROLE_REQUIRED" ||
-      error.code === "RUN_ACCESS_DENIED"
-    ) {
+    if (error.code === "APPLICATION_ROLE_REQUIRED") {
       return "instructorReview.error.notAuthorized";
+    }
+    if (error.code === "RUN_ACCESS_DENIED") {
+      return "instructorReview.error.assignmentScope";
     }
   }
   return "instructorReview.error.generic";
@@ -743,6 +756,23 @@ function initialLtiMessageKey(): string | null {
   return code === "LTI_INSTRUCTOR_ROLE_REQUIRED"
     ? "instructorReview.lti.instructorRoleRequired"
     : "instructorReview.lti.launchFailed";
+}
+
+function directoryItemFromAssignment(
+  assignment: HostedAssignmentV1,
+): HostedAssignmentDirectoryItemV1 {
+  return {
+    schemaVersion: "1.0.0",
+    assignmentId: assignment.assignmentId,
+    title: assignment.title,
+    scenarioId: assignment.scenarioId,
+    scenarioVersion: assignment.scenarioVersion,
+    mode: assignment.mode,
+    status: assignment.status,
+    assignedLearnerCount: assignment.learnerUserIds.length,
+    assignedRaterCount: assignment.raterUserIds.length,
+    createdAt: assignment.createdAt,
+  };
 }
 
 export function InstructorReviewScreen({
@@ -764,6 +794,16 @@ export function InstructorReviewScreen({
   const [reviewErrorKey, setReviewErrorKey] = useState<string | null>(null);
   const [isReviewLoading, setReviewLoading] = useState(false);
   const [isSigningOut, setSigningOut] = useState(false);
+  const [assignmentDirectory, setAssignmentDirectory] = useState<
+    readonly HostedAssignmentDirectoryItemV1[]
+  >([]);
+  const [isAssignmentDirectoryLoading, setAssignmentDirectoryLoading] =
+    useState(api.loadAccessibleAssignments !== undefined);
+  const [assignmentDirectoryErrorKey, setAssignmentDirectoryErrorKey] =
+    useState<string | null>(null);
+  const [runOptions, setRunOptions] = useState<
+    readonly HostedAssignmentRunSummary[]
+  >([]);
 
   useEffect(() => {
     if (initialLtiMessage !== null) return;
@@ -795,6 +835,43 @@ export function InstructorReviewScreen({
     session?.displayName ??
     session?.userId ??
     "";
+
+  useEffect(() => {
+    if (
+      session === null ||
+      !mayReview ||
+      deepLinkSelection
+    ) {
+      return;
+    }
+    const loadAccessibleAssignments =
+      api.loadAccessibleAssignments;
+    if (loadAccessibleAssignments === undefined) {
+      return;
+    }
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      setAssignmentDirectoryLoading(true);
+      setAssignmentDirectoryErrorKey(null);
+      try {
+        const assignments = await loadAccessibleAssignments();
+        if (!active) return;
+        setAssignmentDirectory(assignments);
+        setAssignmentDirectoryLoading(false);
+      } catch {
+        if (!active) return;
+        setAssignmentDirectory([]);
+        setAssignmentDirectoryErrorKey(
+          "instructorReview.error.assignmentDirectory",
+        );
+        setAssignmentDirectoryLoading(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [api, deepLinkSelection, mayReview, session]);
 
   async function signOutFromLti(): Promise<void> {
     if (
@@ -862,7 +939,7 @@ export function InstructorReviewScreen({
           ) : session === null ? (
             <p aria-live="polite">{t("instructorReview.sessionLoading")}</p>
           ) : (
-            <section className="card card--reference">
+            <section className="card card--reference instructor-review__session-card">
               <h2>{t("instructorReview.sessionHeading")}</h2>
               <dl className="instructor-review__facts">
                 <div>
@@ -871,7 +948,11 @@ export function InstructorReviewScreen({
                 </div>
                 <div>
                   <dt>{t("instructorReview.roles")}</dt>
-                  <dd>{session.roles.join(", ")}</dd>
+                  <dd>
+                    {session.roles
+                      .map((role) => t(`adminAccess.role.${role}`))
+                      .join(", ")}
+                  </dd>
                 </div>
                 {session.authenticationSource === "lti" &&
                 session.learningContext !== undefined ? (
@@ -922,6 +1003,30 @@ export function InstructorReviewScreen({
             </section>
           ) : null}
 
+          {mayReview && !deepLinkSelection ? (
+            <nav
+              className="instructor-review__workspace-nav"
+              aria-label={t("instructorReview.navigation")}
+            >
+              {mayManage ? (
+                <>
+                  <a href="#instructor-create-assignment">
+                    {t("instructorReview.navigation.assignments")}
+                  </a>
+                  <a href="#instructor-create-package">
+                    {t("instructorReview.navigation.packages")}
+                  </a>
+                </>
+              ) : null}
+              <a href="#instructor-assignment-report">
+                {t("instructorReview.navigation.reports")}
+              </a>
+              <a href="#instructor-open-run">
+                {t("instructorReview.navigation.runs")}
+              </a>
+            </nav>
+          ) : null}
+
           {session !== null &&
           deepLinkSelection &&
           session.authenticationSource === "lti" &&
@@ -942,6 +1047,15 @@ export function InstructorReviewScreen({
                 session?.authenticationSource === "lti" &&
                 session.ltiNrpsAvailable === true
               }
+              onCreated={(assignment) =>
+                setAssignmentDirectory((current) => [
+                  directoryItemFromAssignment(assignment),
+                  ...current.filter(
+                    (item) =>
+                      item.assignmentId !== assignment.assignmentId,
+                  ),
+                ])
+              }
             />
           ) : null}
 
@@ -953,6 +1067,10 @@ export function InstructorReviewScreen({
             <AssignmentReport
               api={api}
               mayManage={mayManage}
+              assignments={assignmentDirectory}
+              isDirectoryLoading={isAssignmentDirectoryLoading}
+              directoryErrorKey={assignmentDirectoryErrorKey}
+              onRunsAvailable={setRunOptions}
               onReviewEvent={(requestedRunId, eventId) =>
                 loadRequestedReview(requestedRunId, eventId)
               }
@@ -960,7 +1078,10 @@ export function InstructorReviewScreen({
           ) : null}
 
           {mayReview && !deepLinkSelection ? (
-            <section className="card card--work">
+            <section
+              className="card card--work"
+              id="instructor-open-run"
+            >
               <h2>{t("instructorReview.findRunHeading")}</h2>
               <form onSubmit={(event) => void loadReview(event)}>
                 <div className="field">
@@ -970,19 +1091,43 @@ export function InstructorReviewScreen({
                   <input
                     className="field__control"
                     id="instructor-run-id"
+                    list="instructor-run-options"
                     value={runId}
                     onChange={(event) => setRunId(event.target.value)}
+                    placeholder={t(
+                      "instructorReview.runSelectPlaceholder",
+                    )}
                     autoComplete="off"
                     required
                   />
+                  <datalist id="instructor-run-options">
+                    {runOptions.map((run) => (
+                      <option key={run.runId} value={run.runId}>
+                        {t("instructorReview.runOption", {
+                          runId: run.runId,
+                          learnerId: run.learnerUserId,
+                          status: t(
+                            `instructorReview.runStatus.${run.status}`,
+                          ),
+                        })}
+                      </option>
+                    ))}
+                  </datalist>
                   <span className="field__hint">
-                    {t("instructorReview.runIdHint")}
+                    {t(
+                      runOptions.length === 0
+                        ? "instructorReview.runDirectoryEmpty"
+                        : "instructorReview.runIdHint",
+                    )}
                   </span>
                 </div>
                 <button
                   className="button button--primary"
                   type="submit"
-                  disabled={isReviewLoading}
+                  disabled={
+                    isReviewLoading ||
+                    runId.length === 0
+                  }
                 >
                   {isReviewLoading
                     ? t("instructorReview.loadingRun")
@@ -1289,7 +1434,10 @@ function ScormPackageBuilder({
   }
 
   return (
-    <section className="card card--work">
+    <section
+      className="card card--work"
+      id="instructor-create-package"
+    >
       <h2>{t("instructorReview.packageBuilderHeading")}</h2>
       <p>{t("instructorReview.packageBuilderHelp")}</p>
       <form
@@ -1513,7 +1661,7 @@ function PackagePresetPreview({
         {t("instructorReview.packagePreviewHeading")}
       </h3>
       <p>{t(`instructorReview.packagePresetHelp.${preview.presetId}`)}</p>
-      <dl className="instructor-review__facts">
+      <dl className="instructor-review__facts instructor-review__package-facts">
         <div>
           <dt>{t("instructorReview.packagePreset")}</dt>
           <dd>
@@ -1538,7 +1686,7 @@ function PackagePresetPreview({
             )}
           </dd>
         </div>
-        <div>
+        <div className="instructor-review__package-content">
           <dt>{t("instructorReview.packageContent")}</dt>
           <dd>
             <code>
@@ -1786,10 +1934,12 @@ function AssignmentCreation({
   api,
   allowLtiLearnerLaunch,
   allowLtiNrpsSync,
+  onCreated,
 }: {
   readonly api: InstructorReviewApi;
   readonly allowLtiLearnerLaunch: boolean;
   readonly allowLtiNrpsSync: boolean;
+  readonly onCreated: (assignment: HostedAssignmentV1) => void;
 }): ReactNode {
   const t = useTranslator();
   const [assignmentId, setAssignmentId] = useState("");
@@ -1999,7 +2149,7 @@ function AssignmentCreation({
     setCreated(null);
     setErrorKey(null);
     try {
-      setCreated(
+      const createdAssignment =
         await api.createAssignment({
           assignmentId: assignmentId.trim(),
           title: title.trim(),
@@ -2062,8 +2212,9 @@ function AssignmentCreation({
           ...(availableUntil === undefined
             ? {}
             : { availableUntil }),
-        }),
-      );
+        });
+      setCreated(createdAssignment);
+      onCreated(createdAssignment);
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -2072,11 +2223,14 @@ function AssignmentCreation({
   }
 
   return (
-    <section className="card card--work">
+    <section
+      className="card card--work"
+      id="instructor-create-assignment"
+    >
       <h2>{t("instructorReview.assignmentCreateHeading")}</h2>
       <p>{t("instructorReview.assignmentCreateHelp")}</p>
       <form
-        className="instructor-review__form-grid"
+        className="instructor-review__form-grid instructor-review__assignment-form"
         onSubmit={(event) => void create(event)}
       >
         <TextField
@@ -2340,24 +2494,28 @@ function AssignmentCreation({
             ) : null}
           </fieldset>
         )}
-        <fieldset className="instructor-review__mode-settings">
-          <legend>{t("instructorReview.research.heading")}</legend>
-          <label>
-            <input
-              type="checkbox"
-              checked={researchEnabled}
-              disabled={
-                selectedModeConfiguration?.seedPolicy !== "supplied"
-              }
-              onChange={(event) =>
-                setResearchEnabled(event.target.checked)
-              }
-            />{" "}
-            {t("instructorReview.research.enable")}
-          </label>
-          <p>{t("instructorReview.research.help")}</p>
-          {researchEnabled ? (
-            <div className="instructor-review__form-grid">
+        <details
+          className="instructor-review__optional-settings"
+          open={researchEnabled || undefined}
+        >
+          <summary>{t("instructorReview.research.heading")}</summary>
+          <div className="instructor-review__optional-settings-content">
+            <label>
+              <input
+                type="checkbox"
+                checked={researchEnabled}
+                disabled={
+                  selectedModeConfiguration?.seedPolicy !== "supplied"
+                }
+                onChange={(event) =>
+                  setResearchEnabled(event.target.checked)
+                }
+              />{" "}
+              {t("instructorReview.research.enable")}
+            </label>
+            <p>{t("instructorReview.research.help")}</p>
+            {researchEnabled ? (
+              <div className="instructor-review__form-grid">
               <TextField
                 id="research-condition-id"
                 label={t("instructorReview.research.condition")}
@@ -2422,9 +2580,10 @@ function AssignmentCreation({
                 />{" "}
                 {t("instructorReview.research.blindedRaters")}
               </label>
-            </div>
-          ) : null}
-        </fieldset>
+              </div>
+            ) : null}
+          </div>
+        </details>
         <TextField
           id="assignment-available-from"
           label={t("instructorReview.availableFrom")}
@@ -2533,8 +2692,10 @@ function AssignmentCreation({
             )}
           </span>
         </fieldset>
-        <fieldset className="field">
-          <legend>{t("instructorReview.ratersLegend")}</legend>
+        <fieldset className="field instructor-review__learner-picker">
+          <legend className="field__label">
+            {t("instructorReview.ratersLegend")}
+          </legend>
           {raterOptions.length === 0 ? (
             <p>{t("instructorReview.ratersEmpty")}</p>
           ) : (
@@ -2718,17 +2879,27 @@ function assignmentRejectionFindings(
 function AssignmentReport({
   api,
   mayManage,
+  assignments,
+  isDirectoryLoading,
+  directoryErrorKey,
+  onRunsAvailable,
   onReviewEvent,
 }: {
   readonly api: InstructorReviewApi;
   readonly mayManage: boolean;
+  readonly assignments: readonly HostedAssignmentDirectoryItemV1[];
+  readonly isDirectoryLoading: boolean;
+  readonly directoryErrorKey: string | null;
+  readonly onRunsAvailable: (
+    runs: readonly HostedAssignmentRunSummary[],
+  ) => void;
   readonly onReviewEvent: (
     runId: string,
     eventId: string,
   ) => Promise<void>;
 }): ReactNode {
   const t = useTranslator();
-  const [assignmentId, setAssignmentId] = useState("");
+  const [selectedAssignmentId, setAssignmentId] = useState("");
   const [report, setReport] =
     useState<HostedAssignmentReportV1 | null>(null);
   const [monitor, setMonitor] =
@@ -2752,9 +2923,14 @@ function AssignmentReport({
   const [isClosing, setClosing] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
-  async function load(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
+  const assignmentId = assignments.some(
+    (assignment) =>
+      assignment.assignmentId === selectedAssignmentId,
+  )
+    ? selectedAssignmentId
+    : (assignments[0]?.assignmentId ?? "");
+
+  function clearLoadedReport() {
     setReport(null);
     setMonitor(null);
     setCompetencies(null);
@@ -2764,6 +2940,13 @@ function AssignmentReport({
     setEvidenceCatalog(null);
     setAuditReport(null);
     setTechnicalLabReport(null);
+    onRunsAvailable([]);
+  }
+
+  async function load(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    clearLoadedReport();
     setErrorKey(null);
     try {
       const requestedAssignmentId = assignmentId.trim();
@@ -2810,6 +2993,17 @@ function AssignmentReport({
       setEvidenceCatalog(loadedEvidenceCatalog);
       setAuditReport(loadedAuditReport);
       setTechnicalLabReport(loadedTechnicalLabReport);
+      onRunsAvailable(
+        loadedReport.learners
+          .flatMap((learner) => learner.runs)
+          .sort((left, right) =>
+            left.runId < right.runId
+              ? -1
+              : left.runId > right.runId
+                ? 1
+                : 0,
+          ),
+      );
     } catch (error) {
       setErrorKey(errorMessageKey(error));
     } finally {
@@ -2860,28 +3054,85 @@ function AssignmentReport({
     report === null ? [] : assignmentRejectionFindings(report);
 
   return (
-    <section className="card card--reference">
+    <section
+      className="card card--reference"
+      id="instructor-assignment-report"
+    >
       <h2>{t("instructorReview.classReportHeading")}</h2>
       <form
         className="instructor-review__inline-form"
         onSubmit={(event) => void load(event)}
       >
-        <TextField
-          id="report-assignment-id"
-          label={t("instructorReview.assignmentId")}
-          value={assignmentId}
-          onChange={setAssignmentId}
-        />
+        <div className="field">
+          <label
+            className="field__label"
+            htmlFor="report-assignment-id"
+          >
+            {t("instructorReview.assignmentDirectoryLabel")}
+          </label>
+          <select
+            className="field__control"
+            id="report-assignment-id"
+            value={assignmentId}
+            disabled={
+              isDirectoryLoading || assignments.length === 0
+            }
+            required
+            onChange={(event) => {
+              setAssignmentId(event.target.value);
+              clearLoadedReport();
+              setErrorKey(null);
+            }}
+          >
+            <option value="">
+              {t(
+                isDirectoryLoading
+                  ? "instructorReview.assignmentDirectoryLoading"
+                  : "instructorReview.assignmentDirectoryPlaceholder",
+              )}
+            </option>
+            {assignments.map((assignment) => (
+              <option
+                key={assignment.assignmentId}
+                value={assignment.assignmentId}
+              >
+                {t("instructorReview.assignmentDirectoryOption", {
+                  title: assignment.title,
+                  assignmentId: assignment.assignmentId,
+                  status: t(
+                    `instructorReview.assignmentDirectoryStatus.${assignment.status}`,
+                  ),
+                })}
+              </option>
+            ))}
+          </select>
+          <span className="field__hint">
+            {t(
+              assignments.length === 0 && !isDirectoryLoading
+                ? "instructorReview.assignmentDirectoryEmpty"
+                : "instructorReview.assignmentDirectoryHint",
+            )}
+          </span>
+        </div>
         <button
           className="button button--secondary"
           type="submit"
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            isDirectoryLoading ||
+            assignmentId.length === 0
+          }
         >
           {isLoading
             ? t("instructorReview.classReportLoading")
             : t("instructorReview.classReportLoad")}
         </button>
       </form>
+      {directoryErrorKey === null ? null : (
+        <p className="notice notice--standalone" role="alert">
+          {t(directoryErrorKey)}
+        </p>
+      )}
       {errorKey === null ? null : (
         <p className="notice notice--standalone" role="alert">
           {t(errorKey)}
