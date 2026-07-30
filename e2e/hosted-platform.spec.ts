@@ -693,7 +693,7 @@ test("completes an authored pharmaceutical decision through the generic runtime 
     expectedRunVersion: 8,
   });
   await expect(
-    page.locator("p").filter({ hasText: /^Decision recorded$/ }),
+    page.locator("dd").filter({ hasText: /^Decision recorded$/ }),
   ).toBeVisible();
   await expect(
     page.getByText("Instructor feedback has not been released yet."),

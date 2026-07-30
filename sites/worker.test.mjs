@@ -3364,7 +3364,12 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           runId,
           learnerUserId: "USER_LEARNER_PHARMA",
           status: "completed",
-          decisionItems: [],
+          decisionItems: [
+            {
+              decisionItemId: "PHARMA_RELEASE_DECISION",
+              isAuthoredCorrect: true,
+            },
+          ],
           realizedOutcome: null,
         },
       ],

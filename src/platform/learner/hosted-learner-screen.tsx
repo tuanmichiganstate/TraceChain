@@ -15,6 +15,7 @@ import type {
 import type {
   ApplicationRole,
   LearnerRunAuthoredFeedbackV1,
+  LearnerRunEvidencePresentationV1,
   LearnerRunLocalizedTextV1,
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
@@ -281,6 +282,19 @@ function asObject(
     : undefined;
 }
 
+function formatHostedDateTime(
+  value: string,
+  locale: string,
+): string {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? value
+    : new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+}
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -313,15 +327,100 @@ function HostedEvidenceFacts({
 function HostedEvidenceContent({
   recordId,
   value,
+  presentation,
+  organizationNames,
 }: {
   readonly recordId: string;
   readonly value: unknown;
+  readonly presentation?: LearnerRunEvidencePresentationV1;
+  readonly organizationNames?: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
 }): ReactNode {
   const t = useTranslator();
   const record = asObject(value);
   const content = asObject(record?.content);
   if (content === undefined) {
-    return <code>{JSON.stringify(value)}</code>;
+    return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
+  }
+  if (presentation !== undefined) {
+    return (
+      <div>
+        {presentation.summary === undefined ? null : (
+          <p>{runText(presentation.summary, t)}</p>
+        )}
+        <dl className="instructor-review__facts">
+          {presentation.fields.map((field) => {
+            const raw = field.fieldPath
+              .split(".")
+              .reduce<unknown>(
+                (current, segment) =>
+                  asObject(current)?.[segment],
+                content,
+              );
+            const labelled =
+              field.valueLabels?.[String(raw)];
+            const unit =
+              field.unit === undefined
+                ? ""
+                : ` ${runText(field.unit, t)}`;
+            let displayed: ReactNode;
+            if (labelled !== undefined) {
+              displayed = runText(labelled, t);
+            } else if (typeof raw === "boolean") {
+              displayed = t(
+                raw
+                  ? "hostedLearner.value.yes"
+                  : "hostedLearner.value.no",
+              );
+            } else if (typeof raw === "number") {
+              const number = new Intl.NumberFormat(t.locale, {
+                maximumFractionDigits: 3,
+                useGrouping: false,
+              }).format(raw);
+              displayed =
+                field.valueType === "TEMPERATURE_C"
+                  ? `${number} °C`
+                  : field.valueType === "PERCENT"
+                    ? `${number}%`
+                    : `${number}${unit}`;
+            } else if (Array.isArray(raw)) {
+              displayed = raw
+                .map((item) => {
+                  const itemLabel =
+                    field.valueLabels?.[String(item)];
+                  return itemLabel === undefined
+                    ? String(item)
+                    : runText(itemLabel, t);
+                })
+                .join(", ");
+            } else if (
+              field.valueType === "DATE_TIME" &&
+              typeof raw === "string"
+            ) {
+              const date = new Date(raw);
+              displayed = Number.isNaN(date.valueOf())
+                ? raw
+                : new Intl.DateTimeFormat(t.locale, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(date);
+            } else {
+              displayed =
+                raw === undefined
+                  ? t("hostedLearner.value.notAvailable")
+                  : `${String(raw)}${unit}`;
+            }
+            return (
+              <div key={field.fieldPath}>
+                <dt>{runText(field.label, t)}</dt>
+                <dd>{displayed}</dd>
+              </div>
+            );
+          })}
+        </dl>
+      </div>
+    );
   }
   if (
     recordId === "EVID_PHARMA_SENSOR_SUMMARY" ||
@@ -337,7 +436,7 @@ function HostedEvidenceContent({
       !isFiniteNumber(permittedMaximum) ||
       !isFiniteNumber(excursionMinutes)
     ) {
-      return <code>{JSON.stringify(value)}</code>;
+      return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
     }
     return (
       <HostedEvidenceFacts
@@ -379,7 +478,7 @@ function HostedEvidenceContent({
       typeof custodyHistoryIntact !== "boolean" ||
       typeof productConditionAttested !== "boolean"
     ) {
-      return <code>{JSON.stringify(value)}</code>;
+      return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
     }
     return (
       <HostedEvidenceFacts
@@ -434,7 +533,7 @@ function HostedEvidenceContent({
       !isFiniteNumber(expiredDays) ||
       typeof failureConfirmed !== "boolean"
     ) {
-      return <code>{JSON.stringify(value)}</code>;
+      return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
     }
     return (
       <HostedEvidenceFacts
@@ -484,7 +583,7 @@ function HostedEvidenceContent({
       !isFiniteNumber(observedMaximum) ||
       typeof supportsRelease !== "boolean"
     ) {
-      return <code>{JSON.stringify(value)}</code>;
+      return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
     }
     return (
       <HostedEvidenceFacts
@@ -524,7 +623,7 @@ function HostedEvidenceContent({
     );
   }
   if (recordId !== "EVID_CERTIFICATE_RECORD") {
-    return <code>{JSON.stringify(content)}</code>;
+    return <p>{t("hostedLearner.evidenceContentUnavailable")}</p>;
   }
   const actions = Array.isArray(content.issuerPermittedActions)
     ? content.issuerPermittedActions.map(String)
@@ -541,19 +640,49 @@ function HostedEvidenceContent({
       </div>
       <div>
         <dt>{t("field.issuedAt")}</dt>
-        <dd>{String(content.issuedAt ?? "")}</dd>
+        <dd>
+          {formatHostedDateTime(
+            String(content.issuedAt ?? ""),
+            t.locale,
+          )}
+        </dd>
       </div>
       <div>
         <dt>{t("field.expiresAt")}</dt>
-        <dd>{String(content.expiresAt ?? "")}</dd>
+        <dd>
+          {formatHostedDateTime(
+            String(content.expiresAt ?? ""),
+            t.locale,
+          )}
+        </dd>
       </div>
       <div>
         <dt>{t("stage.anchorCertificate.reviewDate")}</dt>
-        <dd>{String(content.decisionReviewAt ?? "")}</dd>
+        <dd>
+          {formatHostedDateTime(
+            String(content.decisionReviewAt ?? ""),
+            t.locale,
+          )}
+        </dd>
       </div>
       <div>
         <dt>{t("stage.anchorCertificate.registry.organizationId")}</dt>
-        <dd><code>{String(content.issuerOrganizationId ?? "")}</code></dd>
+        <dd>
+          {organizationNames?.[
+            String(content.issuerOrganizationId ?? "")
+          ] === undefined ? (
+            <code>
+              {String(content.issuerOrganizationId ?? "")}
+            </code>
+          ) : (
+            runText(
+              organizationNames[
+                String(content.issuerOrganizationId ?? "")
+              ]!,
+              t,
+            )
+          )}
+        </dd>
       </div>
       <div>
         <dt>{t("stage.anchorCertificate.registry.recognition")}</dt>
@@ -586,10 +715,16 @@ function HostedEvidenceContent({
 export function HostedEvidenceValue({
   recordId,
   value,
+  presentation,
+  organizationNames,
   showMetadata = true,
 }: {
   readonly recordId: string;
   readonly value: unknown;
+  readonly presentation?: LearnerRunEvidencePresentationV1;
+  readonly organizationNames?: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
   readonly showMetadata?: boolean;
 }): ReactNode {
   const record = asObject(value);
@@ -598,11 +733,18 @@ export function HostedEvidenceValue({
       {showMetadata ? (
         <EvidenceMetadataSummary
           metadata={record?.learnerMetadata}
+          {...(organizationNames === undefined
+            ? {}
+            : { organizationNames })}
         />
       ) : null}
       <HostedEvidenceContent
         recordId={recordId}
         value={value}
+        {...(presentation === undefined ? {} : { presentation })}
+        {...(organizationNames === undefined
+          ? {}
+          : { organizationNames })}
       />
     </div>
   );
@@ -664,12 +806,35 @@ export function HostedEvidenceLibrary({
                     <p role="status">
                       {t("hostedLearner.evidenceInspected")}
                     </p>
-                    <details open>
+                    <details
+                      open={
+                        projection.timing?.status !== "completed"
+                      }
+                    >
                       <summary>{title}</summary>
                       <div>
                         <HostedEvidenceValue
                           recordId={record.recordId}
                           value={record.value}
+                          {...(presentation
+                            ?.evidencePresentations?.[
+                              record.recordId
+                            ] === undefined
+                            ? {}
+                            : {
+                                presentation:
+                                  presentation
+                                    .evidencePresentations[
+                                    record.recordId
+                                  ],
+                              })}
+                          {...(presentation?.organizationNames ===
+                          undefined
+                            ? {}
+                            : {
+                                organizationNames:
+                                  presentation.organizationNames,
+                              })}
                         />
                       </div>
                     </details>
@@ -679,6 +844,13 @@ export function HostedEvidenceLibrary({
                     <p><strong>{title}</strong></p>
                     <EvidenceMetadataSummary
                       metadata={recordValue?.learnerMetadata}
+                      {...(presentation?.organizationNames ===
+                      undefined
+                        ? {}
+                        : {
+                            organizationNames:
+                              presentation.organizationNames,
+                          })}
                     />
                     <p>
                       {t("hostedLearner.evidenceNotInspected")}
@@ -729,6 +901,13 @@ export function HostedEvidenceLibrary({
                       <p><strong>{title}</strong></p>
                       <EvidenceMetadataSummary
                         metadata={request.learnerMetadata}
+                        {...(presentation?.organizationNames ===
+                        undefined
+                          ? {}
+                          : {
+                              organizationNames:
+                                presentation.organizationNames,
+                            })}
                       />
                       <p>
                         {request.status === "REQUESTABLE"
@@ -739,10 +918,21 @@ export function HostedEvidenceLibrary({
                               "hostedLearner.evidenceRequestFulfilled",
                               {
                                 requestedAt:
-                                  request.requestedAt ?? "",
+                                  request.requestedAt ===
+                                  undefined
+                                    ? ""
+                                    : formatHostedDateTime(
+                                        request.requestedAt,
+                                        t.locale,
+                                      ),
                                 availableAt:
-                                  request.simulatedAvailableAt ??
-                                  "",
+                                  request.simulatedAvailableAt ===
+                                  undefined
+                                    ? ""
+                                    : formatHostedDateTime(
+                                        request.simulatedAvailableAt,
+                                        t.locale,
+                                      ),
                                 delayMinutes:
                                   request.delayMinutes,
                                 costUnits: request.costUnits,
@@ -814,7 +1004,9 @@ export function HostedLearnerScreen({
   const [feedback, setFeedback] =
     useState<HostedLearnerFeedback | "withheld" | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [pendingMessage, setPendingMessage] =
+    useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (ltiLaunchMessageKey !== null) return;
@@ -826,7 +1018,7 @@ export function HostedLearnerScreen({
         setAssignments(loadedAssignments);
       },
       () => {
-        if (active) setError(true);
+        if (active) setErrorKey("hostedLearner.error");
       },
     );
     return () => {
@@ -836,7 +1028,8 @@ export function HostedLearnerScreen({
 
   async function openRun(requestedRunId: string) {
     setBusy(true);
-    setError(false);
+    setPendingMessage(t("hostedLearner.loadingRun"));
+    setErrorKey(null);
     try {
       setRunId(requestedRunId);
       await publishProjection(
@@ -844,15 +1037,17 @@ export function HostedLearnerScreen({
         await api.loadRun(requestedRunId),
       );
     } catch {
-      setError(true);
+      setErrorKey("hostedLearner.error");
     } finally {
       setBusy(false);
+      setPendingMessage(null);
     }
   }
 
   async function start(assignmentId: string) {
     setBusy(true);
-    setError(false);
+    setPendingMessage(t("hostedLearner.startingRun"));
+    setErrorKey(null);
     try {
       const createdRunId = await api.startRun(assignmentId);
       const [loadedProjection, loadedAssignments] = await Promise.all([
@@ -863,9 +1058,10 @@ export function HostedLearnerScreen({
       await publishProjection(createdRunId, loadedProjection);
       setAssignments(loadedAssignments);
     } catch {
-      setError(true);
+      setErrorKey("hostedLearner.error");
     } finally {
       setBusy(false);
+      setPendingMessage(null);
     }
   }
 
@@ -874,7 +1070,8 @@ export function HostedLearnerScreen({
   ) {
     if (projection === null) return;
     setBusy(true);
-    setError(false);
+    setPendingMessage(t("hostedLearner.actionPending"));
+    setErrorKey(null);
     try {
       await publishProjection(
         runId,
@@ -885,10 +1082,29 @@ export function HostedLearnerScreen({
           expectedRunVersion: projection.version,
         }),
       );
-    } catch {
-      setError(true);
+    } catch (submissionError) {
+      if (
+        submissionError instanceof HostedLearnerApiError &&
+        submissionError.code === "RUN_VERSION_CONFLICT"
+      ) {
+        try {
+          const [latestProjection, latestAssignments] =
+            await Promise.all([
+              api.loadRun(runId),
+              api.loadAssignments(),
+            ]);
+          await publishProjection(runId, latestProjection);
+          setAssignments(latestAssignments);
+          setErrorKey("hostedLearner.error.versionConflict");
+        } catch {
+          setErrorKey("hostedLearner.error");
+        }
+      } else {
+        setErrorKey("hostedLearner.error");
+      }
     } finally {
       setBusy(false);
+      setPendingMessage(null);
     }
   }
 
@@ -901,6 +1117,10 @@ export function HostedLearnerScreen({
     if (loadedProjection.workflowState.permittedActionIds.length > 0) {
       return;
     }
+    const assignmentRefresh = api.loadAssignments().then(
+      (loadedAssignments) => loadedAssignments,
+      () => null,
+    );
     try {
       setFeedback(await api.loadFeedback(requestedRunId));
     } catch (feedbackError) {
@@ -912,6 +1132,11 @@ export function HostedLearnerScreen({
         return;
       }
       throw feedbackError;
+    } finally {
+      const loadedAssignments = await assignmentRefresh;
+      if (loadedAssignments !== null) {
+        setAssignments(loadedAssignments);
+      }
     }
   }
 
@@ -973,11 +1198,7 @@ export function HostedLearnerScreen({
           <section className="card card--reference">
             <h2>{t("hostedLearner.assignments")}</h2>
             {initialAssignmentId === null ? null : (
-              <p>
-                {t("hostedLearner.deepLink", {
-                  assignmentId: initialAssignmentId,
-                })}
-              </p>
+              <p>{t("hostedLearner.deepLink")}</p>
             )}
             {focusedAssignments.length === 0 ? (
               <p>
@@ -1003,8 +1224,6 @@ export function HostedLearnerScreen({
                         <tr key={assignment.assignmentId}>
                           <td>
                             <strong>{assignment.title}</strong>
-                            <br />
-                            <code>{assignment.assignmentId}</code>
                           </td>
                           <td>{t(`scenarioAuthor.mode.${assignment.mode}`)}</td>
                           <td>
@@ -1016,11 +1235,21 @@ export function HostedLearnerScreen({
                                     `hostedLearner.assignmentAvailability.${startAvailability.status}`,
                                     {
                                       availableFrom:
-                                        assignment.availableFrom ??
-                                        "",
+                                        assignment.availableFrom ===
+                                        undefined
+                                          ? ""
+                                          : formatHostedDateTime(
+                                              assignment.availableFrom,
+                                              t.locale,
+                                            ),
                                       availableUntil:
-                                        assignment.availableUntil ??
-                                        "",
+                                        assignment.availableUntil ===
+                                        undefined
+                                          ? ""
+                                          : formatHostedDateTime(
+                                              assignment.availableUntil,
+                                              t.locale,
+                                            ),
                                     },
                                   )
                               : t(`hostedLearner.run.${latest.status}`)}
@@ -1090,11 +1319,17 @@ export function HostedLearnerScreen({
           </>
         )}
 
-        {error ? (
-          <p className="notice notice--standalone" role="alert">
-            {t("hostedLearner.error")}
+        {pendingMessage === null ? null : (
+          <p className="notice notice--standalone" role="status">
+            {pendingMessage}
           </p>
-        ) : null}
+        )}
+
+        {errorKey === null ? null : (
+          <p className="notice notice--standalone" role="alert">
+            {t(errorKey)}
+          </p>
+        )}
       </div>
     </main>
   );
@@ -1194,17 +1429,10 @@ function LearnerCompetencyProfile({
     <section className="hosted-learner__competency-profile">
       <h3>{t("hostedLearner.competencyHeading")}</h3>
       <p>{t("hostedLearner.competencyInterpretation")}</p>
-      <p>
-        <strong>{t("hostedLearner.competencyScenario")}</strong>{" "}
-        <code>
-          {profile.scenarioId}@{profile.scenarioVersion}
-        </code>
-      </p>
       {profile.learner.indicators.map((indicator) => (
         <details key={indicator.indicatorId}>
           <summary>
-            <strong>{t(indicator.competencyTitleKey)}</strong>{" "}
-            <code>{indicator.indicatorId}</code>
+            <strong>{t(indicator.competencyTitleKey)}</strong>
           </summary>
           <p>{t(indicator.indicatorStatementKey)}</p>
           <dl className="instructor-review__facts">
@@ -1227,7 +1455,10 @@ function LearnerCompetencyProfile({
                   t("hostedLearner.competencyNoLatest")
                 ) : (
                   <time dateTime={indicator.latestObservedAt}>
-                    {indicator.latestObservedAt}
+                    {formatHostedDateTime(
+                      indicator.latestObservedAt,
+                      t.locale,
+                    )}
                   </time>
                 )}
               </dd>
@@ -1244,28 +1475,67 @@ function LearnerCompetencyProfile({
                 >
                   <p>
                     {t("hostedLearner.competencyObservation", {
-                      runId: observation.runId,
-                      evidenceId:
-                        observation.competencyEvidenceId,
-                    })}
-                  </p>
-                  <p>
-                    <strong>
-                      {t("hostedLearner.competencySourceEvents")}
-                    </strong>{" "}
-                    {observation.sourceEventIds.map(
-                      (eventId, index) => (
-                        <span key={eventId}>
-                          {index === 0 ? null : ", "}
-                          <code>{eventId}</code>
-                        </span>
+                      observedAt: formatHostedDateTime(
+                        observation.observedAt,
+                        t.locale,
                       ),
-                    )}
+                    })}
                   </p>
                 </li>
               ))}
             </ul>
           )}
+          <details>
+            <summary>
+              {t(
+                "hostedLearner.competencyTechnicalTraceability",
+              )}
+            </summary>
+            <dl className="instructor-review__facts">
+              <div>
+                <dt>{t("hostedLearner.competencyScenario")}</dt>
+                <dd>
+                  <code>
+                    {profile.scenarioId}@{profile.scenarioVersion}
+                  </code>
+                </dd>
+              </div>
+              <div>
+                <dt>
+                  {t("hostedLearner.competencyIndicatorId")}
+                </dt>
+                <dd>
+                  <code>{indicator.indicatorId}</code>
+                </dd>
+              </div>
+            </dl>
+            {indicator.observations.map((observation) => (
+              <div
+                key={`${observation.runId}:${observation.competencyEvidenceId}`}
+              >
+                <p>
+                  {t("hostedLearner.competencyRunEvidence", {
+                    runId: observation.runId,
+                    evidenceId:
+                      observation.competencyEvidenceId,
+                  })}
+                </p>
+                <p>
+                  <strong>
+                    {t("hostedLearner.competencySourceEvents")}
+                  </strong>{" "}
+                  {observation.sourceEventIds.map(
+                    (eventId, index) => (
+                      <span key={eventId}>
+                        {index === 0 ? null : ", "}
+                        <code>{eventId}</code>
+                      </span>
+                    ),
+                  )}
+                </p>
+              </div>
+            ))}
+          </details>
         </details>
       ))}
     </section>
@@ -1273,15 +1543,14 @@ function LearnerCompetencyProfile({
 }
 
 function GenericAdvancedNodeDetails({
-  node,
+  presentation,
 }: {
-  readonly node:
-    | NonNullable<
-        LearnerRunProjectionV1["presentation"]
-      >["currentNode"]
+  readonly presentation:
+    | NonNullable<LearnerRunProjectionV1["presentation"]>
     | undefined;
 }): ReactNode {
   const t = useTranslator();
+  const node = presentation?.currentNode;
   if (
     node === undefined ||
     ![
@@ -1293,60 +1562,168 @@ function GenericAdvancedNodeDetails({
   ) {
     return null;
   }
+  const explanationKey =
+    node.nodeType === "TRANSACTION_PROPOSAL"
+      ? "hostedLearner.proposalExplanation"
+      : node.nodeType === "ENDORSEMENT"
+        ? "hostedLearner.endorsementExplanation"
+        : node.nodeType === "POLICY_CHECK"
+          ? "hostedLearner.policyCheckExplanation"
+          : "hostedLearner.stochasticExplanation";
+  const policyIds = [
+    ...(node.policyIds ?? []),
+    ...(node.policyId === undefined ? [] : [node.policyId]),
+  ].filter(
+    (policyId, index, values) =>
+      values.indexOf(policyId) === index,
+  );
   return (
     <>
       <h4>{t("hostedLearner.authoredWorkflowDetails")}</h4>
-      <dl className="instructor-review__facts">
-        {node.proposalType === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.proposalType")}</dt>
-            <dd><code>{node.proposalType}</code></dd>
-          </div>
-        )}
-        {node.sourceDecisionId === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.sourceDecision")}</dt>
-            <dd><code>{node.sourceDecisionId}</code></dd>
-          </div>
-        )}
-        {node.proposalNodeId === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.proposalReference")}</dt>
-            <dd><code>{node.proposalNodeId}</code></dd>
-          </div>
-        )}
-        {node.policyId === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.policyReference")}</dt>
-            <dd><code>{node.policyId}</code></dd>
-          </div>
-        )}
-        {node.policyIds === undefined ||
-        node.policyIds.length === 0 ? null : (
-          <div>
-            <dt>{t("hostedLearner.appliedPolicies")}</dt>
-            <dd>{node.policyIds.join(", ")}</dd>
-          </div>
-        )}
-        {node.permittedRoleIds === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.permittedRoles")}</dt>
-            <dd>{node.permittedRoleIds.join(", ")}</dd>
-          </div>
-        )}
-        {node.randomStreamId === undefined ? null : (
-          <div>
-            <dt>{t("hostedLearner.randomStream")}</dt>
-            <dd><code>{node.randomStreamId}</code></dd>
-          </div>
-        )}
-      </dl>
+      <p>{t(explanationKey)}</p>
+      {node.permittedRoleIds === undefined ||
+      node.permittedRoleIds.length === 0 ? null : (
+        <>
+          <p><strong>{t("hostedLearner.requiredApprovers")}</strong></p>
+          <ul>
+            {node.permittedRoleIds.map((roleId) => (
+              <li key={roleId}>
+                {presentation?.roleNames?.[roleId] === undefined
+                  ? t("hostedLearner.roleUnknown", { roleId })
+                  : runText(
+                      presentation.roleNames[roleId],
+                      t,
+                    )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {policyIds.length === 0 ? null : (
+        <>
+          <p><strong>{t("hostedLearner.applicablePolicies")}</strong></p>
+          <ul>
+            {policyIds.map((policyId) => (
+              <li key={policyId}>
+                {presentation?.policyTitles[policyId] === undefined
+                  ? t("hostedLearner.policyReference")
+                  : runText(
+                      presentation.policyTitles[policyId],
+                      t,
+                    )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {node.nodeType === "ENDORSEMENT" ? (
         <p className="field__hint">
           {t("hostedLearner.genericEndorsementDisclosure")}
         </p>
       ) : null}
     </>
+  );
+}
+
+export function HostedRunSummary({
+  presentation,
+}: {
+  readonly presentation:
+    | NonNullable<LearnerRunProjectionV1["presentation"]>
+    | undefined;
+}): ReactNode {
+  const t = useTranslator();
+  const summary = presentation?.completionSummary;
+  if (summary === undefined) return null;
+  const format = (value: number) =>
+    new Intl.NumberFormat(t.locale, {
+      maximumFractionDigits: 2,
+      useGrouping: false,
+    }).format(value);
+  return (
+    <section className="card card--brief">
+      <h2>{t("hostedLearner.completion.heading")}</h2>
+      {summary.message === undefined ? null : (
+        <p>{runText(summary.message, t)}</p>
+      )}
+      <p>{t("hostedLearner.completion.processOutcomeBoundary")}</p>
+      {presentation?.modeConfiguration.showScores &&
+      summary.processScore !== undefined &&
+      summary.scoreMaximum !== undefined ? (
+        <p>
+          <strong>
+            {t("hostedLearner.completion.processScore")}
+          </strong>{" "}
+          {format(summary.processScore)} /{" "}
+          {format(summary.scoreMaximum)}
+        </p>
+      ) : (
+        <p>{t("hostedLearner.completion.scoreHidden")}</p>
+      )}
+      <dl className="instructor-review__facts">
+        {summary.assessedDecisionCount === 0 ? null : (
+          <div>
+            <dt>{t("hostedLearner.completion.decisions")}</dt>
+            <dd>
+              {t("hostedLearner.completion.decisionsValue", {
+                correct: summary.correctDecisionCount,
+                total: summary.assessedDecisionCount,
+              })}
+            </dd>
+          </div>
+        )}
+        <div>
+          <dt>{t("hostedLearner.completion.evidence")}</dt>
+          <dd>{format(summary.inspectedEvidenceCount)}</dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.policies")}</dt>
+          <dd>{format(summary.consultedPolicyCount)}</dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.requests")}</dt>
+          <dd>{format(summary.evidenceRequestCount)}</dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.delay")}</dt>
+          <dd>
+            {t("hostedLearner.completion.delayValue", {
+              minutes: summary.totalEvidenceDelayMinutes,
+            })}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.cost")}</dt>
+          <dd>
+            {t("hostedLearner.completion.costValue", {
+              cost: summary.totalEvidenceCostUnits,
+            })}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.proposals")}</dt>
+          <dd>{format(summary.proposalCount)}</dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.endorsements")}</dt>
+          <dd>{format(summary.endorsementCount)}</dd>
+        </div>
+        <div>
+          <dt>{t("hostedLearner.completion.commits")}</dt>
+          <dd>{format(summary.committedTransactionCount)}</dd>
+        </div>
+        {summary.realizedOutcomeCode === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.completion.outcome")}</dt>
+            <dd>
+              {summary.realizedOutcome === undefined
+                ? t("hostedLearner.completion.outcomeRecorded")
+                : runText(summary.realizedOutcome, t)}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </section>
   );
 }
 
@@ -1412,10 +1789,6 @@ function RunWorkspace({
         <h2>{t("hostedLearner.workspace")}</h2>
         <dl className="instructor-review__facts">
           <div>
-            <dt>{t("hostedLearner.runId")}</dt>
-            <dd><code>{projection.runId}</code></dd>
-          </div>
-          <div>
             <dt>{t("hostedLearner.role")}</dt>
             <dd>
               {presentation === undefined
@@ -1450,10 +1823,13 @@ function RunWorkspace({
             {currentNode?.message === undefined ? null : (
               <p>{runText(currentNode.message, t)}</p>
             )}
-            <GenericAdvancedNodeDetails node={currentNode} />
+            <GenericAdvancedNodeDetails
+              presentation={presentation}
+            />
           </>
         )}
       </section>
+      <HostedRunSummary presentation={presentation} />
       {isExpired ? (
         <p className="notice notice--standalone" role="status">
           {t("hostedLearner.timeLimitExpired", {
@@ -1471,7 +1847,10 @@ function RunWorkspace({
               <p>
                 <small>
                   {t("hostedLearner.instructorIncidentReleasedAt", {
-                    releasedAt: incident.releasedAt,
+                    releasedAt: formatHostedDateTime(
+                      incident.releasedAt,
+                      t.locale,
+                    ),
                   })}
                 </small>
               </p>
@@ -1518,6 +1897,27 @@ function RunWorkspace({
       <section className="card card--reference">
         <h2>{t("hostedLearner.traceability")}</h2>
         <details>
+          <summary>{t("hostedLearner.technicalTraceability")}</summary>
+          <dl className="instructor-review__facts">
+            <div>
+              <dt>{t("hostedLearner.runId")}</dt>
+              <dd><code>{projection.runId}</code></dd>
+            </div>
+            <div>
+              <dt>{t("hostedLearner.workflowNodeId")}</dt>
+              <dd>
+                <code>
+                  {projection.workflowState.currentNodeId}
+                </code>
+              </dd>
+            </div>
+            <div>
+              <dt>{t("hostedLearner.roleId")}</dt>
+              <dd><code>{projection.roleId}</code></dd>
+            </div>
+          </dl>
+        </details>
+        <details>
           <summary>{t("hostedLearner.viewRoleState")}</summary>
           <div className="table-scroll">
             <table className="data-table">
@@ -1548,31 +1948,27 @@ function RunWorkspace({
       <HostedDecisionEvidenceGuide
         workflowNodeId={projection.workflowState.currentNodeId}
       />
-      <section className="card card--work">
-        <h2>{t("hostedLearner.currentAction")}</h2>
-        {currentNode?.prompt === undefined ? null : (
-          <p>{runText(currentNode.prompt, t)}</p>
-        )}
-        {actions.length === 0 ? (
-          <p>
-            {currentNode?.nodeType === "COMPLETION"
-              ? runText(currentNode.title, t)
-              : t("hostedLearner.complete")}
-          </p>
-        ) : actionControls.length === 0 ? (
-          <p>{t("hostedLearner.inspectEvidenceAbove")}</p>
-        ) : (
-          actionControls.map((action) => (
-            <ActionControl
-              key={action}
-              action={action}
-              projection={projection}
-              busy={busy || isExpired}
-              onSubmit={onSubmit}
-            />
-          ))
-        )}
-      </section>
+      {actions.length === 0 ? null : (
+        <section className="card card--work">
+          <h2>{t("hostedLearner.currentAction")}</h2>
+          {currentNode?.prompt === undefined ? null : (
+            <p>{runText(currentNode.prompt, t)}</p>
+          )}
+          {actionControls.length === 0 ? (
+            <p>{t("hostedLearner.inspectEvidenceAbove")}</p>
+          ) : (
+            actionControls.map((action) => (
+              <ActionControl
+                key={action}
+                action={action}
+                projection={projection}
+                busy={busy || isExpired}
+                onSubmit={onSubmit}
+              />
+            ))
+          )}
+        </section>
+      )}
     </>
   );
 }
@@ -1784,38 +2180,58 @@ function HostedTechnicalLabWorkspace({
   );
 }
 
-function LedgerTransactions({
+export function LedgerTransactions({
   ledgerState,
 }: {
   readonly ledgerState: Readonly<Record<string, unknown>>;
 }): ReactNode {
   const t = useTranslator();
-  const transactions = Array.isArray(ledgerState.transactions)
-    ? ledgerState.transactions.filter(
+  const nativeTransactions = Array.isArray(ledgerState.transactions)
+    ? ledgerState.transactions
+    : [];
+  const genericTransactions = Array.isArray(
+    ledgerState.tracechainTransactions,
+  )
+    ? ledgerState.tracechainTransactions
+    : [];
+  const transactions = [
+    ...nativeTransactions,
+    ...genericTransactions,
+  ].filter(
         (item): item is Readonly<Record<string, unknown>> =>
           typeof item === "object" &&
           item !== null &&
           !Array.isArray(item),
-      )
-    : [];
+      );
   if (transactions.length === 0) {
     return <p>{t("hostedLearner.noLedgerTransactions")}</p>;
   }
   return (
     <ol>
-      {transactions.map((transaction, index) => (
-        <li key={String(transaction.transactionId ?? index)}>
-          <code>{String(transaction.transactionType ?? "")}</code>
-          {" — "}
-          {String(transaction.transactionStatus ?? "")}
-          {transaction.transactionId === undefined ? null : (
-            <>
-              {" "}
-              <code>{String(transaction.transactionId)}</code>
-            </>
-          )}
-        </li>
-      ))}
+      {transactions.map((transaction, index) => {
+        const transactionId =
+          transaction.transactionId ?? transaction.proposalId;
+        const transactionType =
+          transaction.transactionType ?? transaction.proposalType;
+        const transactionStatus =
+          transaction.transactionStatus ??
+          (transaction.committedAt === undefined
+            ? ""
+            : t("hostedLearner.ledgerCommitted"));
+        return (
+          <li key={String(transactionId ?? index)}>
+            <code>{String(transactionType ?? "")}</code>
+            {" — "}
+            {String(transactionStatus)}
+            {transactionId === undefined ? null : (
+              <>
+                {" "}
+                <code>{String(transactionId)}</code>
+              </>
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 }

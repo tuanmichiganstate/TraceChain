@@ -63,6 +63,16 @@ export interface GenericEndorsementRecord {
   readonly assurance: "SCENARIO_APPROVAL_RECORD";
 }
 
+export interface GenericCommittedTransactionRecord {
+  readonly proposalNodeId: string;
+  readonly proposalId: string;
+  readonly proposalType: string;
+  readonly proposalDigest: string;
+  readonly policyId: string;
+  readonly endorsementRoleIds: readonly string[];
+  readonly committedAt: string;
+}
+
 export interface GenericPolicyEvaluationRecord {
   readonly policyCheckNodeId: string;
   readonly policyId: string;
@@ -95,7 +105,7 @@ export interface GenericReflectionSubmission {
 }
 
 export interface GenericHostedRunState {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly runtimeKind: "generic-v1";
   readonly runId: string;
   readonly assignmentId: string;
@@ -136,6 +146,9 @@ export interface GenericHostedRunState {
   >;
   readonly endorsements: Readonly<
     Record<string, GenericEndorsementRecord>
+  >;
+  readonly committedTransactions: Readonly<
+    Record<string, GenericCommittedTransactionRecord>
   >;
   readonly policyEvaluations:
     readonly GenericPolicyEvaluationRecord[];

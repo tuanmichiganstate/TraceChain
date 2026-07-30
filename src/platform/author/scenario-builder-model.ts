@@ -93,6 +93,8 @@ export function createScenarioBuilderStarter(
     briefingTitle: "builder.newScenario.node.briefing.title",
     briefingBody: "builder.newScenario.node.briefing.body",
     completionTitle: "builder.newScenario.node.completion.title",
+    completionMessage:
+      "builder.newScenario.node.completion.message",
     frameworkTitle: "builder.newScenario.framework.title",
     competencyTitle: "builder.newScenario.competency.title",
     competencyDescription:
@@ -274,6 +276,9 @@ export function createScenarioBuilderStarter(
               localizationKey: keys.completionTitle,
             },
             outcomeCode: "SCENARIO_COMPLETED",
+            message: {
+              localizationKey: keys.completionMessage,
+            },
             transitions: [],
           },
         ],
@@ -328,6 +333,11 @@ export function createScenarioBuilderStarter(
     draft,
     keys.completionTitle,
     "scenarioAuthor.builder.default.completionTitle",
+  );
+  setStarterText(
+    draft,
+    keys.completionMessage,
+    "scenarioAuthor.builder.default.completionMessage",
   );
   setStarterText(
     draft,
@@ -783,7 +793,7 @@ export function defaultModeConfiguration(mode: HostedRunMode) {
       mode === "standard" || mode === "configured"
         ? "final" as const
         : "immediate" as const,
-    showScores: mode !== "configured",
+    showScores: false,
     outcomeStrategy:
       mode === "sandbox" ? "probabilistic" as const : "forced" as const,
     seedPolicy:
@@ -910,6 +920,10 @@ export function defaultScenarioNode(
             outcomeId: `DRAW_${String(index + 1)}`,
             weight: 1,
             resultCode,
+            label: {
+              localizationKey:
+                `${localizationKey}.outcome.${String(index + 1)}`,
+            },
           })),
         };
       }
@@ -940,6 +954,7 @@ export function defaultScenarioNode(
         ...common,
         nodeType: type,
         outcomeCode: "OUTCOME_COMPLETE",
+        message: { localizationKey: `${localizationKey}.message` },
       };
   }
 }

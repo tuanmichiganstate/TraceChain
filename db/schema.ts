@@ -6,7 +6,7 @@
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-29-assignment-raters-v1";
+  "2026-07-30-generic-runtime-v3";
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (

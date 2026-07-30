@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.11.0",
+  "schemaVersion": "1.12.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
   "version": "1.7.0",
   "status": "draft",
@@ -42,6 +42,29 @@
       "platformPack.pharmaColdChain.policy.release": "Cold-chain release rule",
       "platformPack.pharmaColdChain.policy.release.statement": "Hold the shipment when a reported temperature excursion remains unresolved; an intact custody record does not establish acceptable storage conditions.",
       "platformPack.pharmaColdChain.evidence.sensor": "Temperature sensor summary",
+      "platformPack.pharmaColdChain.evidence.sensor.summary": "Compare the observed temperature range and excursion duration with the permitted limit.",
+      "platformPack.pharmaColdChain.transfer.evidence.sensor.summary": "The logger reports an excursion, but its reliability must be assessed with the calibration record.",
+      "platformPack.pharmaColdChain.transfer.evidence.custody.summary": "This record supports attribution and custody integrity; it does not attest to the medicine's physical condition.",
+      "platformPack.pharmaColdChain.transfer.evidence.calibration.summary": "Use the calibration status to judge how much confidence the logger reading deserves.",
+      "platformPack.pharmaColdChain.transfer.evidence.stability.summary": "Compare the approved stability limits with the observed temperature and duration before deciding on release.",
+      "platformPack.pharmaColdChain.evidence.field.minimumTemperature": "Minimum observed temperature",
+      "platformPack.pharmaColdChain.evidence.field.maximumTemperature": "Maximum observed temperature",
+      "platformPack.pharmaColdChain.evidence.field.permittedMaximumTemperature": "Permitted maximum temperature",
+      "platformPack.pharmaColdChain.evidence.field.excursionMinutes": "Excursion duration",
+      "platformPack.pharmaColdChain.evidence.field.signatureValid": "Signature valid",
+      "platformPack.pharmaColdChain.evidence.field.signerRecognized": "Signer recognized",
+      "platformPack.pharmaColdChain.evidence.field.custodyHistoryIntact": "Custody history intact",
+      "platformPack.pharmaColdChain.evidence.field.productConditionAttested": "Product condition attested",
+      "platformPack.pharmaColdChain.evidence.field.calibrationStatus": "Calibration status",
+      "platformPack.pharmaColdChain.evidence.field.expiredDays": "Calibration expired before shipment",
+      "platformPack.pharmaColdChain.evidence.field.deviceFailureConfirmed": "Device failure confirmed",
+      "platformPack.pharmaColdChain.evidence.field.approvedMaximumTemperature": "Approved maximum temperature",
+      "platformPack.pharmaColdChain.evidence.field.approvedMaximumExcursion": "Approved maximum excursion",
+      "platformPack.pharmaColdChain.evidence.field.observedMaximumTemperature": "Observed maximum temperature",
+      "platformPack.pharmaColdChain.evidence.field.supportsRelease": "Evidence supports release",
+      "platformPack.pharmaColdChain.evidence.value.expired": "Expired",
+      "platformPack.pharmaColdChain.unit.minutes": "minutes",
+      "platformPack.pharmaColdChain.unit.days": "days",
       "platformPack.pharmaColdChain.transfer.scenario.title": "Cold-chain evidence and disposition transfer case",
       "platformPack.pharmaColdChain.transfer.evidence.custody": "Signed custody record",
       "platformPack.pharmaColdChain.transfer.evidence.calibration": "Sensor calibration record",
@@ -78,6 +101,7 @@
       "platformPack.pharmaColdChain.transfer.node.feedback.title": "Cold-chain evidence lesson",
       "platformPack.pharmaColdChain.transfer.node.feedback.message": "An intact ledger record supports integrity and custody attribution. The expired calibration record weakens the sensor evidence, but it does not prove safe storage. A proportionate response addresses the affected shipment while the uncertainty is resolved.",
       "platformPack.pharmaColdChain.transfer.node.complete.title": "Transfer case complete",
+      "platformPack.pharmaColdChain.transfer.node.complete.message": "Review how your initial response, final disposition, evidence use, and realized outcome differed. The process score evaluates the authored decisions, not whether chance produced a favorable result.",
       "platformPack.pharmaColdChain.transfer.counterfactual.triage": "Explore another initial shipment response",
       "platformPack.pharmaColdChain.transfer.counterfactual.disposition": "Explore another final shipment disposition",
       "platformPack.pharmaColdChain.transfer.counterfactual.patientSafety.title": "Patient safety",
@@ -106,7 +130,8 @@
       "platformPack.pharmaColdChain.node.consequence.release.message": "The shipment proceeds while the temperature excursion remains unresolved. This avoids an immediate delay but creates patient-safety and compliance exposure.",
       "platformPack.pharmaColdChain.node.feedback.title": "Evidence interpretation",
       "platformPack.pharmaColdChain.node.feedback.message": "An intact signed custody record supports integrity and attribution. It does not prove that storage conditions were acceptable, so the off-chain sensor evidence still required evaluation.",
-      "platformPack.pharmaColdChain.node.complete.title": "Decision recorded"
+      "platformPack.pharmaColdChain.node.complete.title": "Decision recorded",
+      "platformPack.pharmaColdChain.node.complete.message": "Review the decision score separately from the realized outcome. A defensible process can still have an unfavorable outcome, and a favorable outcome does not make weak reasoning competent."
     },
     "vi": {
       "platformPack.pharmaColdChain.manifest.title": "Mẫu khởi tạo chuỗi lạnh dược phẩm",
@@ -141,6 +166,29 @@
       "platformPack.pharmaColdChain.policy.release": "Quy tắc xuất hàng chuỗi lạnh",
       "platformPack.pharmaColdChain.policy.release.statement": "Giữ lô hàng khi sai lệch nhiệt độ được báo cáo vẫn chưa được giải quyết; hồ sơ chuyển giao còn nguyên vẹn không chứng minh điều kiện bảo quản là phù hợp.",
       "platformPack.pharmaColdChain.evidence.sensor": "Tóm tắt cảm biến nhiệt độ",
+      "platformPack.pharmaColdChain.evidence.sensor.summary": "Đối chiếu khoảng nhiệt độ đã quan sát và thời gian sai lệch với giới hạn cho phép.",
+      "platformPack.pharmaColdChain.transfer.evidence.sensor.summary": "Thiết bị ghi báo cáo một sai lệch, nhưng cần dùng hồ sơ hiệu chuẩn để đánh giá độ tin cậy của kết quả.",
+      "platformPack.pharmaColdChain.transfer.evidence.custody.summary": "Hồ sơ này hỗ trợ xác định nguồn và tính toàn vẹn của quá trình chuyển giao; hồ sơ không xác nhận điều kiện vật lý của thuốc.",
+      "platformPack.pharmaColdChain.transfer.evidence.calibration.summary": "Dùng tình trạng hiệu chuẩn để đánh giá mức độ có thể tin cậy vào kết quả của thiết bị ghi.",
+      "platformPack.pharmaColdChain.transfer.evidence.stability.summary": "Đối chiếu giới hạn độ ổn định đã phê duyệt với nhiệt độ và thời gian đã quan sát trước khi quyết định xuất hàng.",
+      "platformPack.pharmaColdChain.evidence.field.minimumTemperature": "Nhiệt độ thấp nhất đã quan sát",
+      "platformPack.pharmaColdChain.evidence.field.maximumTemperature": "Nhiệt độ cao nhất đã quan sát",
+      "platformPack.pharmaColdChain.evidence.field.permittedMaximumTemperature": "Nhiệt độ tối đa cho phép",
+      "platformPack.pharmaColdChain.evidence.field.excursionMinutes": "Thời gian sai lệch",
+      "platformPack.pharmaColdChain.evidence.field.signatureValid": "Chữ ký hợp lệ",
+      "platformPack.pharmaColdChain.evidence.field.signerRecognized": "Bên ký được công nhận",
+      "platformPack.pharmaColdChain.evidence.field.custodyHistoryIntact": "Lịch sử chuyển giao còn nguyên vẹn",
+      "platformPack.pharmaColdChain.evidence.field.productConditionAttested": "Điều kiện sản phẩm được xác nhận",
+      "platformPack.pharmaColdChain.evidence.field.calibrationStatus": "Tình trạng hiệu chuẩn",
+      "platformPack.pharmaColdChain.evidence.field.expiredDays": "Hiệu chuẩn đã hết hạn trước khi giao hàng",
+      "platformPack.pharmaColdChain.evidence.field.deviceFailureConfirmed": "Đã xác nhận thiết bị hỏng",
+      "platformPack.pharmaColdChain.evidence.field.approvedMaximumTemperature": "Nhiệt độ tối đa đã được phê duyệt",
+      "platformPack.pharmaColdChain.evidence.field.approvedMaximumExcursion": "Thời gian sai lệch tối đa đã được phê duyệt",
+      "platformPack.pharmaColdChain.evidence.field.observedMaximumTemperature": "Nhiệt độ tối đa đã quan sát",
+      "platformPack.pharmaColdChain.evidence.field.supportsRelease": "Bằng chứng ủng hộ việc xuất hàng",
+      "platformPack.pharmaColdChain.evidence.value.expired": "Đã hết hạn",
+      "platformPack.pharmaColdChain.unit.minutes": "phút",
+      "platformPack.pharmaColdChain.unit.days": "ngày",
       "platformPack.pharmaColdChain.transfer.scenario.title": "Tình huống vận dụng về bằng chứng và xử lý chuỗi lạnh",
       "platformPack.pharmaColdChain.transfer.evidence.custody": "Hồ sơ chuyển giao đã ký",
       "platformPack.pharmaColdChain.transfer.evidence.calibration": "Hồ sơ hiệu chuẩn cảm biến",
@@ -177,6 +225,7 @@
       "platformPack.pharmaColdChain.transfer.node.feedback.title": "Bài học về bằng chứng chuỗi lạnh",
       "platformPack.pharmaColdChain.transfer.node.feedback.message": "Hồ sơ sổ cái còn nguyên vẹn hỗ trợ việc xác minh tính toàn vẹn và nguồn chuyển giao. Hồ sơ hiệu chuẩn hết hạn làm suy yếu bằng chứng cảm biến, nhưng không chứng minh điều kiện bảo quản an toàn. Biện pháp tương xứng xử lý lô hàng bị ảnh hưởng trong khi giải quyết mức độ không chắc chắn.",
       "platformPack.pharmaColdChain.transfer.node.complete.title": "Đã hoàn thành tình huống vận dụng",
+      "platformPack.pharmaColdChain.transfer.node.complete.message": "Hãy xem lại sự khác biệt giữa cách xử lý ban đầu, quyết định cuối cùng, việc sử dụng bằng chứng và kết quả đã xảy ra. Điểm quá trình đánh giá các quyết định đã biên soạn, không đánh giá việc ngẫu nhiên có tạo ra kết quả thuận lợi hay không.",
       "platformPack.pharmaColdChain.transfer.counterfactual.triage": "Khám phá một cách xử lý ban đầu khác đối với lô hàng",
       "platformPack.pharmaColdChain.transfer.counterfactual.disposition": "Khám phá một cách xử lý cuối cùng khác đối với lô hàng",
       "platformPack.pharmaColdChain.transfer.counterfactual.patientSafety.title": "An toàn người bệnh",
@@ -205,7 +254,8 @@
       "platformPack.pharmaColdChain.node.consequence.release.message": "Lô hàng tiếp tục được xuất khi sai lệch nhiệt độ chưa được giải quyết. Quyết định này tránh chậm trễ trước mắt nhưng tạo ra rủi ro cho an toàn người bệnh và tuân thủ.",
       "platformPack.pharmaColdChain.node.feedback.title": "Diễn giải bằng chứng",
       "platformPack.pharmaColdChain.node.feedback.message": "Hồ sơ chuyển giao đã ký còn nguyên vẹn hỗ trợ việc xác minh tính toàn vẹn và nguồn phê duyệt. Hồ sơ này không chứng minh điều kiện bảo quản là phù hợp, vì vậy bằng chứng cảm biến ngoài chuỗi vẫn cần được đánh giá.",
-      "platformPack.pharmaColdChain.node.complete.title": "Đã ghi nhận quyết định"
+      "platformPack.pharmaColdChain.node.complete.title": "Đã ghi nhận quyết định",
+      "platformPack.pharmaColdChain.node.complete.message": "Hãy xem điểm quyết định tách biệt với kết quả đã xảy ra. Một quá trình có căn cứ vẫn có thể gặp kết quả bất lợi, và kết quả thuận lợi không biến lập luận yếu thành năng lực."
     }
   },
   "manifest": {
@@ -612,6 +662,44 @@
               "temperatureExcursionConfirmed"
             ]
           },
+          "learnerPresentation": {
+            "summary": {
+              "localizationKey": "platformPack.pharmaColdChain.evidence.sensor.summary"
+            },
+            "fields": [
+              {
+                "fieldPath": "minimumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.minimumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "maximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.maximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "permittedMaximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.permittedMaximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "excursionMinutes",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.excursionMinutes"
+                },
+                "valueType": "NUMBER",
+                "unit": {
+                  "localizationKey": "platformPack.pharmaColdChain.unit.minutes"
+                }
+              }
+            ]
+          },
           "content": {
             "minimumTemperatureC": 2,
             "maximumTemperatureC": 12.4,
@@ -702,6 +790,15 @@
             "required": true,
             "maximumLength": 600
           },
+          "assessment": {
+            "decisionItemId": "PHARMA_RELEASE_DECISION",
+            "maximumPoints": 100,
+            "correctOptionIdsByField": {
+              "shipmentAction": [
+                "HOLD_AND_INVESTIGATE"
+              ]
+            }
+          },
           "transitions": [
             {
               "transitionId": "TRANSITION_PHARMA_DECISION_HOLD",
@@ -790,6 +887,9 @@
             "localizationKey": "platformPack.pharmaColdChain.node.complete.title"
           },
           "outcomeCode": "PHARMA_DECISION_RECORDED",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.node.complete.message"
+          },
           "transitions": []
         }
       ],
@@ -1019,6 +1119,44 @@
               "temperatureExcursionConfirmed"
             ]
           },
+          "learnerPresentation": {
+            "summary": {
+              "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.sensor.summary"
+            },
+            "fields": [
+              {
+                "fieldPath": "minimumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.minimumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "maximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.maximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "permittedMaximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.permittedMaximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "excursionMinutes",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.excursionMinutes"
+                },
+                "valueType": "NUMBER",
+                "unit": {
+                  "localizationKey": "platformPack.pharmaColdChain.unit.minutes"
+                }
+              }
+            ]
+          },
           "content": {
             "minimumTemperatureC": 2,
             "maximumTemperatureC": 12.4,
@@ -1057,6 +1195,41 @@
             ],
             "hiddenConditionReferences": []
           },
+          "learnerPresentation": {
+            "summary": {
+              "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.custody.summary"
+            },
+            "fields": [
+              {
+                "fieldPath": "signatureValid",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.signatureValid"
+                },
+                "valueType": "BOOLEAN"
+              },
+              {
+                "fieldPath": "signerRecognized",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.signerRecognized"
+                },
+                "valueType": "BOOLEAN"
+              },
+              {
+                "fieldPath": "custodyHistoryIntact",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.custodyHistoryIntact"
+                },
+                "valueType": "BOOLEAN"
+              },
+              {
+                "fieldPath": "productConditionAttested",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.productConditionAttested"
+                },
+                "valueType": "BOOLEAN"
+              }
+            ]
+          },
           "content": {
             "signatureValid": true,
             "signerRecognized": true,
@@ -1092,6 +1265,42 @@
             "contentStatus": "ACCURATE",
             "limitationCodes": [],
             "hiddenConditionReferences": []
+          },
+          "learnerPresentation": {
+            "summary": {
+              "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.calibration.summary"
+            },
+            "fields": [
+              {
+                "fieldPath": "calibrationStatus",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.calibrationStatus"
+                },
+                "valueType": "TEXT",
+                "valueLabels": {
+                  "EXPIRED": {
+                    "localizationKey": "platformPack.pharmaColdChain.evidence.value.expired"
+                  }
+                }
+              },
+              {
+                "fieldPath": "expiredDaysBeforeShipment",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.expiredDays"
+                },
+                "valueType": "NUMBER",
+                "unit": {
+                  "localizationKey": "platformPack.pharmaColdChain.unit.days"
+                }
+              },
+              {
+                "fieldPath": "deviceFailureConfirmed",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.deviceFailureConfirmed"
+                },
+                "valueType": "BOOLEAN"
+              }
+            ]
           },
           "content": {
             "calibrationStatus": "EXPIRED",
@@ -1129,6 +1338,44 @@
               "ASSESSMENT_SCOPE_LIMITED_TO_AUTHORED_CONDITIONS"
             ],
             "hiddenConditionReferences": []
+          },
+          "learnerPresentation": {
+            "summary": {
+              "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.stability.summary"
+            },
+            "fields": [
+              {
+                "fieldPath": "approvedMaximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.approvedMaximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "approvedMaximumExcursionMinutes",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.approvedMaximumExcursion"
+                },
+                "valueType": "NUMBER",
+                "unit": {
+                  "localizationKey": "platformPack.pharmaColdChain.unit.minutes"
+                }
+              },
+              {
+                "fieldPath": "observedMaximumTemperatureC",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.observedMaximumTemperature"
+                },
+                "valueType": "TEMPERATURE_C"
+              },
+              {
+                "fieldPath": "supportsRelease",
+                "label": {
+                  "localizationKey": "platformPack.pharmaColdChain.evidence.field.supportsRelease"
+                },
+                "valueType": "BOOLEAN"
+              }
+            ]
           },
           "content": {
             "approvedMaximumTemperatureC": 10,
@@ -1368,6 +1615,15 @@
               "maximum": 100
             }
           },
+          "assessment": {
+            "decisionItemId": "PHARMA_TRANSFER_TRIAGE",
+            "maximumPoints": 40,
+            "correctOptionIdsByField": {
+              "triageAction": [
+                "HOLD_AND_INVESTIGATE"
+              ]
+            }
+          },
           "counterfactual": {
             "enabled": true,
             "availability": "AFTER_FEEDBACK_RELEASE",
@@ -1561,6 +1817,15 @@
               "maximum": 100
             }
           },
+          "assessment": {
+            "decisionItemId": "PHARMA_TRANSFER_DISPOSITION",
+            "maximumPoints": 60,
+            "correctOptionIdsByField": {
+              "dispositionAction": [
+                "QUARANTINE_AFFECTED_SHIPMENT"
+              ]
+            }
+          },
           "counterfactual": {
             "enabled": true,
             "availability": "AFTER_FEEDBACK_RELEASE",
@@ -1702,6 +1967,9 @@
             "localizationKey": "platformPack.pharmaColdChain.transfer.node.complete.title"
           },
           "outcomeCode": "PHARMA_TRANSFER_CASE_COMPLETED",
+          "message": {
+            "localizationKey": "platformPack.pharmaColdChain.transfer.node.complete.message"
+          },
           "transitions": []
         }
       ],

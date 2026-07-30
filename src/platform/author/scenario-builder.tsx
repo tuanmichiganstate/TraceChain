@@ -2003,7 +2003,7 @@ function EvidenceStep({
         const key = uniqueLocalizationPrefix(
           draft as unknown as ScenarioPackV1,
           `builder.${target.scenarioId}.evidence`,
-          [".title"],
+          [".title", ".summary", ".field.finding"],
         );
         target.evidenceItems.push({
           evidenceId,
@@ -2029,11 +2029,27 @@ function EvidenceStep({
             limitationCodes: [],
             hiddenConditionReferences: [],
           },
-          content: {},
+          learnerPresentation: {
+            summary: { localizationKey: `${key}.summary` },
+            fields: [
+              {
+                fieldPath: "finding",
+                label: {
+                  localizationKey: `${key}.field.finding`,
+                },
+                valueType: "TEXT",
+              },
+            ],
+          },
+          content: { finding: "" },
         });
         seedLocalizedKeys(
           draft as unknown as ScenarioPackV1,
-          [`${key}.title`],
+          [
+            `${key}.title`,
+            `${key}.summary`,
+            `${key}.field.finding`,
+          ],
         );
       }),
     );
@@ -2271,6 +2287,7 @@ function EvidenceItemEditor({
   function update(
     mutation: (
       target: DeepMutable<ScenarioEvidenceItemV1>,
+      draft: DeepMutable<ScenarioPackV1>,
     ) => void,
   ): void {
     onChange(
@@ -2280,7 +2297,7 @@ function EvidenceItemEditor({
             evidenceIndex
           ];
         if (target !== undefined) {
-          mutation(target);
+          mutation(target, draft);
         }
       }),
     );
@@ -2752,12 +2769,288 @@ function EvidenceItemEditor({
             value !== null &&
             !Array.isArray(value)
           ) {
-            update((target) => {
-              target.content = value as DeepMutable<JsonObject>;
-            });
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target =
+                  draft.scenarios[scenarioIndex]?.evidenceItems[
+                    evidenceIndex
+                  ];
+                if (target === undefined) return;
+                target.content = value as DeepMutable<JsonObject>;
+                target.learnerPresentation ??= {
+                  fields: [],
+                };
+                const current = new Map(
+                  target.learnerPresentation.fields.map((field) => [
+                    field.fieldPath,
+                    field,
+                  ]),
+                );
+                const objectValue = value as JsonObject;
+                const nextFields =
+                  learnerPresentableContentEntries(objectValue);
+                target.learnerPresentation.fields = nextFields.map(
+                  ([fieldPath, fieldValue]) => {
+                    const existing = current.get(fieldPath);
+                    if (existing !== undefined) return existing;
+                    const localizationKey =
+                      `${target.title.localizationKey}.field.${fieldPath}`;
+                    seedLocalizedKeys(
+                      draft as unknown as ScenarioPackV1,
+                      [localizationKey],
+                    );
+                    return {
+                      fieldPath,
+                      label: { localizationKey },
+                      valueType:
+                        typeof fieldValue === "boolean"
+                          ? "BOOLEAN"
+                          : typeof fieldValue === "number"
+                            ? "NUMBER"
+                            : Array.isArray(fieldValue)
+                              ? "TEXT_LIST"
+                              : typeof fieldValue === "string" &&
+                                  /^\d{4}-\d{2}-\d{2}T/u.test(
+                                    fieldValue,
+                                  )
+                                ? "DATE_TIME"
+                                : "TEXT",
+                    };
+                  },
+                );
+              }),
+            );
           }
         }}
       />
+      {evidence.learnerPresentation !== undefined ? (
+        <div className="scenario-builder__nested-list">
+          {evidence.learnerPresentation.summary !== undefined ? (
+            <LocalizedTextControl
+              heading={t(
+                "scenarioAuthor.builder.evidencePresentationSummary",
+              )}
+              localizationKey={
+                evidence.learnerPresentation.summary.localizationKey
+              }
+              pack={pack}
+              onChange={onChange}
+            />
+          ) : null}
+          {evidence.learnerPresentation.fields.map(
+            (field, fieldIndex) => {
+              const currentValue = evidenceContentValue(
+                evidence.content,
+                field.fieldPath,
+              );
+              const currentStringValues = [
+                ...new Set(
+                  (
+                    typeof currentValue === "string"
+                      ? [currentValue]
+                      : Array.isArray(currentValue)
+                        ? currentValue.filter(
+                            (value): value is string =>
+                              typeof value === "string",
+                          )
+                        : []
+                  ).filter((value) => value.length > 0),
+                ),
+              ];
+              return (
+                <div
+                  className="scenario-builder__nested-card"
+                  key={field.fieldPath}
+                >
+                  <code>{field.fieldPath}</code>
+                  <LocalizedTextControl
+                    heading={t(
+                      "scenarioAuthor.builder.evidencePresentationLabel",
+                    )}
+                    localizationKey={field.label.localizationKey}
+                    pack={pack}
+                    onChange={onChange}
+                  />
+                  <SelectControl
+                    id={`evidence-field-type-${String(evidenceIndex)}-${String(fieldIndex)}`}
+                    label={t(
+                      "scenarioAuthor.builder.evidencePresentationType",
+                    )}
+                    value={field.valueType}
+                    options={[
+                      "TEXT",
+                      "NUMBER",
+                      "BOOLEAN",
+                      "DATE_TIME",
+                      "TEMPERATURE_C",
+                      "PERCENT",
+                      "RATE_PER_MINUTE",
+                      "TEXT_LIST",
+                    ].map((value) => ({ value, label: value }))}
+                    onChange={(value) =>
+                      update((target) => {
+                        const targetField =
+                          target.learnerPresentation?.fields[
+                            fieldIndex
+                          ];
+                        if (targetField !== undefined) {
+                          targetField.valueType =
+                            value as typeof targetField.valueType;
+                        }
+                      })
+                    }
+                  />
+                  {field.unit === undefined ? (
+                    <button
+                      className="button button--quiet"
+                      type="button"
+                      onClick={() =>
+                        update((target, draft) => {
+                          const targetField =
+                            target.learnerPresentation?.fields[
+                              fieldIndex
+                            ];
+                          if (targetField === undefined) return;
+                          const localizationKey =
+                            `${targetField.label.localizationKey}.unit`;
+                          targetField.unit = { localizationKey };
+                          seedLocalizedKeys(
+                            draft as unknown as ScenarioPackV1,
+                            [localizationKey],
+                          );
+                        })
+                      }
+                    >
+                      {t(
+                        "scenarioAuthor.builder.evidencePresentationAddUnit",
+                      )}
+                    </button>
+                  ) : (
+                    <>
+                      <LocalizedTextControl
+                        heading={t(
+                          "scenarioAuthor.builder.evidencePresentationUnit",
+                        )}
+                        localizationKey={
+                          field.unit.localizationKey
+                        }
+                        pack={pack}
+                        onChange={onChange}
+                      />
+                      <button
+                        className="button button--quiet"
+                        type="button"
+                        onClick={() =>
+                          update((target) => {
+                            const targetField =
+                              target.learnerPresentation?.fields[
+                                fieldIndex
+                              ];
+                            if (targetField !== undefined) {
+                              delete targetField.unit;
+                            }
+                          })
+                        }
+                      >
+                        {t(
+                          "scenarioAuthor.builder.evidencePresentationRemoveUnit",
+                        )}
+                      </button>
+                    </>
+                  )}
+                  {currentStringValues.map((currentStringValue) => {
+                    const currentValueLabel =
+                      field.valueLabels?.[currentStringValue];
+                    return currentValueLabel === undefined ? (
+                      <button
+                        key={currentStringValue}
+                        className="button button--quiet"
+                        type="button"
+                        onClick={() =>
+                          update((target, draft) => {
+                            const targetField =
+                              target.learnerPresentation?.fields[
+                                fieldIndex
+                              ];
+                            if (targetField === undefined) return;
+                            const labelIndex =
+                              Object.keys(
+                                targetField.valueLabels ?? {},
+                              ).length + 1;
+                            const localizationKey =
+                              `${targetField.label.localizationKey}.value.${String(labelIndex)}`;
+                            targetField.valueLabels = {
+                              ...(targetField.valueLabels ?? {}),
+                              [currentStringValue]: {
+                                localizationKey,
+                              },
+                            };
+                            seedLocalizedKeys(
+                              draft as unknown as ScenarioPackV1,
+                              [localizationKey],
+                            );
+                          })
+                        }
+                      >
+                        {t(
+                          "scenarioAuthor.builder.evidencePresentationAddValueLabel",
+                          { value: currentStringValue },
+                        )}
+                      </button>
+                    ) : (
+                      <div key={currentStringValue}>
+                        <LocalizedTextControl
+                          heading={t(
+                            "scenarioAuthor.builder.evidencePresentationValueLabel",
+                            { value: currentStringValue },
+                          )}
+                          localizationKey={
+                            currentValueLabel.localizationKey
+                          }
+                          pack={pack}
+                          onChange={onChange}
+                        />
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          onClick={() =>
+                            update((target) => {
+                              const targetField =
+                                target.learnerPresentation?.fields[
+                                  fieldIndex
+                                ];
+                              if (
+                                targetField?.valueLabels ===
+                                undefined
+                              ) {
+                                return;
+                              }
+                              delete targetField.valueLabels[
+                                currentStringValue
+                              ];
+                              if (
+                                Object.keys(
+                                  targetField.valueLabels,
+                                ).length === 0
+                              ) {
+                                delete targetField.valueLabels;
+                              }
+                            })
+                          }
+                        >
+                          {t(
+                            "scenarioAuthor.builder.evidencePresentationRemoveValueLabel",
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            },
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -3030,9 +3323,12 @@ function nodeLocalizationSuffixes(
     case "COMMUNICATION":
     case "CONSEQUENCE":
     case "FEEDBACK":
+    case "COMPLETION":
       return [".title", ".message"];
     case "REFLECTION":
       return [".title", ".prompt"];
+    case "STOCHASTIC_EVENT":
+      return [".title", ".outcome.1", ".outcome.2"];
     default:
       return [".title"];
   }
@@ -3290,6 +3586,20 @@ function seedNodeLocalizedText(
     case "FEEDBACK":
       keys.push(node.message.localizationKey);
       break;
+    case "COMPLETION":
+      if (node.message !== undefined) {
+        keys.push(node.message.localizationKey);
+      }
+      break;
+    case "STOCHASTIC_EVENT":
+      keys.push(
+        ...node.outcomes.flatMap((outcome) =>
+          outcome.label === undefined
+            ? []
+            : [outcome.label.localizationKey],
+        ),
+      );
+      break;
     case "REFLECTION":
       keys.push(node.prompt.localizationKey);
       break;
@@ -3313,18 +3623,31 @@ function NodeEditor({
   readonly onMoved?: (index: number) => void;
 }): ReactNode {
   const t = useTranslator();
-  function updateRecord(
-    mutation: (record: Record<string, unknown>) => void,
+  function updateNode(
+    mutation: (
+      target: DeepMutable<ScenarioNodeV1>,
+      draft: DeepMutable<ScenarioPackV1>,
+    ) => void,
   ): void {
     onChange(
       changeScenarioPack(pack, (draft) => {
         const target =
           draft.scenarios[scenarioIndex]?.nodes[nodeIndex];
         if (target !== undefined) {
-          mutation(target as unknown as Record<string, unknown>);
+          mutation(
+            target as unknown as DeepMutable<ScenarioNodeV1>,
+            draft,
+          );
         }
       }),
     );
+  }
+  function updateRecord(
+    mutation: (record: Record<string, unknown>) => void,
+  ): void {
+    updateNode((target) => {
+      mutation(target as unknown as Record<string, unknown>);
+    });
   }
   function changeType(value: string): void {
     const nextType = value as ScenarioNodeV1["nodeType"];
@@ -3491,18 +3814,31 @@ function NodeSpecificEditor(
   const { pack, scenario, scenarioIndex, node, nodeIndex, onChange } =
     props;
   const t = useTranslator();
-  function updateRecord(
-    mutation: (record: Record<string, unknown>) => void,
+  function updateNode(
+    mutation: (
+      target: DeepMutable<ScenarioNodeV1>,
+      draft: DeepMutable<ScenarioPackV1>,
+    ) => void,
   ): void {
     onChange(
       changeScenarioPack(pack, (draft) => {
         const target =
           draft.scenarios[scenarioIndex]?.nodes[nodeIndex];
         if (target !== undefined) {
-          mutation(target as unknown as Record<string, unknown>);
+          mutation(
+            target as unknown as DeepMutable<ScenarioNodeV1>,
+            draft,
+          );
         }
       }),
     );
+  }
+  function updateRecord(
+    mutation: (record: Record<string, unknown>) => void,
+  ): void {
+    updateNode((target) => {
+      mutation(target as unknown as Record<string, unknown>);
+    });
   }
   switch (node.nodeType) {
     case "BRIEFING":
@@ -3702,6 +4038,17 @@ function NodeSpecificEditor(
         </>
       );
     case "STOCHASTIC_EVENT":
+      {
+        const resultCodes = [
+          ...new Set(
+            scenario.outcomeModels
+              .filter(
+                (model) =>
+                  model.randomStreamId === node.randomStreamId,
+              )
+              .flatMap(outcomeCodes),
+          ),
+        ];
       return (
         <>
           <TextControl
@@ -3714,20 +4061,237 @@ function NodeSpecificEditor(
               })
             }
           />
-          <JsonValueEditor
-            idPrefix={`stochastic-outcomes-${String(nodeIndex)}`}
-            label={t("scenarioAuthor.builder.weightedOutcomes")}
-            value={node.outcomes as unknown as JsonValue}
-            onChange={(value) =>
-              updateRecord((record) => {
-                if (Array.isArray(value)) {
-                  record.outcomes = value;
-                }
-              })
-            }
-          />
+          <fieldset className="scenario-builder__choice-group">
+            <legend>
+              {t("scenarioAuthor.builder.weightedOutcomes")}
+            </legend>
+            {node.outcomes.map((outcome, outcomeIndex) => (
+              <div
+                className="scenario-builder__nested-card"
+                key={outcome.outcomeId}
+              >
+                <div className="instructor-review__form-grid">
+                  <TextControl
+                    id={`stochastic-outcome-id-${String(nodeIndex)}-${String(outcomeIndex)}`}
+                    label={t(
+                      "scenarioAuthor.builder.outcomeId",
+                    )}
+                    value={outcome.outcomeId}
+                    onChange={(value) =>
+                      updateNode((target) => {
+                        if (
+                          target.nodeType ===
+                          "STOCHASTIC_EVENT"
+                        ) {
+                          const targetOutcome =
+                            target.outcomes[outcomeIndex];
+                          if (targetOutcome !== undefined) {
+                            targetOutcome.outcomeId = value;
+                          }
+                        }
+                      })
+                    }
+                  />
+                  <NumberControl
+                    id={`stochastic-outcome-weight-${String(nodeIndex)}-${String(outcomeIndex)}`}
+                    label={t(
+                      "scenarioAuthor.builder.outcomeWeight",
+                    )}
+                    value={outcome.weight}
+                    minimum={0.000_001}
+                    onChange={(value) =>
+                      updateNode((target) => {
+                        if (
+                          target.nodeType ===
+                          "STOCHASTIC_EVENT"
+                        ) {
+                          const targetOutcome =
+                            target.outcomes[outcomeIndex];
+                          if (targetOutcome !== undefined) {
+                            targetOutcome.weight = value;
+                          }
+                        }
+                      })
+                    }
+                  />
+                  {resultCodes.length === 0 ? (
+                    <TextControl
+                      id={`stochastic-outcome-result-${String(nodeIndex)}-${String(outcomeIndex)}`}
+                      label={t(
+                        "scenarioAuthor.builder.outcomeResult",
+                      )}
+                      value={outcome.resultCode}
+                      onChange={(value) =>
+                        updateNode((target) => {
+                          if (
+                            target.nodeType ===
+                            "STOCHASTIC_EVENT"
+                          ) {
+                            const targetOutcome =
+                              target.outcomes[outcomeIndex];
+                            if (targetOutcome !== undefined) {
+                              targetOutcome.resultCode = value;
+                            }
+                          }
+                        })
+                      }
+                    />
+                  ) : (
+                    <SelectControl
+                      id={`stochastic-outcome-result-${String(nodeIndex)}-${String(outcomeIndex)}`}
+                      label={t(
+                        "scenarioAuthor.builder.outcomeResult",
+                      )}
+                      value={outcome.resultCode}
+                      options={[
+                        ...new Set([
+                          outcome.resultCode,
+                          ...resultCodes,
+                        ]),
+                      ].map((value) => ({
+                        value,
+                        label: value,
+                      }))}
+                      onChange={(value) =>
+                        updateNode((target) => {
+                          if (
+                            target.nodeType ===
+                            "STOCHASTIC_EVENT"
+                          ) {
+                            const targetOutcome =
+                              target.outcomes[outcomeIndex];
+                            if (targetOutcome !== undefined) {
+                              targetOutcome.resultCode = value;
+                            }
+                          }
+                        })
+                      }
+                    />
+                  )}
+                </div>
+                {outcome.label === undefined ? (
+                  <button
+                    className="button button--quiet"
+                    type="button"
+                    onClick={() =>
+                      updateNode((target, draft) => {
+                        if (
+                          target.nodeType !== "STOCHASTIC_EVENT"
+                        ) {
+                          return;
+                        }
+                        const targetOutcome =
+                          target.outcomes[outcomeIndex];
+                        if (targetOutcome === undefined) return;
+                        const localizationKey =
+                          `${target.title.localizationKey}.outcomes.${targetOutcome.outcomeId}`;
+                        targetOutcome.label = {
+                          localizationKey,
+                        };
+                        seedLocalizedKeys(
+                          draft as unknown as ScenarioPackV1,
+                          [localizationKey],
+                        );
+                      })
+                    }
+                  >
+                    {t(
+                      "scenarioAuthor.builder.addOutcomeLabel",
+                    )}
+                  </button>
+                ) : (
+                  <>
+                    <LocalizedTextControl
+                      heading={t(
+                        "scenarioAuthor.builder.outcomeLabel",
+                      )}
+                      pack={pack}
+                      localizationKey={
+                        outcome.label.localizationKey
+                      }
+                      onChange={onChange}
+                    />
+                    <button
+                      className="button button--quiet"
+                      type="button"
+                      onClick={() =>
+                        updateNode((target) => {
+                          if (
+                            target.nodeType !==
+                            "STOCHASTIC_EVENT"
+                          ) {
+                            return;
+                          }
+                          const targetOutcome =
+                            target.outcomes[outcomeIndex];
+                          if (targetOutcome !== undefined) {
+                            delete targetOutcome.label;
+                          }
+                        })
+                      }
+                    >
+                      {t(
+                        "scenarioAuthor.builder.removeOutcomeLabel",
+                      )}
+                    </button>
+                  </>
+                )}
+                <button
+                  className="button button--quiet"
+                  type="button"
+                  disabled={node.outcomes.length <= 2}
+                  onClick={() =>
+                    updateNode((target) => {
+                      if (
+                        target.nodeType === "STOCHASTIC_EVENT"
+                      ) {
+                        target.outcomes.splice(outcomeIndex, 1);
+                      }
+                    })
+                  }
+                >
+                  {t("scenarioAuthor.builder.remove")}
+                </button>
+              </div>
+            ))}
+            <button
+              className="button button--secondary"
+              type="button"
+              onClick={() =>
+                updateNode((target, draft) => {
+                  if (
+                    target.nodeType !== "STOCHASTIC_EVENT"
+                  ) {
+                    return;
+                  }
+                  const outcomeId = uniqueIdentifier(
+                    target.outcomes.map(
+                      (outcome) => outcome.outcomeId,
+                    ),
+                    "DRAW",
+                  );
+                  const localizationKey =
+                    `${target.title.localizationKey}.outcomes.${outcomeId}`;
+                  target.outcomes.push({
+                    outcomeId,
+                    weight: 1,
+                    resultCode:
+                      resultCodes[0] ?? "OUTCOME_NEW",
+                    label: { localizationKey },
+                  });
+                  seedLocalizedKeys(
+                    draft as unknown as ScenarioPackV1,
+                    [localizationKey],
+                  );
+                })
+              }
+            >
+              {t("scenarioAuthor.builder.addOutcome")}
+            </button>
+          </fieldset>
         </>
       );
+      }
     case "CONSEQUENCE":
       return (
         <>
@@ -3810,16 +4374,29 @@ function NodeSpecificEditor(
       );
     case "COMPLETION":
       return (
-        <TextControl
-          id={`completion-outcome-${String(nodeIndex)}`}
-          label={t("scenarioAuthor.builder.completionOutcome")}
-          value={node.outcomeCode}
-          onChange={(value) =>
-            updateRecord((record) => {
-              record.outcomeCode = value;
-            })
-          }
-        />
+        <>
+          <TextControl
+            id={`completion-outcome-${String(nodeIndex)}`}
+            label={t("scenarioAuthor.builder.completionOutcome")}
+            value={node.outcomeCode}
+            onChange={(value) =>
+              updateRecord((record) => {
+                record.outcomeCode = value;
+              })
+            }
+          />
+          {node.message !== undefined ? (
+            <LocalizedTextControl
+              heading={t(
+                "scenarioAuthor.builder.completionMessage",
+              )}
+              pack={pack}
+              localizationKey={node.message.localizationKey}
+              multiline
+              onChange={onChange}
+            />
+          ) : null}
+        </>
       );
   }
 }
@@ -3883,6 +4460,11 @@ function DecisionEditor({
       justification?: {
         required: boolean;
         maximumLength: number;
+      };
+      assessment?: {
+        decisionItemId: string;
+        maximumPoints: number;
+        correctOptionIdsByField: Record<string, string[]>;
       };
     }) => void,
   ): void {
@@ -3981,6 +4563,104 @@ function DecisionEditor({
         multiline
         onChange={onChange}
       />
+      <fieldset className="scenario-builder__subsection">
+        <legend>{t("scenarioAuthor.builder.decisionAssessment")}</legend>
+        <ToggleControl
+          label={t(
+            "scenarioAuthor.builder.enableDecisionAssessment",
+          )}
+          checked={node.assessment !== undefined}
+          onChange={(checked) =>
+            update((target) => {
+              if (!checked) {
+                delete target.assessment;
+                return;
+              }
+              target.assessment = {
+                decisionItemId: `${target.decisionId}_SCORE`,
+                maximumPoints: 100,
+                correctOptionIdsByField: Object.fromEntries(
+                  target.fields.map((field) => [
+                    field.fieldId,
+                    field.options[0] === undefined
+                      ? []
+                      : [field.options[0].optionId],
+                  ]),
+                ),
+              };
+            })
+          }
+        />
+        {node.assessment !== undefined ? (
+          <>
+            <div className="instructor-review__form-grid">
+              <TextControl
+                id={`decision-item-id-${String(nodeIndex)}`}
+                label={t(
+                  "scenarioAuthor.builder.decisionItemId",
+                )}
+                value={node.assessment.decisionItemId}
+                onChange={(value) =>
+                  update((target) => {
+                    if (target.assessment !== undefined) {
+                      target.assessment.decisionItemId = value;
+                    }
+                  })
+                }
+              />
+              <NumberControl
+                id={`decision-maximum-points-${String(nodeIndex)}`}
+                label={t(
+                  "scenarioAuthor.builder.maximumPoints",
+                )}
+                value={node.assessment.maximumPoints}
+                minimum={1}
+                maximum={100}
+                onChange={(value) =>
+                  update((target) => {
+                    if (target.assessment !== undefined) {
+                      target.assessment.maximumPoints = value;
+                    }
+                  })
+                }
+              />
+            </div>
+            {node.fields.map((field) => (
+              <CheckboxList
+                key={field.fieldId}
+                legend={t(
+                  "scenarioAuthor.builder.correctOptions",
+                  { fieldId: field.fieldId },
+                )}
+                options={field.options.map((option) => ({
+                  value: option.optionId,
+                  label: option.optionId,
+                }))}
+                selected={
+                  node.assessment?.correctOptionIdsByField[
+                    field.fieldId
+                  ] ?? []
+                }
+                onChange={(values) =>
+                  update((target) => {
+                    if (target.assessment !== undefined) {
+                      target.assessment.correctOptionIdsByField[
+                        field.fieldId
+                      ] = [...values];
+                    }
+                  })
+                }
+              />
+            ))}
+          </>
+        ) : (
+          <p className="field__hint">
+            {t(
+              "scenarioAuthor.builder.decisionAssessmentHelp",
+            )}
+          </p>
+        )}
+      </fieldset>
       <CollectionSection
         heading={t("scenarioAuthor.builder.decisionFields")}
         help={t("scenarioAuthor.builder.decisionFieldsHelp")}
@@ -6492,6 +7172,35 @@ function localizedTextGaps(pack: ScenarioPackV1): readonly string[] {
         : [],
     ),
   );
+}
+
+function learnerPresentableContentEntries(
+  value: JsonValue,
+  prefix = "",
+): readonly (readonly [string, JsonValue])[] {
+  if (isJsonObject(value)) {
+    return Object.entries(value).flatMap(([key, nested]) =>
+      learnerPresentableContentEntries(
+        nested,
+        prefix.length === 0 ? key : `${prefix}.${key}`,
+      ),
+    );
+  }
+  return prefix.length === 0 ? [] : [[prefix, value] as const];
+}
+
+function evidenceContentValue(
+  content: JsonValue,
+  fieldPath: string,
+): JsonValue | undefined {
+  let value: JsonValue | undefined = content;
+  for (const segment of fieldPath.split(".")) {
+    if (value === undefined || !isJsonObject(value)) {
+      return undefined;
+    }
+    value = value[segment];
+  }
+  return value;
 }
 
 function JsonValueEditor({

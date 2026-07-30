@@ -103,9 +103,10 @@ function fullVocabularyPack(): ScenarioPackV1 {
     policies: source.policies.map((policy) => ({
       ...policy,
       configuration: {
-        minimumEndorsements: 1,
+        minimumEndorsements: 2,
         requiredEndorsementRoleIds: [
           "DISTRIBUTION_PHARMACIST",
+          "QUALITY_MANAGER",
         ],
       },
     })),
@@ -172,7 +173,10 @@ function fullVocabularyPack(): ScenarioPackV1 {
         title: decision.title,
         proposalNodeId: "NODE_FULL_PROPOSAL",
         policyId: source.policies[0]!.policyId,
-        permittedRoleIds: ["DISTRIBUTION_PHARMACIST"],
+        permittedRoleIds: [
+          "DISTRIBUTION_PHARMACIST",
+          "QUALITY_MANAGER",
+        ],
         transitions: [
           {
             transitionId: "TRANSITION_FULL_ENDORSEMENT_POLICY",
@@ -243,6 +247,7 @@ function fullVocabularyPack(): ScenarioPackV1 {
                   outcomeId: `OUTCOME_FULL_${String(index + 1)}`,
                   weight: outcome.weight,
                   resultCode: outcome.outcomeCode,
+                  label: evidence.title,
                 }),
               )
             : [],
@@ -576,11 +581,25 @@ describe("GenericHostedRunService", () => {
       created.state.ledgerState,
     );
 
-    const endorsed = await service.submit(learner, {
+    const firstEndorsement = await service.submit(learner, {
       commandType: "RECORD_ENDORSEMENT",
-      commandId: "COMMAND_ENDORSE_FULL",
+      commandId: "COMMAND_ENDORSE_DISTRIBUTOR_FULL",
       runId: proposed.state.runId,
       expectedRunVersion: proposed.state.version,
+    });
+    expect(firstEndorsement.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_ENDORSEMENT",
+    );
+    expect(firstEndorsement.state.activeTrustedContext).toMatchObject({
+      roleId: "QUALITY_MANAGER",
+      organizationId: "ORG_MEDICINE_MANUFACTURER",
+    });
+
+    const endorsed = await service.submit(learner, {
+      commandType: "RECORD_ENDORSEMENT",
+      commandId: "COMMAND_ENDORSE_MANUFACTURER_FULL",
+      runId: firstEndorsement.state.runId,
+      expectedRunVersion: firstEndorsement.state.version,
     });
     expect(endorsed.state.workflowState.currentNodeId).toBe(
       "NODE_FULL_COMMUNICATION",
@@ -596,12 +615,18 @@ describe("GenericHostedRunService", () => {
         ]),
       }),
     ]);
-    expect(
-      endorsed.state.endorsements.NODE_FULL_ENDORSEMENT,
-    ).toMatchObject({
-      assurance: "SCENARIO_APPROVAL_RECORD",
-      roleId: "DISTRIBUTION_PHARMACIST",
-    });
+    expect(Object.values(endorsed.state.endorsements)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assurance: "SCENARIO_APPROVAL_RECORD",
+          roleId: "DISTRIBUTION_PHARMACIST",
+        }),
+        expect.objectContaining({
+          assurance: "SCENARIO_APPROVAL_RECORD",
+          roleId: "QUALITY_MANAGER",
+        }),
+      ]),
+    );
 
     const acknowledged = await service.submit(learner, {
       commandType: "ACKNOWLEDGE_COMMUNICATION",
@@ -644,16 +669,27 @@ describe("GenericHostedRunService", () => {
       response:
         "The decision needs both the evidence review and the authorized approval.",
     });
-    expect(completed.state.ledgerState).toEqual(
-      created.state.ledgerState,
-    );
+    expect(completed.state.ledgerState).toMatchObject({
+      tracechainTransactions: [
+        expect.objectContaining({
+          proposalType: "COLD_CHAIN_DISPOSITION",
+          policyId: expect.any(String),
+          endorsementRoleIds: [
+            "DISTRIBUTION_PHARMACIST",
+            "QUALITY_MANAGER",
+          ],
+        }),
+      ],
+    });
 
     const events = await store.load(completed.state.runId);
     expect(events.map((event) => event.eventType)).toEqual(
       expect.arrayContaining([
         "TRANSACTION_PROPOSED",
         "ENDORSEMENT_RECORDED",
+        "ROLE_HANDOFF_COMPLETED",
         "POLICY_EVALUATED",
+        "TRANSACTION_COMMITTED",
         "COMMUNICATION_ACKNOWLEDGED",
         "STOCHASTIC_EVENT_RESOLVED",
         "REFLECTION_SUBMITTED",
@@ -672,12 +708,31 @@ describe("GenericHostedRunService", () => {
           recordId: "PROPOSAL_NODE_FULL_PROPOSAL",
         }),
         expect.objectContaining({
-          recordId: "ENDORSEMENT_NODE_FULL_ENDORSEMENT",
+          recordId:
+            "ENDORSEMENT_NODE_FULL_ENDORSEMENT_DISTRIBUTION_PHARMACIST",
+        }),
+        expect.objectContaining({
+          recordId:
+            "ENDORSEMENT_NODE_FULL_ENDORSEMENT_QUALITY_MANAGER",
+        }),
+        expect.objectContaining({
+          recordId: "COMMITTED_NODE_FULL_PROPOSAL",
         }),
         expect.objectContaining({
           recordId: "STOCHASTIC_NODE_FULL_STOCHASTIC",
         }),
       ]),
+    );
+    expect(
+      projection.presentation?.completionSummary?.realizedOutcome,
+    ).toEqual(
+      expect.objectContaining({
+        localizationKey: expect.any(String),
+        valuesByLocale: expect.objectContaining({
+          en: expect.any(String),
+          vi: expect.any(String),
+        }),
+      }),
     );
   });
 
@@ -808,13 +863,25 @@ describe("GenericHostedRunService", () => {
     expect(completed.state.competencyEvidence).toHaveLength(1);
     expect(
       await service.officialGrade(completed.state.runId),
-    ).toEqual({ gradingProgress: "PendingManual" });
+    ).toEqual({
+      gradingProgress: "FullyGraded",
+      scoreGiven: 100,
+      scoreMaximum: 100,
+    });
 
     const projection = await service.learnerProjection(
       learner,
       completed.state.runId,
     );
     expect(projection.workflowState.permittedActionIds).toEqual([]);
+    expect(projection.presentation?.completionSummary).toEqual(
+      expect.objectContaining({
+        processScore: 100,
+        scoreMaximum: 100,
+        correctDecisionCount: 1,
+        assessedDecisionCount: 1,
+      }),
+    );
     expect(projection.informationState).toEqual([
       expect.objectContaining({
         recordId: "EVID_PHARMA_SENSOR_SUMMARY",

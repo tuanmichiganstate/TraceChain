@@ -39,6 +39,8 @@ export type ScenarioPackValidationResult =
 
 const SEMANTIC_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u;
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9._:-]*$/u;
+const FIELD_PATH =
+  /^(?!(?:.*\.)?(?:__proto__|constructor|prototype)(?:\.|$))[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const ISO_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
@@ -50,6 +52,21 @@ const FORBIDDEN_EXECUTABLE_KEYS = new Set([
   "script",
   "sourcecode",
 ]);
+
+function learnerPresentableContentPaths(
+  value: unknown,
+  prefix = "",
+): readonly string[] {
+  if (isJsonObject(value)) {
+    return Object.entries(value).flatMap(([key, nested]) =>
+      learnerPresentableContentPaths(
+        nested,
+        prefix.length === 0 ? key : `${prefix}.${key}`,
+      ),
+    );
+  }
+  return prefix.length === 0 ? [] : [prefix];
+}
 
 const ROOT_KEYS = [
   "$schema",
@@ -1218,6 +1235,7 @@ function validateNodeContent(
           "fields",
           "justification",
           "structuredResponse",
+          "assessment",
           "counterfactual",
         ],
         path,
@@ -1232,6 +1250,10 @@ function validateNodeContent(
         supportedLocales,
       );
       const decisionOptionIds = new Set<string>();
+      const decisionOptionIdsByField = new Map<
+        string,
+        ReadonlySet<string>
+      >();
       {
         const fields = context.array(node.fields, `${path}.fields`);
         if (fields !== null) {
@@ -1365,6 +1387,12 @@ function validateNodeContent(
                   }
                 }
               });
+              if (fieldId !== null) {
+                decisionOptionIdsByField.set(
+                  fieldId,
+                  new Set(optionIds),
+                );
+              }
             }
           });
         }
@@ -1505,6 +1533,72 @@ function validateNodeContent(
                 `${path}.structuredResponse.${fieldName}`,
                 "minimum must not exceed maximum",
               );
+            }
+          }
+        }
+      }
+      if (node.assessment !== undefined) {
+        const assessment = context.object(
+          node.assessment,
+          `${path}.assessment`,
+        );
+        if (assessment !== null) {
+          context.allowedKeys(
+            assessment,
+            [
+              "decisionItemId",
+              "maximumPoints",
+              "correctOptionIdsByField",
+            ],
+            `${path}.assessment`,
+          );
+          context.string(
+            assessment.decisionItemId,
+            `${path}.assessment.decisionItemId`,
+            { identifier: true },
+          );
+          context.number(
+            assessment.maximumPoints,
+            `${path}.assessment.maximumPoints`,
+            { integer: true, minimum: 1, maximum: 100 },
+          );
+          const correct = context.object(
+            assessment.correctOptionIdsByField,
+            `${path}.assessment.correctOptionIdsByField`,
+          );
+          if (correct !== null) {
+            context.check(
+              Object.keys(correct).length ===
+                decisionOptionIdsByField.size,
+              "INCOMPLETE_DECISION_ASSESSMENT",
+              `${path}.assessment.correctOptionIdsByField`,
+              "must define correct options for every decision field",
+            );
+            for (const [fieldId, optionIdsValue] of Object.entries(
+              correct,
+            )) {
+              const optionIds = validateUniqueStrings(
+                context,
+                optionIdsValue,
+                `${path}.assessment.correctOptionIdsByField.${fieldId}`,
+                { minimumItems: 1, identifiers: true },
+              );
+              const authoredOptionIds =
+                decisionOptionIdsByField.get(fieldId);
+              context.check(
+                authoredOptionIds !== undefined,
+                "UNKNOWN_DECISION_ASSESSMENT_FIELD",
+                `${path}.assessment.correctOptionIdsByField.${fieldId}`,
+                "must reference an authored decision field",
+              );
+              optionIds.forEach((optionId, optionIndex) => {
+                context.check(
+                  authoredOptionIds?.has(optionId) ?? false,
+                  "UNKNOWN_DECISION_ASSESSMENT_OPTION",
+                  `${path}.assessment.correctOptionIdsByField.${fieldId}[${String(optionIndex)}]`,
+                  "must reference an option authored for this field",
+                );
+              });
             }
           }
         }
@@ -1792,7 +1886,7 @@ function validateNodeContent(
             if (outcome === null) return;
             context.allowedKeys(
               outcome,
-              ["outcomeId", "weight", "resultCode"],
+              ["outcomeId", "weight", "resultCode", "label"],
               outcomePath,
             );
             context.string(outcome.outcomeId, `${outcomePath}.outcomeId`, {
@@ -1814,6 +1908,14 @@ function validateNodeContent(
                 "STOCHASTIC_OUTCOME_MODEL_MISMATCH",
                 `${outcomePath}.resultCode`,
                 "must be an outcome code in the model for this random stream",
+              );
+            }
+            if (outcome.label !== undefined) {
+              validateLocalizedText(
+                context,
+                outcome.label,
+                `${outcomePath}.label`,
+                supportedLocales,
               );
             }
           });
@@ -1914,6 +2016,7 @@ function validateNodeContent(
           "title",
           "transitions",
           "outcomeCode",
+          "message",
         ],
         path,
       );
@@ -1926,6 +2029,14 @@ function validateNodeContent(
         `${path}.transitions`,
         "must be empty for a completion node",
       );
+      if (node.message !== undefined) {
+        validateLocalizedText(
+          context,
+          node.message,
+          `${path}.message`,
+          supportedLocales,
+        );
+      }
       break;
     default:
       context.issues.push({
@@ -3772,6 +3883,7 @@ function validateScenario(
           "visibleToRoleIds",
           "learnerMetadata",
           "assessmentMetadata",
+          "learnerPresentation",
           "content",
         ],
         evidencePath,
@@ -3853,6 +3965,203 @@ function validateScenario(
         `${evidencePath}.assessmentMetadata`,
         actualStateKeys,
       );
+      const learnerPresentation =
+        evidence.learnerPresentation === undefined
+          ? null
+          : context.object(
+              evidence.learnerPresentation,
+              `${evidencePath}.learnerPresentation`,
+            );
+      if (
+        scenario.hostedRuntime === undefined &&
+        scenario.auditCase === undefined
+      ) {
+        context.check(
+          learnerPresentation !== null,
+          "GENERIC_EVIDENCE_PRESENTATION_REQUIRED",
+          `${evidencePath}.learnerPresentation`,
+          "is required so the generic learner runtime never exposes raw scenario data",
+        );
+      }
+      if (learnerPresentation !== null) {
+        const presentationPath =
+          `${evidencePath}.learnerPresentation`;
+        context.allowedKeys(
+          learnerPresentation,
+          ["summary", "fields"],
+          presentationPath,
+        );
+        if (learnerPresentation.summary !== undefined) {
+          validateLocalizedText(
+            context,
+            learnerPresentation.summary,
+            `${presentationPath}.summary`,
+            supportedLocales,
+          );
+        }
+        const fields = context.array(
+          learnerPresentation.fields,
+          `${presentationPath}.fields`,
+        );
+        const presentedPaths = new Set<string>();
+        if (fields !== null) {
+          context.check(
+            fields.length > 0,
+            "EMPTY_EVIDENCE_PRESENTATION",
+            `${presentationPath}.fields`,
+            "must present at least one learner-visible fact",
+          );
+          fields.forEach((fieldValue, fieldIndex) => {
+            const fieldPath =
+              `${presentationPath}.fields[${String(fieldIndex)}]`;
+            const field = context.object(fieldValue, fieldPath);
+            if (field === null) return;
+            context.allowedKeys(
+              field,
+              [
+                "fieldPath",
+                "label",
+                "valueType",
+                "unit",
+                "valueLabels",
+              ],
+              fieldPath,
+            );
+            let resolvedContentValue: unknown;
+            const contentPath = context.string(
+              field.fieldPath,
+              `${fieldPath}.fieldPath`,
+            );
+            if (contentPath !== null) {
+              context.check(
+                FIELD_PATH.test(contentPath),
+                "INVALID_FIELD_PATH",
+                `${fieldPath}.fieldPath`,
+                "must be a safe dotted field path",
+              );
+              context.check(
+                !presentedPaths.has(contentPath),
+                "DUPLICATE_EVIDENCE_PRESENTATION_FIELD",
+                `${fieldPath}.fieldPath`,
+                "must be unique within the evidence presentation",
+              );
+              presentedPaths.add(contentPath);
+              let value: unknown = evidence.content;
+              for (const segment of contentPath.split(".")) {
+                value =
+                  isJsonObject(value) && segment in value
+                    ? value[segment]
+                    : undefined;
+              }
+              resolvedContentValue = value;
+              context.check(
+                value !== undefined &&
+                  (typeof value === "string" ||
+                    typeof value === "number" ||
+                    typeof value === "boolean" ||
+                    (Array.isArray(value) &&
+                      value.every(
+                        (item) =>
+                          typeof item === "string" ||
+                          typeof item === "number" ||
+                          typeof item === "boolean",
+                      ))),
+                "INVALID_EVIDENCE_PRESENTATION_PATH",
+                `${fieldPath}.fieldPath`,
+                "must resolve to a learner-presentable scalar or scalar list",
+              );
+            }
+            validateLocalizedText(
+              context,
+              field.label,
+              `${fieldPath}.label`,
+              supportedLocales,
+            );
+            context.check(
+              typeof field.valueType === "string" &&
+                [
+                  "TEXT",
+                  "NUMBER",
+                  "BOOLEAN",
+                  "DATE_TIME",
+                  "TEMPERATURE_C",
+                  "PERCENT",
+                  "RATE_PER_MINUTE",
+                  "TEXT_LIST",
+                ].includes(field.valueType),
+              "INVALID_EVIDENCE_PRESENTATION_TYPE",
+              `${fieldPath}.valueType`,
+              "must use a supported learner presentation type",
+            );
+            if (field.unit !== undefined) {
+              validateLocalizedText(
+                context,
+                field.unit,
+                `${fieldPath}.unit`,
+                supportedLocales,
+              );
+            }
+            if (field.valueLabels !== undefined) {
+              const labels = context.object(
+                field.valueLabels,
+                `${fieldPath}.valueLabels`,
+              );
+              if (labels !== null) {
+                context.check(
+                  Object.keys(labels).length > 0,
+                  "EMPTY_EVIDENCE_VALUE_LABELS",
+                  `${fieldPath}.valueLabels`,
+                  "must contain at least one authored value label",
+                );
+                Object.entries(labels).forEach(
+                  ([valueKey, label]) => {
+                    validateLocalizedText(
+                      context,
+                      label,
+                      `${fieldPath}.valueLabels.${valueKey}`,
+                      supportedLocales,
+                    );
+                  },
+                );
+              }
+            }
+            const identifierLikeValues =
+              typeof resolvedContentValue === "string"
+                ? [resolvedContentValue]
+                : Array.isArray(resolvedContentValue)
+                  ? resolvedContentValue.filter(
+                      (value): value is string =>
+                        typeof value === "string",
+                    )
+                  : [];
+            identifierLikeValues
+              .filter((value) =>
+                /^[A-Z][A-Z0-9_:-]+$/u.test(value),
+              )
+              .forEach((value) => {
+              context.check(
+                isJsonObject(field.valueLabels) &&
+                    field.valueLabels[value] !== undefined,
+                "UNLABELLED_EVIDENCE_ENUM",
+                `${fieldPath}.valueLabels`,
+                  `must provide a localized learner label for the identifier-like evidence value ${value}`,
+              );
+              });
+          });
+        }
+        if (isJsonObject(evidence.content)) {
+          learnerPresentableContentPaths(evidence.content).forEach(
+            (contentPath) => {
+              context.check(
+                presentedPaths.has(contentPath),
+                "UNPRESENTED_EVIDENCE_CONTENT",
+                `${presentationPath}.fields`,
+                `must present the learner-visible content field ${contentPath}`,
+              );
+            },
+          );
+        }
+      }
       validateJsonData(
         context,
         evidence.content,
@@ -3944,6 +4253,126 @@ function validateScenario(
     counterfactualMetricIds,
     outcomeCodesByRandomStream,
   );
+  if (
+    scenario.hostedRuntime === undefined &&
+    scenario.auditCase === undefined
+  ) {
+    const authoredNodes = Array.isArray(scenario.nodes)
+      ? scenario.nodes.filter(isJsonObject)
+      : [];
+    const decisionNodes = authoredNodes.filter(
+      (node) => node.nodeType === "DECISION",
+    );
+    const scoreDisplayEnabled =
+      Array.isArray(scenario.modeConfigurations) &&
+      scenario.modeConfigurations.some(
+        (configuration) =>
+          isJsonObject(configuration) &&
+          configuration.showScores === true,
+      );
+    if (scoreDisplayEnabled) {
+      const assessedDecisions = decisionNodes.filter((node) =>
+        isJsonObject(node.assessment),
+      );
+      context.check(
+        assessedDecisions.length === decisionNodes.length &&
+          decisionNodes.length > 0,
+        "SCORE_DISPLAY_WITHOUT_COMPLETE_ASSESSMENT",
+        `${path}.modeConfigurations`,
+        "may show scores only when every generic decision has an authored assessment",
+      );
+      const total = assessedDecisions.reduce((sum, node) => {
+        const assessment = node.assessment;
+        return (
+          sum +
+          (isJsonObject(assessment) &&
+          typeof assessment.maximumPoints === "number"
+            ? assessment.maximumPoints
+            : 0)
+        );
+      }, 0);
+      context.check(
+        total === 100,
+        "INVALID_GENERIC_SCORE_TOTAL",
+        `${path}.nodes`,
+        "generic decision assessments must award exactly 100 points when scores are shown",
+      );
+      const decisionItemIds = assessedDecisions.flatMap((node) => {
+        const assessment = node.assessment;
+        return isJsonObject(assessment) &&
+          typeof assessment.decisionItemId === "string"
+          ? [assessment.decisionItemId]
+          : [];
+      });
+      context.check(
+        new Set(decisionItemIds).size === decisionItemIds.length,
+        "DUPLICATE_GENERIC_DECISION_ITEM",
+        `${path}.nodes`,
+        "generic decision item identifiers must be unique",
+      );
+    }
+
+    for (const node of authoredNodes) {
+      if (node.nodeType === "COMPLETION") {
+        context.check(
+          isJsonObject(node.message),
+          "GENERIC_COMPLETION_MESSAGE_REQUIRED",
+          `${path}.nodes.${String(node.nodeId)}.message`,
+          "is required so a generic run ends with an authored learner debrief",
+        );
+      }
+      if (node.nodeType === "STOCHASTIC_EVENT") {
+        const outcomes = Array.isArray(node.outcomes)
+          ? node.outcomes.filter(isJsonObject)
+          : [];
+        outcomes.forEach((outcome, outcomeIndex) => {
+          context.check(
+            isJsonObject(outcome.label),
+            "GENERIC_STOCHASTIC_OUTCOME_LABEL_REQUIRED",
+            `${path}.nodes.${String(node.nodeId)}.outcomes[${String(outcomeIndex)}].label`,
+            "is required so the learner debrief explains the realized outcome without exposing an internal result code",
+          );
+        });
+      }
+      if (node.nodeType !== "ENDORSEMENT") continue;
+      const policy = (
+        Array.isArray(scenario.policies)
+          ? scenario.policies.filter(isJsonObject)
+          : []
+      ).find((candidate) => candidate.policyId === node.policyId);
+      const configuration = isJsonObject(policy?.configuration)
+        ? policy.configuration
+        : {};
+      const requiredRoles = Array.isArray(
+        configuration.requiredEndorsementRoleIds,
+      )
+        ? configuration.requiredEndorsementRoleIds.filter(
+            (roleId): roleId is string =>
+              typeof roleId === "string",
+          )
+        : [];
+      const permittedRoles = Array.isArray(node.permittedRoleIds)
+        ? node.permittedRoleIds
+        : [];
+      requiredRoles.forEach((roleId, roleIndex) => {
+        context.check(
+          permittedRoles.includes(roleId),
+          "UNREACHABLE_REQUIRED_ENDORSER",
+          `${path}.nodes.${String(node.nodeId)}.permittedRoleIds[${String(roleIndex)}]`,
+          "must permit every role required by the endorsement policy",
+        );
+      });
+      const minimum = configuration.minimumEndorsements;
+      if (typeof minimum === "number") {
+        context.check(
+          minimum <= new Set(permittedRoles).size,
+          "UNREACHABLE_ENDORSEMENT_THRESHOLD",
+          `${path}.nodes.${String(node.nodeId)}.permittedRoleIds`,
+          "must expose enough distinct roles to satisfy the endorsement threshold",
+        );
+      }
+    }
+  }
   validateEvidenceRequestReachability(context, scenario, path);
   validateAuditCase(
     context,
@@ -4851,10 +5280,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.11.0",
+    schemaVersion === "1.12.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.11.0",
+    "requires scenario-pack schema version 1.12.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -5397,10 +5826,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.11.0",
+      pack.schemaVersion === "1.12.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.11.0",
+      "must equal 1.12.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });

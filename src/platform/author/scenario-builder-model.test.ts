@@ -99,6 +99,21 @@ describe("Scenario Builder model", () => {
         }),
       ),
     );
+    const stochastic = defaultScenarioNode(
+      "STOCHASTIC_EVENT",
+      scenario,
+    );
+    expect(
+      stochastic.nodeType === "STOCHASTIC_EVENT" &&
+        stochastic.outcomes.every(
+          (outcome) => outcome.label !== undefined,
+        ),
+    ).toBe(true);
+    const completion = defaultScenarioNode("COMPLETION", scenario);
+    expect(
+      completion.nodeType === "COMPLETION" &&
+        completion.message !== undefined,
+    ).toBe(true);
   });
 
   it("normalizes and de-duplicates generated identifiers", () => {

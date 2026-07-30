@@ -71,7 +71,7 @@ export function resolveHostedTechnicalLabExperience(
  * actual modules remain in TechnicalLabPack and run through the lab engine.
  */
 export const technicalLabHostedPackAdapter: ScenarioPackV1 = {
-  schemaVersion: "1.11.0",
+  schemaVersion: "1.12.0",
   packId: permissionedFoundationsLabBundle.pack.labPackId,
   version: permissionedFoundationsLabBundle.pack.labPackVersion,
   status: "published",

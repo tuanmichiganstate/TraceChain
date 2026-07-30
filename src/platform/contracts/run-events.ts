@@ -29,6 +29,7 @@ export type PlatformRunEventType =
   | "ENDORSEMENT_PROPOSAL_REJECTED"
   | "ENDORSEMENT_RECORDED"
   | "ENDORSEMENT_REJECTED"
+  | "ROLE_HANDOFF_COMPLETED"
   | "ENDORSED_TRANSACTION_COMMITTED"
   | "ENDORSED_TRANSACTION_REJECTED"
   | "TRANSACTION_COMMITTED"
@@ -253,6 +254,29 @@ export interface LearnerRunEvidenceRequestV1 {
   readonly costUnits: number;
 }
 
+export interface LearnerRunEvidenceFieldPresentationV1 {
+  readonly fieldPath: string;
+  readonly label: LearnerRunLocalizedTextV1;
+  readonly valueType:
+    | "TEXT"
+    | "NUMBER"
+    | "BOOLEAN"
+    | "DATE_TIME"
+    | "TEMPERATURE_C"
+    | "PERCENT"
+    | "RATE_PER_MINUTE"
+    | "TEXT_LIST";
+  readonly unit?: LearnerRunLocalizedTextV1;
+  readonly valueLabels?: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
+}
+
+export interface LearnerRunEvidencePresentationV1 {
+  readonly summary?: LearnerRunLocalizedTextV1;
+  readonly fields: readonly LearnerRunEvidenceFieldPresentationV1[];
+}
+
 export type LearnerRunPolicyReferenceV1 =
   | {
       readonly policyId: string;
@@ -269,6 +293,15 @@ export interface LearnerRunPresentationV1 {
   readonly roleName: LearnerRunLocalizedTextV1;
   readonly currentNode: LearnerRunNodePresentationV1;
   readonly evidenceTitles: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
+  readonly evidencePresentations?: Readonly<
+    Record<string, LearnerRunEvidencePresentationV1>
+  >;
+  readonly organizationNames?: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
+  readonly roleNames?: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;
   readonly evidenceRequests?:
@@ -296,5 +329,23 @@ export interface LearnerRunPresentationV1 {
       | "CONTEXT_DEPENDENT";
     readonly diagnosticOnly: true;
   }[];
+  readonly completionSummary?: {
+    readonly outcomeCode: string;
+    readonly message?: LearnerRunLocalizedTextV1;
+    readonly realizedOutcomeCode?: string;
+    readonly realizedOutcome?: LearnerRunLocalizedTextV1;
+    readonly processScore?: number;
+    readonly scoreMaximum?: 100;
+    readonly correctDecisionCount: number;
+    readonly assessedDecisionCount: number;
+    readonly inspectedEvidenceCount: number;
+    readonly consultedPolicyCount: number;
+    readonly evidenceRequestCount: number;
+    readonly totalEvidenceDelayMinutes: number;
+    readonly totalEvidenceCostUnits: number;
+    readonly proposalCount: number;
+    readonly endorsementCount: number;
+    readonly committedTransactionCount: number;
+  };
   readonly modeConfiguration: HostedRunModeConfigurationV1;
 }

@@ -531,6 +531,296 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("requires a learner presentation for generic evidence", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          learnerPresentation?: unknown;
+        }>;
+      }>;
+    };
+    delete invalid.scenarios[0]!.evidenceItems[0]!
+      .learnerPresentation;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "GENERIC_EVIDENCE_PRESENTATION_REQUIRED",
+          path:
+            "$.scenarios[0].evidenceItems[0].learnerPresentation",
+        }),
+      );
+    }
+  });
+
+  it("accepts nested learner evidence fields and rejects unpresented leaves", () => {
+    const candidate = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          content: unknown;
+          learnerPresentation: {
+            fields: Array<{
+              fieldPath: string;
+              label: unknown;
+              valueType: string;
+              valueLabels?: Record<string, unknown>;
+            }>;
+          };
+        }>;
+      }>;
+    };
+    const evidence = candidate.scenarios[0]!.evidenceItems[0]!;
+    const label = evidence.learnerPresentation.fields[0]!.label;
+    evidence.content = {
+      shipment: {
+        status: "WITHIN_RANGE",
+        temperatureC: 4.3,
+      },
+    };
+    evidence.learnerPresentation.fields = [
+      {
+        fieldPath: "shipment.status",
+        label,
+        valueType: "TEXT",
+        valueLabels: {
+          WITHIN_RANGE: label,
+        },
+      },
+      {
+        fieldPath: "shipment.temperatureC",
+        label,
+        valueType: "TEMPERATURE_C",
+      },
+    ];
+
+    expect(validateScenarioPack(candidate).isValid).toBe(true);
+
+    evidence.learnerPresentation.fields.pop();
+    const invalid = validateScenarioPack(candidate);
+    expect(invalid.isValid).toBe(false);
+    if (!invalid.isValid) {
+      expect(invalid.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNPRESENTED_EVIDENCE_CONTENT",
+          message: expect.stringContaining(
+            "shipment.temperatureC",
+          ),
+        }),
+      );
+    }
+  });
+
+  it("requires localized labels for identifier-like evidence values", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        evidenceItems: Array<{
+          content: Record<string, unknown>;
+          learnerPresentation: {
+            fields: Array<{
+              fieldPath: string;
+              label: unknown;
+              valueLabels?: Record<string, unknown>;
+            }>;
+          };
+        }>;
+      }>;
+    };
+    const evidence = invalid.scenarios[0]!.evidenceItems[0]!;
+    const field = evidence.learnerPresentation.fields[0]!;
+    evidence.content[field.fieldPath] = "INTERNAL_STATUS_CODE";
+    delete field.valueLabels;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNLABELLED_EVIDENCE_ENUM",
+        }),
+      );
+    }
+
+    evidence.content[field.fieldPath] = [
+      "STATUS_ACCEPTED",
+      "STATUS_REJECTED",
+    ];
+    field.valueLabels = {
+      STATUS_ACCEPTED:
+        invalid.scenarios[0]!.evidenceItems[0]!
+          .learnerPresentation.fields[1]!.label,
+    };
+    const listResult = validateScenarioPack(invalid);
+    expect(listResult.isValid).toBe(false);
+    if (!listResult.isValid) {
+      expect(listResult.issues).toContainEqual(
+        expect.objectContaining({
+          code: "UNLABELLED_EVIDENCE_ENUM",
+          message: expect.stringContaining("STATUS_REJECTED"),
+        }),
+      );
+    }
+  });
+
+  it("requires a complete 100-point contract before generic scores are shown", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        modeConfigurations: Array<{ showScores: boolean }>;
+        nodes: Array<{
+          nodeType: string;
+          assessment?: { maximumPoints: number };
+        }>;
+      }>;
+    };
+    const scenario = invalid.scenarios[0]!;
+    scenario.modeConfigurations.forEach((mode) => {
+      mode.showScores = true;
+    });
+    const decision = scenario.nodes.find(
+      (node) => node.nodeType === "DECISION",
+    );
+    if (decision?.assessment === undefined) {
+      throw new Error("Expected an assessed generic decision.");
+    }
+    decision.assessment.maximumPoints = 99;
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          code: "INVALID_GENERIC_SCORE_TOTAL",
+        }),
+      );
+    }
+  });
+
+  it("requires authored generic completion and stochastic outcome explanations", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        outcomeModels: Array<
+          | {
+              distribution: "bernoulli";
+              randomStreamId: string;
+              onTrue: string;
+              onFalse: string;
+            }
+          | {
+              distribution: "weighted-categorical";
+              randomStreamId: string;
+              outcomes: Array<{ outcomeCode: string }>;
+            }
+        >;
+        nodes: Array<Record<string, unknown>>;
+      }>;
+    };
+    const scenario = invalid.scenarios[0]!;
+    const completion = scenario.nodes.find(
+      (node) => node.nodeType === "COMPLETION",
+    );
+    if (completion === undefined) {
+      throw new Error("Expected a completion node.");
+    }
+    delete completion.message;
+    const model = scenario.outcomeModels[0]!;
+    const resultCodes =
+      model.distribution === "bernoulli"
+        ? [model.onTrue, model.onFalse]
+        : model.outcomes.map((outcome) => outcome.outcomeCode);
+    scenario.nodes.push({
+      nodeId: "NODE_UNLABELLED_STOCHASTIC_EVENT",
+      nodeType: "STOCHASTIC_EVENT",
+      title: scenario.nodes[0]!.title,
+      transitions: [],
+      randomStreamId: model.randomStreamId,
+      outcomes: resultCodes.map((resultCode, index) => ({
+        outcomeId: `DRAW_UNLABELLED_${String(index + 1)}`,
+        weight: 1,
+        resultCode,
+      })),
+    });
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "GENERIC_COMPLETION_MESSAGE_REQUIRED",
+          }),
+          expect.objectContaining({
+            code:
+              "GENERIC_STOCHASTIC_OUTCOME_LABEL_REQUIRED",
+          }),
+        ]),
+      );
+    }
+  });
+
+  it("rejects endorsement policies the authored role handoff cannot satisfy", () => {
+    const invalid = structuredClone(
+      pharmaceuticalPackJson,
+    ) as unknown as {
+      scenarios: Array<{
+        policies: Array<{
+          policyId: string;
+          configuration: Record<string, unknown>;
+        }>;
+        nodes: Array<Record<string, unknown>>;
+      }>;
+    };
+    const scenario = invalid.scenarios[0]!;
+    const policy = scenario.policies[0]!;
+    policy.configuration = {
+      ...policy.configuration,
+      minimumEndorsements: 2,
+      requiredEndorsementRoleIds: [
+        "QUALITY_MANAGER",
+        "DISTRIBUTION_PHARMACIST",
+      ],
+    };
+    scenario.nodes.push({
+      nodeId: "NODE_UNREACHABLE_ENDORSEMENT",
+      nodeType: "ENDORSEMENT",
+      title: scenario.nodes[0]!.title,
+      transitions: [],
+      proposalNodeId: "NODE_NOT_RELEVANT_TO_THIS_ASSERTION",
+      policyId: policy.policyId,
+      permittedRoleIds: ["QUALITY_MANAGER"],
+    });
+
+    const result = validateScenarioPack(invalid);
+
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "UNREACHABLE_REQUIRED_ENDORSER",
+          }),
+          expect.objectContaining({
+            code: "UNREACHABLE_ENDORSEMENT_THRESHOLD",
+          }),
+        ]),
+      );
+    }
+  });
+
   it("returns path-specific diagnostics for missing locale content", () => {
     const invalid = structuredClone(packJson) as {
       manifest: { title: { localizationKey: string } };

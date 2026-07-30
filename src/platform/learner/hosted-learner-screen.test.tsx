@@ -25,6 +25,8 @@ import {
   HostedLearnerScreen,
   HostedPolicyLibrary,
   HostedRunActionControls,
+  HostedRunSummary,
+  LedgerTransactions,
   type HostedLearnerApi,
 } from "./hosted-learner-screen";
 
@@ -329,6 +331,172 @@ describe("hosted learner workspace", () => {
     expect(
       screen.getByText(/exceeds the approved 10°C limit/),
     ).toBeInTheDocument();
+  });
+
+  it("presents authored evidence fields without exposing raw scenario keys", () => {
+    render(
+      <LocaleProvider locale="en">
+        <HostedEvidenceValue
+          recordId="EVID_AIR_CARGO_MANIFEST"
+          value={{
+            content: {
+              batteryCount: 18,
+              undeclaredDangerousGoods: true,
+            },
+          }}
+          presentation={{
+            summary: {
+              localizationKey: "airCargo.manifest.summary",
+              valuesByLocale: {
+                en: "Compare the shipment declaration with the physical cargo.",
+              },
+            },
+            fields: [
+              {
+                fieldPath: "batteryCount",
+                label: {
+                  localizationKey: "airCargo.manifest.batteryCount",
+                  valuesByLocale: {
+                    en: "Lithium battery packages",
+                  },
+                },
+                valueType: "NUMBER",
+              },
+              {
+                fieldPath: "undeclaredDangerousGoods",
+                label: {
+                  localizationKey: "airCargo.manifest.undeclared",
+                  valuesByLocale: {
+                    en: "Undeclared dangerous goods found",
+                  },
+                },
+                valueType: "BOOLEAN",
+              },
+            ],
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        "Compare the shipment declaration with the physical cargo.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("18")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.queryByText(/batteryCount/u)).not.toBeInTheDocument();
+  });
+
+  it("separates the assessed decision process from the realized outcome", () => {
+    render(
+      <LocaleProvider locale="en">
+        <HostedRunSummary
+          presentation={{
+            scenarioTitle: {
+              localizationKey: "airCargo.title",
+              valuesByLocale: {
+                en: "Lithium-battery cargo response",
+              },
+            },
+            roleName: {
+              localizationKey: "airCargo.role",
+              valuesByLocale: { en: "Cargo safety officer" },
+            },
+            currentNode: {
+              nodeId: "NODE_COMPLETE",
+              nodeType: "COMPLETION",
+              title: {
+                localizationKey: "airCargo.complete",
+                valuesByLocale: { en: "Response complete" },
+              },
+            },
+            evidenceTitles: {},
+            policyTitles: {},
+            instructorIncidents: [],
+            professionalConsequences: [],
+            completionSummary: {
+              outcomeCode: "SAFE_RESOLUTION",
+              realizedOutcomeCode: "INSPECTION_CONFIRMED_SAFE",
+              realizedOutcome: {
+                localizationKey: "airCargo.outcome.safe",
+                valuesByLocale: {
+                  en: "Inspection confirmed that the cargo is safe.",
+                },
+              },
+              processScore: 100,
+              scoreMaximum: 100,
+              correctDecisionCount: 2,
+              assessedDecisionCount: 2,
+              inspectedEvidenceCount: 4,
+              consultedPolicyCount: 2,
+              evidenceRequestCount: 1,
+              totalEvidenceDelayMinutes: 30,
+              totalEvidenceCostUnits: 2,
+              proposalCount: 1,
+              endorsementCount: 2,
+              committedTransactionCount: 1,
+            },
+            modeConfiguration: {
+              mode: "tutorial",
+              allowHints: true,
+              allowRetry: true,
+              allowBacktracking: true,
+              feedbackTiming: "immediate",
+              showScores: true,
+              outcomeStrategy: "forced",
+              seedPolicy: "generated",
+              allowCommunication: false,
+              allowEvidenceRequests: true,
+            },
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Run summary" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("100 / 100")).toBeInTheDocument();
+    expect(
+      screen.getByText(/2 of 2 matched/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/realized scenario outcome is reported separately/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Transactions committed").parentElement,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText(
+        "Inspection confirmed that the cargo is safe.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("SAFE_RESOLUTION")).not.toBeInTheDocument();
+  });
+
+  it("shows committed generic proposals in the accepted ledger view", () => {
+    render(
+      <LocaleProvider locale="en">
+        <LedgerTransactions
+          ledgerState={{
+            tracechainTransactions: [
+              {
+                proposalId: "PROPOSAL_CARGO_001",
+                proposalType: "DANGEROUS_GOODS_HOLD",
+                committedAt: "2026-07-30T10:00:00.000Z",
+              },
+            ],
+          }}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByText("DANGEROUS_GOODS_HOLD")).toBeInTheDocument();
+    expect(screen.getByText(/committed/iu)).toBeInTheDocument();
+    expect(
+      screen.queryByText("No accepted transaction is visible yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("submits an authored evidence request without exposing the record content", async () => {
@@ -671,6 +839,138 @@ describe("hosted learner workspace", () => {
       screen.queryByText("Other assignment"),
     ).not.toBeInTheDocument();
     expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it("reloads the durable run after a state-version conflict", async () => {
+    const nodeProjection = (
+      version: number,
+      title: string,
+    ): LearnerRunProjectionV1 => ({
+      ...projection("ADVANCE_WORKFLOW"),
+      version,
+      presentation: {
+        scenarioTitle: {
+          localizationKey: "scenario.title",
+          valuesByLocale: { en: "Cargo response" },
+        },
+        roleName: {
+          localizationKey: "role.title",
+          valuesByLocale: { en: "Cargo safety officer" },
+        },
+        currentNode: {
+          nodeId: `NODE_${String(version)}`,
+          nodeType: "BRIEFING",
+          title: {
+            localizationKey: `node.${String(version)}`,
+            valuesByLocale: { en: title },
+          },
+        },
+        evidenceTitles: {},
+        policyTitles: {},
+        instructorIncidents: [],
+        professionalConsequences: [],
+        modeConfiguration: {
+          mode: "tutorial",
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate",
+          showScores: false,
+          outcomeStrategy: "forced",
+          seedPolicy: "generated",
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+      },
+    });
+    const assignmentView = {
+      assignment: {
+        schemaVersion: "1.3.0" as const,
+        assignmentId: "ASSIGNMENT_CONFLICT",
+        title: "Cargo response",
+        packId: "PACK_CARGO",
+        packVersion: "1.0.0",
+        scenarioId: "SCENARIO_CARGO",
+        scenarioVersion: "1.0.0",
+        mode: "tutorial" as const,
+        runConfiguration: {
+          mode: "tutorial" as const,
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate" as const,
+          showScores: false,
+          outcomeStrategy: "forced" as const,
+          seedPolicy: "generated" as const,
+          allowCommunication: false,
+          allowEvidenceRequests: true,
+        },
+        counterfactualReplay: disabledCounterfactualReplay,
+        research: { enabled: false } as const,
+        learnerUserIds: ["USER_LEARNER_001"],
+        status: "active" as const,
+        feedbackReleaseStatus: "withheld" as const,
+        createdAt: "2026-07-30T08:00:00.000Z",
+        createdByUserId: "USER_INSTRUCTOR_001",
+      },
+      startAvailability: availableStart,
+      runs: [
+        {
+          runId: "RUN_LEARNER_001",
+          status: "active" as const,
+        },
+      ],
+    };
+    const loadAssignments = vi
+      .fn()
+      .mockResolvedValue([assignmentView]);
+    const loadRun = vi
+      .fn()
+      .mockResolvedValueOnce(nodeProjection(4, "Original state"))
+      .mockResolvedValueOnce(
+        nodeProjection(5, "Latest durable state"),
+      );
+    const api: HostedLearnerApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LEARNER_001",
+        email: "learner@example.edu",
+        roles: ["learner"],
+      }),
+      loadAssignments,
+      startRun: vi.fn(),
+      loadRun,
+      loadFeedback: vi.fn(),
+      submit: vi
+        .fn()
+        .mockRejectedValue(
+          new HostedLearnerApiError("RUN_VERSION_CONFLICT"),
+        ),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <HostedLearnerScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", { name: "Resume" }),
+    );
+    expect(
+      await screen.findByText("Original state"),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Continue" }),
+    );
+
+    expect(
+      await screen.findByText("Latest durable state"),
+    ).toBeInTheDocument();
+    expect(loadRun).toHaveBeenCalledTimes(2);
+    expect(loadAssignments).toHaveBeenCalledTimes(2);
+    expect(
+      screen.getByRole("alert"),
+    ).toHaveTextContent(/loaded the latest durable state/u);
   });
 
   it("starts an assigned run and submits its server-authorized action", async () => {
@@ -1913,6 +2213,7 @@ describe("hosted learner workspace", () => {
       ),
     ).toBeInTheDocument();
     expect(api.loadFeedback).toHaveBeenCalledWith("RUN_LEARNER_001");
+    expect(api.loadAssignments).toHaveBeenCalledTimes(2);
   });
 
   it("shows released competency evidence without presenting another score", async () => {
@@ -2077,13 +2378,24 @@ describe("hosted learner workspace", () => {
         name: "Your competency evidence",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Evidence evaluation")).toBeInTheDocument();
+    const indicatorSummary = screen.getByText(
+      "Evidence evaluation",
+    );
+    expect(indicatorSummary).toBeInTheDocument();
     expect(
       screen.getByText(
         "This profile reports observable evidence from this assignment. It does not infer lasting competence or add another score.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("EVENT_INSPECTION_001")).toBeInTheDocument();
+    const eventReference = screen.getByText(
+      "EVENT_INSPECTION_001",
+    );
+    expect(eventReference).not.toBeVisible();
+    await user.click(indicatorSummary);
+    await user.click(
+      screen.getByText("View technical evidence references"),
+    );
+    expect(eventReference).toBeVisible();
     expect(
       screen.getByRole("heading", { name: "Evidence interpretation" }),
     ).toBeInTheDocument();
@@ -2153,9 +2465,7 @@ describe("hosted learner workspace", () => {
     );
 
     expect(
-      await screen.findByText(
-        "Opens at 2026-08-01T02:00:00.000Z",
-      ),
+      await screen.findByText(/Opens at Aug 1, 2026/iu),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Start" }),

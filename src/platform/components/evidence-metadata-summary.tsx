@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
+import type { LearnerRunLocalizedTextV1 } from "../contracts/run-events";
 
 function recordValue(
   value: unknown,
@@ -13,8 +14,12 @@ function recordValue(
 
 export function EvidenceMetadataSummary({
   metadata,
+  organizationNames,
 }: {
   readonly metadata: unknown;
+  readonly organizationNames?: Readonly<
+    Record<string, LearnerRunLocalizedTextV1>
+  >;
 }): ReactNode {
   const t = useTranslator();
   const record = recordValue(metadata);
@@ -38,21 +43,27 @@ export function EvidenceMetadataSummary({
     readonly value: ReactNode;
   }> = [];
   if (typeof record.ownerOrganizationId === "string") {
+    const organization =
+      organizationNames?.[record.ownerOrganizationId];
     facts.push({
       label: t("evidenceMetadata.ownerOrganization"),
-      value: <code>{record.ownerOrganizationId}</code>,
+      value:
+        organization?.valuesByLocale[t.locale] ??
+        organization?.valuesByLocale.en ??
+        Object.values(organization?.valuesByLocale ?? {})[0] ??
+        record.ownerOrganizationId,
     });
   }
   if (typeof record.createdAt === "string") {
     facts.push({
       label: t("evidenceMetadata.createdAt"),
-      value: record.createdAt,
+      value: formatDate(record.createdAt, t.locale),
     });
   }
   if (typeof record.effectiveFrom === "string") {
     facts.push({
       label: t("evidenceMetadata.effectiveFrom"),
-      value: record.effectiveFrom,
+      value: formatDate(record.effectiveFrom, t.locale),
     });
   }
   facts.push(
@@ -108,4 +119,14 @@ export function EvidenceMetadataSummary({
       </dl>
     </section>
   );
+}
+
+function formatDate(value: string, locale: string): string {
+  const instant = new Date(value);
+  return Number.isNaN(instant.valueOf())
+    ? value
+    : new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(instant);
 }

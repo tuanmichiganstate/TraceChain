@@ -387,6 +387,14 @@ describe("scenario author workspace", () => {
         { name: "Not assessed" },
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Learner-facing field label"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Add a localized unit",
+      }),
+    ).toBeEnabled();
   });
 
   it("lets an author bind an instructor incident to evidence and release nodes", async () => {

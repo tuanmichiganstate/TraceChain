@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.11",
+  "title": "TraceChain Scenario Pack V1.12",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -22,7 +22,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.11.0" },
+    "schemaVersion": { "const": "1.12.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -629,7 +629,59 @@
         "assessmentMetadata": {
           "$ref": "#/$defs/evidenceAssessmentMetadata"
         },
+        "learnerPresentation": {
+          "$ref": "#/$defs/evidenceLearnerPresentation"
+        },
         "content": { "type": "object" }
+      }
+    },
+    "evidencePresentationField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldPath", "label", "valueType"],
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^(?!(?:.*\\.)?(?:__proto__|constructor|prototype)(?:\\.|$))[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+        },
+        "label": { "$ref": "#/$defs/localizedText" },
+        "valueType": {
+          "enum": [
+            "TEXT",
+            "NUMBER",
+            "BOOLEAN",
+            "DATE_TIME",
+            "TEMPERATURE_C",
+            "PERCENT",
+            "RATE_PER_MINUTE",
+            "TEXT_LIST"
+          ]
+        },
+        "unit": { "$ref": "#/$defs/localizedText" },
+        "valueLabels": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/localizedText"
+          }
+        }
+      }
+    },
+    "evidenceLearnerPresentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/localizedText" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidencePresentationField"
+          }
+        }
       }
     },
     "instructorIncident": {
@@ -970,7 +1022,36 @@
       "properties": {
         "outcomeId": { "$ref": "#/$defs/identifier" },
         "weight": { "type": "number", "exclusiveMinimum": 0 },
-        "resultCode": { "$ref": "#/$defs/identifier" }
+        "resultCode": { "$ref": "#/$defs/identifier" },
+        "label": { "$ref": "#/$defs/localizedText" }
+      }
+    },
+    "decisionAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionItemId",
+        "maximumPoints",
+        "correctOptionIdsByField"
+      ],
+      "properties": {
+        "decisionItemId": { "$ref": "#/$defs/identifier" },
+        "maximumPoints": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "correctOptionIdsByField": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/identifier" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/identifier" }
+          }
+        }
       }
     },
     "node": {
@@ -1083,6 +1164,9 @@
               "$ref": "#/$defs/decisionNumericResponse"
             }
           }
+        },
+        "assessment": {
+          "$ref": "#/$defs/decisionAssessment"
         },
         "counterfactual": {
           "$ref": "#/$defs/counterfactualDecision"

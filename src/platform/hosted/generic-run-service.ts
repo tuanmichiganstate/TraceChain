@@ -72,6 +72,7 @@ import {
 } from "./access";
 import type {
   CreateGenericHostedRunRequest,
+  GenericCommittedTransactionRecord,
   GenericDecisionSubmission,
   GenericEndorsementRecord,
   GenericHostedCommand,
@@ -1048,13 +1049,17 @@ export class GenericHostedRunService {
       }
       const proposal =
         state.transactionProposals[node.proposalNodeId];
+      const endorsementKey = this.endorsementKey(
+        node.nodeId,
+        context.roleId,
+      );
       if (
         proposal === undefined ||
-        state.endorsements[node.nodeId] !== undefined
+        state.endorsements[endorsementKey] !== undefined
       ) {
         throw new HostedRunCommandError(
           "WORKFLOW_PRECONDITION_FAILED",
-          "The endorsement requires one pending authored proposal.",
+          "The endorsement requires a pending authored proposal and a role that has not already approved it.",
         );
       }
       const endorsedAt = this.clock.now();
@@ -1083,26 +1088,84 @@ export class GenericHostedRunService {
       });
       built.push(endorsed);
       state = endorsed.nextState;
-      const transition = this.nextTransition(node, state);
-      const advanced = this.buildWorkflowAdvancedEvent({
-        state,
-        principal: learner,
-        context: state.activeTrustedContext,
-        commandId: command.commandId,
-        commandDigest: digest,
-        batchIndex: built.length,
-        transition,
-      });
-      built.push(advanced);
-      state = advanced.nextState;
-      state = this.appendPassiveNodeEvents({
-        state,
-        built,
-        principal: learner,
-        context: state.activeTrustedContext,
-        commandId: command.commandId,
-        commandDigest: digest,
-      });
+      const pendingRoleId =
+        this.nextRequiredEndorsementRoleId(node, state);
+      if (pendingRoleId !== undefined) {
+        const nextContext = this.trustedContextForRole(
+          state.learnerUserId,
+          pendingRoleId,
+        );
+        const handoff = this.buildEventForRun(state.runId, {
+          state,
+          principal: learner,
+          context: state.activeTrustedContext,
+          commandId: command.commandId,
+          commandDigest: digest,
+          batchIndex: built.length,
+          eventType: "ROLE_HANDOFF_COMPLETED",
+          payload: {
+            endorsementNodeId: node.nodeId,
+            fromRoleId: state.activeTrustedContext.roleId,
+            toRoleId: nextContext.roleId,
+            toOrganizationId: nextContext.organizationId,
+          },
+        });
+        built.push(handoff);
+        state = handoff.nextState;
+      } else {
+        const transition = this.nextTransition(node, state);
+        const transitionTarget = this.scenario.nodes.find(
+          (candidate) =>
+            candidate.nodeId === transition.toNodeId,
+        );
+        if (
+          transitionTarget?.nodeType !== "POLICY_CHECK" ||
+          transitionTarget.policyId !== node.policyId ||
+          transitionTarget.proposalNodeId !== node.proposalNodeId
+        ) {
+          const policyNode = this.scenario.nodes.find(
+            (
+              candidate,
+            ): candidate is Extract<
+              ScenarioNodeV1,
+              { readonly nodeType: "POLICY_CHECK" }
+            > =>
+              candidate.nodeType === "POLICY_CHECK" &&
+              candidate.policyId === node.policyId &&
+              candidate.proposalNodeId === node.proposalNodeId,
+          );
+          if (policyNode !== undefined) {
+            state = this.appendPolicyEvaluationAndCommitEvents({
+              state,
+              built,
+              principal: learner,
+              context: state.activeTrustedContext,
+              commandId: command.commandId,
+              commandDigest: digest,
+              node: policyNode,
+            });
+          }
+        }
+        const advanced = this.buildWorkflowAdvancedEvent({
+          state,
+          principal: learner,
+          context: state.activeTrustedContext,
+          commandId: command.commandId,
+          commandDigest: digest,
+          batchIndex: built.length,
+          transition,
+        });
+        built.push(advanced);
+        state = advanced.nextState;
+        state = this.appendPassiveNodeEvents({
+          state,
+          built,
+          principal: learner,
+          context: state.activeTrustedContext,
+          commandId: command.commandId,
+          commandDigest: digest,
+        });
+      }
     } else if (
       command.commandType === "ACKNOWLEDGE_COMMUNICATION"
     ) {
@@ -1623,7 +1686,12 @@ export class GenericHostedRunService {
       runId: state.runId,
       learnerUserId: state.learnerUserId,
       status: "completed",
-      decisionItems: [],
+      decisionItems: this.decisionAssessmentResults(state).map(
+        (result) => ({
+          decisionItemId: result.decisionItemId,
+          isAuthoredCorrect: result.isAuthoredCorrect,
+        }),
+      ),
       realizedOutcome:
         state.outcomeResolution === null
           ? null
@@ -1732,9 +1800,33 @@ export class GenericHostedRunService {
 
   async officialGrade(runId: string) {
     const state = await this.loadState(runId);
-    return state.status === "completed"
-      ? { gradingProgress: "PendingManual" as const }
-      : null;
+    if (state.status !== "completed") return null;
+    const results = this.decisionAssessmentResults(state);
+    if (results.length === 0) {
+      return { gradingProgress: "PendingManual" as const };
+    }
+    const maximum = results.reduce(
+      (sum, result) => sum + result.maximumPoints,
+      0,
+    );
+    if (maximum !== 100) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Completed generic decision assessments must total 100 points.",
+      );
+    }
+    return {
+      gradingProgress: "FullyGraded" as const,
+      scoreGiven: results.reduce(
+        (sum, result) =>
+          sum +
+          (result.isAuthoredCorrect
+            ? result.maximumPoints
+            : 0),
+        0,
+      ),
+      scoreMaximum: 100 as const,
+    };
   }
 
   private async loadRun(runId: string): Promise<LoadedGenericRun> {
@@ -1986,7 +2078,7 @@ export class GenericHostedRunService {
           );
         }
         const state: GenericHostedRunState = {
-          schemaVersion: "2.0.0",
+          schemaVersion: "3.0.0",
           runtimeKind: "generic-v1",
           runId: request.runId,
           assignmentId: request.assignmentId,
@@ -2024,6 +2116,7 @@ export class GenericHostedRunService {
           decisions: {},
           transactionProposals: {},
           endorsements: {},
+          committedTransactions: {},
           policyEvaluations: [],
           communications: {},
           stochasticEvents: {},
@@ -2452,7 +2545,12 @@ export class GenericHostedRunService {
           !node.permittedRoleIds.includes(
             state.activeTrustedContext.roleId,
           ) ||
-          state.endorsements[node.nodeId] !== undefined ||
+          state.endorsements[
+            this.endorsementKey(
+              node.nodeId,
+              state.activeTrustedContext.roleId,
+            )
+          ] !== undefined ||
           event.payload.endorsementNodeId !== node.nodeId ||
           event.payload.proposalNodeId !== node.proposalNodeId ||
           event.payload.proposalId !== proposal.proposalId ||
@@ -2480,24 +2578,77 @@ export class GenericHostedRunService {
         return this.updateState(state, event, {
           endorsements: {
             ...state.endorsements,
-            [node.nodeId]: endorsement,
+            [this.endorsementKey(node.nodeId, endorsement.roleId)]:
+              endorsement,
           },
+        });
+      }
+      case "ROLE_HANDOFF_COMPLETED": {
+        const state = this.stateOrThrow(current);
+        const node = this.currentNode(state);
+        const toRoleId = requiredString(
+          event.payload.toRoleId,
+          "toRoleId",
+        );
+        const nextContext = this.trustedContextForRole(
+          state.learnerUserId,
+          toRoleId,
+        );
+        if (
+          node.nodeType !== "ENDORSEMENT" ||
+          event.payload.endorsementNodeId !== node.nodeId ||
+          event.payload.fromRoleId !==
+            state.activeTrustedContext.roleId ||
+          event.payload.toOrganizationId !==
+            nextContext.organizationId ||
+          !node.permittedRoleIds.includes(toRoleId) ||
+          this.nextRequiredEndorsementRoleId(node, state) !==
+            toRoleId
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Role handoff does not match the next required scenario-controlled endorser.",
+          );
+        }
+        return this.updateState(state, event, {
+          activeTrustedContext: nextContext,
         });
       }
       case "POLICY_EVALUATED": {
         const state = this.stateOrThrow(current);
         const node = this.currentNode(state);
-        if (node.nodeType !== "POLICY_CHECK") {
+        const policyNode =
+          node.nodeType === "POLICY_CHECK"
+            ? node
+            : node.nodeType === "ENDORSEMENT"
+              ? this.scenario.nodes.find(
+                  (
+                    candidate,
+                  ): candidate is Extract<
+                    ScenarioNodeV1,
+                    { readonly nodeType: "POLICY_CHECK" }
+                  > =>
+                    candidate.nodeType === "POLICY_CHECK" &&
+                    candidate.policyId === node.policyId &&
+                    candidate.proposalNodeId ===
+                      node.proposalNodeId,
+                )
+              : undefined;
+        if (policyNode === undefined) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
-            "Policy evaluation occurred outside its authored node.",
+            "Policy evaluation occurred outside its authored policy lifecycle.",
           );
         }
-        const evaluation = this.policyEvaluationFor(node, state);
+        const evaluation = this.policyEvaluationFor(
+          policyNode,
+          state,
+        );
         if (
-          event.payload.policyCheckNodeId !== node.nodeId ||
-          event.payload.policyId !== node.policyId ||
-          event.payload.proposalNodeId !== node.proposalNodeId ||
+          event.payload.policyCheckNodeId !== policyNode.nodeId ||
+          event.payload.policyId !== policyNode.policyId ||
+          event.payload.proposalNodeId !==
+            policyNode.proposalNodeId ||
           event.payload.outcome !== evaluation.outcome ||
           canonicalize(event.payload.reasonCodes) !==
             canonicalize(evaluation.reasonCodes)
@@ -2516,6 +2667,89 @@ export class GenericHostedRunService {
             ...state.policyEvaluations,
             record,
           ],
+        });
+      }
+      case "TRANSACTION_COMMITTED": {
+        const state = this.stateOrThrow(current);
+        const proposalNodeId = requiredString(
+          event.payload.proposalNodeId,
+          "proposalNodeId",
+        );
+        const proposal = state.transactionProposals[proposalNodeId];
+        const policyId = requiredString(
+          event.payload.policyId,
+          "policyId",
+        );
+        const endorsements = Object.values(state.endorsements)
+          .filter(
+            (endorsement) =>
+              endorsement.proposalNodeId === proposalNodeId &&
+              endorsement.policyId === policyId,
+          )
+          .sort((left, right) =>
+            left.roleId.localeCompare(right.roleId),
+          );
+        const latestEvaluation = [...state.policyEvaluations]
+          .reverse()
+          .find(
+            (evaluation) =>
+              evaluation.proposalNodeId === proposalNodeId &&
+              evaluation.policyId === policyId,
+          );
+        const transaction: GenericCommittedTransactionRecord | null =
+          proposal === undefined
+            ? null
+            : {
+                proposalNodeId,
+                proposalId: proposal.proposalId,
+                proposalType: proposal.proposalType,
+                proposalDigest: proposal.proposalDigest,
+                policyId,
+                endorsementRoleIds: endorsements.map(
+                  (endorsement) => endorsement.roleId,
+                ),
+                committedAt: event.serverTimestampUtc,
+              };
+        if (
+          transaction === null ||
+          latestEvaluation?.outcome !== "pass" ||
+          state.committedTransactions[proposalNodeId] !== undefined ||
+          event.payload.proposalId !== transaction.proposalId ||
+          event.payload.proposalType !==
+            transaction.proposalType ||
+          event.payload.proposalDigest !==
+            transaction.proposalDigest ||
+          canonicalize(event.payload.endorsementRoleIds) !==
+            canonicalize(transaction.endorsementRoleIds)
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Committed transaction does not match the accepted proposal, endorsements, and policy result.",
+          );
+        }
+        const existingTransactions =
+          state.ledgerState.tracechainTransactions;
+        if (
+          existingTransactions !== undefined &&
+          !Array.isArray(existingTransactions)
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "The authored ledger reserves tracechainTransactions for committed transaction records.",
+          );
+        }
+        return this.updateState(state, event, {
+          committedTransactions: {
+            ...state.committedTransactions,
+            [proposalNodeId]: transaction,
+          },
+          ledgerState: {
+            ...state.ledgerState,
+            tracechainTransactions: [
+              ...(existingTransactions ?? []),
+              transaction as unknown as JsonObject,
+            ],
+          },
         });
       }
       case "COMMUNICATION_ACKNOWLEDGED": {
@@ -2692,9 +2926,18 @@ export class GenericHostedRunService {
       case "RUN_COMPLETED": {
         const state = this.stateOrThrow(current);
         const node = this.currentNode(state);
+        const uncommittedPassedProposal =
+          state.policyEvaluations.find(
+            (evaluation) =>
+              evaluation.outcome === "pass" &&
+              state.committedTransactions[
+                evaluation.proposalNodeId
+              ] === undefined,
+          );
         if (
           node.nodeType !== "COMPLETION" ||
-          event.payload.outcomeCode !== node.outcomeCode
+          event.payload.outcomeCode !== node.outcomeCode ||
+          uncommittedPassedProposal !== undefined
         ) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
@@ -2864,30 +3107,15 @@ export class GenericHostedRunService {
         continue;
       }
       if (node.nodeType === "POLICY_CHECK") {
-        const evaluation = this.policyEvaluationFor(node, state);
-        const evaluated = this.buildEventForRun(state.runId, {
+        state = this.appendPolicyEvaluationAndCommitEvents({
           state,
+          built: options.built,
           principal: options.principal,
           context: state.activeTrustedContext,
           commandId: options.commandId,
           commandDigest: options.commandDigest,
-          batchIndex: options.built.length,
-          eventType: "POLICY_EVALUATED",
-          payload: {
-            policyCheckNodeId: node.nodeId,
-            policyId: node.policyId,
-            proposalNodeId: node.proposalNodeId,
-            outcome: evaluation.outcome,
-            reasonCodes: evaluation.reasonCodes,
-            eventCodes: [
-              "POLICY_EVALUATED",
-              node.policyId,
-              `POLICY_${evaluation.outcome.toUpperCase()}`,
-            ],
-          },
+          node,
         });
-        options.built.push(evaluated);
-        state = evaluated.nextState;
         const transition = this.nextTransition(node, state);
         const advanced = this.buildWorkflowAdvancedEvent({
           state,
@@ -2980,6 +3208,95 @@ export class GenericHostedRunService {
         state = completed.nextState;
       }
       break;
+    }
+    return state;
+  }
+
+  private appendPolicyEvaluationAndCommitEvents(options: {
+    readonly state: GenericHostedRunState;
+    readonly built: BuiltEvent[];
+    readonly principal: ApplicationPrincipal;
+    readonly context: TrustedExecutionContext;
+    readonly commandId: string;
+    readonly commandDigest: string;
+    readonly node: Extract<
+      ScenarioNodeV1,
+      { readonly nodeType: "POLICY_CHECK" }
+    >;
+  }): GenericHostedRunState {
+    const evaluation = this.policyEvaluationFor(
+      options.node,
+      options.state,
+    );
+    const evaluated = this.buildEventForRun(options.state.runId, {
+      state: options.state,
+      principal: options.principal,
+      context: options.context,
+      commandId: options.commandId,
+      commandDigest: options.commandDigest,
+      batchIndex: options.built.length,
+      eventType: "POLICY_EVALUATED",
+      payload: {
+        policyCheckNodeId: options.node.nodeId,
+        policyId: options.node.policyId,
+        proposalNodeId: options.node.proposalNodeId,
+        outcome: evaluation.outcome,
+        reasonCodes: evaluation.reasonCodes,
+        eventCodes: [
+          "POLICY_EVALUATED",
+          options.node.policyId,
+          `POLICY_${evaluation.outcome.toUpperCase()}`,
+        ],
+      },
+    });
+    options.built.push(evaluated);
+    let state = evaluated.nextState;
+    if (
+      evaluation.outcome === "pass" &&
+      state.committedTransactions[options.node.proposalNodeId] ===
+        undefined
+    ) {
+      const proposal =
+        state.transactionProposals[options.node.proposalNodeId];
+      if (proposal === undefined) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "A passing policy result requires its exact proposal.",
+        );
+      }
+      const endorsementRoleIds = Object.values(state.endorsements)
+        .filter(
+          (endorsement) =>
+            endorsement.proposalNodeId ===
+              options.node.proposalNodeId &&
+            endorsement.policyId === options.node.policyId,
+        )
+        .map((endorsement) => endorsement.roleId)
+        .sort();
+      const committed = this.buildEventForRun(state.runId, {
+        state,
+        principal: options.principal,
+        context: state.activeTrustedContext,
+        commandId: options.commandId,
+        commandDigest: options.commandDigest,
+        batchIndex: options.built.length,
+        eventType: "TRANSACTION_COMMITTED",
+        payload: {
+          proposalNodeId: proposal.proposalNodeId,
+          proposalId: proposal.proposalId,
+          proposalType: proposal.proposalType,
+          proposalDigest: proposal.proposalDigest,
+          policyId: options.node.policyId,
+          endorsementRoleIds,
+          eventCodes: [
+            "TRANSACTION_COMMITTED",
+            proposal.proposalType,
+            options.node.policyId,
+          ],
+        },
+      });
+      options.built.push(committed);
+      state = committed.nextState;
     }
     return state;
   }
@@ -3313,26 +3630,22 @@ export class GenericHostedRunService {
         candidate.proposalNodeId === node.proposalNodeId &&
         candidate.policyId === node.policyId,
     );
-    const endorsementNodesOnPath =
-      associatedEndorsementNodes.filter((candidate) =>
-        state.workflowState.completedNodeIds.includes(
-          candidate.nodeId,
-        ),
-      );
-    const endorsements = endorsementNodesOnPath.flatMap(
-      (candidate) => {
-        const endorsement = state.endorsements[candidate.nodeId];
-        return endorsement === undefined ? [] : [endorsement];
-      },
+    const endorsementNodeIds = new Set(
+      associatedEndorsementNodes.map((candidate) => candidate.nodeId),
+    );
+    const endorsements = Object.values(state.endorsements).filter(
+      (endorsement) =>
+        endorsementNodeIds.has(endorsement.endorsementNodeId) &&
+        endorsement.proposalNodeId === node.proposalNodeId &&
+        endorsement.policyId === node.policyId,
     );
     if (
       associatedEndorsementNodes.length > 0 &&
-      (endorsementNodesOnPath.length === 0 ||
-        endorsements.length !== endorsementNodesOnPath.length)
+      endorsements.length === 0
     ) {
       passed = false;
       reasonCodes.push("REQUIRED_ENDORSEMENT_MISSING");
-    } else if (endorsementNodesOnPath.length > 0) {
+    } else if (endorsements.length > 0) {
       reasonCodes.push("AUTHORED_ENDORSEMENTS_SATISFIED");
     }
 
@@ -3507,6 +3820,66 @@ export class GenericHostedRunService {
       outcome: passed ? "pass" : "fail",
       reasonCodes: [...new Set(reasonCodes)],
     };
+  }
+
+  private endorsementKey(nodeId: string, roleId: string): string {
+    return `${nodeId}::${roleId}`;
+  }
+
+  private requiredEndorsementRoleIds(
+    node: Extract<
+      ScenarioNodeV1,
+      { readonly nodeType: "ENDORSEMENT" }
+    >,
+  ): readonly string[] {
+    const policy = this.scenario.policies.find(
+      (candidate) => candidate.policyId === node.policyId,
+    );
+    const configured = this.optionalConfigurationStringArray(
+      policy?.configuration.requiredEndorsementRoleIds,
+    );
+    if (configured === null) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The endorsement policy has an invalid required-role list.",
+      );
+    }
+    const minimum =
+      typeof policy?.configuration.minimumEndorsements === "number"
+        ? policy.configuration.minimumEndorsements
+        : 0;
+    const ordered = [
+      ...configured,
+      ...node.permittedRoleIds.filter(
+        (roleId) => !configured.includes(roleId),
+      ),
+    ];
+    return ordered.slice(
+      0,
+      Math.max(configured.length, minimum, 1),
+    );
+  }
+
+  private nextRequiredEndorsementRoleId(
+    node: Extract<
+      ScenarioNodeV1,
+      { readonly nodeType: "ENDORSEMENT" }
+    >,
+    state: GenericHostedRunState,
+  ): string | undefined {
+    const endorsedRoleIds = new Set(
+      Object.values(state.endorsements)
+        .filter(
+          (endorsement) =>
+            endorsement.endorsementNodeId === node.nodeId &&
+            endorsement.proposalNodeId === node.proposalNodeId &&
+            endorsement.policyId === node.policyId,
+        )
+        .map((endorsement) => endorsement.roleId),
+    );
+    return this.requiredEndorsementRoleIds(node).find(
+      (roleId) => !endorsedRoleIds.has(roleId),
+    );
   }
 
   private optionalConfigurationStringArray(
@@ -3713,7 +4086,7 @@ export class GenericHostedRunService {
     }
     const preferredRoleId =
       node.nodeType === "ENDORSEMENT"
-        ? node.permittedRoleIds[0]
+        ? this.requiredEndorsementRoleIds(node)[0]
         : node.nodeType === "COMMUNICATION" &&
             (current === undefined ||
               !node.visibleToRoleIds.includes(current.roleId))
@@ -3722,14 +4095,38 @@ export class GenericHostedRunService {
     if (preferredRoleId === undefined && current !== undefined) {
       return current;
     }
-    const role =
-      this.scenario.roles.find(
-        (candidate) => candidate.roleId === preferredRoleId,
-      ) ?? this.scenario.roles[0];
+    if (preferredRoleId !== undefined) {
+      return this.trustedContextForRole(
+        learnerUserId,
+        preferredRoleId,
+      );
+    }
+    const role = this.scenario.roles[0];
     if (role === undefined) {
       throw new HostedRunCommandError(
         "PACK_CONTRACT_MISMATCH",
         "Generic hosted scenarios require at least one role.",
+      );
+    }
+    return {
+      contextId: `CONTEXT_${learnerUserId}_${role.roleId}`,
+      actorId: `ACTOR_${learnerUserId}`,
+      organizationId: role.organizationId,
+      roleId: role.roleId,
+    };
+  }
+
+  private trustedContextForRole(
+    learnerUserId: string,
+    roleId: string,
+  ): TrustedExecutionContext {
+    const role = this.scenario.roles.find(
+      (candidate) => candidate.roleId === roleId,
+    );
+    if (role === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The scenario-controlled role handoff references a missing role.",
       );
     }
     return {
@@ -4087,9 +4484,16 @@ export class GenericHostedRunService {
       ),
       ...Object.values(state.endorsements).map(
         (endorsement) => ({
-          recordId: `ENDORSEMENT_${endorsement.endorsementNodeId}`,
+          recordId: `ENDORSEMENT_${endorsement.endorsementNodeId}_${endorsement.roleId}`,
           visibleToRoleIds: roleIds,
           value: endorsement as unknown as JsonObject,
+        }),
+      ),
+      ...Object.values(state.committedTransactions).map(
+        (transaction) => ({
+          recordId: `COMMITTED_${transaction.proposalNodeId}`,
+          visibleToRoleIds: roleIds,
+          value: transaction as unknown as JsonObject,
         }),
       ),
       ...Object.values(state.communications).map(
@@ -4190,6 +4594,44 @@ export class GenericHostedRunService {
         }),
       ),
     };
+  }
+
+  private decisionAssessmentResults(
+    state: GenericHostedRunState,
+  ): readonly {
+    readonly decisionItemId: string;
+    readonly maximumPoints: number;
+    readonly isAuthoredCorrect: boolean;
+  }[] {
+    return this.scenario.nodes.flatMap((node) => {
+      if (
+        node.nodeType !== "DECISION" ||
+        node.assessment === undefined
+      ) {
+        return [];
+      }
+      const submission = state.decisions[node.decisionId];
+      const isAuthoredCorrect =
+        submission !== undefined &&
+        node.fields.every((field) => {
+          const expected = [
+            ...(node.assessment?.correctOptionIdsByField[
+              field.fieldId
+            ] ?? []),
+          ].sort();
+          const actual = [
+            ...(submission.responses[field.fieldId] ?? []),
+          ].sort();
+          return canonicalize(actual) === canonicalize(expected);
+        });
+      return [
+        {
+          decisionItemId: node.assessment.decisionItemId,
+          maximumPoints: node.assessment.maximumPoints,
+          isAuthoredCorrect,
+        },
+      ];
+    });
   }
 
   private presentation(
@@ -4314,16 +4756,75 @@ export class GenericHostedRunService {
         prompt: this.localizedText(node.prompt.localizationKey),
         maximumLength: node.maximumLength,
       };
-    } else if (
-      node.nodeType === "EVIDENCE_RELEASE" ||
-      node.nodeType === "COMPLETION"
-    ) {
+    } else if (node.nodeType === "EVIDENCE_RELEASE") {
       currentNode = {
         nodeId: node.nodeId,
         nodeType: node.nodeType,
         title: this.localizedText(node.title.localizationKey),
       };
+    } else if (node.nodeType === "COMPLETION") {
+      currentNode = {
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        title: this.localizedText(node.title.localizationKey),
+        ...(node.message === undefined
+          ? {}
+          : {
+              message: this.localizedText(
+                node.message.localizationKey,
+              ),
+            }),
+      };
     }
+    const visibleEvidence = this.scenario.evidenceItems.filter(
+      (evidence) =>
+        [
+          ...state.releasedEvidenceIds,
+          ...this.requestableEvidence(state).map(
+            (candidate) => candidate.evidenceId,
+          ),
+          ...state.evidenceRequests.map(
+            (request) => request.evidenceId,
+          ),
+        ].includes(evidence.evidenceId),
+    );
+    const assessmentResults =
+      this.decisionAssessmentResults(state);
+    const processScore =
+      assessmentResults.length === 0
+        ? undefined
+        : assessmentResults.reduce(
+            (sum, result) =>
+              sum +
+              (result.isAuthoredCorrect
+                ? result.maximumPoints
+                : 0),
+            0,
+          );
+    const realizedStochasticEvent = Object.values(
+      state.stochasticEvents,
+    ).at(-1);
+    const realizedStochasticOutcome =
+      realizedStochasticEvent === undefined
+        ? undefined
+        : this.scenario.nodes
+            .flatMap((candidate) =>
+              candidate.nodeType === "STOCHASTIC_EVENT" &&
+              candidate.nodeId ===
+                realizedStochasticEvent.stochasticNodeId
+                ? candidate.outcomes
+                : [],
+            )
+            .find(
+              (outcome) =>
+                outcome.outcomeId ===
+                  realizedStochasticEvent.outcomeId ||
+                outcome.resultCode ===
+                  realizedStochasticEvent.resultCode,
+            );
+    const realizedOutcomeCode =
+      realizedStochasticEvent?.resultCode ??
+      state.outcomeResolution?.outcomeCode;
     return {
       scenarioTitle: this.localizedText(
         this.scenario.title.localizationKey,
@@ -4333,22 +4834,74 @@ export class GenericHostedRunService {
       ),
       currentNode,
       evidenceTitles: Object.fromEntries(
-        this.scenario.evidenceItems
-          .filter((evidence) =>
+        visibleEvidence.map((evidence) => [
+          evidence.evidenceId,
+          this.localizedText(evidence.title.localizationKey),
+        ]),
+      ),
+      evidencePresentations: Object.fromEntries(
+        visibleEvidence.flatMap((evidence) => {
+          const presentation = evidence.learnerPresentation;
+          if (presentation === undefined) return [];
+          return [
             [
-              ...state.releasedEvidenceIds,
-              ...this.requestableEvidence(state).map(
-                (candidate) => candidate.evidenceId,
-              ),
-              ...state.evidenceRequests.map(
-                (request) => request.evidenceId,
-              ),
-            ].includes(evidence.evidenceId),
-          )
-          .map((evidence) => [
-            evidence.evidenceId,
-            this.localizedText(evidence.title.localizationKey),
-          ]),
+              evidence.evidenceId,
+              {
+                ...(presentation.summary === undefined
+                  ? {}
+                  : {
+                      summary: this.localizedText(
+                        presentation.summary.localizationKey,
+                      ),
+                    }),
+                fields: presentation.fields.map((field) => ({
+                  fieldPath: field.fieldPath,
+                  label: this.localizedText(
+                    field.label.localizationKey,
+                  ),
+                  valueType: field.valueType,
+                  ...(field.unit === undefined
+                    ? {}
+                    : {
+                        unit: this.localizedText(
+                          field.unit.localizationKey,
+                        ),
+                      }),
+                  ...(field.valueLabels === undefined
+                    ? {}
+                    : {
+                        valueLabels: Object.fromEntries(
+                          Object.entries(field.valueLabels).map(
+                            ([value, label]) => [
+                              value,
+                              this.localizedText(
+                                label.localizationKey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      }),
+                })),
+              },
+            ] as const,
+          ];
+        }),
+      ),
+      organizationNames: Object.fromEntries(
+        this.scenario.organizations.map((organization) => [
+          organization.organizationId,
+          this.localizedText(
+            organization.displayName.localizationKey,
+          ),
+        ]),
+      ),
+      roleNames: Object.fromEntries(
+        this.scenario.roles.map((scenarioRole) => [
+          scenarioRole.roleId,
+          this.localizedText(
+            scenarioRole.displayName.localizationKey,
+          ),
+        ]),
       ),
       evidenceRequests: [
         ...this.requestableEvidence(state).map((evidence) => ({
@@ -4461,6 +5014,70 @@ export class GenericHostedRunService {
                 ];
           },
         ),
+      ...(state.status !== "completed" ||
+      node.nodeType !== "COMPLETION"
+        ? {}
+        : {
+            completionSummary: {
+              outcomeCode: node.outcomeCode,
+              ...(node.message === undefined
+                ? {}
+                : {
+                    message: this.localizedText(
+                      node.message.localizationKey,
+                    ),
+                  }),
+              ...(realizedOutcomeCode === undefined
+                ? {}
+                : {
+                    realizedOutcomeCode,
+                    ...(realizedStochasticOutcome?.label ===
+                    undefined
+                      ? {}
+                      : {
+                          realizedOutcome: this.localizedText(
+                            realizedStochasticOutcome.label
+                              .localizationKey,
+                          ),
+                        }),
+                  }),
+              ...(processScore === undefined
+                ? {}
+                : {
+                    processScore,
+                    scoreMaximum: 100 as const,
+                  }),
+              correctDecisionCount: assessmentResults.filter(
+                (result) => result.isAuthoredCorrect,
+              ).length,
+              assessedDecisionCount: assessmentResults.length,
+              inspectedEvidenceCount:
+                state.inspectedEvidenceIds.length,
+              consultedPolicyCount:
+                state.consultedPolicyIds.length,
+              evidenceRequestCount: state.evidenceRequests.length,
+              totalEvidenceDelayMinutes:
+                state.evidenceRequests.reduce(
+                  (sum, request) =>
+                    sum + request.delayMinutes,
+                  0,
+                ),
+              totalEvidenceCostUnits:
+                state.evidenceRequests.reduce(
+                  (sum, request) => sum + request.costUnits,
+                  0,
+                ),
+              proposalCount: Object.keys(
+                state.transactionProposals,
+              ).length,
+              endorsementCount: Object.keys(
+                state.endorsements,
+              ).length,
+              committedTransactionCount: Object.keys(
+                state.committedTransactions,
+              ).length,
+            },
+          }),
       modeConfiguration: state.modeConfiguration,
     };
   }

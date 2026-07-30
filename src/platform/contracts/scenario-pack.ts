@@ -191,6 +191,29 @@ export interface ScenarioEvidenceAssessmentMetadataV1 {
   readonly hiddenConditionReferences: readonly string[];
 }
 
+export type EvidencePresentationValueTypeV1 =
+  | "TEXT"
+  | "NUMBER"
+  | "BOOLEAN"
+  | "DATE_TIME"
+  | "TEMPERATURE_C"
+  | "PERCENT"
+  | "RATE_PER_MINUTE"
+  | "TEXT_LIST";
+
+export interface ScenarioEvidencePresentationFieldV1 {
+  readonly fieldPath: string;
+  readonly label: LocalizedText;
+  readonly valueType: EvidencePresentationValueTypeV1;
+  readonly unit?: LocalizedText;
+  readonly valueLabels?: Readonly<Record<string, LocalizedText>>;
+}
+
+export interface ScenarioEvidenceLearnerPresentationV1 {
+  readonly summary?: LocalizedText;
+  readonly fields: readonly ScenarioEvidencePresentationFieldV1[];
+}
+
 export interface ScenarioEvidenceItemV1 {
   readonly evidenceId: string;
   readonly evidenceType: string;
@@ -201,6 +224,8 @@ export interface ScenarioEvidenceItemV1 {
   readonly learnerMetadata: ScenarioEvidenceLearnerMetadataV1;
   readonly assessmentMetadata:
     ScenarioEvidenceAssessmentMetadataV1;
+  readonly learnerPresentation?:
+    ScenarioEvidenceLearnerPresentationV1;
   readonly content: JsonObject;
 }
 
@@ -406,6 +431,13 @@ export interface DecisionNodeV1 extends ScenarioNodeBaseV1 {
   };
   readonly structuredResponse?:
     StructuredDecisionResponseConfigurationV1;
+  readonly assessment?: {
+    readonly decisionItemId: string;
+    readonly maximumPoints: number;
+    readonly correctOptionIdsByField: Readonly<
+      Record<string, readonly string[]>
+    >;
+  };
   readonly counterfactual?: CounterfactualDecisionDefinitionV1;
 }
 
@@ -441,6 +473,7 @@ export interface StochasticOutcomeV1 {
   readonly outcomeId: string;
   readonly weight: number;
   readonly resultCode: string;
+  readonly label?: LocalizedText;
 }
 
 export interface StochasticEventNodeV1 extends ScenarioNodeBaseV1 {
@@ -471,6 +504,7 @@ export interface ReflectionNodeV1 extends ScenarioNodeBaseV1 {
 export interface CompletionNodeV1 extends ScenarioNodeBaseV1 {
   readonly nodeType: "COMPLETION";
   readonly outcomeCode: string;
+  readonly message?: LocalizedText;
 }
 
 export type ScenarioNodeV1 =
@@ -556,7 +590,7 @@ export interface ScenarioDefinitionV1 {
 
 export interface ScenarioPackV1 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.11.0";
+  readonly schemaVersion: "1.12.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
