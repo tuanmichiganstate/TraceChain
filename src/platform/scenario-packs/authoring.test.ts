@@ -41,6 +41,34 @@ describe("scenario authoring services", () => {
     );
   });
 
+  it("reports hosted experience settings that cannot run in their selected mode", () => {
+    const invalid = validPack();
+    const standard = invalid.scenarios[0]?.modeConfigurations.find(
+      (configuration) => configuration.mode === "standard",
+    );
+    if (standard === undefined) {
+      throw new Error("Expected a standard hosted mode.");
+    }
+    (
+      standard as {
+        feedbackTiming: "immediate" | "stage-end" | "final";
+      }
+    ).feedbackTiming = "immediate";
+
+    const report = scenarioPackValidationReport(invalid, { en, vi });
+
+    expect(report.valid).toBe(false);
+    expect(report.issues).toEqual([
+      expect.objectContaining({
+        code: "INVALID_HOSTED_EXPERIENCE_CONFIGURATION",
+        path: "$.scenarios[0].modeConfigurations[1]",
+        message: expect.stringContaining(
+          "assessment delivery requires final feedback",
+        ),
+      }),
+    ]);
+  });
+
   it("previews only role-visible evidence in deterministic workflow order", () => {
     const pack = validPack();
     const scenario = pack.scenarios[0];

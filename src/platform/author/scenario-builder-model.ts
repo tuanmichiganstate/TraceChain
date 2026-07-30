@@ -780,7 +780,9 @@ export function defaultModeConfiguration(mode: HostedRunMode) {
     allowRetry: mode === "tutorial" || mode === "sandbox",
     allowBacktracking: mode !== "configured",
     feedbackTiming:
-      mode === "configured" ? "final" as const : "immediate" as const,
+      mode === "standard" || mode === "configured"
+        ? "final" as const
+        : "immediate" as const,
     showScores: mode !== "configured",
     outcomeStrategy:
       mode === "sandbox" ? "probabilistic" as const : "forced" as const,

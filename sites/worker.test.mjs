@@ -97,6 +97,22 @@ function canonicalJson(value) {
     .join(",")}}`;
 }
 
+function scenarioPackContentHash(pack) {
+  const { publication, ...content } = pack;
+  assert.notEqual(publication, undefined);
+  const publicationMetadata = { ...publication };
+  delete publicationMetadata.contentHash;
+  return createHash("sha256")
+    .update(
+      canonicalJson({
+        ...content,
+        status: pack.status === "retired" ? "published" : pack.status,
+        publication: publicationMetadata,
+      }),
+    )
+    .digest("hex");
+}
+
 function standardHostedExperienceFixture({
   packId,
   packVersion,
@@ -4315,6 +4331,120 @@ test("creates an exact published assignment for a provisioned learner", async ()
         "USER_LEARNER_ASSIGNMENT",
       ),
       false,
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("keeps compatible assignment modes visible when one published mode is incompatible", async () => {
+  const database = new SqliteD1Database();
+  const { env } = createAssetEnvironment();
+  env.DB = database;
+  try {
+    const initialize = await worker.fetch(
+      apiRequest("/api/v1/session"),
+      env,
+    );
+    assert.equal(initialize.status, 401);
+    seedUser(
+      database,
+      "USER_INSTRUCTOR_MODE_ISOLATION",
+      "mode-isolation-instructor@example.edu",
+      ["instructor", "scenario-author"],
+    );
+    const pack = await standardCoffeePack();
+    const publish = await worker.fetch(
+      apiRequest("/api/v1/scenario-packs/publish", {
+        method: "POST",
+        email: "mode-isolation-instructor@example.edu",
+        body: { pack },
+      }),
+      env,
+    );
+    assert.equal(publish.status, 201, await publish.clone().text());
+
+    const storedRow = database.sqlite
+      .prepare(
+        `SELECT pack_json
+        FROM scenario_pack_versions
+        WHERE pack_id = ? AND pack_version = ?`,
+      )
+      .get(pack.packId, pack.version);
+    assert.notEqual(storedRow, undefined);
+    const storedPack = JSON.parse(storedRow.pack_json);
+    const standard = storedPack.scenarios[0].modeConfigurations.find(
+      (configuration) => configuration.mode === "standard",
+    );
+    assert.notEqual(standard, undefined);
+    standard.feedbackTiming = "immediate";
+    storedPack.publication.contentHash =
+      scenarioPackContentHash(storedPack);
+    database.sqlite
+      .prepare(
+        `UPDATE scenario_pack_versions
+        SET content_hash = ?, pack_json = ?
+        WHERE pack_id = ? AND pack_version = ?`,
+      )
+      .run(
+        storedPack.publication.contentHash,
+        JSON.stringify(storedPack),
+        pack.packId,
+        pack.version,
+      );
+
+    const response = await worker.fetch(
+      apiRequest("/api/v1/assignment-options", {
+        email: "mode-isolation-instructor@example.edu",
+      }),
+      env,
+    );
+    assert.equal(response.status, 200, await response.clone().text());
+    const option = (await response.json()).options.find(
+      (candidate) => candidate.packId === pack.packId,
+    );
+    assert.notEqual(option, undefined);
+    assert.deepEqual(option.supportedModes, [
+      "tutorial",
+      "sandbox",
+      "configured",
+    ]);
+    assert.deepEqual(
+      option.modeConfigurations.map(({ mode }) => mode),
+      option.supportedModes,
+    );
+    assert.deepEqual(
+      option.experienceConfigurations.map(({ mode }) => mode),
+      option.supportedModes,
+    );
+    const rejectedMode = await worker.fetch(
+      apiRequest("/api/v1/assignments", {
+        method: "POST",
+        email: "mode-isolation-instructor@example.edu",
+        body: {
+          commandId: "COMMAND_REJECT_INVALID_MODE",
+          assignmentId: "ASSIGNMENT_INVALID_MODE",
+          title: "Invalid published mode",
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenarioId: pack.scenarios[0].scenarioId,
+          scenarioVersion: pack.scenarios[0].version,
+          mode: "standard",
+          counterfactualReplay: disabledCounterfactualReplay,
+          research: { enabled: false },
+          learnerUserIds: [],
+        },
+      }),
+      env,
+    );
+    assert.equal(
+      rejectedMode.status,
+      400,
+      await rejectedMode.clone().text(),
+    );
+    assert.equal(
+      (await rejectedMode.json()).error.code,
+      "INVALID_ASSIGNMENT",
     );
   } finally {
     database.close();

@@ -200,6 +200,13 @@ and Configured probabilistic cases record deterministic random-draw and
 realized-outcome events; Standard and Tutorial can force an authored outcome
 without consuming a draw. See `docs/HOSTED_RUN_MODES_V1.md`.
 
+`GET /api/v1/assignment-options` returns only modes that resolve to a valid
+hosted experience. Mode compatibility is also a publication requirement, but
+the catalogue evaluates modes independently so one incompatible definition
+cannot turn every otherwise-runnable option into a server error. A direct
+assignment request for an incompatible mode is rejected as
+`INVALID_ASSIGNMENT`.
+
 The first command set is deliberately bounded:
 
 ```text

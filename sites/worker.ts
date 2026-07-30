@@ -1,5 +1,6 @@
 import type {
   DecisionNodeV1,
+  ScenarioDefinitionV1,
   ScenarioPackV1,
 } from "../src/platform/contracts/scenario-pack";
 import type {
@@ -259,6 +260,54 @@ const MAXIMUM_COMMAND_BYTES = 64 * 1024;
 const MAXIMUM_PACK_BYTES = 2 * 1024 * 1024;
 const MAXIMUM_SCORM_ARTIFACT_BYTES = 25 * 1024 * 1024;
 const scenarioPackCatalogs = { en, vi } as const;
+
+function runnableHostedModeProfiles(
+  pack: ScenarioPackV1,
+  scenario: ScenarioDefinitionV1,
+): Pick<
+  HostedAssignmentScenarioOptionV1,
+  | "supportedModes"
+  | "modeConfigurations"
+  | "experienceConfigurations"
+> {
+  const locale = pack.supportedLocales.includes("vi") ? "vi" : "en";
+  const profiles = scenario.supportedModes.flatMap((mode) => {
+    try {
+      const runtimeConfiguration = modeConfigurationFor(
+        scenario,
+        mode,
+      );
+      const experience =
+        scenario.hostedRuntime?.runtimeId ===
+        "tracechain-technical-lab-v1"
+          ? resolveHostedTechnicalLabExperience(locale)
+          : resolveHostedExperienceConfiguration({
+              packId: pack.packId,
+              packVersion: pack.version,
+              scenario,
+              runtimeConfiguration,
+              locale,
+            });
+      return [{ runtimeConfiguration, experience }];
+    } catch {
+      return [];
+    }
+  });
+  return {
+    supportedModes: profiles.map(
+      ({ runtimeConfiguration }) => runtimeConfiguration.mode,
+    ),
+    modeConfigurations: profiles.map(
+      ({ runtimeConfiguration }) => runtimeConfiguration,
+    ),
+    experienceConfigurations: profiles.map(
+      ({ runtimeConfiguration, experience }) => ({
+        mode: runtimeConfiguration.mode,
+        ...experience,
+      }),
+    ),
+  };
+}
 
 function assignmentOptionLabels(
   pack: ScenarioPackV1,
@@ -2554,7 +2603,14 @@ async function apiResponse(
           ? []
           : pack.scenarios
               .filter(hasRegisteredHostedRuntime)
-              .map((scenario) => {
+              .flatMap((scenario) => {
+                const runnableModes = runnableHostedModeProfiles(
+                  pack,
+                  scenario,
+                );
+                if (runnableModes.supportedModes.length === 0) {
+                  return [];
+                }
                 const counterfactualNodes = scenario.nodes.filter(
                   (node): node is DecisionNodeV1 =>
                     node.nodeType === "DECISION" &&
@@ -2567,11 +2623,7 @@ async function apiResponse(
                       node.title.localizationKey,
                     ]),
                   );
-                const modeConfigurations =
-                  scenario.supportedModes.map((mode) =>
-                    modeConfigurationFor(scenario, mode),
-                  );
-                return {
+                return [{
                   schemaVersion: "2.0.0" as const,
                   packId: pack.packId,
                   packVersion: pack.version,
@@ -2587,25 +2639,7 @@ async function apiResponse(
                     scenario.title.localizationKey,
                     counterfactualDecisionTitles,
                   ),
-                  supportedModes: scenario.supportedModes,
-                  modeConfigurations,
-                  experienceConfigurations:
-                    modeConfigurations.map(
-                      (runtimeConfiguration) => ({
-                        mode: runtimeConfiguration.mode,
-                        ...resolveHostedExperienceConfiguration({
-                          packId: pack.packId,
-                          packVersion: pack.version,
-                          scenario,
-                          runtimeConfiguration,
-                          locale: pack.supportedLocales.includes(
-                            "vi",
-                          )
-                            ? "vi"
-                            : "en",
-                        }),
-                      }),
-                    ),
+                  ...runnableModes,
                   counterfactualDecisionPoints:
                     counterfactualNodes.map((node) => ({
                       nodeId: node.nodeId,
@@ -2620,7 +2654,7 @@ async function apiResponse(
                         node.counterfactual!
                           .reflectionRequired ?? false,
                     })),
-                };
+                }];
               }),
       );
     const technicalScenario =
@@ -2863,24 +2897,35 @@ async function apiResponse(
       body.mode,
       "mode",
     ) as CreateHostedAssignmentRequest["mode"];
-    const runtimeConfiguration = modeConfigurationFor(
-      scenario,
-      mode,
-    );
     const locale = publishedPack.supportedLocales.includes("vi")
       ? "vi"
       : "en";
-    const experience =
-      scenario.hostedRuntime?.runtimeId ===
-      "tracechain-technical-lab-v1"
-        ? resolveHostedTechnicalLabExperience(locale)
-        : resolveHostedExperienceConfiguration({
-            packId: publishedPack.packId,
-            packVersion: publishedPack.version,
-            scenario,
-            runtimeConfiguration,
-            locale,
-          });
+    const { runtimeConfiguration, experience } = (() => {
+      try {
+        const resolvedRuntimeConfiguration =
+          modeConfigurationFor(scenario, mode);
+        return {
+          runtimeConfiguration: resolvedRuntimeConfiguration,
+          experience:
+            scenario.hostedRuntime?.runtimeId ===
+            "tracechain-technical-lab-v1"
+              ? resolveHostedTechnicalLabExperience(locale)
+              : resolveHostedExperienceConfiguration({
+                  packId: publishedPack.packId,
+                  packVersion: publishedPack.version,
+                  scenario,
+                  runtimeConfiguration:
+                    resolvedRuntimeConfiguration,
+                  locale,
+                }),
+        };
+      } catch {
+        throw new AssignmentRepositoryError(
+          "INVALID_ASSIGNMENT",
+          "The selected scenario mode cannot produce a valid hosted experience.",
+        );
+      }
+    })();
     let counterfactualReplay;
     let research;
     try {

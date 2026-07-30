@@ -53,6 +53,25 @@ describe("scenario-pack publication", () => {
     expect(verifyScenarioPackContentHash(changed)).toBe(false);
   });
 
+  it("refuses publication when a hosted mode cannot produce a valid experience", () => {
+    const invalid = draftPack();
+    const standard = invalid.scenarios[0]?.modeConfigurations.find(
+      (configuration) => configuration.mode === "standard",
+    );
+    if (standard === undefined) {
+      throw new Error("Expected a standard hosted mode.");
+    }
+    (
+      standard as {
+        feedbackTiming: "immediate" | "stage-end" | "final";
+      }
+    ).feedbackTiming = "immediate";
+
+    expect(() => publishScenarioPack(invalid, publication)).toThrow(
+      /assessment delivery requires final feedback/u,
+    );
+  });
+
   it("prevents replacement of a published pack version", async () => {
     const repository = new MemoryScenarioPackRepository();
     await repository.saveDraft(draftPack());

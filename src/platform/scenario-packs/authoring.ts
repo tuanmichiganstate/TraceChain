@@ -14,6 +14,9 @@ import type {
   TransitionConditionV1,
 } from "../contracts/scenario-pack";
 import { modeConfigurationFor } from "../runs/mode-configuration";
+import {
+  validateHostedExperienceConfigurations,
+} from "../runs/experience-configuration";
 import { validateScenarioPack } from "./validation";
 import {
   createScenarioEvidenceAssessmentCatalog,
@@ -52,10 +55,22 @@ export function scenarioPackValidationReport(
       issues: result.issues,
     };
   }
+  const hostedExperience =
+    validateHostedExperienceConfigurations(result.pack);
+  if (hostedExperience.issues.length > 0) {
+    return {
+      schemaVersion: "1.0.0",
+      valid: false,
+      checkedCount:
+        result.checkedCount + hostedExperience.checkedCount,
+      issues: hostedExperience.issues,
+    };
+  }
   return {
     schemaVersion: "1.0.0",
     valid: true,
-    checkedCount: result.checkedCount,
+    checkedCount:
+      result.checkedCount + hostedExperience.checkedCount,
     issues: [],
     packId: result.pack.packId,
     version: result.pack.version,

@@ -147,6 +147,15 @@ feedback follows the assignment's existing instructor-release boundary. The
 complete coffee journey still uses its registered native
 `tracechain-coffee-v2` runtime profile.
 
+Every supported hosted mode is resolved into its complete experience
+configuration during author validation and again before publication. In
+particular, the generic `standard` mode is an assessment profile and therefore
+requires final feedback and disabled hints. The Builder supplies compatible
+defaults. A mode that cannot resolve is reported against its exact
+`modeConfigurations` entry and cannot be newly published. The instructor
+catalogue independently resolves each mode so one incompatible definition
+cannot hide another mode that remains runnable.
+
 Generic transaction proposals bind the exact source decision, run, scenario,
 policy references, trusted organization and role, and current run version in a
 canonical SHA-256 digest. They do not mutate the ledger. An `ENDORSEMENT` node

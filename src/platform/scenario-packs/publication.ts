@@ -3,6 +3,9 @@ import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type { ContentPublication } from "../contracts/content";
 import type { ScenarioPackListItemV1 } from "../contracts/scenario-authoring";
 import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import {
+  validateHostedExperienceConfigurations,
+} from "../runs/experience-configuration";
 import { validateScenarioPack } from "./validation";
 
 export interface PublishScenarioPackMetadata {
@@ -76,6 +79,14 @@ export function publishScenarioPack(
       firstIssue === undefined
         ? "Scenario pack is invalid."
         : `${firstIssue.path}: ${firstIssue.message}`,
+    );
+  }
+  const hostedExperience =
+    validateHostedExperienceConfigurations(validation.pack);
+  if (hostedExperience.issues.length > 0) {
+    const firstIssue = hostedExperience.issues[0]!;
+    throw new ScenarioPackPublicationError(
+      `${firstIssue.path}: ${firstIssue.message}`,
     );
   }
   if (draft.status === "published" || draft.status === "retired") {

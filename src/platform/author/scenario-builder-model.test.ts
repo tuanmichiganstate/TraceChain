@@ -10,6 +10,7 @@ import {
   changeScenarioPack,
   countExactIdentifierOccurrences,
   createScenarioBuilderStarter,
+  defaultModeConfiguration,
   defaultScenarioNode,
   reconcileScenarioPackReferences,
   uniqueIdentifier,
@@ -51,6 +52,19 @@ describe("Scenario Builder model", () => {
     expect(starter.scenarios[0]?.auditCase).toBeUndefined();
     expect(result.issues).toEqual([]);
     expect(result.isValid).toBe(true);
+  });
+
+  it("creates assessment-safe defaults for standard mode", () => {
+    expect(defaultModeConfiguration("standard")).toMatchObject({
+      mode: "standard",
+      allowHints: false,
+      allowRetry: false,
+      feedbackTiming: "final",
+      outcomeStrategy: "forced",
+    });
+    expect(defaultModeConfiguration("tutorial").feedbackTiming).toBe(
+      "immediate",
+    );
   });
 
   it("provides a schema-shaped starting node for every workflow type", () => {

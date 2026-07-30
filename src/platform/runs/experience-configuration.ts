@@ -13,7 +13,13 @@ import type {
 import type {
   HostedRunModeConfigurationV1,
   ScenarioDefinitionV1,
+  ScenarioPackV1,
 } from "../contracts/scenario-pack";
+import type {
+  ScenarioPackValidationIssueV1,
+} from "../contracts/scenario-authoring";
+import { hasRegisteredHostedRuntime } from "../hosted/runtime-registry";
+import { modeConfigurationFor } from "./mode-configuration";
 
 export interface HostedExperienceConfigurationIdentityV2 {
   readonly configuration:
@@ -288,6 +294,62 @@ export function resolveHostedExperienceConfigurationFromPolicy(options: {
     configurationHash:
       experienceConfigurationHash(configuration),
   };
+}
+
+export interface HostedExperienceConfigurationValidation {
+  readonly checkedCount: number;
+  readonly issues: readonly ScenarioPackValidationIssueV1[];
+}
+
+/**
+ * Structural scenario validation deliberately remains able to read an older
+ * published definition so one incompatible mode cannot make its other modes
+ * disappear. Author validation and publication call this stronger boundary
+ * before accepting new content.
+ */
+export function validateHostedExperienceConfigurations(
+  pack: ScenarioPackV1,
+): HostedExperienceConfigurationValidation {
+  const issues: ScenarioPackValidationIssueV1[] = [];
+  let checkedCount = 0;
+  const locale = pack.supportedLocales.includes("vi") ? "vi" : "en";
+  pack.scenarios.forEach((scenario, scenarioIndex) => {
+    if (!hasRegisteredHostedRuntime(scenario)) return;
+    scenario.supportedModes.forEach((mode) => {
+      checkedCount += 1;
+      const configurationIndex =
+        scenario.modeConfigurations.findIndex(
+          (configuration) => configuration.mode === mode,
+        );
+      try {
+        const runtimeConfiguration = modeConfigurationFor(
+          scenario,
+          mode,
+        );
+        resolveHostedExperienceConfiguration({
+          packId: pack.packId,
+          packVersion: pack.version,
+          scenario,
+          runtimeConfiguration,
+          locale,
+        });
+      } catch (error) {
+        issues.push({
+          code: "INVALID_HOSTED_EXPERIENCE_CONFIGURATION",
+          path:
+            `$.scenarios[${String(scenarioIndex)}].modeConfigurations` +
+            (configurationIndex < 0
+              ? ""
+              : `[${String(configurationIndex)}]`),
+          message:
+            error instanceof Error
+              ? error.message
+              : "Hosted experience configuration is invalid.",
+        });
+      }
+    });
+  });
+  return { checkedCount, issues };
 }
 
 export function assertHostedExperienceIdentity(options: {
