@@ -117,9 +117,10 @@ or ZIP import, a pharmaceutical cold-chain starter, and a complete Audit
 case-bank starter. Authors can configure bilingual identity, delivery modes,
 participants and four state layers, policies, evidence, incidents, every
 workflow node type and transition, competencies, rubrics, evidence rules, and
-advanced declarative sections. The same server validator remains authoritative
-before import and publication. The workspace also previews roles and modes,
-compares versions, and controls publication and retirement.
+advanced declarative sections. Its review step runs the complete pack validator
+locally with exact paths and rule IDs; the server repeats that validator as the
+import and publication enforcement boundary. The workspace also previews roles
+and modes, compares versions, and controls publication and retirement.
 The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and

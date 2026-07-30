@@ -771,8 +771,9 @@ export function defaultModeConfiguration(mode: HostedRunMode) {
       mode === "configured" ? "supplied" as const : "generated" as const,
     allowCommunication: false,
     allowEvidenceRequests: false,
+    outcomeModelId: "OUTCOME_MODEL_DEFAULT",
     ...(mode === "sandbox"
-      ? { outcomeModelId: "OUTCOME_MODEL_DEFAULT" }
+      ? {}
       : { forcedOutcomeCode: "OUTCOME_DEFAULT" }),
   };
 }

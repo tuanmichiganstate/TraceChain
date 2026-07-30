@@ -6,6 +6,18 @@ import {
 import { useTranslator } from "../../app/providers/locale-provider";
 import type { JsonObject, JsonValue } from "../contracts/json";
 import type {
+  CompetencyDefinitionV1,
+  CompetencyFrameworkV1,
+  CompetencyTargetV1,
+  PerformanceIndicatorV1,
+} from "../contracts/competency";
+import type {
+  AutomatedEvidenceRuleV1,
+  EvidenceRuleOperator,
+  RubricCriterionV1,
+  RubricDefinitionV1,
+} from "../contracts/rubric";
+import type {
   DecisionNodeV1,
   HostedRunMode,
   ScenarioDefinitionV1,
@@ -26,6 +38,7 @@ import {
   uniqueLocalizationPrefix,
   updateLocalizedValue,
 } from "./scenario-builder-model";
+import { validateScenarioPack } from "../scenario-packs/validation";
 
 const BUILDER_STEPS = [
   "identity",
@@ -616,6 +629,14 @@ function LocalizedTextControl({
   );
 }
 
+function outcomeCodes(
+  model: ScenarioDefinitionV1["outcomeModels"][number],
+): readonly string[] {
+  return model.distribution === "bernoulli"
+    ? [model.onTrue, model.onFalse]
+    : model.outcomes.map((outcome) => outcome.outcomeCode);
+}
+
 function DeliveryStep({
   pack,
   scenario,
@@ -633,6 +654,14 @@ function DeliveryStep({
     scenario.modeConfigurations.find(
       (candidate) => candidate.mode === activeMode,
     ) ?? scenario.modeConfigurations[0];
+  const selectedOutcomeModel = scenario.outcomeModels.find(
+    (model) =>
+      model.outcomeModelId === configuration?.outcomeModelId,
+  );
+  const selectedOutcomeCodes =
+    selectedOutcomeModel === undefined
+      ? []
+      : outcomeCodes(selectedOutcomeModel);
 
   function setModeEnabled(mode: HostedRunMode, enabled: boolean): void {
     onChange(
@@ -642,9 +671,17 @@ function DeliveryStep({
         if (enabled) {
           if (!target.supportedModes.includes(mode)) {
             target.supportedModes.push(mode);
-            target.modeConfigurations.push(
-              defaultModeConfiguration(mode),
-            );
+            const modeConfiguration = defaultModeConfiguration(mode);
+            const outcomeModel = target.outcomeModels[0];
+            modeConfiguration.outcomeModelId =
+              outcomeModel?.outcomeModelId ?? "";
+            if (modeConfiguration.outcomeStrategy === "forced") {
+              modeConfiguration.forcedOutcomeCode =
+                outcomeModel === undefined
+                  ? ""
+                  : outcomeCodes(outcomeModel)[0] ?? "";
+            }
+            target.modeConfigurations.push(modeConfiguration);
           }
         } else if (target.supportedModes.length > 1) {
           target.supportedModes =
@@ -836,15 +873,48 @@ function DeliveryStep({
                 ),
               }))}
               onChange={(value) =>
-                updateConfiguration((target) => {
-                  (
-                    target as unknown as {
-                      outcomeStrategy: "forced" | "probabilistic";
+                onChange(
+                  changeScenarioPack(pack, (draft) => {
+                    const target = draft.scenarios[scenarioIndex];
+                    const modeConfiguration =
+                      target?.modeConfigurations.find(
+                        (candidate) => candidate.mode === activeMode,
+                      );
+                    if (
+                      target === undefined ||
+                      modeConfiguration === undefined
+                    ) {
+                      return;
                     }
-                  ).outcomeStrategy = value as
-                    | "forced"
-                    | "probabilistic";
-                })
+                    modeConfiguration.outcomeStrategy = value as
+                      | "forced"
+                      | "probabilistic";
+                    const outcomeModel =
+                      target.outcomeModels.find(
+                        (model) =>
+                          model.outcomeModelId ===
+                          modeConfiguration.outcomeModelId,
+                      ) ?? target.outcomeModels[0];
+                    modeConfiguration.outcomeModelId =
+                      outcomeModel?.outcomeModelId ?? "";
+                    if (value === "forced") {
+                      const codes =
+                        outcomeModel === undefined
+                          ? []
+                          : outcomeCodes(outcomeModel);
+                      if (
+                        !codes.includes(
+                          modeConfiguration.forcedOutcomeCode ?? "",
+                        )
+                      ) {
+                        modeConfiguration.forcedOutcomeCode =
+                          codes[0] ?? "";
+                      }
+                    } else {
+                      delete modeConfiguration.forcedOutcomeCode;
+                    }
+                  }),
+                )
               }
             />
             <SelectControl
@@ -884,11 +954,61 @@ function DeliveryStep({
                 })
               }
             />
+            <SelectControl
+              id="builder-outcome-model"
+              label={t("scenarioAuthor.builder.outcomeModel")}
+              value={configuration.outcomeModelId ?? ""}
+              options={[
+                {
+                  value: "",
+                  label: t("scenarioAuthor.builder.selectOne"),
+                },
+                ...scenario.outcomeModels.map((model) => ({
+                  value: model.outcomeModelId,
+                  label: model.outcomeModelId,
+                })),
+              ]}
+              onChange={(value) =>
+                updateConfiguration((target) => {
+                  const mutable = target as unknown as {
+                    outcomeModelId?: string;
+                    forcedOutcomeCode?: string;
+                    outcomeStrategy: "forced" | "probabilistic";
+                  };
+                  mutable.outcomeModelId = value;
+                  if (mutable.outcomeStrategy === "forced") {
+                    const model = scenario.outcomeModels.find(
+                      (candidate) =>
+                        candidate.outcomeModelId === value,
+                    );
+                    const codes =
+                      model === undefined ? [] : outcomeCodes(model);
+                    if (
+                      !codes.includes(
+                        mutable.forcedOutcomeCode ?? "",
+                      )
+                    ) {
+                      mutable.forcedOutcomeCode = codes[0] ?? "";
+                    }
+                  }
+                })
+              }
+            />
             {configuration.outcomeStrategy === "forced" ? (
-              <TextControl
+              <SelectControl
                 id="builder-forced-outcome"
                 label={t("scenarioAuthor.builder.forcedOutcome")}
                 value={configuration.forcedOutcomeCode ?? ""}
+                options={[
+                  {
+                    value: "",
+                    label: t("scenarioAuthor.builder.selectOne"),
+                  },
+                  ...selectedOutcomeCodes.map((outcomeCode) => ({
+                    value: outcomeCode,
+                    label: outcomeCode,
+                  })),
+                ]}
                 onChange={(value) =>
                   updateConfiguration((target) => {
                     (
@@ -899,32 +1019,7 @@ function DeliveryStep({
                   })
                 }
               />
-            ) : (
-              <SelectControl
-                id="builder-outcome-model"
-                label={t("scenarioAuthor.builder.outcomeModel")}
-                value={configuration.outcomeModelId ?? ""}
-                options={[
-                  {
-                    value: "",
-                    label: t("scenarioAuthor.builder.selectOne"),
-                  },
-                  ...scenario.outcomeModels.map((model) => ({
-                    value: model.outcomeModelId,
-                    label: model.outcomeModelId,
-                  })),
-                ]}
-                onChange={(value) =>
-                  updateConfiguration((target) => {
-                    (
-                      target as unknown as {
-                        outcomeModelId?: string;
-                      }
-                    ).outcomeModelId = value;
-                  })
-                }
-              />
-            )}
+            ) : null}
           </div>
         </section>
       )}
@@ -991,6 +1086,20 @@ function OutcomeModelEditor({
             <button
               className="button button--quiet"
               type="button"
+              disabled={scenario.modeConfigurations.some(
+                (configuration) =>
+                  configuration.outcomeModelId ===
+                  model.outcomeModelId,
+              )}
+              title={
+                scenario.modeConfigurations.some(
+                  (configuration) =>
+                    configuration.outcomeModelId ===
+                    model.outcomeModelId,
+                )
+                  ? t("scenarioAuthor.builder.removeReferenced")
+                  : undefined
+              }
               onClick={() =>
                 onChange(
                   changeScenarioPack(pack, (draft) => {
@@ -1004,6 +1113,18 @@ function OutcomeModelEditor({
               {t("scenarioAuthor.builder.remove")}
             </button>
           </div>
+          <ReferenceHint
+            references={scenario.modeConfigurations
+              .filter(
+                (configuration) =>
+                  configuration.outcomeModelId ===
+                  model.outcomeModelId,
+              )
+              .map(
+                (configuration) =>
+                  `MODE:${configuration.mode}`,
+              )}
+          />
           <div className="instructor-review__form-grid">
             <TextControl
               id={`outcome-model-id-${String(modelIndex)}`}
@@ -1102,33 +1223,303 @@ function OutcomeModelEditor({
                 />
               </>
             ) : (
-              <JsonValueEditor
-                idPrefix={`outcome-values-${String(modelIndex)}`}
-                label={t("scenarioAuthor.builder.weightedOutcomes")}
-                value={model.outcomes as unknown as JsonValue}
-                onChange={(value) =>
-                  onChange(
-                    changeScenarioPack(pack, (draft) => {
-                      const target =
-                        draft.scenarios[scenarioIndex]
-                          ?.outcomeModels[modelIndex];
-                      if (
-                        target?.distribution ===
-                          "weighted-categorical" &&
-                        Array.isArray(value)
-                      ) {
-                        target.outcomes =
-                          value as unknown as typeof target.outcomes;
-                      }
-                    }),
-                  )
-                }
+              <WeightedOutcomeEditor
+                pack={pack}
+                scenarioIndex={scenarioIndex}
+                modelIndex={modelIndex}
+                outcomes={model.outcomes}
+                onChange={onChange}
               />
             )}
           </div>
         </article>
       ))}
     </section>
+  );
+}
+
+function WeightedOutcomeEditor({
+  pack,
+  scenarioIndex,
+  modelIndex,
+  outcomes,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly scenarioIndex: number;
+  readonly modelIndex: number;
+  readonly outcomes: readonly {
+    readonly outcomeCode: string;
+    readonly weight: number;
+  }[];
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  function update(
+    mutation: (
+      values: {
+        outcomeCode: string;
+        weight: number;
+      }[],
+    ) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const model =
+          draft.scenarios[scenarioIndex]?.outcomeModels[modelIndex];
+        if (model?.distribution !== "weighted-categorical") return;
+        mutation(model.outcomes);
+      }),
+    );
+  }
+  return (
+    <fieldset className="scenario-builder__choice-group">
+      <legend>{t("scenarioAuthor.builder.weightedOutcomes")}</legend>
+      {outcomes.map((outcome, outcomeIndex) => (
+        <div
+          className="scenario-builder__nested-card"
+          key={`weighted-outcome-${String(outcomeIndex)}`}
+        >
+          <div className="instructor-review__form-grid">
+            <TextControl
+              id={`outcome-code-${String(modelIndex)}-${String(outcomeIndex)}`}
+              label={t("scenarioAuthor.builder.outcomeCode")}
+              value={outcome.outcomeCode}
+              onChange={(value) =>
+                update((values) => {
+                  const target = values[outcomeIndex];
+                  if (target !== undefined) target.outcomeCode = value;
+                })
+              }
+            />
+            <NumberControl
+              id={`outcome-weight-${String(modelIndex)}-${String(outcomeIndex)}`}
+              label={t("scenarioAuthor.builder.outcomeWeight")}
+              value={outcome.weight}
+              minimum={0.000_001}
+              onChange={(value) =>
+                update((values) => {
+                  const target = values[outcomeIndex];
+                  if (target !== undefined) target.weight = value;
+                })
+              }
+            />
+          </div>
+          <button
+            className="button button--quiet"
+            type="button"
+            disabled={outcomes.length <= 2}
+            onClick={() =>
+              update((values) => {
+                values.splice(outcomeIndex, 1);
+              })
+            }
+          >
+            {t("scenarioAuthor.builder.remove")}
+          </button>
+        </div>
+      ))}
+      <button
+        className="button button--secondary"
+        type="button"
+        onClick={() =>
+          update((values) => {
+            values.push({
+              outcomeCode: uniqueIdentifier(
+                values.map((outcome) => outcome.outcomeCode),
+                "OUTCOME_NEW",
+              ),
+              weight: 1,
+            });
+          })
+        }
+      >
+        {t("scenarioAuthor.builder.addOutcome")}
+      </button>
+    </fieldset>
+  );
+}
+
+function organizationDependents(
+  scenario: ScenarioDefinitionV1,
+  organizationId: string,
+): readonly string[] {
+  return [
+    ...scenario.roles
+      .filter((role) => role.organizationId === organizationId)
+      .map((role) => role.roleId),
+    ...scenario.evidenceItems
+      .filter(
+        (evidence) =>
+          evidence.sourceOrganizationId === organizationId,
+      )
+      .map((evidence) => evidence.evidenceId),
+  ];
+}
+
+function roleDependents(
+  scenario: ScenarioDefinitionV1,
+  roleId: string,
+): readonly string[] {
+  return [
+    ...scenario.evidenceItems
+      .filter((evidence) => evidence.visibleToRoleIds.includes(roleId))
+      .map((evidence) => evidence.evidenceId),
+    ...scenario.instructorIncidents
+      .filter((incident) => incident.visibleToRoleIds.includes(roleId))
+      .map((incident) => incident.incidentId),
+    ...scenario.nodes
+      .filter(
+        (node) =>
+          (node.nodeType === "ENDORSEMENT" &&
+            node.permittedRoleIds.includes(roleId)) ||
+          (node.nodeType === "COMMUNICATION" &&
+            node.visibleToRoleIds.includes(roleId)),
+      )
+      .map((node) => node.nodeId),
+  ];
+}
+
+function evidenceDependents(
+  scenario: ScenarioDefinitionV1,
+  evidenceId: string,
+): readonly string[] {
+  return [
+    ...scenario.nodes
+      .filter(
+        (node) =>
+          node.nodeType === "EVIDENCE_RELEASE" &&
+          node.evidenceIds.includes(evidenceId),
+      )
+      .map((node) => node.nodeId),
+    ...scenario.instructorIncidents
+      .filter((incident) => incident.evidenceIds.includes(evidenceId))
+      .map((incident) => incident.incidentId),
+  ];
+}
+
+function policyDependents(
+  scenario: ScenarioDefinitionV1,
+  policyId: string,
+): readonly string[] {
+  return scenario.nodes
+    .filter(
+      (node) =>
+        (node.nodeType === "TRANSACTION_PROPOSAL" &&
+          node.policyIds.includes(policyId)) ||
+        ((node.nodeType === "ENDORSEMENT" ||
+          node.nodeType === "POLICY_CHECK") &&
+          node.policyId === policyId) ||
+        node.transitions.some(
+          (transition) =>
+            transition.when.kind === "POLICY_RESULT" &&
+            transition.when.policyId === policyId,
+        ),
+    )
+    .map((node) => node.nodeId);
+}
+
+function nodeDependents(
+  scenario: ScenarioDefinitionV1,
+  nodeId: string,
+): readonly string[] {
+  return [
+    ...(scenario.entryNodeId === nodeId ? ["ENTRY_NODE"] : []),
+    ...scenario.nodes
+      .filter(
+        (node) =>
+          node.transitions.some(
+            (transition) => transition.toNodeId === nodeId,
+          ) ||
+          ((node.nodeType === "ENDORSEMENT" ||
+            node.nodeType === "POLICY_CHECK") &&
+            node.proposalNodeId === nodeId),
+      )
+      .map((node) => node.nodeId),
+    ...scenario.instructorIncidents
+      .filter((incident) => incident.releaseAtNodeIds.includes(nodeId))
+      .map((incident) => incident.incidentId),
+  ];
+}
+
+function competencyDependents(
+  pack: ScenarioPackV1,
+  competencyId: string,
+): readonly string[] {
+  return pack.scenarios
+    .filter((scenario) =>
+      scenario.competencyTargets.some(
+        (target) => target.competencyId === competencyId,
+      ),
+    )
+    .map((scenario) => scenario.scenarioId);
+}
+
+function indicatorDependents(
+  pack: ScenarioPackV1,
+  indicatorId: string,
+): readonly string[] {
+  return [
+    ...pack.scenarios
+      .filter((scenario) =>
+        scenario.competencyTargets.some((target) =>
+          target.indicatorIds.includes(indicatorId),
+        ),
+      )
+      .map((scenario) => scenario.scenarioId),
+    ...pack.rubrics
+      .flatMap((rubric) => rubric.criteria)
+      .filter((criterion) =>
+        criterion.indicatorIds.includes(indicatorId),
+      )
+      .map((criterion) => criterion.criterionId),
+    ...pack.evidenceRules
+      .filter((rule) => rule.indicatorIds.includes(indicatorId))
+      .map((rule) => rule.evidenceRuleId),
+  ];
+}
+
+function rubricDependents(
+  pack: ScenarioPackV1,
+  rubricId: string,
+): readonly string[] {
+  return pack.scenarios
+    .filter((scenario) => scenario.rubricIds.includes(rubricId))
+    .map((scenario) => scenario.scenarioId);
+}
+
+function evidenceRuleDependents(
+  pack: ScenarioPackV1,
+  evidenceRuleId: string,
+): readonly string[] {
+  return [
+    ...pack.scenarios
+      .filter((scenario) =>
+        scenario.evidenceRuleIds.includes(evidenceRuleId),
+      )
+      .map((scenario) => scenario.scenarioId),
+    ...pack.rubrics
+      .flatMap((rubric) => rubric.criteria)
+      .filter((criterion) =>
+        criterion.evidenceRuleIds.includes(evidenceRuleId),
+      )
+      .map((criterion) => criterion.criterionId),
+  ];
+}
+
+function ReferenceHint({
+  references,
+}: {
+  readonly references: readonly string[];
+}): ReactNode {
+  const t = useTranslator();
+  const distinct = [...new Set(references)];
+  return distinct.length === 0 ? null : (
+    <p className="field__hint">
+      {t("scenarioAuthor.builder.referenceHint", {
+        dependents: distinct.join(", "),
+      })}
+    </p>
   );
 }
 
@@ -1255,6 +1646,12 @@ function ParticipantsStep({
                 {t("scenarioAuthor.builder.remove")}
               </button>
             </div>
+            <ReferenceHint
+              references={organizationDependents(
+                scenario,
+                organization.organizationId,
+              )}
+            />
             <TextControl
               id={`organization-id-${String(index)}`}
               label={t("scenarioAuthor.builder.organizationId")}
@@ -1329,6 +1726,9 @@ function ParticipantsStep({
                 {t("scenarioAuthor.builder.remove")}
               </button>
             </div>
+            <ReferenceHint
+              references={roleDependents(scenario, role.roleId)}
+            />
             <div className="instructor-review__form-grid">
               <TextControl
                 id={`role-id-${String(index)}`}
@@ -1422,12 +1822,16 @@ function CollectionSection({
   help,
   addLabel,
   onAdd,
+  addDisabled = false,
+  addHint,
   children,
 }: {
   readonly heading: string;
   readonly help: string;
   readonly addLabel: string;
   readonly onAdd: () => void;
+  readonly addDisabled?: boolean;
+  readonly addHint?: string | undefined;
   readonly children: ReactNode;
 }): ReactNode {
   return (
@@ -1440,11 +1844,15 @@ function CollectionSection({
         <button
           className="button button--secondary"
           type="button"
+          disabled={addDisabled}
           onClick={onAdd}
         >
           {addLabel}
         </button>
       </div>
+      {addHint === undefined ? null : (
+        <p className="field__hint">{addHint}</p>
+      )}
       <div className="scenario-builder__collection">{children}</div>
     </section>
   );
@@ -1662,6 +2070,9 @@ function PolicyEditor({
           {t("scenarioAuthor.builder.remove")}
         </button>
       </div>
+      <ReferenceHint
+        references={policyDependents(scenario, policy.policyId)}
+      />
       <div className="instructor-review__form-grid">
         <TextControl
           id={`policy-id-${String(policyIndex)}`}
@@ -1798,6 +2209,12 @@ function EvidenceItemEditor({
           {t("scenarioAuthor.builder.remove")}
         </button>
       </div>
+      <ReferenceHint
+        references={evidenceDependents(
+          scenario,
+          evidence.evidenceId,
+        )}
+      />
       <div className="instructor-review__form-grid">
         <TextControl
           id={`evidence-id-${String(evidenceIndex)}`}
@@ -2192,6 +2609,12 @@ function IncidentEditor({
       heading={t("scenarioAuthor.builder.incidents")}
       help={t("scenarioAuthor.builder.incidentsHelp")}
       addLabel={t("scenarioAuthor.builder.addIncident")}
+      addDisabled={scenario.evidenceItems.length === 0}
+      addHint={
+        scenario.evidenceItems.length === 0
+          ? t("scenarioAuthor.builder.incidentNeedsEvidence")
+          : undefined
+      }
       onAdd={() =>
         onChange(
           changeScenarioPack(pack, (draft) => {
@@ -2475,9 +2898,45 @@ function WorkflowStep({
           target as unknown as ScenarioDefinitionV1,
           localizationPrefix,
         );
-        target.nodes.push(
-          node as unknown as (typeof target.nodes)[number],
-        );
+        const mutableNode =
+          node as unknown as DeepMutable<ScenarioNodeV1>;
+        const completionIndex =
+          newNodeType === "COMPLETION"
+            ? -1
+            : target.nodes.findIndex(
+                (candidate) => candidate.nodeType === "COMPLETION",
+              );
+        if (completionIndex < 0) {
+          target.nodes.push(
+            node as unknown as (typeof target.nodes)[number],
+          );
+        } else {
+          const completion = target.nodes[completionIndex];
+          const predecessor = target.nodes[completionIndex - 1];
+          if (
+            completion !== undefined &&
+            predecessor !== undefined &&
+            predecessor.transitions.length === 1 &&
+            predecessor.transitions[0]?.toNodeId === completion.nodeId
+          ) {
+            predecessor.transitions[0]!.toNodeId = node.nodeId;
+            mutableNode.transitions.push({
+              transitionId: uniqueIdentifier(
+                node.transitions.map(
+                  (transition) => transition.transitionId,
+                ),
+                "TRANSITION",
+              ),
+              toNodeId: completion.nodeId,
+              when: { kind: "ALWAYS" },
+            });
+          }
+          target.nodes.splice(
+            completionIndex,
+            0,
+            node as unknown as (typeof target.nodes)[number],
+          );
+        }
         seedNodeLocalizedText(
           draft as unknown as ScenarioPackV1,
           node,
@@ -2756,6 +3215,9 @@ function NodeEditor({
           </button>
         </div>
       </header>
+      <ReferenceHint
+        references={nodeDependents(scenario, node.nodeId)}
+      />
       <div className="instructor-review__form-grid">
         <TextControl
           id={`node-id-${String(nodeIndex)}`}
@@ -3915,25 +4377,11 @@ function AssessmentStep({
             )
           }
         />
-        <StructuredValueEditor
-          path="scenarios[].competencyTargets"
-          idPrefix="builder-competency-targets"
-          label={t("scenarioAuthor.builder.competencyTargets")}
-          value={scenario.competencyTargets as unknown as JsonValue}
+        <CompetencyTargetEditor
           pack={pack}
-          onPackChange={onChange}
-          onChange={(value) => {
-            if (!Array.isArray(value)) return;
-            onChange(
-              changeScenarioPack(pack, (draft) => {
-                const target = draft.scenarios[scenarioIndex];
-                if (target !== undefined) {
-                  target.competencyTargets =
-                    value as unknown as typeof target.competencyTargets;
-                }
-              }),
-            );
-          }}
+          scenario={scenario}
+          scenarioIndex={scenarioIndex}
+          onChange={onChange}
         />
       </section>
       <section className="scenario-builder__assessment-section">
@@ -3941,67 +4389,1303 @@ function AssessmentStep({
           {t("scenarioAuthor.builder.assessment.frameworkHeading")}
         </h5>
         <p>{t("scenarioAuthor.builder.assessment.frameworkHelp")}</p>
-        <StructuredValueEditor
-          path="competencyFrameworks"
-          idPrefix="builder-frameworks"
-          label={t("scenarioAuthor.builder.competencyFrameworks")}
-          value={pack.competencyFrameworks as unknown as JsonValue}
+        <CompetencyFrameworkEditor
           pack={pack}
-          onPackChange={onChange}
-          onChange={(value) => {
-            if (!Array.isArray(value)) return;
-            onChange(
-              changeScenarioPack(pack, (draft) => {
-                draft.competencyFrameworks =
-                  value as unknown as typeof draft.competencyFrameworks;
-              }),
-            );
-          }}
+          onChange={onChange}
         />
       </section>
       <section className="scenario-builder__assessment-section">
         <h5>{t("scenarioAuthor.builder.assessment.rubricHeading")}</h5>
         <p>{t("scenarioAuthor.builder.assessment.rubricHelp")}</p>
-        <StructuredValueEditor
-          path="rubrics"
-          idPrefix="builder-rubrics"
-          label={t("scenarioAuthor.builder.rubrics")}
-          value={pack.rubrics as unknown as JsonValue}
+        <RubricEditor
           pack={pack}
-          onPackChange={onChange}
-          onChange={(value) => {
-            if (!Array.isArray(value)) return;
-            onChange(
-              changeScenarioPack(pack, (draft) => {
-                draft.rubrics =
-                  value as unknown as typeof draft.rubrics;
-              }),
-            );
-          }}
+          onChange={onChange}
         />
       </section>
       <section className="scenario-builder__assessment-section">
         <h5>{t("scenarioAuthor.builder.assessment.rulesHeading")}</h5>
         <p>{t("scenarioAuthor.builder.assessment.rulesHelp")}</p>
-        <StructuredValueEditor
-          path="evidenceRules"
-          idPrefix="builder-evidence-rules"
-          label={t("scenarioAuthor.builder.evidenceRules")}
-          value={pack.evidenceRules as unknown as JsonValue}
+        <EvidenceRuleEditor
           pack={pack}
-          onPackChange={onChange}
-          onChange={(value) => {
-            if (!Array.isArray(value)) return;
-            onChange(
-              changeScenarioPack(pack, (draft) => {
-                draft.evidenceRules =
-                  value as unknown as typeof draft.evidenceRules;
-              }),
-            );
-          }}
+          onChange={onChange}
         />
       </section>
     </section>
+  );
+}
+
+function competencyDefinitions(
+  pack: ScenarioPackV1,
+): readonly CompetencyDefinitionV1[] {
+  return pack.competencyFrameworks.flatMap(
+    (framework) => framework.competencies,
+  );
+}
+
+function indicatorDefinitions(
+  pack: ScenarioPackV1,
+): readonly PerformanceIndicatorV1[] {
+  return competencyDefinitions(pack).flatMap(
+    (competency) => competency.indicators,
+  );
+}
+
+function CompetencyTargetEditor({
+  pack,
+  scenario,
+  scenarioIndex,
+  onChange,
+}: BuilderStepProps): ReactNode {
+  const t = useTranslator();
+  const competencies = competencyDefinitions(pack);
+  function update(
+    targetIndex: number,
+    mutation: (target: DeepMutable<CompetencyTargetV1>) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const target =
+          draft.scenarios[scenarioIndex]?.competencyTargets[
+            targetIndex
+          ];
+        if (target !== undefined) mutation(target);
+      }),
+    );
+  }
+  return (
+    <CollectionSection
+      heading={t("scenarioAuthor.builder.competencyTargets")}
+      help={t("scenarioAuthor.builder.competencyTargetsHelp")}
+      addLabel={t("scenarioAuthor.builder.addCompetencyTarget")}
+      addDisabled={competencies.length === 0}
+      onAdd={() =>
+        onChange(
+          changeScenarioPack(pack, (draft) => {
+            const target = draft.scenarios[scenarioIndex];
+            const competency =
+              draft.competencyFrameworks[0]?.competencies[0];
+            if (target === undefined || competency === undefined) {
+              return;
+            }
+            target.competencyTargets.push({
+              competencyId: competency.competencyId,
+              indicatorIds: competency.indicators
+                .slice(0, 1)
+                .map((indicator) => indicator.indicatorId),
+              targetType: "primary",
+            });
+          }),
+        )
+      }
+    >
+      {scenario.competencyTargets.map((target, targetIndex) => {
+        const competency =
+          competencies.find(
+            (candidate) =>
+              candidate.competencyId === target.competencyId,
+          ) ?? competencies[0];
+        return (
+          <article
+            className="scenario-builder__collection-card"
+            key={`competency-target-${String(targetIndex)}`}
+          >
+            <div className="scenario-builder__collection-heading">
+              <code>{target.competencyId}</code>
+              <button
+                className="button button--quiet"
+                type="button"
+                disabled={scenario.competencyTargets.length <= 1}
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      draft.scenarios[
+                        scenarioIndex
+                      ]?.competencyTargets.splice(targetIndex, 1);
+                    }),
+                  )
+                }
+              >
+                {t("scenarioAuthor.builder.remove")}
+              </button>
+            </div>
+            <div className="instructor-review__form-grid">
+              <SelectControl
+                id={`competency-target-id-${String(targetIndex)}`}
+                label={t("scenarioAuthor.builder.competency")}
+                value={target.competencyId}
+                options={competencies.map((candidate) => ({
+                  value: candidate.competencyId,
+                  label: candidate.competencyId,
+                }))}
+                onChange={(value) =>
+                  update(targetIndex, (mutable) => {
+                    mutable.competencyId = value;
+                    const selected = competencies.find(
+                      (candidate) =>
+                        candidate.competencyId === value,
+                    );
+                    mutable.indicatorIds =
+                      selected?.indicators
+                        .slice(0, 1)
+                        .map((indicator) => indicator.indicatorId) ??
+                      [];
+                  })
+                }
+              />
+              <SelectControl
+                id={`competency-target-type-${String(targetIndex)}`}
+                label={t("scenarioAuthor.builder.targetType")}
+                value={target.targetType}
+                options={[
+                  "primary",
+                  "supporting",
+                  "contextual",
+                ].map((value) => ({
+                  value,
+                  label: t(
+                    `scenarioAuthor.builder.targetType.${value}`,
+                  ),
+                }))}
+                onChange={(value) =>
+                  update(targetIndex, (mutable) => {
+                    mutable.targetType =
+                      value as CompetencyTargetV1["targetType"];
+                  })
+                }
+              />
+            </div>
+            <CheckboxList
+              legend={t("scenarioAuthor.builder.targetIndicators")}
+              options={(competency?.indicators ?? []).map(
+                (indicator) => ({
+                  value: indicator.indicatorId,
+                  label: indicator.indicatorId,
+                }),
+              )}
+              selected={target.indicatorIds}
+              onChange={(values) =>
+                update(targetIndex, (mutable) => {
+                  mutable.indicatorIds = [...values];
+                })
+              }
+            />
+          </article>
+        );
+      })}
+    </CollectionSection>
+  );
+}
+
+function CompetencyFrameworkEditor({
+  pack,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  function updateFramework(
+    frameworkIndex: number,
+    mutation: (
+      framework: DeepMutable<CompetencyFrameworkV1>,
+    ) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const framework = draft.competencyFrameworks[frameworkIndex];
+        if (framework !== undefined) mutation(framework);
+      }),
+    );
+  }
+  function addFramework(): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const frameworkId = uniqueIdentifier(
+          draft.competencyFrameworks.map(
+            (framework) => framework.frameworkId,
+          ),
+          "FRAMEWORK_NEW",
+        );
+        const competencyId = uniqueIdentifier(
+          draft.competencyFrameworks.flatMap((framework) =>
+            framework.competencies.map(
+              (competency) => competency.competencyId,
+            ),
+          ),
+          "COMPETENCY_NEW",
+        );
+        const key = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${frameworkId.toLowerCase()}`,
+          [
+            ".title",
+            ".competency.title",
+            ".competency.description",
+            ".indicator.statement",
+          ],
+        );
+        draft.competencyFrameworks.push({
+          schemaVersion: "1.0.0",
+          frameworkId,
+          version: "1.0.0",
+          status: "draft",
+          title: { localizationKey: `${key}.title` },
+          competencies: [
+            {
+              competencyId,
+              version: "1.0.0",
+              title: {
+                localizationKey: `${key}.competency.title`,
+              },
+              description: {
+                localizationKey: `${key}.competency.description`,
+              },
+              indicators: [
+                {
+                  indicatorId: `${competencyId}.PI1`,
+                  version: "1.0.0",
+                  statement: {
+                    localizationKey: `${key}.indicator.statement`,
+                  },
+                },
+              ],
+            },
+          ],
+        });
+        seedLocalizedKeys(
+          draft as unknown as ScenarioPackV1,
+          [
+            `${key}.title`,
+            `${key}.competency.title`,
+            `${key}.competency.description`,
+            `${key}.indicator.statement`,
+          ],
+        );
+      }),
+    );
+  }
+  return (
+    <CollectionSection
+      heading={t("scenarioAuthor.builder.competencyFrameworks")}
+      help={t("scenarioAuthor.builder.frameworkEditorHelp")}
+      addLabel={t("scenarioAuthor.builder.addFramework")}
+      onAdd={addFramework}
+    >
+      {pack.competencyFrameworks.map(
+        (framework, frameworkIndex) => (
+          <article
+            className="scenario-builder__collection-card"
+            key={framework.title.localizationKey}
+          >
+            <div className="scenario-builder__collection-heading">
+              <code>{framework.frameworkId}</code>
+              <button
+                className="button button--quiet"
+                type="button"
+                disabled={
+                  pack.competencyFrameworks.length <= 1 ||
+                  countExactIdentifierOccurrences(
+                    pack,
+                    framework.frameworkId,
+                  ) > 1
+                }
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      draft.competencyFrameworks.splice(
+                        frameworkIndex,
+                        1,
+                      );
+                    }),
+                  )
+                }
+              >
+                {t("scenarioAuthor.builder.remove")}
+              </button>
+            </div>
+            <div className="instructor-review__form-grid">
+              <TextControl
+                id={`framework-id-${String(frameworkIndex)}`}
+                label={t(
+                  "scenarioAuthor.builder.schemaField.frameworkId",
+                )}
+                value={framework.frameworkId}
+                onChange={(value) =>
+                  updateFramework(frameworkIndex, (mutable) => {
+                    mutable.frameworkId = value;
+                  })
+                }
+              />
+              <TextControl
+                id={`framework-version-${String(frameworkIndex)}`}
+                label={t("scenarioAuthor.builder.version")}
+                value={framework.version}
+                onChange={(value) =>
+                  updateFramework(frameworkIndex, (mutable) => {
+                    mutable.version = value;
+                  })
+                }
+              />
+              <SelectControl
+                id={`framework-status-${String(frameworkIndex)}`}
+                label={t("scenarioAuthor.builder.lifecycleStatus")}
+                value={framework.status}
+                options={[
+                  "draft",
+                  "validated",
+                  "published",
+                  "retired",
+                ].map((value) => ({
+                  value,
+                  label: t(`scenarioAuthor.status.${value}`),
+                }))}
+                onChange={(value) =>
+                  updateFramework(frameworkIndex, (mutable) => {
+                    mutable.status =
+                      value as CompetencyFrameworkV1["status"];
+                  })
+                }
+              />
+            </div>
+            <LocalizedTextControl
+              heading={t("scenarioAuthor.builder.frameworkTitle")}
+              pack={pack}
+              localizationKey={framework.title.localizationKey}
+              onChange={onChange}
+            />
+            <div className="scenario-builder__section-heading">
+              <h6>{t("scenarioAuthor.builder.competencies")}</h6>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      const selected =
+                        draft.competencyFrameworks[frameworkIndex];
+                      if (selected === undefined) return;
+                      const competencyId = uniqueIdentifier(
+                        draft.competencyFrameworks.flatMap(
+                          (candidate) =>
+                            candidate.competencies.map(
+                              (competency) =>
+                                competency.competencyId,
+                            ),
+                        ),
+                        "COMPETENCY_NEW",
+                      );
+                      const key = uniqueLocalizationPrefix(
+                        draft as unknown as ScenarioPackV1,
+                        `builder.${selected.frameworkId.toLowerCase()}.competency`,
+                        [
+                          ".title",
+                          ".description",
+                          ".indicator.statement",
+                        ],
+                      );
+                      selected.competencies.push({
+                        competencyId,
+                        version: "1.0.0",
+                        title: {
+                          localizationKey: `${key}.title`,
+                        },
+                        description: {
+                          localizationKey: `${key}.description`,
+                        },
+                        indicators: [
+                          {
+                            indicatorId: `${competencyId}.PI1`,
+                            version: "1.0.0",
+                            statement: {
+                              localizationKey:
+                                `${key}.indicator.statement`,
+                            },
+                          },
+                        ],
+                      });
+                      seedLocalizedKeys(
+                        draft as unknown as ScenarioPackV1,
+                        [
+                          `${key}.title`,
+                          `${key}.description`,
+                          `${key}.indicator.statement`,
+                        ],
+                      );
+                    }),
+                  )
+                }
+              >
+                {t("scenarioAuthor.builder.addCompetency")}
+              </button>
+            </div>
+            {framework.competencies.map(
+              (competency, competencyIndex) => (
+                <CompetencyEditor
+                  key={competency.title.localizationKey}
+                  pack={pack}
+                  frameworkIndex={frameworkIndex}
+                  competency={competency}
+                  competencyIndex={competencyIndex}
+                  onChange={onChange}
+                />
+              ),
+            )}
+          </article>
+        ),
+      )}
+    </CollectionSection>
+  );
+}
+
+function CompetencyEditor({
+  pack,
+  frameworkIndex,
+  competency,
+  competencyIndex,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly frameworkIndex: number;
+  readonly competency: CompetencyDefinitionV1;
+  readonly competencyIndex: number;
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  function update(
+    mutation: (
+      competency: DeepMutable<CompetencyDefinitionV1>,
+    ) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const target =
+          draft.competencyFrameworks[frameworkIndex]?.competencies[
+            competencyIndex
+          ];
+        if (target !== undefined) mutation(target);
+      }),
+    );
+  }
+  return (
+    <section className="scenario-builder__nested-card">
+      <div className="scenario-builder__collection-heading">
+        <code>{competency.competencyId}</code>
+        <button
+          className="button button--quiet"
+          type="button"
+          disabled={
+            (pack.competencyFrameworks[frameworkIndex]?.competencies
+              .length ?? 0) <= 1 ||
+            countExactIdentifierOccurrences(
+              pack,
+              competency.competencyId,
+            ) > 1
+          }
+          onClick={() =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                draft.competencyFrameworks[
+                  frameworkIndex
+                ]?.competencies.splice(competencyIndex, 1);
+              }),
+            )
+          }
+        >
+          {t("scenarioAuthor.builder.remove")}
+        </button>
+      </div>
+      <ReferenceHint
+        references={competencyDependents(
+          pack,
+          competency.competencyId,
+        )}
+      />
+      <div className="instructor-review__form-grid">
+        <TextControl
+          id={`competency-id-${String(frameworkIndex)}-${String(competencyIndex)}`}
+          label={t(
+            "scenarioAuthor.builder.schemaField.competencyId",
+          )}
+          value={competency.competencyId}
+          onChange={(value) =>
+            update((mutable) => {
+              mutable.competencyId = value;
+            })
+          }
+        />
+        <TextControl
+          id={`competency-version-${String(frameworkIndex)}-${String(competencyIndex)}`}
+          label={t("scenarioAuthor.builder.version")}
+          value={competency.version}
+          onChange={(value) =>
+            update((mutable) => {
+              mutable.version = value;
+            })
+          }
+        />
+      </div>
+      <LocalizedTextControl
+        heading={t("scenarioAuthor.builder.competencyTitle")}
+        pack={pack}
+        localizationKey={competency.title.localizationKey}
+        onChange={onChange}
+      />
+      <LocalizedTextControl
+        heading={t("scenarioAuthor.builder.competencyDescription")}
+        pack={pack}
+        localizationKey={competency.description.localizationKey}
+        multiline
+        onChange={onChange}
+      />
+      <div className="scenario-builder__section-heading">
+        <h6>{t("scenarioAuthor.builder.performanceIndicators")}</h6>
+        <button
+          className="button button--secondary"
+          type="button"
+          onClick={() =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target =
+                  draft.competencyFrameworks[frameworkIndex]
+                    ?.competencies[competencyIndex];
+                if (target === undefined) return;
+                const indicatorId = uniqueIdentifier(
+                  target.indicators.map(
+                    (indicator) => indicator.indicatorId,
+                  ),
+                  `${target.competencyId}.PI`,
+                );
+                const key = uniqueLocalizationPrefix(
+                  draft as unknown as ScenarioPackV1,
+                  `builder.${target.competencyId.toLowerCase()}.indicator`,
+                  [".statement"],
+                );
+                target.indicators.push({
+                  indicatorId,
+                  version: "1.0.0",
+                  statement: {
+                    localizationKey: `${key}.statement`,
+                  },
+                });
+                seedLocalizedKeys(
+                  draft as unknown as ScenarioPackV1,
+                  [`${key}.statement`],
+                );
+              }),
+            )
+          }
+        >
+          {t("scenarioAuthor.builder.addIndicator")}
+        </button>
+      </div>
+      {competency.indicators.map((indicator, indicatorIndex) => (
+        <section
+          className="scenario-builder__nested-card"
+          key={indicator.statement.localizationKey}
+        >
+          <ReferenceHint
+            references={indicatorDependents(
+              pack,
+              indicator.indicatorId,
+            )}
+          />
+          <div className="instructor-review__form-grid">
+            <TextControl
+              id={`indicator-id-${String(frameworkIndex)}-${String(competencyIndex)}-${String(indicatorIndex)}`}
+              label={t(
+                "scenarioAuthor.builder.performanceIndicatorId",
+              )}
+              value={indicator.indicatorId}
+              onChange={(value) =>
+                update((mutable) => {
+                  const selected =
+                    mutable.indicators[indicatorIndex];
+                  if (selected !== undefined) {
+                    selected.indicatorId = value;
+                  }
+                })
+              }
+            />
+            <TextControl
+              id={`indicator-version-${String(frameworkIndex)}-${String(competencyIndex)}-${String(indicatorIndex)}`}
+              label={t("scenarioAuthor.builder.version")}
+              value={indicator.version}
+              onChange={(value) =>
+                update((mutable) => {
+                  const selected =
+                    mutable.indicators[indicatorIndex];
+                  if (selected !== undefined) {
+                    selected.version = value;
+                  }
+                })
+              }
+            />
+          </div>
+          <LocalizedTextControl
+            heading={t("scenarioAuthor.builder.indicatorStatement")}
+            pack={pack}
+            localizationKey={indicator.statement.localizationKey}
+            onChange={onChange}
+          />
+          <button
+            className="button button--quiet"
+            type="button"
+            disabled={
+              competency.indicators.length <= 1 ||
+              countExactIdentifierOccurrences(
+                pack,
+                indicator.indicatorId,
+              ) > 1
+            }
+            onClick={() =>
+              update((mutable) => {
+                mutable.indicators.splice(indicatorIndex, 1);
+              })
+            }
+          >
+            {t("scenarioAuthor.builder.removeIndicator")}
+          </button>
+        </section>
+      ))}
+    </section>
+  );
+}
+
+function RubricEditor({
+  pack,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  const indicators = indicatorDefinitions(pack);
+  function updateRubric(
+    rubricIndex: number,
+    mutation: (rubric: DeepMutable<RubricDefinitionV1>) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const rubric = draft.rubrics[rubricIndex];
+        if (rubric !== undefined) mutation(rubric);
+      }),
+    );
+  }
+  function addRubric(): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const rubricId = uniqueIdentifier(
+          draft.rubrics.map((rubric) => rubric.rubricId),
+          "RUBRIC_NEW",
+        );
+        const criterionId = uniqueIdentifier(
+          draft.rubrics.flatMap((rubric) =>
+            rubric.criteria.map((criterion) => criterion.criterionId),
+          ),
+          "CRITERION_NEW",
+        );
+        const key = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${rubricId.toLowerCase()}`,
+          [
+            ".title",
+            ".level0",
+            ".level1",
+            ".criterion.title",
+            ".criterion.description",
+          ],
+        );
+        const indicatorId =
+          draft.competencyFrameworks[0]?.competencies[0]
+            ?.indicators[0]?.indicatorId;
+        const evidenceRuleId = draft.evidenceRules[0]?.evidenceRuleId;
+        draft.rubrics.push({
+          rubricId,
+          version: "1.0.0",
+          title: { localizationKey: `${key}.title` },
+          levels: [
+            {
+              value: 0,
+              label: { localizationKey: `${key}.level0` },
+            },
+            {
+              value: 1,
+              label: { localizationKey: `${key}.level1` },
+            },
+          ],
+          criteria: [
+            {
+              criterionId,
+              title: {
+                localizationKey: `${key}.criterion.title`,
+              },
+              description: {
+                localizationKey: `${key}.criterion.description`,
+              },
+              indicatorIds:
+                indicatorId === undefined ? [] : [indicatorId],
+              evidenceRuleIds:
+                evidenceRuleId === undefined ? [] : [evidenceRuleId],
+            },
+          ],
+        });
+        seedLocalizedKeys(
+          draft as unknown as ScenarioPackV1,
+          [
+            `${key}.title`,
+            `${key}.level0`,
+            `${key}.level1`,
+            `${key}.criterion.title`,
+            `${key}.criterion.description`,
+          ],
+        );
+      }),
+    );
+  }
+  return (
+    <CollectionSection
+      heading={t("scenarioAuthor.builder.rubrics")}
+      help={t("scenarioAuthor.builder.rubricEditorHelp")}
+      addLabel={t("scenarioAuthor.builder.addRubric")}
+      onAdd={addRubric}
+    >
+      {pack.rubrics.map((rubric, rubricIndex) => (
+        <article
+          className="scenario-builder__collection-card"
+          key={rubric.title.localizationKey}
+        >
+          <div className="scenario-builder__collection-heading">
+            <code>{rubric.rubricId}</code>
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={
+                pack.rubrics.length <= 1 ||
+                countExactIdentifierOccurrences(
+                  pack,
+                  rubric.rubricId,
+                ) > 1
+              }
+              onClick={() =>
+                onChange(
+                  changeScenarioPack(pack, (draft) => {
+                    draft.rubrics.splice(rubricIndex, 1);
+                  }),
+                )
+              }
+            >
+              {t("scenarioAuthor.builder.remove")}
+            </button>
+          </div>
+          <ReferenceHint
+            references={rubricDependents(pack, rubric.rubricId)}
+          />
+          <div className="instructor-review__form-grid">
+            <TextControl
+              id={`rubric-id-${String(rubricIndex)}`}
+              label={t(
+                "scenarioAuthor.builder.schemaField.rubricId",
+              )}
+              value={rubric.rubricId}
+              onChange={(value) =>
+                updateRubric(rubricIndex, (mutable) => {
+                  mutable.rubricId = value;
+                })
+              }
+            />
+            <TextControl
+              id={`rubric-version-${String(rubricIndex)}`}
+              label={t("scenarioAuthor.builder.version")}
+              value={rubric.version}
+              onChange={(value) =>
+                updateRubric(rubricIndex, (mutable) => {
+                  mutable.version = value;
+                })
+              }
+            />
+          </div>
+          <LocalizedTextControl
+            heading={t("scenarioAuthor.builder.rubricTitle")}
+            pack={pack}
+            localizationKey={rubric.title.localizationKey}
+            onChange={onChange}
+          />
+          <section className="scenario-builder__nested-card">
+            <div className="scenario-builder__section-heading">
+              <h6>{t("scenarioAuthor.builder.rubricLevels")}</h6>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      const target = draft.rubrics[rubricIndex];
+                      if (target === undefined) return;
+                      const nextValue =
+                        Math.max(
+                          -1,
+                          ...target.levels.map((level) => level.value),
+                        ) + 1;
+                      const key = uniqueLocalizationPrefix(
+                        draft as unknown as ScenarioPackV1,
+                        `builder.${target.rubricId.toLowerCase()}.level`,
+                        [".label"],
+                      );
+                      target.levels.push({
+                        value: nextValue,
+                        label: { localizationKey: `${key}.label` },
+                      });
+                      seedLocalizedKeys(
+                        draft as unknown as ScenarioPackV1,
+                        [`${key}.label`],
+                      );
+                    }),
+                  )
+                }
+              >
+                {t("scenarioAuthor.builder.addRubricLevel")}
+              </button>
+            </div>
+            {rubric.levels.map((level, levelIndex) => (
+              <section
+                className="scenario-builder__nested-card"
+                key={level.label.localizationKey}
+              >
+                <NumberControl
+                  id={`rubric-level-${String(rubricIndex)}-${String(levelIndex)}`}
+                  label={t("scenarioAuthor.builder.levelValue")}
+                  value={level.value}
+                  onChange={(value) =>
+                    updateRubric(rubricIndex, (mutable) => {
+                      const selected = mutable.levels[levelIndex];
+                      if (selected !== undefined) {
+                        selected.value = value;
+                      }
+                    })
+                  }
+                />
+                <LocalizedTextControl
+                  heading={t("scenarioAuthor.builder.levelLabel")}
+                  pack={pack}
+                  localizationKey={level.label.localizationKey}
+                  onChange={onChange}
+                />
+                <button
+                  className="button button--quiet"
+                  type="button"
+                  disabled={rubric.levels.length <= 2}
+                  onClick={() =>
+                    updateRubric(rubricIndex, (mutable) => {
+                      mutable.levels.splice(levelIndex, 1);
+                    })
+                  }
+                >
+                  {t("scenarioAuthor.builder.removeRubricLevel")}
+                </button>
+              </section>
+            ))}
+          </section>
+          <section className="scenario-builder__nested-card">
+            <div className="scenario-builder__section-heading">
+              <h6>{t("scenarioAuthor.builder.rubricCriteria")}</h6>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      const target = draft.rubrics[rubricIndex];
+                      if (target === undefined) return;
+                      const criterionId = uniqueIdentifier(
+                        draft.rubrics.flatMap((candidate) =>
+                          candidate.criteria.map(
+                            (criterion) => criterion.criterionId,
+                          ),
+                        ),
+                        "CRITERION_NEW",
+                      );
+                      const key = uniqueLocalizationPrefix(
+                        draft as unknown as ScenarioPackV1,
+                        `builder.${target.rubricId.toLowerCase()}.criterion`,
+                        [".title", ".description"],
+                      );
+                      target.criteria.push({
+                        criterionId,
+                        title: {
+                          localizationKey: `${key}.title`,
+                        },
+                        description: {
+                          localizationKey: `${key}.description`,
+                        },
+                        indicatorIds:
+                          draft.competencyFrameworks[0]
+                            ?.competencies[0]?.indicators[0]
+                            ?.indicatorId === undefined
+                            ? []
+                            : [
+                                draft.competencyFrameworks[0]
+                                  .competencies[0]!.indicators[0]!
+                                  .indicatorId,
+                              ],
+                        evidenceRuleIds:
+                          draft.evidenceRules[0]?.evidenceRuleId ===
+                          undefined
+                            ? []
+                            : [
+                                draft.evidenceRules[0]
+                                  .evidenceRuleId,
+                              ],
+                      });
+                      seedLocalizedKeys(
+                        draft as unknown as ScenarioPackV1,
+                        [`${key}.title`, `${key}.description`],
+                      );
+                    }),
+                  )
+                }
+              >
+                {t("scenarioAuthor.builder.addCriterion")}
+              </button>
+            </div>
+            {rubric.criteria.map((criterion, criterionIndex) => (
+              <RubricCriterionEditor
+                key={criterion.title.localizationKey}
+                pack={pack}
+                rubricIndex={rubricIndex}
+                criterion={criterion}
+                criterionIndex={criterionIndex}
+                indicators={indicators}
+                onChange={onChange}
+              />
+            ))}
+          </section>
+        </article>
+      ))}
+    </CollectionSection>
+  );
+}
+
+function RubricCriterionEditor({
+  pack,
+  rubricIndex,
+  criterion,
+  criterionIndex,
+  indicators,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly rubricIndex: number;
+  readonly criterion: RubricCriterionV1;
+  readonly criterionIndex: number;
+  readonly indicators: readonly PerformanceIndicatorV1[];
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  function update(
+    mutation: (
+      criterion: DeepMutable<RubricCriterionV1>,
+    ) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const target =
+          draft.rubrics[rubricIndex]?.criteria[criterionIndex];
+        if (target !== undefined) mutation(target);
+      }),
+    );
+  }
+  return (
+    <section className="scenario-builder__nested-card">
+      <div className="scenario-builder__collection-heading">
+        <code>{criterion.criterionId}</code>
+        <button
+          className="button button--quiet"
+          type="button"
+          disabled={
+            (pack.rubrics[rubricIndex]?.criteria.length ?? 0) <= 1 ||
+            countExactIdentifierOccurrences(
+              pack,
+              criterion.criterionId,
+            ) > 1
+          }
+          onClick={() =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                draft.rubrics[rubricIndex]?.criteria.splice(
+                  criterionIndex,
+                  1,
+                );
+              }),
+            )
+          }
+        >
+          {t("scenarioAuthor.builder.remove")}
+        </button>
+      </div>
+      <TextControl
+        id={`criterion-id-${String(rubricIndex)}-${String(criterionIndex)}`}
+        label={t("scenarioAuthor.builder.criterionId")}
+        value={criterion.criterionId}
+        onChange={(value) =>
+          update((mutable) => {
+            mutable.criterionId = value;
+          })
+        }
+      />
+      <LocalizedTextControl
+        heading={t("scenarioAuthor.builder.criterionTitle")}
+        pack={pack}
+        localizationKey={criterion.title.localizationKey}
+        onChange={onChange}
+      />
+      <LocalizedTextControl
+        heading={t("scenarioAuthor.builder.criterionDescription")}
+        pack={pack}
+        localizationKey={criterion.description.localizationKey}
+        multiline
+        onChange={onChange}
+      />
+      <CheckboxList
+        legend={t("scenarioAuthor.builder.criterionIndicators")}
+        options={indicators.map((indicator) => ({
+          value: indicator.indicatorId,
+          label: indicator.indicatorId,
+        }))}
+        selected={criterion.indicatorIds}
+        onChange={(values) =>
+          update((mutable) => {
+            mutable.indicatorIds = [...values];
+          })
+        }
+      />
+      <CheckboxList
+        legend={t("scenarioAuthor.builder.criterionEvidenceRules")}
+        options={pack.evidenceRules.map((rule) => ({
+          value: rule.evidenceRuleId,
+          label: rule.evidenceRuleId,
+        }))}
+        selected={criterion.evidenceRuleIds}
+        onChange={(values) =>
+          update((mutable) => {
+            mutable.evidenceRuleIds = [...values];
+          })
+        }
+      />
+    </section>
+  );
+}
+
+function EvidenceRuleEditor({
+  pack,
+  onChange,
+}: {
+  readonly pack: ScenarioPackV1;
+  readonly onChange: (pack: ScenarioPackV1) => void;
+}): ReactNode {
+  const t = useTranslator();
+  const indicators = indicatorDefinitions(pack);
+  function updateRule(
+    ruleIndex: number,
+    mutation: (
+      rule: DeepMutable<AutomatedEvidenceRuleV1>,
+    ) => void,
+  ): void {
+    onChange(
+      changeScenarioPack(pack, (draft) => {
+        const rule = draft.evidenceRules[ruleIndex];
+        if (rule !== undefined) mutation(rule);
+      }),
+    );
+  }
+  return (
+    <CollectionSection
+      heading={t("scenarioAuthor.builder.evidenceRules")}
+      help={t("scenarioAuthor.builder.evidenceRuleEditorHelp")}
+      addLabel={t("scenarioAuthor.builder.addEvidenceRule")}
+      addDisabled={indicators.length === 0}
+      onAdd={() =>
+        onChange(
+          changeScenarioPack(pack, (draft) => {
+            const evidenceRuleId = uniqueIdentifier(
+              draft.evidenceRules.map(
+                (rule) => rule.evidenceRuleId,
+              ),
+              "EVIDENCE_RULE_NEW",
+            );
+            const indicatorId =
+              draft.competencyFrameworks[0]?.competencies[0]
+                ?.indicators[0]?.indicatorId;
+            draft.evidenceRules.push({
+              evidenceRuleId,
+              version: "1.0.0",
+              indicatorIds:
+                indicatorId === undefined ? [] : [indicatorId],
+              operator: "EVENT_OCCURRED",
+              eventType: "DECISION_SUBMITTED",
+            });
+          }),
+        )
+      }
+    >
+      {pack.evidenceRules.map((rule, ruleIndex) => (
+        <article
+          className="scenario-builder__collection-card"
+          key={`evidence-rule-${String(ruleIndex)}`}
+        >
+          <div className="scenario-builder__collection-heading">
+            <code>{rule.evidenceRuleId}</code>
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={
+                pack.evidenceRules.length <= 1 ||
+                countExactIdentifierOccurrences(
+                  pack,
+                  rule.evidenceRuleId,
+                ) > 1
+              }
+              onClick={() =>
+                onChange(
+                  changeScenarioPack(pack, (draft) => {
+                    draft.evidenceRules.splice(ruleIndex, 1);
+                  }),
+                )
+              }
+            >
+              {t("scenarioAuthor.builder.remove")}
+            </button>
+          </div>
+          <ReferenceHint
+            references={evidenceRuleDependents(
+              pack,
+              rule.evidenceRuleId,
+            )}
+          />
+          <div className="instructor-review__form-grid">
+            <TextControl
+              id={`evidence-rule-id-${String(ruleIndex)}`}
+              label={t(
+                "scenarioAuthor.builder.schemaField.evidenceRuleId",
+              )}
+              value={rule.evidenceRuleId}
+              onChange={(value) =>
+                updateRule(ruleIndex, (mutable) => {
+                  mutable.evidenceRuleId = value;
+                })
+              }
+            />
+            <TextControl
+              id={`evidence-rule-version-${String(ruleIndex)}`}
+              label={t("scenarioAuthor.builder.version")}
+              value={rule.version}
+              onChange={(value) =>
+                updateRule(ruleIndex, (mutable) => {
+                  mutable.version = value;
+                })
+              }
+            />
+            <SelectControl
+              id={`evidence-rule-operator-${String(ruleIndex)}`}
+              label={t("scenarioAuthor.builder.evidenceRuleOperator")}
+              value={rule.operator}
+              options={(
+                [
+                  "EVENT_OCCURRED",
+                  "FIELD_EQUALS",
+                  "FIELD_IN",
+                ] as const
+              ).map((operator) => ({
+                value: operator,
+                label: t(
+                  `scenarioAuthor.builder.evidenceRuleOperator.${operator}`,
+                ),
+              }))}
+              onChange={(value) =>
+                updateRule(ruleIndex, (mutable) => {
+                  mutable.operator = value as EvidenceRuleOperator;
+                  if (value === "EVENT_OCCURRED") {
+                    delete mutable.fieldPath;
+                    delete mutable.expectedValue;
+                    delete mutable.expectedValues;
+                  } else if (value === "FIELD_EQUALS") {
+                    mutable.fieldPath ??= "payload.value";
+                    mutable.expectedValue ??= "EXPECTED_VALUE";
+                    delete mutable.expectedValues;
+                  } else {
+                    mutable.fieldPath ??= "payload.value";
+                    mutable.expectedValues ??= ["EXPECTED_VALUE"];
+                    delete mutable.expectedValue;
+                  }
+                })
+              }
+            />
+            <TextControl
+              id={`evidence-rule-event-${String(ruleIndex)}`}
+              label={t("scenarioAuthor.builder.eventType")}
+              value={rule.eventType}
+              onChange={(value) =>
+                updateRule(ruleIndex, (mutable) => {
+                  mutable.eventType = value;
+                })
+              }
+            />
+          </div>
+          <CheckboxList
+            legend={t("scenarioAuthor.builder.ruleIndicators")}
+            options={indicators.map((indicator) => ({
+              value: indicator.indicatorId,
+              label: indicator.indicatorId,
+            }))}
+            selected={rule.indicatorIds}
+            onChange={(values) =>
+              updateRule(ruleIndex, (mutable) => {
+                mutable.indicatorIds = [...values];
+              })
+            }
+          />
+          {rule.operator === "EVENT_OCCURRED" ? null : (
+            <div className="instructor-review__form-grid">
+              <TextControl
+                id={`evidence-rule-path-${String(ruleIndex)}`}
+                label={t("scenarioAuthor.builder.fieldPath")}
+                value={rule.fieldPath ?? ""}
+                onChange={(value) =>
+                  updateRule(ruleIndex, (mutable) => {
+                    mutable.fieldPath = value;
+                  })
+                }
+              />
+              {rule.operator === "FIELD_EQUALS" ? (
+                <TextControl
+                  id={`evidence-rule-value-${String(ruleIndex)}`}
+                  label={t("scenarioAuthor.builder.expectedValue")}
+                  value={String(rule.expectedValue ?? "")}
+                  onChange={(value) =>
+                    updateRule(ruleIndex, (mutable) => {
+                      mutable.expectedValue = value;
+                    })
+                  }
+                />
+              ) : (
+                <TextControl
+                  id={`evidence-rule-values-${String(ruleIndex)}`}
+                  label={t("scenarioAuthor.builder.expectedValues")}
+                  value={(rule.expectedValues ?? []).join(", ")}
+                  onChange={(value) =>
+                    updateRule(ruleIndex, (mutable) => {
+                      mutable.expectedValues = value
+                        .split(",")
+                        .map((entry) => entry.trim())
+                        .filter((entry) => entry.length > 0);
+                    })
+                  }
+                />
+              )}
+            </div>
+          )}
+        </article>
+      ))}
+    </CollectionSection>
   );
 }
 
@@ -4017,6 +5701,10 @@ function ReviewStep({
     [scenario],
   );
   const localizedMissing = localizedTextGaps(pack);
+  const contractReview = useMemo(
+    () => validateScenarioPack(pack),
+    [pack],
+  );
   const disconnected = scenario.nodes.filter(
     (node) => !reachableNodeIds.has(node.nodeId),
   );
@@ -4113,6 +5801,38 @@ function ReviewStep({
             {disconnected.map((node) => (
               <li key={node.nodeId}>
                 <code>{node.nodeId}</code>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div
+        className={
+          contractReview.isValid
+            ? "notice"
+            : "notice notice--standalone"
+        }
+      >
+        <h5>{t("scenarioAuthor.builder.contractCheck")}</h5>
+        <p>
+          {contractReview.isValid
+            ? t("scenarioAuthor.builder.contractComplete", {
+                count: contractReview.checkedCount,
+              })
+            : t("scenarioAuthor.builder.contractIssues", {
+                count: contractReview.issues.length,
+                checkedCount: contractReview.checkedCount,
+              })}
+        </p>
+        {contractReview.isValid ? null : (
+          <ul>
+            {contractReview.issues.slice(0, 30).map((issue) => (
+              <li key={`${issue.path}:${issue.code}`}>
+                <code>{issue.path}</code>
+                {": "}
+                <strong>{issue.code}</strong>
+                {": "}
+                {issue.message}
               </li>
             ))}
           </ul>

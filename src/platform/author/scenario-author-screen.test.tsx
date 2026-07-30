@@ -484,6 +484,11 @@ describe("scenario author workspace", () => {
     await user.click(
       screen.getByRole("button", { name: "Add node" }),
     );
+    await user.click(
+      screen
+        .getAllByRole("button", { name: "Remove transition" })
+        .at(-1)!,
+    );
 
     expect(
       screen.getByText(
@@ -493,26 +498,379 @@ describe("scenario author workspace", () => {
     expect(
       screen.getByLabelText("Decision ID"),
     ).toHaveValue("DECISION");
-    await user.clear(screen.getByLabelText("Decision ID"));
+    const decisionIdControl = screen.getByLabelText("Decision ID");
+    const decisionCard = decisionIdControl.closest("article");
+    if (decisionCard === null) {
+      throw new Error("Expected the inserted decision card.");
+    }
+    await user.clear(decisionIdControl);
     await user.type(
-      screen.getByLabelText("Decision ID"),
+      decisionIdControl,
       "DECISION_AWARD_RESPONSE",
     );
     expect(
-      screen.getAllByLabelText("Node type").at(-1),
+      within(decisionCard).getByLabelText("Node type"),
     ).toHaveValue("DECISION");
     expect(
       screen.getByLabelText("Decision ID"),
     ).toHaveValue("DECISION_AWARD_RESPONSE");
 
     await user.click(
-      screen
-        .getAllByRole("button", { name: "Add transition" })
-        .at(-1)!,
+      within(decisionCard).getByRole("button", {
+        name: "Add transition",
+      }),
     );
     expect(
-      screen.getAllByLabelText("Destination node").at(-1),
-    ).toHaveValue("");
+      within(decisionCard).getByLabelText("Destination node"),
+    ).toHaveValue("NODE_COMPLETE");
+  });
+
+  it("keeps every fixed mode bound to the outcome model that defines its result", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1_200,
+      issues: [],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Delivery modes" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Standard" }),
+    );
+
+    expect(screen.getByLabelText("Outcome model")).toHaveValue(
+      "OUTCOME_MODEL_DEFAULT",
+    );
+    expect(screen.getByLabelText("Forced outcome code")).toHaveValue(
+      "OUTCOME_DEFAULT",
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    expect(validatePack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenarios: [
+          expect.objectContaining({
+            modeConfigurations: expect.arrayContaining([
+              expect.objectContaining({
+                mode: "standard",
+                outcomeModelId: "OUTCOME_MODEL_DEFAULT",
+                forcedOutcomeCode: "OUTCOME_DEFAULT",
+              }),
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("inserts a new authored step before completion and keeps the simple path connected", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1_200,
+      issues: [],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Workflow" }),
+    );
+    await user.selectOptions(
+      screen.getAllByLabelText("Node type")[0]!,
+      "DECISION",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add node" }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+
+    const submitted = validatePack.mock.calls[0]?.[0] as
+      | ScenarioPackV1
+      | undefined;
+    const nodes = submitted?.scenarios[0]?.nodes;
+    expect(nodes?.map((node) => node.nodeType)).toEqual([
+      "BRIEFING",
+      "DECISION",
+      "COMPLETION",
+    ]);
+    expect(nodes?.[0]?.transitions[0]?.toNodeId).toBe(
+      nodes?.[1]?.nodeId,
+    );
+    expect(nodes?.[1]?.transitions[0]?.toNodeId).toBe(
+      nodes?.[2]?.nodeId,
+    );
+  });
+
+  it("prevents an incident until there is evidence to release", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Evidence and policies",
+      }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Add incident" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Add at least one evidence item before creating an incident.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows human-readable assessment controls without opening schema objects", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Assessment" }),
+    );
+
+    expect(screen.getByLabelText("Framework ID")).toBeVisible();
+    expect(screen.getByLabelText("Competency ID")).toBeVisible();
+    expect(
+      screen.getByLabelText("Performance indicator ID"),
+    ).toBeVisible();
+    expect(screen.getByLabelText("Rubric ID")).toBeVisible();
+    expect(screen.getByLabelText("Evidence rule ID")).toBeVisible();
+    expect(
+      screen.queryByText("Value type"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows exact local contract failures in the review step", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.clear(screen.getByLabelText("Draft pack ID"));
+    await user.click(
+      screen.getByRole("button", { name: "Review" }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Complete contract check",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("INVALID_IDENTIFIER"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("$.packId").length).toBeGreaterThan(0);
+  });
+
+  it("explains which authored item prevents deletion", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Participants and state",
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "Used by ROLE_DECISION_MAKER. Reassign those references before deleting this item.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names Sandbox unambiguously in Vietnamese", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="vi">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Bắt đầu kịch bản mới",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Chế độ triển khai",
+      }),
+    );
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Môi trường thử nghiệm (Sandbox)",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("recovers an unfinished scenario draft for the same author", async () => {

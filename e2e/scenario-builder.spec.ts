@@ -33,10 +33,27 @@ test("authors a complete scenario without code at desktop and phone widths", asy
       name: "Các bước của Trình tạo kịch bản",
     }),
   ).toContainText("Rà soát");
+  await page
+    .getByLabel("Lĩnh vực bản nháp")
+    .fill("an-toan-nuoc-do-thi");
 
   await page
     .getByRole("button", { name: "Chế độ triển khai" })
     .click();
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Môi trường thử nghiệm (Sandbox)",
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: "Tiêu chuẩn" })
+    .check();
+  await expect(
+    page.getByLabel("Mô hình kết quả", { exact: true }),
+  ).toHaveValue("OUTCOME_MODEL_DEFAULT");
+  await expect(
+    page.getByLabel("Mã kết quả được ấn định"),
+  ).toHaveValue("OUTCOME_DEFAULT");
   await page
     .getByRole("checkbox", {
       name: "Cho phép người học giao tiếp",
@@ -49,6 +66,18 @@ test("authors a complete scenario without code at desktop and phone widths", asy
   ).toBeChecked();
 
   await page
+    .getByRole("button", { name: "Bằng chứng và chính sách" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Thêm sự cố" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(
+      "Hãy thêm ít nhất một mục bằng chứng trước khi tạo sự cố.",
+    ),
+  ).toBeVisible();
+
+  await page
     .getByRole("button", { name: "Quy trình", exact: true })
     .click();
   await expect(
@@ -56,7 +85,37 @@ test("authors a complete scenario without code at desktop and phone widths", asy
   ).toBeVisible();
   await expect(
     page.getByLabel("Mã nút").first(),
-  ).toHaveValue("NODE_PHARMA_BRIEFING");
+  ).toHaveValue("NODE_BRIEFING");
+  await page.getByLabel("Loại nút").first().selectOption("DECISION");
+  await page.getByRole("button", { name: "Thêm nút" }).click();
+  expect(
+    await page
+      .locator('select[id^="node-type-"]')
+      .evaluateAll((controls) =>
+        controls.map(
+          (control) => (control as HTMLSelectElement).value,
+        ),
+      ),
+  ).toEqual(["BRIEFING", "DECISION", "COMPLETION"]);
+
+  await page.getByRole("button", { name: "Đánh giá" }).click();
+  await expect(page.getByLabel("Mã khung")).toBeVisible();
+  await expect(page.getByLabel("Mã năng lực")).toBeVisible();
+  await expect(
+    page.getByLabel("Mã chỉ báo hiệu suất"),
+  ).toBeVisible();
+  await expect(page.getByLabel("Mã rubric")).toBeVisible();
+  await expect(
+    page.getByLabel("Mã quy tắc bằng chứng"),
+  ).toBeVisible();
+  await expect(page.getByText("Kiểu giá trị")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Rà soát" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Kiểm tra toàn bộ hợp đồng",
+    }),
+  ).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 568 });
   const layout = await page.evaluate(() => {

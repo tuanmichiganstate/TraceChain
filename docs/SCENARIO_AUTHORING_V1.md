@@ -46,10 +46,17 @@ seven steps are:
 7. localization, reachability, coverage, and advanced schema review.
 
 Authors may add, remove, and reorder workflow content without writing source
-code. The review step provides early guidance, but it does not duplicate the
-contract: the existing server-side validator remains the only authority for
-referential integrity, supported execution paths, localization completeness,
-scoring rules, and publication readiness.
+code. New nodes enter the simple path before completion, while authors retain
+explicit control of every transition. Fixed delivery modes bind visibly to an
+outcome model and authored outcome code. Assessment definitions use dedicated
+competency, indicator, rubric, criterion, and evidence-rule forms rather than
+schema-shaped value editors.
+
+The review step runs the complete scenario-pack validator locally and reports
+each failing path and rule before import. The server repeats the same validator
+as the enforcement boundary, so a changed or stale client draft cannot bypass
+referential-integrity, execution-path, localization, scoring, or publication
+checks.
 
 ## Portable localization
 
