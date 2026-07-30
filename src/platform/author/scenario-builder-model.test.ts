@@ -217,4 +217,40 @@ describe("Scenario Builder model", () => {
       "RECALL_INITIATED",
     );
   });
+
+  it("lets an author repair one duplicated evidence-rule identifier at a time", () => {
+    const starter = createScenarioBuilderStarter(
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+    );
+    const duplicated = changeScenarioPack(starter, (draft) => {
+      const sourceRule = draft.evidenceRules[0]!;
+      sourceRule.evidenceRuleId = "EVIDENCE_RULE_DUPLICATED";
+      draft.evidenceRules.push(
+        structuredClone(sourceRule),
+        structuredClone(sourceRule),
+      );
+      draft.scenarios[0]!.evidenceRuleIds = [
+        "EVIDENCE_RULE_DUPLICATED",
+      ];
+    });
+    const repaired = changeScenarioPack(duplicated, (draft) => {
+      draft.evidenceRules[1]!.evidenceRuleId =
+        "EVIDENCE_RULE_GOVERNANCE_DECISION";
+    });
+    const reconciled = reconcileScenarioPackReferences(
+      duplicated,
+      repaired,
+    );
+
+    expect(
+      reconciled.evidenceRules.map((rule) => rule.evidenceRuleId),
+    ).toEqual([
+      "EVIDENCE_RULE_DUPLICATED",
+      "EVIDENCE_RULE_GOVERNANCE_DECISION",
+      "EVIDENCE_RULE_DUPLICATED",
+    ]);
+    expect(reconciled.scenarios[0]?.evidenceRuleIds).toEqual([
+      "EVIDENCE_RULE_DUPLICATED",
+    ]);
+  });
 });

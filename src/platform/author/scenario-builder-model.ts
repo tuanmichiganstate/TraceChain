@@ -559,11 +559,25 @@ function changedIdentifierMap(
   const previousByKey = new Map(
     previous.map((entry) => [entry.stableKey, entry.identifier]),
   );
+  const previousIdentifierCounts = new Map<string, number>();
+  previous.forEach((entry) => {
+    previousIdentifierCounts.set(
+      entry.identifier,
+      (previousIdentifierCounts.get(entry.identifier) ?? 0) + 1,
+    );
+  });
   return new Map(
     next.flatMap((entry) => {
       const oldIdentifier = previousByKey.get(entry.stableKey);
       return oldIdentifier !== undefined &&
-        oldIdentifier !== entry.identifier
+        oldIdentifier !== entry.identifier &&
+        /*
+         * A duplicated invalid identifier has no unambiguous reference
+         * target. Renaming one occurrence must repair only that record;
+         * propagating the edit would rename every duplicate and leave the
+         * author unable to recover the draft through the builder.
+         */
+        previousIdentifierCounts.get(oldIdentifier) === 1
         ? [[oldIdentifier, entry.identifier] as const]
         : [];
     }),
