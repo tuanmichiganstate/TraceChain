@@ -166,4 +166,23 @@ describe("Scenario Builder model", () => {
       reconciled.auditVariantBanks[0]?.variants[0]?.scenarioId,
     ).toBe("SCN_COFFEE_AUDIT_CHALLENGE_RENAMED");
   });
+
+  it("updates mode references when an outcome model identifier changes", () => {
+    const source = createScenarioBuilderStarter(
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+    );
+    const renamed = changeScenarioPack(source, (draft) => {
+      draft.scenarios[0]!.outcomeModels[0]!.outcomeModelId =
+        "OUTCOME_MODEL_PROCUREMENT_REVIEW";
+    });
+    const reconciled = reconcileScenarioPackReferences(
+      source,
+      renamed,
+    );
+
+    expect(
+      reconciled.scenarios[0]?.modeConfigurations[0]
+        ?.outcomeModelId,
+    ).toBe("OUTCOME_MODEL_PROCUREMENT_REVIEW");
+  });
 });

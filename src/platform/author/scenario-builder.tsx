@@ -2217,7 +2217,9 @@ function IncidentEditor({
                 .slice(0, 1)
                 .map((role) => role.roleId),
               releaseAtNodeIds: [target.entryNodeId],
-              evidenceIds: [],
+              evidenceIds: target.evidenceItems
+                .slice(0, 1)
+                .map((evidence) => evidence.evidenceId),
               professionalConsequenceEffects: {},
             });
             seedLocalizedKeys(
@@ -2313,6 +2315,46 @@ function IncidentEditor({
                       ?.instructorIncidents[index];
                   if (target !== undefined) {
                     target.visibleToRoleIds = [...values];
+                  }
+                }),
+              )
+            }
+          />
+          <CheckboxList
+            legend={t("scenarioAuthor.builder.incidentEvidence")}
+            options={scenario.evidenceItems.map((evidence) => ({
+              value: evidence.evidenceId,
+              label: evidence.evidenceId,
+            }))}
+            selected={incident.evidenceIds}
+            onChange={(values) =>
+              onChange(
+                changeScenarioPack(pack, (draft) => {
+                  const target =
+                    draft.scenarios[scenarioIndex]
+                      ?.instructorIncidents[index];
+                  if (target !== undefined) {
+                    target.evidenceIds = [...values];
+                  }
+                }),
+              )
+            }
+          />
+          <CheckboxList
+            legend={t("scenarioAuthor.builder.incidentReleaseNodes")}
+            options={scenario.nodes.map((node) => ({
+              value: node.nodeId,
+              label: node.nodeId,
+            }))}
+            selected={incident.releaseAtNodeIds}
+            onChange={(values) =>
+              onChange(
+                changeScenarioPack(pack, (draft) => {
+                  const target =
+                    draft.scenarios[scenarioIndex]
+                      ?.instructorIncidents[index];
+                  if (target !== undefined) {
+                    target.releaseAtNodeIds = [...values];
                   }
                 }),
               )
@@ -3474,19 +3516,15 @@ function TransitionEditor({
         <button
           className="button button--secondary"
           type="button"
+          disabled={node.nodeType === "COMPLETION"}
           onClick={() =>
             onChange(
               changeScenarioPack(pack, (draft) => {
-                const target =
-                  draft.scenarios[scenarioIndex]?.nodes[nodeIndex];
-                const destination =
-                  draft.scenarios[scenarioIndex]?.nodes.find(
-                    (candidate) =>
-                      candidate.nodeId !== target?.nodeId,
-                  );
-                if (target === undefined || destination === undefined) {
-                  return;
-                }
+                const nodes =
+                  draft.scenarios[scenarioIndex]?.nodes;
+                const target = nodes?.[nodeIndex];
+                if (target === undefined) return;
+                const destination = nodes?.[nodeIndex + 1];
                 target.transitions.push({
                   transitionId: uniqueIdentifier(
                     target.transitions.map(
@@ -3494,7 +3532,7 @@ function TransitionEditor({
                     ),
                     "TRANSITION",
                   ),
-                  toNodeId: destination.nodeId,
+                  toNodeId: destination?.nodeId ?? "",
                   when: { kind: "ALWAYS" },
                 });
               }),
@@ -3506,7 +3544,11 @@ function TransitionEditor({
       </div>
       {node.transitions.length === 0 ? (
         <p className="field__hint">
-          {t("scenarioAuthor.builder.noTransitions")}
+          {t(
+            node.nodeType === "COMPLETION"
+              ? "scenarioAuthor.builder.noTransitionsTerminal"
+              : "scenarioAuthor.builder.noTransitionsPending",
+          )}
         </p>
       ) : null}
       {node.transitions.map((transition, transitionIndex) => (
@@ -3534,10 +3576,20 @@ function TransitionEditor({
               id={`transition-target-${String(nodeIndex)}-${String(transitionIndex)}`}
               label={t("scenarioAuthor.builder.transitionTarget")}
               value={transition.toNodeId}
-              options={scenario.nodes.map((candidate) => ({
-                value: candidate.nodeId,
-                label: candidate.nodeId,
-              }))}
+              options={[
+                {
+                  value: "",
+                  label: t("scenarioAuthor.builder.selectOne"),
+                },
+                ...scenario.nodes
+                  .filter(
+                    (candidate) => candidate.nodeId.length > 0,
+                  )
+                  .map((candidate) => ({
+                    value: candidate.nodeId,
+                    label: candidate.nodeId,
+                  })),
+              ]}
               onChange={(value) =>
                 updateTransition(pack, onChange, {
                   scenarioIndex,

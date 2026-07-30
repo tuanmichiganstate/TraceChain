@@ -57,7 +57,7 @@
 <li><a href="#group-recall"><span>recall</span><b>1</b></a></li>
 <li><a href="#group-report"><span>report</span><b>56</b></a></li>
 <li><a href="#group-sale"><span>sale</span><b>3</b></a></li>
-<li><a href="#group-scenarioAuthor"><span>scenarioAuthor</span><b>395</b></a></li>
+<li><a href="#group-scenarioAuthor"><span>scenarioAuthor</span><b>398</b></a></li>
 <li><a href="#group-score"><span>score</span><b>6</b></a></li>
 <li><a href="#group-signature"><span>signature</span><b>43</b></a></li>
 <li><a href="#group-staff"><span>staff</span><b>47</b></a></li>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>3141/3141</b>chuỗi song ngữ</li>
+    <li><b>3144/3144</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -9195,7 +9195,7 @@
 </article>
 </section>
 <section id="group-scenarioAuthor">
-  <h2>scenarioAuthor <span>395 chuỗi</span></h2>
+  <h2>scenarioAuthor <span>398 chuỗi</span></h2>
   <article class="entry" data-locale-key="scenarioAuthor.account">
   <header><code>scenarioAuthor.account</code></header>
   <p class="vi" lang="vi">Tài khoản đang đăng nhập</p>
@@ -9846,6 +9846,11 @@
   <p class="vi" lang="vi">Đặt các mã định danh ổn định và viết mục đích dành cho người học bằng mọi ngôn ngữ được hỗ trợ.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Set stable identifiers and write the learner-facing purpose in every supported language.</p></details>
 </article>
+  <article class="entry" data-locale-key="scenarioAuthor.builder.incidentEvidence">
+  <header><code>scenarioAuthor.builder.incidentEvidence</code></header>
+  <p class="vi" lang="vi">Bằng chứng được công bố cùng sự cố này</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence released with this incident</p></details>
+</article>
   <article class="entry" data-locale-key="scenarioAuthor.builder.incidentId">
   <header><code>scenarioAuthor.builder.incidentId</code></header>
   <p class="vi" lang="vi">Mã sự cố</p>
@@ -9855,6 +9860,11 @@
   <header><code>scenarioAuthor.builder.incidentMessage</code></header>
   <p class="vi" lang="vi">Thông báo sự cố</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Incident message</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.builder.incidentReleaseNodes">
+  <header><code>scenarioAuthor.builder.incidentReleaseNodes</code></header>
+  <p class="vi" lang="vi">Các nút quy trình có thể công bố sự cố này</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Workflow nodes where this incident may be released</p></details>
 </article>
   <article class="entry" data-locale-key="scenarioAuthor.builder.incidentTitle">
   <header><code>scenarioAuthor.builder.incidentTitle</code></header>
@@ -9971,10 +9981,15 @@
   <p class="vi" lang="vi">Bản nháp này không chứa kịch bản. Hãy bắt đầu lại từ một mẫu hợp lệ.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This draft does not contain a scenario. Start again from a valid starter.</p></details>
 </article>
-  <article class="entry" data-locale-key="scenarioAuthor.builder.noTransitions">
-  <header><code>scenarioAuthor.builder.noTransitions</code></header>
-  <p class="vi" lang="vi">Nút kết thúc này không có chuyển tiếp.</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This terminal node has no transitions.</p></details>
+  <article class="entry" data-locale-key="scenarioAuthor.builder.noTransitionsPending">
+  <header><code>scenarioAuthor.builder.noTransitionsPending</code></header>
+  <p class="vi" lang="vi">Chưa cấu hình chuyển tiếp cho nút này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No transition has been configured for this node yet.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.builder.noTransitionsTerminal">
+  <header><code>scenarioAuthor.builder.noTransitionsTerminal</code></header>
+  <p class="vi" lang="vi">Nút hoàn thành này kết thúc quy trình.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This completion node ends the workflow.</p></details>
 </article>
   <article class="entry" data-locale-key="scenarioAuthor.builder.nodeId">
   <header><code>scenarioAuthor.builder.nodeId</code></header>
@@ -16025,7 +16040,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>2d1f50c8b50157b9214732eaf5aa6720b8afe7e0</code> · SHA-256 nguồn: <code>900d5e3fd07672b76820496c5d395c38d22da0b396fe13072eb7c8d9f3ffd6f1</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>d7d36971f6982ee5fccb02b369c72b1cbe9f2dfa</code> · SHA-256 nguồn: <code>d91b46c3af72e4678d2f0889fa8421113aeee65f4f2a5bd84f0c48213a382ecc</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

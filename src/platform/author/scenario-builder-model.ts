@@ -474,6 +474,10 @@ function scenarioIdentifiers(
       stableKey: `incident:${incident.title.localizationKey}`,
       identifier: incident.incidentId,
     })),
+    ...scenario.outcomeModels.map((model) => ({
+      stableKey: `outcome-model:${model.randomStreamId}`,
+      identifier: model.outcomeModelId,
+    })),
     ...scenario.nodes.flatMap((node) => [
       {
         stableKey: `node:${node.title.localizationKey}`,
@@ -563,23 +567,65 @@ function changedIdentifierMap(
   );
 }
 
+const STRUCTURAL_LITERAL_FIELDS = new Set([
+  "accessClassification",
+  "acquisitionMode",
+  "completeness",
+  "contentStatus",
+  "distribution",
+  "feedbackTiming",
+  "kind",
+  "ledgerStatus",
+  "mode",
+  "nodeType",
+  "operator",
+  "outcomeStrategy",
+  "reliability",
+  "seedPolicy",
+  "selection",
+  "signatureStatus",
+  "status",
+  "targetType",
+  "type",
+]);
+
+function mayContainIdentifierReference(field: string): boolean {
+  return (
+    field.endsWith("Id") ||
+    field.endsWith("Ids") ||
+    field === "authoredValue"
+  );
+}
+
 function replaceExactIdentifiers<Value>(
   value: Value,
   replacements: ReadonlyMap<string, string>,
+  parentField?: string,
 ): Value {
   if (typeof value === "string") {
-    return (replacements.get(value) ?? value) as Value;
+    const replacement = replacements.get(value);
+    if (
+      replacement === undefined ||
+      (value.length === 0 &&
+        (parentField === undefined ||
+          !mayContainIdentifierReference(parentField)))
+    ) {
+      return value;
+    }
+    return replacement as Value;
   }
   if (Array.isArray(value)) {
     return value.map((item) =>
-      replaceExactIdentifiers(item, replacements),
+      replaceExactIdentifiers(item, replacements, parentField),
     ) as Value;
   }
   if (typeof value === "object" && value !== null) {
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [
         key,
-        replaceExactIdentifiers(child, replacements),
+        STRUCTURAL_LITERAL_FIELDS.has(key)
+          ? child
+          : replaceExactIdentifiers(child, replacements, key),
       ]),
     ) as Value;
   }
