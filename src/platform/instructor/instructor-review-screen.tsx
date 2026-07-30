@@ -3070,42 +3070,57 @@ function AssignmentReport({
           >
             {t("instructorReview.assignmentDirectoryLabel")}
           </label>
-          <select
-            className="field__control"
-            id="report-assignment-id"
-            value={assignmentId}
-            disabled={
-              isDirectoryLoading || assignments.length === 0
-            }
-            required
-            onChange={(event) => {
-              setAssignmentId(event.target.value);
-              clearLoadedReport();
-              setErrorKey(null);
-            }}
-          >
-            <option value="">
-              {t(
-                isDirectoryLoading
-                  ? "instructorReview.assignmentDirectoryLoading"
-                  : "instructorReview.assignmentDirectoryPlaceholder",
-              )}
-            </option>
-            {assignments.map((assignment) => (
-              <option
-                key={assignment.assignmentId}
-                value={assignment.assignmentId}
-              >
-                {t("instructorReview.assignmentDirectoryOption", {
-                  title: assignment.title,
-                  assignmentId: assignment.assignmentId,
-                  status: t(
-                    `instructorReview.assignmentDirectoryStatus.${assignment.status}`,
-                  ),
-                })}
+          <div className="instructor-review__inline-control-row">
+            <select
+              className="field__control"
+              id="report-assignment-id"
+              value={assignmentId}
+              disabled={
+                isDirectoryLoading || assignments.length === 0
+              }
+              required
+              onChange={(event) => {
+                setAssignmentId(event.target.value);
+                clearLoadedReport();
+                setErrorKey(null);
+              }}
+            >
+              <option value="">
+                {t(
+                  isDirectoryLoading
+                    ? "instructorReview.assignmentDirectoryLoading"
+                    : "instructorReview.assignmentDirectoryPlaceholder",
+                )}
               </option>
-            ))}
-          </select>
+              {assignments.map((assignment) => (
+                <option
+                  key={assignment.assignmentId}
+                  value={assignment.assignmentId}
+                >
+                  {t("instructorReview.assignmentDirectoryOption", {
+                    title: assignment.title,
+                    assignmentId: assignment.assignmentId,
+                    status: t(
+                      `instructorReview.assignmentDirectoryStatus.${assignment.status}`,
+                    ),
+                  })}
+                </option>
+              ))}
+            </select>
+            <button
+              className="button button--secondary"
+              type="submit"
+              disabled={
+                isLoading ||
+                isDirectoryLoading ||
+                assignmentId.length === 0
+              }
+            >
+              {isLoading
+                ? t("instructorReview.classReportLoading")
+                : t("instructorReview.classReportLoad")}
+            </button>
+          </div>
           <span className="field__hint">
             {t(
               assignments.length === 0 && !isDirectoryLoading
@@ -3114,19 +3129,6 @@ function AssignmentReport({
             )}
           </span>
         </div>
-        <button
-          className="button button--secondary"
-          type="submit"
-          disabled={
-            isLoading ||
-            isDirectoryLoading ||
-            assignmentId.length === 0
-          }
-        >
-          {isLoading
-            ? t("instructorReview.classReportLoading")
-            : t("instructorReview.classReportLoad")}
-        </button>
       </form>
       {directoryErrorKey === null ? null : (
         <p className="notice notice--standalone" role="alert">

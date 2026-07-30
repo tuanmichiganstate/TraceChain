@@ -16,6 +16,102 @@ afterEach(() => {
 });
 
 describe("scenario author workspace", () => {
+  it("builds a complete scenario draft through the no-code wizard", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1_200,
+      issues: [],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Scenario Builder" }),
+    ).toBeInTheDocument();
+
+    const domain = screen.getByLabelText("Draft domain");
+    await user.clear(domain);
+    await user.type(domain, "food-safety");
+
+    await user.click(
+      screen.getByRole("button", { name: "Delivery modes" }),
+    );
+    const communication = screen.getByRole("checkbox", {
+      name: "Allow learner communication",
+    });
+    expect(communication).not.toBeChecked();
+    await user.click(communication);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Participants and state",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add organization" }),
+    );
+    const organizationIds =
+      screen.getAllByLabelText("Organization ID");
+    await user.clear(organizationIds.at(-1)!);
+    await user.type(organizationIds.at(-1)!, "ORG_RETAILER");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+
+    expect(validatePack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        manifest: expect.objectContaining({
+          domain: "food-safety",
+        }),
+        scenarios: expect.arrayContaining([
+          expect.objectContaining({
+            modeConfigurations: expect.arrayContaining([
+              expect.objectContaining({
+                mode: "tutorial",
+                allowCommunication: true,
+              }),
+            ]),
+            organizations: expect.arrayContaining([
+              expect.objectContaining({
+                organizationId: "ORG_RETAILER",
+              }),
+            ]),
+          }),
+        ]),
+      }),
+    );
+  });
+
   it("parses JSON, YAML, and a bounded scenario-pack ZIP as data", () => {
     expect(
       parseScenarioPackBytes(

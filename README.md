@@ -111,12 +111,15 @@ is durably recorded. Policy statements are likewise withheld until
 consultation. Only inspected evidence and consulted policies may be cited,
 without changing the academic score.
 Instructor process analytics report inspection, consultation, and citation as
-separate evidence. The `/author`
-route imports bounded JSON, YAML, or ZIP packs, provides a compact visual draft
-editor, pharmaceutical cold-chain starter, and complete Audit case-bank
-starter with an explicit finding, decoy, evidence, policy, scoring, and
-equivalence summary. It validates and previews roles and modes, compares
-versions, and controls publication and retirement.
+separate evidence. The `/author` route provides a full seven-step no-code
+Scenario Builder over the canonical pack schema, alongside bounded JSON, YAML,
+or ZIP import, a pharmaceutical cold-chain starter, and a complete Audit
+case-bank starter. Authors can configure bilingual identity, delivery modes,
+participants and four state layers, policies, evidence, incidents, every
+workflow node type and transition, competencies, rubrics, evidence rules, and
+advanced declarative sections. The same server validator remains authoritative
+before import and publication. The workspace also previews roles and modes,
+compares versions, and controls publication and retirement.
 The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and

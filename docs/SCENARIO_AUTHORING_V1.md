@@ -8,9 +8,15 @@ the command-line validator and hosted run APIs.
 
 The first release supports:
 
+- a seven-step no-code Scenario Builder using the canonical pack contract;
 - JSON, YAML, and bounded ZIP import;
 - a built-in pharmaceutical cold-chain starter and transfer case;
-- editing draft identity, bilingual titles, and workflow destinations;
+- bilingual pack and scenario identity;
+- delivery-mode, deterministic outcome, participant, role, and initial-state
+  configuration;
+- policies, evidence, instructor incidents, all workflow node types,
+  transitions, competencies, rubrics, and evidence-rule configuration;
+- structured advanced editing for optional pack and scenario sections;
 - path-specific schema and semantic validation;
 - deterministic role-and-mode preview;
 - preview and selection of approved fictional staff portraits;
@@ -19,8 +25,31 @@ The first release supports:
 - retirement metadata that does not alter published content.
 
 It deliberately does not contain arbitrary expressions, uploaded executable
-code, a generic policy language editor, collaborative authoring, or a second
-scenario format.
+code, collaborative authoring, or a second scenario format. Specialized
+runtime bindings and Audit contracts remain optional advanced sections; the
+Audit starter supplies their complete schema-shaped examples.
+
+## Scenario Builder
+
+The builder edits `ScenarioPackV1` directly. It does not translate a simpler
+wizard format into the pack later and does not create a parallel runtime. Its
+seven steps are:
+
+1. identity and bilingual description;
+2. delivery modes and deterministic outcome models;
+3. organizations, trusted roles, and actual, business, ledger, and information
+   state;
+4. policies, evidence metadata and content, and instructor incidents;
+5. the complete workflow-node union and conditional transitions;
+6. competency targets, frameworks, analytic rubrics, and automated evidence
+   rules; and
+7. localization, reachability, coverage, and advanced schema review.
+
+Authors may add, remove, and reorder workflow content without writing source
+code. The review step provides early guidance, but it does not duplicate the
+contract: the existing server-side validator remains the only authority for
+referential integrity, supported execution paths, localization completeness,
+scoring rules, and publication readiness.
 
 ## Portable localization
 
@@ -51,7 +80,7 @@ allowing new disciplinary authoring packs to be self-contained.
 
 ## Staff portraits
 
-The draft editor shows the staff profiles already authored in a scenario and
+The Scenario Builder shows the staff profiles already authored in a scenario and
 allows each profile to select from that pack's approved `portraitAssets`
 registry. It does not accept remote URLs, upload arbitrary files, or generate
 images. A portable pack author must provide the local WebP, immutable digest,

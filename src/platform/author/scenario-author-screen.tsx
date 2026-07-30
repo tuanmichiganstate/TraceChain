@@ -24,6 +24,8 @@ import type {
   ScenarioPackV1,
 } from "../contracts/scenario-pack";
 import { EvidenceAssessmentCatalog } from "../components/evidence-assessment-catalog";
+import { createScenarioBuilderStarter } from "./scenario-builder-model";
+import { ScenarioBuilder } from "./scenario-builder";
 
 const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
 
@@ -383,6 +385,19 @@ export function ScenarioAuthorScreen({
     setMessageKey(null);
   }
 
+  function startNewScenario() {
+    setCandidate(
+      createScenarioBuilderStarter(
+        structuredClone(
+          pharmaceuticalPackTemplate,
+        ) as ScenarioPackV1,
+      ),
+    );
+    setFileName(t("scenarioAuthor.builder.starterName"));
+    setReport(null);
+    setMessageKey(null);
+  }
+
   function loadAuditStarter() {
     setCandidate(structuredClone(auditPackTemplate));
     setFileName(t("scenarioAuthor.template.auditCaseBank"));
@@ -527,6 +542,14 @@ export function ScenarioAuthorScreen({
             <p>{t("scenarioAuthor.importHelp")}</p>
             <div className="start__actions">
               <button
+                className="button button--primary"
+                type="button"
+                disabled={busy}
+                onClick={startNewScenario}
+              >
+                {t("scenarioAuthor.builder.start")}
+              </button>
+              <button
                 className="button button--secondary"
                 type="button"
                 disabled={busy}
@@ -558,7 +581,7 @@ export function ScenarioAuthorScreen({
             </div>
             {isEditableScenarioPack(candidate) ? (
               <>
-                <ScenarioDraftEditor
+                <ScenarioBuilder
                   pack={candidate}
                   onChange={(updated) => {
                     setCandidate(updated);
@@ -1046,353 +1069,6 @@ function VersionField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required
-      />
-    </div>
-  );
-}
-
-interface MutableAuthoringNode {
-  nodeId: string;
-  nodeType: string;
-  title: { localizationKey: string };
-  transitions: {
-    transitionId: string;
-    toNodeId: string;
-  }[];
-}
-
-interface MutableAuthoringPack {
-  packId: string;
-  version: string;
-  manifest: { domain: string };
-  portraitAssets: {
-    assetId: string;
-    filePath: string;
-  }[];
-  localizationCatalogs?: Record<string, Record<string, string>>;
-  scenarios: {
-    scenarioId: string;
-    version: string;
-    title: { localizationKey: string };
-    staffProfiles: {
-      staffProfileId: string;
-      roleId: string;
-      displayName: { localizationKey: string };
-      roleTitle: { localizationKey: string };
-      portraitAssetId: string;
-    }[];
-    nodes: MutableAuthoringNode[];
-  }[];
-}
-
-function mutablePack(pack: ScenarioPackV1): MutableAuthoringPack {
-  return structuredClone(pack) as unknown as MutableAuthoringPack;
-}
-
-function ScenarioDraftEditor({
-  pack,
-  onChange,
-}: {
-  readonly pack: ScenarioPackV1;
-  readonly onChange: (pack: ScenarioPackV1) => void;
-}): ReactNode {
-  const t = useTranslator();
-  const scenario = pack.scenarios[0];
-  if (scenario === undefined) return null;
-
-  function updateMetadata(
-    field:
-      | "packId"
-      | "packVersion"
-      | "domain"
-      | "scenarioId"
-      | "scenarioVersion",
-    value: string,
-  ) {
-    const next = mutablePack(pack);
-    const firstScenario = next.scenarios[0];
-    if (firstScenario === undefined) return;
-    if (field === "packId") next.packId = value;
-    if (field === "packVersion") next.version = value;
-    if (field === "domain") next.manifest.domain = value;
-    if (field === "scenarioId") firstScenario.scenarioId = value;
-    if (field === "scenarioVersion") firstScenario.version = value;
-    onChange(next as unknown as ScenarioPackV1);
-  }
-
-  function updateLocalizedText(
-    locale: string,
-    localizationKey: string,
-    value: string,
-  ) {
-    const next = mutablePack(pack);
-    const catalog = next.localizationCatalogs?.[locale];
-    if (catalog === undefined) return;
-    catalog[localizationKey] = value;
-    onChange(next as unknown as ScenarioPackV1);
-  }
-
-  function updateTransition(
-    nodeIndex: number,
-    transitionIndex: number,
-    toNodeId: string,
-  ) {
-    const next = mutablePack(pack);
-    const transition =
-      next.scenarios[0]?.nodes[nodeIndex]?.transitions[transitionIndex];
-    if (transition === undefined) return;
-    transition.toNodeId = toNodeId;
-    onChange(next as unknown as ScenarioPackV1);
-  }
-
-  function updateStaffPortrait(
-    staffProfileIndex: number,
-    portraitAssetId: string,
-  ) {
-    const next = mutablePack(pack);
-    const profile =
-      next.scenarios[0]?.staffProfiles[staffProfileIndex];
-    if (profile === undefined) return;
-    profile.portraitAssetId = portraitAssetId;
-    onChange(next as unknown as ScenarioPackV1);
-  }
-
-  return (
-    <fieldset className="scenario-author__draft-editor">
-      <legend>{t("scenarioAuthor.editorHeading")}</legend>
-      <p>{t("scenarioAuthor.editorHelp")}</p>
-      <div className="instructor-review__form-grid">
-        <DraftTextField
-          id="draft-pack-id"
-          label={t("scenarioAuthor.editor.packId")}
-          value={pack.packId}
-          onChange={(value) => updateMetadata("packId", value)}
-        />
-        <DraftTextField
-          id="draft-pack-version"
-          label={t("scenarioAuthor.editor.packVersion")}
-          value={pack.version}
-          onChange={(value) => updateMetadata("packVersion", value)}
-        />
-        <DraftTextField
-          id="draft-domain"
-          label={t("scenarioAuthor.editor.domain")}
-          value={pack.manifest.domain}
-          onChange={(value) => updateMetadata("domain", value)}
-        />
-        <DraftTextField
-          id="draft-scenario-id"
-          label={t("scenarioAuthor.editor.scenarioId")}
-          value={scenario.scenarioId}
-          onChange={(value) => updateMetadata("scenarioId", value)}
-        />
-        <DraftTextField
-          id="draft-scenario-version"
-          label={t("scenarioAuthor.editor.scenarioVersion")}
-          value={scenario.version}
-          onChange={(value) =>
-            updateMetadata("scenarioVersion", value)
-          }
-        />
-      </div>
-      {pack.localizationCatalogs === undefined ? null : (
-        <div className="instructor-review__form-grid">
-          {pack.supportedLocales.map((locale) => (
-            <DraftTextField
-              key={locale}
-              id={`draft-scenario-title-${locale}`}
-              label={t("scenarioAuthor.editor.scenarioTitle", {
-                locale,
-              })}
-              value={
-                pack.localizationCatalogs?.[locale]?.[
-                  scenario.title.localizationKey
-                ] ?? ""
-              }
-              onChange={(value) =>
-                updateLocalizedText(
-                  locale,
-                  scenario.title.localizationKey,
-                  value,
-                )
-              }
-            />
-          ))}
-        </div>
-      )}
-      {scenario.staffProfiles.length === 0 ? null : (
-        <>
-          <h4>{t("scenarioAuthor.editor.staffProfiles")}</h4>
-          <p>{t("scenarioAuthor.editor.staffProfilesHelp")}</p>
-          <div className="scenario-author__staff-grid">
-            {scenario.staffProfiles.map((profile, profileIndex) => {
-              const portrait = pack.portraitAssets.find(
-                (candidate) =>
-                  candidate.assetId === profile.portraitAssetId,
-              );
-              return (
-                <article
-                  className="staff-identity staff-identity--compact"
-                  key={profile.staffProfileId}
-                >
-                  {portrait === undefined ? (
-                    <span
-                      className="staff-portrait staff-portrait--compact staff-portrait--fallback"
-                      aria-hidden="true"
-                    >
-                      ?
-                    </span>
-                  ) : (
-                    <img
-                      className="staff-portrait staff-portrait--compact"
-                      src={`./${portrait.filePath}`}
-                      width={48}
-                      height={60}
-                      alt=""
-                    />
-                  )}
-                  <div className="staff-identity__body">
-                    <h5 className="staff-identity__name">
-                      {t(profile.displayName.localizationKey)}
-                    </h5>
-                    <p className="staff-identity__role">
-                      {t(profile.roleTitle.localizationKey)}
-                    </p>
-                    <label
-                      className="field__label"
-                      htmlFor={`staff-portrait-${profile.staffProfileId}`}
-                    >
-                      {t("scenarioAuthor.editor.approvedPortrait")}
-                    </label>
-                    <select
-                      className="field__control"
-                      id={`staff-portrait-${profile.staffProfileId}`}
-                      value={profile.portraitAssetId}
-                      onChange={(event) =>
-                        updateStaffPortrait(
-                          profileIndex,
-                          event.target.value,
-                        )
-                      }
-                    >
-                      {pack.portraitAssets.map((asset) => (
-                        <option key={asset.assetId} value={asset.assetId}>
-                          {asset.assetId}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </>
-      )}
-      <h4>{t("scenarioAuthor.editor.workflow")}</h4>
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th scope="col">{t("scenarioAuthor.editor.node")}</th>
-              <th scope="col">{t("scenarioAuthor.editor.type")}</th>
-              <th scope="col">{t("scenarioAuthor.editor.title")}</th>
-              <th scope="col">{t("scenarioAuthor.editor.transitions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scenario.nodes.map((node, nodeIndex) => (
-              <tr key={node.nodeId}>
-                <td><code>{node.nodeId}</code></td>
-                <td>{node.nodeType}</td>
-                <td>
-                  {pack.localizationCatalogs === undefined
-                    ? <code>{node.title.localizationKey}</code>
-                    : pack.supportedLocales.map((locale) => (
-                        <DraftTextField
-                          key={locale}
-                          id={`draft-node-title-${String(nodeIndex)}-${locale}`}
-                          label={locale}
-                          value={
-                            pack.localizationCatalogs?.[locale]?.[
-                              node.title.localizationKey
-                            ] ?? ""
-                          }
-                          onChange={(value) =>
-                            updateLocalizedText(
-                              locale,
-                              node.title.localizationKey,
-                              value,
-                            )
-                          }
-                        />
-                      ))}
-                </td>
-                <td>
-                  {node.transitions.length === 0
-                    ? t("scenarioAuthor.editor.terminal")
-                    : node.transitions.map((transition, transitionIndex) => (
-                        <div
-                          className="field"
-                          key={transition.transitionId}
-                        >
-                          <label
-                            className="field__label"
-                            htmlFor={`draft-transition-${String(nodeIndex)}-${String(transitionIndex)}`}
-                          >
-                            {transition.transitionId}
-                          </label>
-                          <select
-                            className="field__control"
-                            id={`draft-transition-${String(nodeIndex)}-${String(transitionIndex)}`}
-                            value={transition.toNodeId}
-                            onChange={(event) =>
-                              updateTransition(
-                                nodeIndex,
-                                transitionIndex,
-                                event.target.value,
-                              )
-                            }
-                          >
-                            {scenario.nodes.map((target) => (
-                              <option
-                                key={target.nodeId}
-                                value={target.nodeId}
-                              >
-                                {target.nodeId}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </fieldset>
-  );
-}
-
-function DraftTextField({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  readonly id: string;
-  readonly label: string;
-  readonly value: string;
-  readonly onChange: (value: string) => void;
-}): ReactNode {
-  return (
-    <div className="field">
-      <label className="field__label" htmlFor={id}>{label}</label>
-      <input
-        className="field__control"
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
       />
     </div>
   );

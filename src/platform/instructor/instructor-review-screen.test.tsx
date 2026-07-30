@@ -1484,13 +1484,22 @@ describe("instructor review screen", () => {
     if (section === null) throw new Error("Expected report section.");
     const report = within(section);
     const user = userEvent.setup();
+    const assignmentSelect = await report.findByLabelText(
+      "Accessible assignment",
+    );
+    const reportButton = report.getByRole("button", {
+      name: "View report",
+    });
+    const controlRow = assignmentSelect.closest(
+      ".instructor-review__inline-control-row",
+    );
+    expect(controlRow).not.toBeNull();
+    expect(controlRow).toContainElement(reportButton);
     await user.selectOptions(
-      await report.findByLabelText("Accessible assignment"),
+      assignmentSelect,
       "ASSIGNMENT_EXPORT_001",
     );
-    await user.click(
-      report.getByRole("button", { name: "View report" }),
-    );
+    await user.click(reportButton);
 
     expect(api.loadAssignmentMonitor).toHaveBeenCalledWith(
       "ASSIGNMENT_EXPORT_001",
