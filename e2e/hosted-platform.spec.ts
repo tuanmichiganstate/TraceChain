@@ -1089,6 +1089,7 @@ test("creates an assignment from the published hosted scenario library", async (
             },
             counterfactualReplay: submitted.counterfactualReplay,
             learnerUserIds: submitted.learnerUserIds,
+            raterUserIds: submitted.raterUserIds,
             status: "active",
             feedbackReleaseStatus: "withheld",
             availableFrom: submitted.availableFrom,
@@ -1137,7 +1138,7 @@ test("creates an assignment from the published hosted scenario library", async (
     .getByLabel("Available from (optional)")
     .fill(availableFromLocal);
   await form
-    .getByLabel("Available until (optional)")
+    .getByLabel("Close new starts before (optional)")
     .fill(availableUntilLocal);
   await form
     .getByRole("checkbox", {
@@ -1201,6 +1202,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
       requireReflection: false,
     },
     learnerUserIds: ["USER_MONITOR_LEARNER"],
+    raterUserIds: [],
     status: "active",
     feedbackReleaseStatus: "withheld",
     createdAt: "2026-07-24T08:00:00.000Z",
@@ -1225,6 +1227,30 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
     }
     if (pathname === "/api/v1/assignment-learners") {
       await route.fulfill({ json: { learners: [] } });
+      return;
+    }
+    if (
+      pathname === "/api/v1/assignments" &&
+      route.request().method() === "GET"
+    ) {
+      await route.fulfill({
+        json: {
+          assignments: [
+            {
+              schemaVersion: "1.0.0",
+              assignmentId,
+              title: assignment.title,
+              scenarioId: assignment.scenarioId,
+              scenarioVersion: assignment.scenarioVersion,
+              mode: assignment.mode,
+              status: assignment.status,
+              assignedLearnerCount: 1,
+              assignedRaterCount: 0,
+              createdAt: assignment.createdAt,
+            },
+          ],
+        },
+      });
       return;
     }
     if (
@@ -1714,9 +1740,11 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
   const reportSection = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Assignment report" }),
   });
-  await reportSection.getByLabel("Assignment ID").fill(assignmentId);
   await reportSection
-    .getByRole("button", { name: "Load report" })
+    .getByLabel("Accessible assignment")
+    .selectOption(assignmentId);
+  await reportSection
+    .getByRole("button", { name: "View report" })
     .click();
 
   await expect(
