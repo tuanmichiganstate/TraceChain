@@ -57,7 +57,7 @@
 <li><a href="#group-recall"><span>recall</span><b>1</b></a></li>
 <li><a href="#group-report"><span>report</span><b>56</b></a></li>
 <li><a href="#group-sale"><span>sale</span><b>3</b></a></li>
-<li><a href="#group-scenarioAuthor"><span>scenarioAuthor</span><b>452</b></a></li>
+<li><a href="#group-scenarioAuthor"><span>scenarioAuthor</span><b>468</b></a></li>
 <li><a href="#group-score"><span>score</span><b>6</b></a></li>
 <li><a href="#group-signature"><span>signature</span><b>43</b></a></li>
 <li><a href="#group-staff"><span>staff</span><b>47</b></a></li>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>3198/3198</b>chuỗi song ngữ</li>
+    <li><b>3214/3214</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -9195,7 +9195,7 @@
 </article>
 </section>
 <section id="group-scenarioAuthor">
-  <h2>scenarioAuthor <span>452 chuỗi</span></h2>
+  <h2>scenarioAuthor <span>468 chuỗi</span></h2>
   <article class="entry" data-locale-key="scenarioAuthor.account">
   <header><code>scenarioAuthor.account</code></header>
   <p class="vi" lang="vi">Tài khoản đang đăng nhập</p>
@@ -11121,6 +11121,11 @@
   <p class="vi" lang="vi">Xóa bản nháp</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Discard draft</p></details>
 </article>
+  <article class="entry" data-locale-key="scenarioAuthor.draft.editingName">
+  <header><code>scenarioAuthor.draft.editingName</code></header>
+  <p class="vi" lang="vi">Đang chỉnh sửa {packId} phiên bản {version}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Editing {packId} version {version}</p></details>
+</article>
   <article class="entry" data-locale-key="scenarioAuthor.draft.recoveryHeading">
   <header><code>scenarioAuthor.draft.recoveryHeading</code></header>
   <p class="vi" lang="vi">Có bản nháp đã lưu</p>
@@ -11156,6 +11161,16 @@
   <p class="vi" lang="vi">Đang lưu bản nháp trên thiết bị này…</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Saving this draft on this device…</p></details>
 </article>
+  <article class="entry" data-locale-key="scenarioAuthor.editBlockedByWorkingDraft">
+  <header><code>scenarioAuthor.editBlockedByWorkingDraft</code></header>
+  <p class="vi" lang="vi">Hãy lưu bản nháp đang làm việc trước khi chỉnh sửa hoặc công bố một bản nháp trong thư viện.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Save the current working draft before editing or publishing a library draft.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.editDraft">
+  <header><code>scenarioAuthor.editDraft</code></header>
+  <p class="vi" lang="vi">Chỉnh sửa bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Edit draft</p></details>
+</article>
   <article class="entry" data-locale-key="scenarioAuthor.editor.domain">
   <header><code>scenarioAuthor.editor.domain</code></header>
   <p class="vi" lang="vi">Lĩnh vực bản nháp</p>
@@ -11185,6 +11200,11 @@
   <header><code>scenarioAuthor.error.compare</code></header>
   <p class="vi" lang="vi">So sánh phiên bản cần hai phiên bản đã lưu khác nhau của cùng một gói.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Version comparison requires two different stored versions of the same pack.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.error.editImmutable">
+  <header><code>scenarioAuthor.error.editImmutable</code></header>
+  <p class="vi" lang="vi">Chỉ có thể chỉnh sửa phiên bản gói kịch bản ở trạng thái bản nháp hoặc đã xác thực. Phiên bản đã công bố và đã ngừng dùng vẫn bất biến.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Only draft or validated scenario-pack versions can be edited. Published and retired versions remain immutable.</p></details>
 </article>
   <article class="entry" data-locale-key="scenarioAuthor.error.fileTooLarge">
   <header><code>scenarioAuthor.error.fileTooLarge</code></header>
@@ -11306,11 +11326,6 @@
   <p class="vi" lang="vi">Hướng dẫn</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Tutorial</p></details>
 </article>
-  <article class="entry" data-locale-key="scenarioAuthor.open">
-  <header><code>scenarioAuthor.open</code></header>
-  <p class="vi" lang="vi">Mở</p>
-  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Open</p></details>
-</article>
   <article class="entry" data-locale-key="scenarioAuthor.pack">
   <header><code>scenarioAuthor.pack</code></header>
   <p class="vi" lang="vi">Gói</p>
@@ -11321,10 +11336,75 @@
   <p class="vi" lang="vi">Tạo bản xem trước theo vai trò</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Generate role preview</p></details>
 </article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewAlternativeBranches">
+  <header><code>scenarioAuthor.previewAlternativeBranches</code></header>
+  <p class="vi" lang="vi">Các nhánh thay thế</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Alternative branches</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewCondition.always">
+  <header><code>scenarioAuthor.previewCondition.always</code></header>
+  <p class="vi" lang="vi">Luôn luôn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Always</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewCondition.eventOccurred">
+  <header><code>scenarioAuthor.previewCondition.eventOccurred</code></header>
+  <p class="vi" lang="vi">Sự kiện xảy ra: {eventType}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Event occurs: {eventType}</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewCondition.outcome.fail">
+  <header><code>scenarioAuthor.previewCondition.outcome.fail</code></header>
+  <p class="vi" lang="vi">không đạt</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">fails</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewCondition.outcome.pass">
+  <header><code>scenarioAuthor.previewCondition.outcome.pass</code></header>
+  <p class="vi" lang="vi">đạt</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">passes</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewCondition.policyResult">
+  <header><code>scenarioAuthor.previewCondition.policyResult</code></header>
+  <p class="vi" lang="vi">Chính sách {policyId}: {outcome}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Policy {policyId}: {outcome}</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewFlowHeading">
+  <header><code>scenarioAuthor.previewFlowHeading</code></header>
+  <p class="vi" lang="vi">Các đường đi trong quy trình</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Workflow paths</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewFlowHelp">
+  <header><code>scenarioAuthor.previewFlowHelp</code></header>
+  <p class="vi" lang="vi">Mỗi mũi tên thể hiện một chuyển tiếp đã biên soạn. Khi nhiều điều kiện đi ra từ cùng một nút, đó là các nhánh thay thế; mỗi lượt chạy chỉ đi theo điều kiện được thỏa mãn.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Each arrow shows an authored transition. Where several conditions leave one node, they are alternative branches; a run follows only the condition that is satisfied.</p></details>
+</article>
   <article class="entry" data-locale-key="scenarioAuthor.previewHeading">
   <header><code>scenarioAuthor.previewHeading</code></header>
   <p class="vi" lang="vi">Xem trước {packId} phiên bản {version}</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Preview {packId} version {version}</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewNextNode">
+  <header><code>scenarioAuthor.previewNextNode</code></header>
+  <p class="vi" lang="vi">Nút tiếp theo</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Next node</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewPack">
+  <header><code>scenarioAuthor.previewPack</code></header>
+  <p class="vi" lang="vi">Xem trước</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Preview</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewPathEnds">
+  <header><code>scenarioAuthor.previewPathEnds</code></header>
+  <p class="vi" lang="vi">Đường đi này kết thúc tại đây.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This path ends here.</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewReachedWhen">
+  <header><code>scenarioAuthor.previewReachedWhen</code></header>
+  <p class="vi" lang="vi">Đi đến đây khi:</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Reached when:</p></details>
+</article>
+  <article class="entry" data-locale-key="scenarioAuthor.previewRejoins">
+  <header><code>scenarioAuthor.previewRejoins</code></header>
+  <p class="vi" lang="vi">{count} đường đi vào hội tụ tại nút này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{count} incoming paths rejoin at this node.</p></details>
 </article>
   <article class="entry" data-locale-key="scenarioAuthor.previewSummary">
   <header><code>scenarioAuthor.previewSummary</code></header>
@@ -16310,7 +16390,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>4afc690d17de2722198d7050afe6e32d601c7893</code> · SHA-256 nguồn: <code>be8b210ccb5368c2362a5252f0deda9545a67b8790b0d0cc76a0c171c0a4e404</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>47841e7b7a8f601fecf05fa3b5800c7ed407fcfd</code> · SHA-256 nguồn: <code>7b0e775263ce11b3dddf26844d700737d226c89fa1c81bd48705c6aaa2f52b33</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

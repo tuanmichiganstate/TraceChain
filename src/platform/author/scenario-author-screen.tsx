@@ -20,6 +20,7 @@ import type { ApplicationRole } from "../contracts/run-events";
 import type {
   ScenarioPackComparisonV1,
   ScenarioPackListItemV1,
+  ScenarioPreviewTransitionV1,
   ScenarioPackValidationReportV1,
   ScenarioRolePreviewV1,
 } from "../contracts/scenario-authoring";
@@ -700,6 +701,40 @@ export function ScenarioAuthorScreen({
     }
   }
 
+  async function editPack(packId: string, version: string) {
+    setBusy(true);
+    setMessageKey(null);
+    try {
+      const loaded = await resolvedApi.loadPack(packId, version);
+      if (
+        loaded.status !== "draft" &&
+        loaded.status !== "validated"
+      ) {
+        setMessageKey("scenarioAuthor.error.editImmutable");
+        return;
+      }
+      beginCandidate(
+        structuredClone(loaded),
+        t("scenarioAuthor.draft.editingName", {
+          packId,
+          version,
+        }),
+      );
+      setSelected(null);
+      setPreview(null);
+      setComparison(null);
+      window.setTimeout(() => {
+        document
+          .querySelector<HTMLElement>("#scenario-builder")
+          ?.focus();
+      });
+    } catch {
+      setMessageKey("scenarioAuthor.error.generic");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function requestPreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (selected === null) return;
@@ -973,6 +1008,10 @@ export function ScenarioAuthorScreen({
         {session === null || !mayBrowse ? null : (
           <section className="card card--reference">
             <h2>{t("scenarioAuthor.libraryHeading")}</h2>
+            {isEditableScenarioPack(candidate) ||
+            recoverableDraft !== null ? (
+              <p>{t("scenarioAuthor.editBlockedByWorkingDraft")}</p>
+            ) : null}
             <div className="field">
               <label className="field__label" htmlFor="pack-status-filter">
                 {t("scenarioAuthor.statusFilter")}
@@ -1020,7 +1059,7 @@ export function ScenarioAuthorScreen({
                               void loadPack(pack.packId, pack.version)
                             }
                           >
-                            {t("scenarioAuthor.open")}
+                            {t("scenarioAuthor.previewPack")}
                           </button>
                           {mayAuthor &&
                           (pack.status === "draft" ||
@@ -1028,7 +1067,29 @@ export function ScenarioAuthorScreen({
                             <button
                               className="button button--secondary"
                               type="button"
-                              disabled={busy}
+                              disabled={
+                                busy ||
+                                isEditableScenarioPack(candidate) ||
+                                recoverableDraft !== null
+                              }
+                              onClick={() =>
+                                void editPack(pack.packId, pack.version)
+                              }
+                            >
+                              {t("scenarioAuthor.editDraft")}
+                            </button>
+                          ) : null}
+                          {mayAuthor &&
+                          (pack.status === "draft" ||
+                            pack.status === "validated") ? (
+                            <button
+                              className="button button--secondary"
+                              type="button"
+                              disabled={
+                                busy ||
+                                isEditableScenarioPack(candidate) ||
+                                recoverableDraft !== null
+                              }
                               onClick={() =>
                                 void mutate(
                                   () =>
@@ -1075,13 +1136,18 @@ export function ScenarioAuthorScreen({
               })}
             </h2>
             <form
-              className="instructor-review__form-grid"
+              className="instructor-review__form-grid scenario-author__preview-form"
               onSubmit={(event) => void requestPreview(event)}
             >
-              <PreviewFields pack={selected} />
-              <button className="button button--primary" disabled={busy}>
-                {t("scenarioAuthor.preview")}
-              </button>
+              <PreviewFields
+                key={`${selected.packId}@${selected.version}`}
+                pack={selected}
+              />
+              <div className="instructor-review__form-actions scenario-author__preview-actions">
+                <button className="button button--primary" disabled={busy}>
+                  {t("scenarioAuthor.preview")}
+                </button>
+              </div>
             </form>
             {preview === null ? null : (
               <div aria-live="polite">
@@ -1093,22 +1159,7 @@ export function ScenarioAuthorScreen({
                     count: preview.nodes.length,
                   })}
                 </p>
-                <ol>
-                  {preview.nodes.map((node) => (
-                    <li key={node.nodeId}>
-                      <strong>{node.title}</strong>{" "}
-                      <code>{node.nodeId}</code>
-                      {node.visibleEvidenceIds.length === 0 ? null : (
-                        <span>
-                          {" "}
-                          {t("scenarioAuthor.visibleEvidence", {
-                            count: node.visibleEvidenceIds.length,
-                          })}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
+                <PreviewWorkflow preview={preview} />
                 <EvidenceAssessmentCatalog
                   evidenceDefinitions={
                     preview.evidenceDefinitions
@@ -1303,14 +1354,178 @@ function AuditAuthoringSummary({
   );
 }
 
+function PreviewWorkflow({
+  preview,
+}: {
+  readonly preview: ScenarioRolePreviewV1;
+}): ReactNode {
+  const t = useTranslator();
+  const nodeById = new Map(
+    preview.nodes.map((node) => [node.nodeId, node]),
+  );
+  const incomingByNodeId = new Map<
+    string,
+    ScenarioPreviewTransitionV1[]
+  >();
+  for (const node of preview.nodes) {
+    for (const transition of node.transitions) {
+      incomingByNodeId.set(transition.toNodeId, [
+        ...(incomingByNodeId.get(transition.toNodeId) ?? []),
+        transition,
+      ]);
+    }
+  }
+  const conditionText = (
+    transition: ScenarioPreviewTransitionV1,
+  ): string => {
+    const condition = transition.condition;
+    switch (condition.kind) {
+      case "ALWAYS":
+        return t("scenarioAuthor.previewCondition.always");
+      case "DECISION_OPTION_SELECTED":
+        return condition.optionLabel;
+      case "POLICY_RESULT":
+        return t("scenarioAuthor.previewCondition.policyResult", {
+          policyId: condition.policyId,
+          outcome: t(
+            `scenarioAuthor.previewCondition.outcome.${condition.outcome}`,
+          ),
+        });
+      case "EVENT_OCCURRED":
+        return t("scenarioAuthor.previewCondition.eventOccurred", {
+          eventType: condition.eventType,
+        });
+    }
+  };
+
+  return (
+    <section
+      className="scenario-author__preview-flow"
+      aria-labelledby="scenario-author-preview-flow-heading"
+    >
+      <h4 id="scenario-author-preview-flow-heading">
+        {t("scenarioAuthor.previewFlowHeading")}
+      </h4>
+      <p>{t("scenarioAuthor.previewFlowHelp")}</p>
+      <ol className="scenario-author__preview-node-list">
+        {preview.nodes.map((node) => {
+          const incoming = incomingByNodeId.get(node.nodeId) ?? [];
+          const conditionalIncoming = incoming.filter(
+            (transition) => transition.condition.kind !== "ALWAYS",
+          );
+          return (
+            <li
+              className="scenario-author__preview-node"
+              key={node.nodeId}
+            >
+              <div className="scenario-author__preview-node-heading">
+                <h5>{node.title}</h5>
+                <code>{node.nodeId}</code>
+              </div>
+              <p className="scenario-author__preview-node-type">
+                <code>{node.nodeType}</code>
+              </p>
+              {conditionalIncoming.length === 1 ? (
+                <p>
+                  {t("scenarioAuthor.previewReachedWhen")}{" "}
+                  <strong>
+                    {conditionText(conditionalIncoming[0]!)}
+                  </strong>
+                </p>
+              ) : null}
+              {incoming.length > 1 ? (
+                <p>
+                  {t("scenarioAuthor.previewRejoins", {
+                    count: incoming.length,
+                  })}
+                </p>
+              ) : null}
+              {node.visibleEvidenceIds.length === 0 ? null : (
+                <p>
+                  {t("scenarioAuthor.visibleEvidence", {
+                    count: node.visibleEvidenceIds.length,
+                  })}
+                </p>
+              )}
+              {node.transitions.length === 0 ? (
+                <p>{t("scenarioAuthor.previewPathEnds")}</p>
+              ) : (
+                <div className="scenario-author__preview-transitions">
+                  <p>
+                    <strong>
+                      {node.transitions.length > 1
+                        ? t(
+                            "scenarioAuthor.previewAlternativeBranches",
+                          )
+                        : t("scenarioAuthor.previewNextNode")}
+                    </strong>
+                  </p>
+                  <ul>
+                    {node.transitions.map((transition) => {
+                      const target = nodeById.get(
+                        transition.toNodeId,
+                      );
+                      return (
+                        <li key={transition.transitionId}>
+                          <span className="scenario-author__preview-condition">
+                            {conditionText(transition)}
+                          </span>
+                          <span aria-hidden="true">→</span>
+                          <span>
+                            <strong>
+                              {target?.title ?? transition.toNodeId}
+                            </strong>{" "}
+                            <code>{transition.toNodeId}</code>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+function scenarioReference(
+  scenario: ScenarioPackV1["scenarios"][number] | undefined,
+): string {
+  return scenario === undefined
+    ? ""
+    : JSON.stringify({
+        scenarioId: scenario.scenarioId,
+        scenarioVersion: scenario.version,
+      });
+}
+
 function PreviewFields({
   pack,
 }: {
   readonly pack: ScenarioPackV1;
 }): ReactNode {
   const t = useTranslator();
-  const scenario = pack.scenarios[0];
+  const firstScenario = pack.scenarios[0];
+  const [selectedScenarioReference, setScenarioReference] =
+    useState(scenarioReference(firstScenario));
+  const [selectedRoleId, setRoleId] = useState(
+    firstScenario?.roles[0]?.roleId ?? "",
+  );
+  const [selectedLocale, setLocale] = useState(
+    pack.supportedLocales[0] ?? "",
+  );
+  const scenario =
+    pack.scenarios.find(
+      (candidate) =>
+        scenarioReference(candidate) === selectedScenarioReference,
+    ) ?? firstScenario;
   if (scenario === undefined) return null;
+  const localizedLabel = (localizationKey: string): string =>
+    pack.localizationCatalogs?.[selectedLocale]?.[localizationKey] ??
+    t(localizationKey);
   return (
     <>
       <div className="field">
@@ -1321,19 +1536,31 @@ function PreviewFields({
           className="field__control"
           id="preview-scenario"
           name="scenarioReference"
+          value={selectedScenarioReference}
+          onChange={(event) => {
+            const reference = event.target.value;
+            const nextScenario = pack.scenarios.find(
+              (candidate) =>
+                scenarioReference(candidate) === reference,
+            );
+            setScenarioReference(reference);
+            setRoleId(nextScenario?.roles[0]?.roleId ?? "");
+          }}
         >
           {pack.scenarios.map((candidate) => (
             <option
               key={`${candidate.scenarioId}@${candidate.version}`}
-              value={JSON.stringify({
-                scenarioId: candidate.scenarioId,
-                scenarioVersion: candidate.version,
-              })}
+              value={scenarioReference(candidate)}
             >
-              {candidate.scenarioId}
+              {localizedLabel(candidate.title.localizationKey)}
             </option>
           ))}
         </select>
+        <span className="field__hint scenario-author__identifier">
+          <code>
+            {scenario.scenarioId}@{scenario.version}
+          </code>
+        </span>
       </div>
       <div className="field">
         <label className="field__label" htmlFor="preview-role">
@@ -1343,13 +1570,18 @@ function PreviewFields({
           className="field__control"
           id="preview-role"
           name="roleId"
+          value={selectedRoleId}
+          onChange={(event) => setRoleId(event.target.value)}
         >
           {scenario.roles.map((role) => (
             <option key={role.roleId} value={role.roleId}>
-              {role.roleId}
+              {localizedLabel(role.displayName.localizationKey)}
             </option>
           ))}
         </select>
+        <span className="field__hint scenario-author__identifier">
+          <code>{selectedRoleId}</code>
+        </span>
       </div>
       <div className="field">
         <label className="field__label" htmlFor="preview-mode">
@@ -1375,6 +1607,8 @@ function PreviewFields({
           className="field__control"
           id="preview-locale"
           name="locale"
+          value={selectedLocale}
+          onChange={(event) => setLocale(event.target.value)}
         >
           {pack.supportedLocales.map((locale) => (
             <option key={locale} value={locale}>{locale}</option>

@@ -3,12 +3,15 @@ import type {
   ScenarioPackComparisonV1,
   ScenarioPackValidationReportV1,
   ScenarioPreviewNodeV1,
+  ScenarioPreviewTransitionConditionV1,
   ScenarioRolePreviewV1,
 } from "../contracts/scenario-authoring";
 import type {
+  DecisionNodeV1,
   HostedRunMode,
   ScenarioDefinitionV1,
   ScenarioPackV1,
+  TransitionConditionV1,
 } from "../contracts/scenario-pack";
 import { modeConfigurationFor } from "../runs/mode-configuration";
 import { validateScenarioPack } from "./validation";
@@ -99,6 +102,41 @@ function reachableNodes(
   return result;
 }
 
+function previewTransitionCondition(
+  condition: TransitionConditionV1,
+  scenario: ScenarioDefinitionV1,
+  locale: string,
+  catalogs: Readonly<
+    Record<string, Readonly<Record<string, unknown>>>
+  >,
+): ScenarioPreviewTransitionConditionV1 {
+  if (condition.kind !== "DECISION_OPTION_SELECTED") {
+    return condition;
+  }
+  const decision = scenario.nodes.find(
+    (node): node is DecisionNodeV1 =>
+      node.nodeType === "DECISION" &&
+      node.decisionId === condition.decisionId,
+  );
+  const option = decision?.fields
+    .flatMap((field) => field.options)
+    .find((candidate) => candidate.optionId === condition.optionId);
+  if (option === undefined) {
+    throw new ScenarioAuthoringError(
+      "PREVIEW_CONFIGURATION_INVALID",
+      `Preview transition ${condition.decisionId}/${condition.optionId} does not resolve to an authored decision option.`,
+    );
+  }
+  return {
+    ...condition,
+    optionLabel: localized(
+      option.label.localizationKey,
+      locale,
+      catalogs,
+    ),
+  };
+}
+
 export function createScenarioRolePreview(options: {
   readonly pack: ScenarioPackV1;
   readonly scenarioId: string;
@@ -166,9 +204,16 @@ export function createScenarioRolePreview(options: {
                 ?.visibleToRoleIds.includes(options.roleId),
             )
           : [],
-      transitionNodeIds: node.transitions.map(
-        (transition) => transition.toNodeId,
-      ),
+      transitions: node.transitions.map((transition) => ({
+        transitionId: transition.transitionId,
+        toNodeId: transition.toNodeId,
+        condition: previewTransitionCondition(
+          transition.when,
+          scenario,
+          options.locale,
+          localizationCatalogs,
+        ),
+      })),
     }),
   );
   const evidenceCatalog =
@@ -180,7 +225,7 @@ export function createScenarioRolePreview(options: {
       visibleToRoleId: options.roleId,
     });
   return {
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     packId: options.pack.packId,
     packVersion: options.pack.version,
     scenarioId: scenario.scenarioId,

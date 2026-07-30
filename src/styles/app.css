@@ -299,6 +299,108 @@
   grid-column: 1 / -1;
 }
 
+.scenario-author__preview-form > .field {
+  min-width: 0;
+}
+
+.scenario-author__preview-form .field__control {
+  width: 100%;
+  min-width: 0;
+}
+
+.scenario-author__preview-actions {
+  justify-content: flex-start;
+}
+
+.scenario-author__identifier {
+  display: block;
+  min-width: 0;
+}
+
+.scenario-author__identifier code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.scenario-author__preview-flow {
+  margin-block: var(--space-5);
+}
+
+.scenario-author__preview-flow > h4 {
+  margin-block-end: var(--space-2);
+}
+
+.scenario-author__preview-node-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-author__preview-node {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-inline-start: 0.3rem solid var(--colour-navy-strong);
+  border-radius: var(--radius-medium);
+}
+
+.scenario-author__preview-node-heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.scenario-author__preview-node-heading h5 {
+  margin: 0;
+}
+
+.scenario-author__preview-node-heading code,
+.scenario-author__preview-transitions code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.scenario-author__preview-node-type {
+  margin-block: var(--space-2);
+}
+
+.scenario-author__preview-transitions {
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--colour-border);
+}
+
+.scenario-author__preview-transitions > p {
+  margin-block: 0 var(--space-2);
+}
+
+.scenario-author__preview-transitions ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-author__preview-transitions li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.scenario-author__preview-condition {
+  grid-column: 1 / -1;
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  background: var(--colour-navy-soft);
+  border-radius: var(--radius-small);
+  overflow-wrap: anywhere;
+}
+
 .instructor-review__mode-settings {
   grid-column: 1 / -1;
   padding: var(--space-4);

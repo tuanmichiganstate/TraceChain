@@ -66,7 +66,7 @@ describe("scenario authoring services", () => {
         "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title"
       ],
     );
-    expect(preview.schemaVersion).toBe("2.0.0");
+    expect(preview.schemaVersion).toBe("3.0.0");
     expect(preview.modeConfiguration).toMatchObject({
       allowHints: false,
       feedbackTiming: "final",
@@ -139,6 +139,32 @@ describe("scenario authoring services", () => {
     ]);
     expect(preview.nodes[1]?.visibleEvidenceIds).toEqual([
       "EVID_PHARMA_SENSOR_SUMMARY",
+    ]);
+    expect(
+      preview.nodes.find(
+        (node) => node.nodeId === "NODE_PHARMA_DECISION",
+      )?.transitions,
+    ).toEqual([
+      {
+        transitionId: "TRANSITION_PHARMA_DECISION_HOLD",
+        toNodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
+        condition: {
+          kind: "DECISION_OPTION_SELECTED",
+          decisionId: "DECISION_PHARMA_RELEASE",
+          optionId: "HOLD_AND_INVESTIGATE",
+          optionLabel: "Giữ lại và điều tra",
+        },
+      },
+      {
+        transitionId: "TRANSITION_PHARMA_DECISION_RELEASE",
+        toNodeId: "NODE_PHARMA_CONSEQUENCE_RELEASE",
+        condition: {
+          kind: "DECISION_OPTION_SELECTED",
+          decisionId: "DECISION_PHARMA_RELEASE",
+          optionId: "RELEASE_WITHOUT_REVIEW",
+          optionLabel: "Xuất hàng mà không xem xét",
+        },
+      },
     ]);
   });
 

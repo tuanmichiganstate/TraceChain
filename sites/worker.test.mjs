@@ -2514,7 +2514,17 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.equal(previewBody.packId, pack.packId);
     assert.equal(previewBody.roleId, "LOGISTICS_COORDINATOR");
     assert.equal(previewBody.modeConfiguration.feedbackTiming, "final");
-    assert.equal(previewBody.schemaVersion, "2.0.0");
+    assert.equal(previewBody.schemaVersion, "3.0.0");
+    assert.equal(
+      previewBody.nodes.every((node) => Array.isArray(node.transitions)),
+      true,
+    );
+    assert.equal(
+      previewBody.nodes.some((node) =>
+        Object.hasOwn(node, "transitionNodeIds"),
+      ),
+      false,
+    );
     assert.equal(
       previewBody.evidenceDefinitions[0].assessmentMetadata
         .reliability,

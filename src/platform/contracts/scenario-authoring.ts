@@ -37,16 +37,42 @@ export interface ScenarioPackValidationReportV1 {
   readonly version?: string;
 }
 
+export type ScenarioPreviewTransitionConditionV1 =
+  | {
+      readonly kind: "ALWAYS";
+    }
+  | {
+      readonly kind: "DECISION_OPTION_SELECTED";
+      readonly decisionId: string;
+      readonly optionId: string;
+      readonly optionLabel: string;
+    }
+  | {
+      readonly kind: "POLICY_RESULT";
+      readonly policyId: string;
+      readonly outcome: "pass" | "fail";
+    }
+  | {
+      readonly kind: "EVENT_OCCURRED";
+      readonly eventType: string;
+    };
+
+export interface ScenarioPreviewTransitionV1 {
+  readonly transitionId: string;
+  readonly toNodeId: string;
+  readonly condition: ScenarioPreviewTransitionConditionV1;
+}
+
 export interface ScenarioPreviewNodeV1 {
   readonly nodeId: string;
   readonly nodeType: ScenarioNodeV1["nodeType"];
   readonly title: string;
   readonly visibleEvidenceIds: readonly string[];
-  readonly transitionNodeIds: readonly string[];
+  readonly transitions: readonly ScenarioPreviewTransitionV1[];
 }
 
 export interface ScenarioRolePreviewV1 {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly packId: string;
   readonly packVersion: string;
   readonly scenarioId: string;

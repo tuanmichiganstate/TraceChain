@@ -1263,7 +1263,7 @@ describe("scenario author workspace", () => {
     };
     const publish = vi.fn().mockResolvedValue(undefined);
     const preview = vi.fn().mockResolvedValue({
-      schemaVersion: "2.0.0",
+      schemaVersion: "3.0.0",
       packId: pack.packId,
       packVersion: pack.version,
       scenarioId: scenario.scenarioId,
@@ -1286,10 +1286,45 @@ describe("scenario author workspace", () => {
       nodes: [
         {
           nodeId: scenario.entryNodeId,
-          nodeType: "BRIEFING",
-          title: "Nhiệm vụ chứng nhận",
+          nodeType: "DECISION",
+          title: "Certificate decision",
           visibleEvidenceIds: [],
-          transitionNodeIds: ["certificate-evidence"],
+          transitions: [
+            {
+              transitionId: "TRANSITION_HOLD",
+              toNodeId: "certificate-held",
+              condition: {
+                kind: "DECISION_OPTION_SELECTED",
+                decisionId: "DECISION_CERTIFICATE",
+                optionId: "HOLD",
+                optionLabel: "Hold for verification",
+              },
+            },
+            {
+              transitionId: "TRANSITION_CONTINUE",
+              toNodeId: "certificate-continued",
+              condition: {
+                kind: "DECISION_OPTION_SELECTED",
+                decisionId: "DECISION_CERTIFICATE",
+                optionId: "CONTINUE",
+                optionLabel: "Continue processing",
+              },
+            },
+          ],
+        },
+        {
+          nodeId: "certificate-held",
+          nodeType: "CONSEQUENCE",
+          title: "Lot held",
+          visibleEvidenceIds: [],
+          transitions: [],
+        },
+        {
+          nodeId: "certificate-continued",
+          nodeType: "CONSEQUENCE",
+          title: "Lot continued",
+          visibleEvidenceIds: [],
+          transitions: [],
         },
       ],
       evidenceDefinitions: [
@@ -1355,13 +1390,28 @@ describe("scenario author workspace", () => {
     if (library === null) throw new Error("Expected library.");
     const user = userEvent.setup();
     await user.click(
-      within(library).getByRole("button", { name: "Open" }),
+      within(library).getByRole("button", { name: "Preview" }),
     );
     const previewHeading = await screen.findByRole("heading", {
       name: `Preview ${pack.packId} version ${pack.version}`,
     });
     const previewSection = previewHeading.closest("section");
     if (previewSection === null) throw new Error("Expected preview.");
+    expect(
+      previewSection.querySelector(
+        "form.scenario-author__preview-form",
+      ),
+    ).not.toBeNull();
+    expect(
+      within(previewSection).getByText(
+        `${scenario.scenarioId}@${scenario.version}`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection)
+        .getByRole("button", { name: "Generate role preview" })
+        .closest(".instructor-review__form-actions"),
+    ).not.toBeNull();
     await user.click(
       within(previewSection).getByRole("button", {
         name: "Generate role preview",
@@ -1380,9 +1430,18 @@ describe("scenario author workspace", () => {
     );
     expect(
       await within(previewSection).findByText(
-        "Nhiệm vụ chứng nhận",
+        "Certificate decision",
       ),
     ).toBeInTheDocument();
+    expect(
+      within(previewSection).getByText("Alternative branches"),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection).getAllByText("Hold for verification"),
+    ).toHaveLength(2);
+    expect(
+      within(previewSection).getAllByText("Continue processing"),
+    ).toHaveLength(2);
     expect(
       within(previewSection).getByRole("heading", {
         name: "Evidence interpretation contract",
@@ -1398,5 +1457,69 @@ describe("scenario author workspace", () => {
       within(library).getByRole("button", { name: "Publish" }),
     );
     expect(publish).toHaveBeenCalledWith(pack.packId, pack.version);
+  });
+
+  it("loads a mutable library draft back into the Scenario Builder", async () => {
+    const pack = structuredClone(packJson) as ScenarioPackV1;
+    const item = {
+      schemaVersion: "1.0.0" as const,
+      packId: pack.packId,
+      version: pack.version,
+      status: "draft" as const,
+      domain: pack.manifest.domain,
+      titleKey: pack.manifest.title.localizationKey,
+      supportedLocales: pack.supportedLocales,
+      scenarioCount: pack.scenarios.length,
+      updatedAt: "2026-07-24T03:00:00.000Z",
+      updatedByUserId: "USER_AUTHOR_001",
+    };
+    const loadPack = vi.fn().mockResolvedValue(pack);
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([item]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack,
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    const library = (await screen.findByRole("heading", {
+      name: "Scenario library",
+    })).closest("section");
+    if (library === null) throw new Error("Expected library.");
+    await userEvent.setup().click(
+      within(library).getByRole("button", {
+        name: "Edit draft",
+      }),
+    );
+
+    expect(loadPack).toHaveBeenCalledWith(pack.packId, pack.version);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Scenario Builder",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue(pack.packId)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: `Preview ${pack.packId} version ${pack.version}`,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(library).getByRole("button", { name: "Publish" }),
+    ).toBeDisabled();
   });
 });
