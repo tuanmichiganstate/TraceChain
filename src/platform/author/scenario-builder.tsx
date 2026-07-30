@@ -15,10 +15,15 @@ import type {
   ScenarioPolicyV1,
 } from "../contracts/scenario-pack";
 import {
+  appendIndependentScenarioCopy,
   changeScenarioPack,
+  countExactIdentifierOccurrences,
   defaultModeConfiguration,
   defaultScenarioNode,
+  reconcileScenarioPackReferences,
+  type DeepMutable,
   uniqueIdentifier,
+  uniqueLocalizationPrefix,
   updateLocalizedValue,
 } from "./scenario-builder-model";
 
@@ -32,7 +37,7 @@ const BUILDER_STEPS = [
   "review",
 ] as const;
 
-type BuilderStep = (typeof BUILDER_STEPS)[number];
+export type ScenarioBuilderStep = (typeof BUILDER_STEPS)[number];
 
 const NODE_TYPES: readonly ScenarioNodeV1["nodeType"][] = [
   "BRIEFING",
@@ -59,12 +64,15 @@ const HOSTED_MODES: readonly HostedRunMode[] = [
 export function ScenarioBuilder({
   pack,
   onChange,
+  initialStep,
 }: {
   readonly pack: ScenarioPackV1;
   readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly initialStep?: ScenarioBuilderStep | undefined;
 }): ReactNode {
   const t = useTranslator();
-  const [step, setStep] = useState<BuilderStep>("identity");
+  const [step, setStep] =
+    useState<ScenarioBuilderStep>(initialStep ?? "identity");
   const [selectedScenarioIndex, setScenarioIndex] = useState(0);
   const scenarioIndex =
     pack.scenarios[selectedScenarioIndex] === undefined
@@ -79,30 +87,36 @@ export function ScenarioBuilder({
       </p>
     );
   }
+  const scenarioIsReferenced =
+    countExactIdentifierOccurrences(
+      {
+        ...pack,
+        scenarios: pack.scenarios.filter(
+          (_candidate, index) => index !== scenarioIndex,
+        ),
+      },
+      scenario.scenarioId,
+    ) > 0;
+
+  function commitChange(updated: ScenarioPackV1): void {
+    onChange(reconcileScenarioPackReferences(pack, updated));
+  }
 
   function addScenario(): void {
     const nextIndex = pack.scenarios.length;
-    const next = changeScenarioPack(pack, (draft) => {
-      const source = draft.scenarios[scenarioIndex] ?? draft.scenarios[0];
-      if (source === undefined) return;
-      const copy = structuredClone(source);
-      copy.scenarioId = uniqueIdentifier(
-        draft.scenarios.map((candidate) => candidate.scenarioId),
-        "SCENARIO_NEW",
-      );
-      copy.version = "1.0.0";
-      copy.status = "draft";
-      delete copy.hostedRuntime;
-      delete copy.auditCase;
-      draft.scenarios.push(copy);
-    });
-    onChange(next);
+    const next = appendIndependentScenarioCopy(pack, scenarioIndex);
+    commitChange(next);
     setScenarioIndex(nextIndex);
   }
 
   function removeScenario(): void {
-    if (pack.scenarios.length <= 1) return;
-    onChange(
+    if (
+      pack.scenarios.length <= 1 ||
+      scenarioIsReferenced
+    ) {
+      return;
+    }
+    commitChange(
       changeScenarioPack(pack, (draft) => {
         draft.scenarios.splice(scenarioIndex, 1);
       }),
@@ -114,8 +128,10 @@ export function ScenarioBuilder({
 
   return (
     <section
+      id="scenario-builder"
       className="scenario-builder"
       aria-labelledby="scenario-builder-heading"
+      tabIndex={-1}
     >
       <header className="scenario-builder__header">
         <div>
@@ -162,7 +178,17 @@ export function ScenarioBuilder({
             <button
               className="button button--quiet"
               type="button"
-              disabled={pack.scenarios.length <= 1}
+              disabled={
+                pack.scenarios.length <= 1 ||
+                scenarioIsReferenced
+              }
+              title={
+                scenarioIsReferenced
+                  ? t(
+                      "scenarioAuthor.builder.removeReferenced",
+                    )
+                  : undefined
+              }
               onClick={removeScenario}
             >
               {t("scenarioAuthor.builder.removeScenario")}
@@ -199,7 +225,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "delivery" ? (
@@ -207,7 +233,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "participants" ? (
@@ -215,7 +241,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "evidence" ? (
@@ -223,7 +249,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "workflow" ? (
@@ -231,7 +257,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "assessment" ? (
@@ -239,7 +265,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
         {step === "review" ? (
@@ -247,7 +273,7 @@ export function ScenarioBuilder({
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            onChange={onChange}
+            onChange={commitChange}
           />
         ) : null}
       </div>
@@ -1124,19 +1150,22 @@ function ParticipantsStep({
           ),
           "ORG_NEW",
         );
-        const localizationKey =
-          `builder.${target.scenarioId}.${organizationId}.name`;
+        const localizationPrefix = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${target.scenarioId}.organization`,
+          [".name"],
+        );
+        const localizationKey = `${localizationPrefix}.name`;
         target.organizations.push({
           organizationId,
           displayName: { localizationKey },
         });
+        draft.localizationCatalogs ??= {};
         for (const locale of draft.supportedLocales) {
           const catalog =
-            draft.localizationCatalogs?.[locale] ?? {};
+            draft.localizationCatalogs[locale] ?? {};
           catalog[localizationKey] = organizationId;
-          if (draft.localizationCatalogs !== undefined) {
-            draft.localizationCatalogs[locale] = catalog;
-          }
+          draft.localizationCatalogs[locale] = catalog;
         }
       }),
     );
@@ -1153,20 +1182,23 @@ function ParticipantsStep({
           target.roles.map((role) => role.roleId),
           "ROLE_NEW",
         );
-        const localizationKey =
-          `builder.${target.scenarioId}.${roleId}.name`;
+        const localizationPrefix = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${target.scenarioId}.role`,
+          [".name"],
+        );
+        const localizationKey = `${localizationPrefix}.name`;
         target.roles.push({
           roleId,
           organizationId: organization.organizationId,
           displayName: { localizationKey },
         });
+        draft.localizationCatalogs ??= {};
         for (const locale of draft.supportedLocales) {
           const catalog =
-            draft.localizationCatalogs?.[locale] ?? {};
+            draft.localizationCatalogs[locale] ?? {};
           catalog[localizationKey] = roleId;
-          if (draft.localizationCatalogs !== undefined) {
-            draft.localizationCatalogs[locale] = catalog;
-          }
+          draft.localizationCatalogs[locale] = catalog;
         }
       }),
     );
@@ -1186,14 +1218,30 @@ function ParticipantsStep({
         {scenario.organizations.map((organization, index) => (
           <article
             className="scenario-builder__collection-card"
-            key={`organization-${String(index)}`}
+            key={organization.displayName.localizationKey}
           >
             <div className="scenario-builder__collection-heading">
               <code>{organization.organizationId}</code>
               <button
                 className="button button--quiet"
                 type="button"
-                disabled={scenario.organizations.length <= 1}
+                disabled={
+                  scenario.organizations.length <= 1 ||
+                  countExactIdentifierOccurrences(
+                    scenario,
+                    organization.organizationId,
+                  ) > 1
+                }
+                title={
+                  countExactIdentifierOccurrences(
+                    scenario,
+                    organization.organizationId,
+                  ) > 1
+                    ? t(
+                        "scenarioAuthor.builder.removeReferenced",
+                      )
+                    : undefined
+                }
                 onClick={() =>
                   onChange(
                     changeScenarioPack(pack, (draft) => {
@@ -1244,14 +1292,30 @@ function ParticipantsStep({
         {scenario.roles.map((role, index) => (
           <article
             className="scenario-builder__collection-card"
-            key={`role-${String(index)}`}
+            key={role.displayName.localizationKey}
           >
             <div className="scenario-builder__collection-heading">
               <code>{role.roleId}</code>
               <button
                 className="button button--quiet"
                 type="button"
-                disabled={scenario.roles.length <= 1}
+                disabled={
+                  scenario.roles.length <= 1 ||
+                  countExactIdentifierOccurrences(
+                    scenario,
+                    role.roleId,
+                  ) > 1
+                }
+                title={
+                  countExactIdentifierOccurrences(
+                    scenario,
+                    role.roleId,
+                  ) > 1
+                    ? t(
+                        "scenarioAuthor.builder.removeReferenced",
+                      )
+                    : undefined
+                }
                 onClick={() =>
                   onChange(
                     changeScenarioPack(pack, (draft) => {
@@ -1403,7 +1467,11 @@ function EvidenceStep({
           target.policies.map((policy) => policy.policyId),
           "POLICY_NEW",
         );
-        const key = `builder.${target.scenarioId}.${policyId}`;
+        const key = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${target.scenarioId}.policy`,
+          [".title", ".statement"],
+        );
         target.policies.push({
           policyId,
           policyType: "BUSINESS_RULE",
@@ -1440,14 +1508,18 @@ function EvidenceStep({
           ),
           "EVIDENCE_NEW",
         );
-        const key = `builder.${target.scenarioId}.${evidenceId}.title`;
+        const key = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${target.scenarioId}.evidence`,
+          [".title"],
+        );
         target.evidenceItems.push({
           evidenceId,
           evidenceType: "DOCUMENT",
-          title: { localizationKey: key },
+          title: { localizationKey: `${key}.title` },
           sourceOrganizationId: organization.organizationId,
-          visibleToRoleIds: [role.roleId],
           learnerMetadata: {
+            ownerOrganizationId: organization.organizationId,
             signatureStatus: "NOT_CHECKED",
             ledgerStatus: "OFF_CHAIN",
             completeness: "UNKNOWN",
@@ -1458,6 +1530,7 @@ function EvidenceStep({
               costUnits: 0,
             },
           },
+          visibleToRoleIds: [role.roleId],
           assessmentMetadata: {
             reliability: "NOT_ASSESSED",
             contentStatus: "NOT_ASSESSED",
@@ -1468,7 +1541,7 @@ function EvidenceStep({
         });
         seedLocalizedKeys(
           draft as unknown as ScenarioPackV1,
-          [key],
+          [`${key}.title`],
         );
       }),
     );
@@ -1488,7 +1561,7 @@ function EvidenceStep({
       >
         {scenario.policies.map((policy, index) => (
           <PolicyEditor
-            key={`policy-${String(index)}`}
+            key={policy.title.localizationKey}
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
@@ -1506,7 +1579,7 @@ function EvidenceStep({
       >
         {scenario.evidenceItems.map((evidence, index) => (
           <EvidenceItemEditor
-            key={`evidence-${String(index)}`}
+            key={evidence.title.localizationKey}
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
@@ -1562,6 +1635,20 @@ function PolicyEditor({
         <button
           className="button button--quiet"
           type="button"
+          disabled={
+            countExactIdentifierOccurrences(
+              scenario,
+              policy.policyId,
+            ) > 1
+          }
+          title={
+            countExactIdentifierOccurrences(
+              scenario,
+              policy.policyId,
+            ) > 1
+              ? t("scenarioAuthor.builder.removeReferenced")
+              : undefined
+          }
           onClick={() =>
             onChange(
               changeScenarioPack(pack, (draft) => {
@@ -1662,16 +1749,7 @@ function EvidenceItemEditor({
   const t = useTranslator();
   function update(
     mutation: (
-      target: {
-        evidenceId: string;
-        evidenceType: string;
-        sourceOrganizationId: string;
-        visibleToRoleIds: string[];
-        learnerMetadata: ScenarioEvidenceItemV1["learnerMetadata"];
-        assessmentMetadata:
-          ScenarioEvidenceItemV1["assessmentMetadata"];
-        content: JsonObject;
-      },
+      target: DeepMutable<ScenarioEvidenceItemV1>,
     ) => void,
   ): void {
     onChange(
@@ -1681,9 +1759,7 @@ function EvidenceItemEditor({
             evidenceIndex
           ];
         if (target !== undefined) {
-          mutation(
-            target as unknown as Parameters<typeof mutation>[0],
-          );
+          mutation(target);
         }
       }),
     );
@@ -1695,6 +1771,20 @@ function EvidenceItemEditor({
         <button
           className="button button--quiet"
           type="button"
+          disabled={
+            countExactIdentifierOccurrences(
+              scenario,
+              evidence.evidenceId,
+            ) > 1
+          }
+          title={
+            countExactIdentifierOccurrences(
+              scenario,
+              evidence.evidenceId,
+            ) > 1
+              ? t("scenarioAuthor.builder.removeReferenced")
+              : undefined
+          }
           onClick={() =>
             onChange(
               changeScenarioPack(pack, (draft) => {
@@ -1744,6 +1834,64 @@ function EvidenceItemEditor({
           }
         />
         <SelectControl
+          id={`evidence-owner-${String(evidenceIndex)}`}
+          label={t(
+            "scenarioAuthor.builder.evidenceOwnerOrganization",
+          )}
+          value={
+            evidence.learnerMetadata.ownerOrganizationId ?? ""
+          }
+          options={[
+            {
+              value: "",
+              label: t(
+                "scenarioAuthor.builder.optionalNotSpecified",
+              ),
+            },
+            ...scenario.organizations.map((organization) => ({
+              value: organization.organizationId,
+              label: organization.organizationId,
+            })),
+          ]}
+          onChange={(value) =>
+            update((target) => {
+              if (value.length === 0) {
+                delete target.learnerMetadata.ownerOrganizationId;
+              } else {
+                target.learnerMetadata.ownerOrganizationId = value;
+              }
+            })
+          }
+        />
+        <TextControl
+          id={`evidence-created-${String(evidenceIndex)}`}
+          label={t("scenarioAuthor.builder.evidenceCreatedAt")}
+          value={evidence.learnerMetadata.createdAt ?? ""}
+          onChange={(value) =>
+            update((target) => {
+              if (value.trim().length === 0) {
+                delete target.learnerMetadata.createdAt;
+              } else {
+                target.learnerMetadata.createdAt = value;
+              }
+            })
+          }
+        />
+        <TextControl
+          id={`evidence-effective-${String(evidenceIndex)}`}
+          label={t("scenarioAuthor.builder.evidenceEffectiveFrom")}
+          value={evidence.learnerMetadata.effectiveFrom ?? ""}
+          onChange={(value) =>
+            update((target) => {
+              if (value.trim().length === 0) {
+                delete target.learnerMetadata.effectiveFrom;
+              } else {
+                target.learnerMetadata.effectiveFrom = value;
+              }
+            })
+          }
+        />
+        <SelectControl
           id={`evidence-signature-${String(evidenceIndex)}`}
           label={t("scenarioAuthor.builder.signatureStatus")}
           value={evidence.learnerMetadata.signatureStatus}
@@ -1753,15 +1901,13 @@ function EvidenceItemEditor({
             "NOT_SIGNED",
             "NOT_CHECKED",
             "NOT_APPLICABLE",
-          ].map((value) => ({ value, label: value }))}
+          ].map((value) => ({
+            value,
+            label: t(`evidenceMetadata.signatureStatus.${value}`),
+          }))}
           onChange={(value) =>
             update((target) => {
-              (
-                target.learnerMetadata as unknown as {
-                  signatureStatus:
-                    ScenarioEvidenceItemV1["learnerMetadata"]["signatureStatus"];
-                }
-              ).signatureStatus =
+              target.learnerMetadata.signatureStatus =
                 value as ScenarioEvidenceItemV1["learnerMetadata"]["signatureStatus"];
             })
           }
@@ -1775,15 +1921,13 @@ function EvidenceItemEditor({
             "HASH_ANCHORED",
             "OFF_CHAIN",
             "NOT_APPLICABLE",
-          ].map((value) => ({ value, label: value }))}
+          ].map((value) => ({
+            value,
+            label: t(`evidenceMetadata.ledgerStatus.${value}`),
+          }))}
           onChange={(value) =>
             update((target) => {
-              (
-                target.learnerMetadata as unknown as {
-                  ledgerStatus:
-                    ScenarioEvidenceItemV1["learnerMetadata"]["ledgerStatus"];
-                }
-              ).ledgerStatus =
+              target.learnerMetadata.ledgerStatus =
                 value as ScenarioEvidenceItemV1["learnerMetadata"]["ledgerStatus"];
             })
           }
@@ -1793,16 +1937,16 @@ function EvidenceItemEditor({
           label={t("scenarioAuthor.builder.completeness")}
           value={evidence.learnerMetadata.completeness}
           options={["COMPLETE", "PARTIAL", "UNKNOWN"].map(
-            (value) => ({ value, label: value }),
+            (value) => ({
+              value,
+              label: t(
+                `evidenceMetadata.completenessStatus.${value}`,
+              ),
+            }),
           )}
           onChange={(value) =>
             update((target) => {
-              (
-                target.learnerMetadata as unknown as {
-                  completeness:
-                    ScenarioEvidenceItemV1["learnerMetadata"]["completeness"];
-                }
-              ).completeness =
+              target.learnerMetadata.completeness =
                 value as ScenarioEvidenceItemV1["learnerMetadata"]["completeness"];
             })
           }
@@ -1816,15 +1960,15 @@ function EvidenceItemEditor({
             "CONTESTED",
             "UNRELIABLE",
             "NOT_ASSESSED",
-          ].map((value) => ({ value, label: value }))}
+          ].map((value) => ({
+            value,
+            label: t(
+              `evidenceAssessment.reliabilityStatus.${value}`,
+            ),
+          }))}
           onChange={(value) =>
             update((target) => {
-              (
-                target.assessmentMetadata as unknown as {
-                  reliability:
-                    ScenarioEvidenceItemV1["assessmentMetadata"]["reliability"];
-                }
-              ).reliability =
+              target.assessmentMetadata.reliability =
                 value as ScenarioEvidenceItemV1["assessmentMetadata"]["reliability"];
             })
           }
@@ -1839,16 +1983,127 @@ function EvidenceItemEditor({
             "MISLEADING",
             "INCOMPLETE",
             "NOT_ASSESSED",
-          ].map((value) => ({ value, label: value }))}
+          ].map((value) => ({
+            value,
+            label: t(
+              `evidenceAssessment.contentStatusValue.${value}`,
+            ),
+          }))}
           onChange={(value) =>
             update((target) => {
-              (
-                target.assessmentMetadata as unknown as {
-                  contentStatus:
-                    ScenarioEvidenceItemV1["assessmentMetadata"]["contentStatus"];
-                }
-              ).contentStatus =
+              target.assessmentMetadata.contentStatus =
                 value as ScenarioEvidenceItemV1["assessmentMetadata"]["contentStatus"];
+            })
+          }
+        />
+        <SelectControl
+          id={`evidence-access-classification-${String(
+            evidenceIndex,
+          )}`}
+          label={t(
+            "scenarioAuthor.builder.accessClassification",
+          )}
+          value={
+            evidence.learnerMetadata.access.classification
+          }
+          options={[
+            "SHARED",
+            "ROLE_RESTRICTED",
+            "CONFIDENTIAL",
+          ].map((value) => ({
+            value,
+            label: t(
+              `evidenceMetadata.accessClassification.${value}`,
+            ),
+          }))}
+          onChange={(value) =>
+            update((target) => {
+              target.learnerMetadata.access.classification =
+                value as ScenarioEvidenceItemV1["learnerMetadata"]["access"]["classification"];
+            })
+          }
+        />
+        <SelectControl
+          id={`evidence-acquisition-${String(evidenceIndex)}`}
+          label={t("scenarioAuthor.builder.acquisitionMode")}
+          value={
+            evidence.learnerMetadata.access.acquisitionMode
+          }
+          options={["AVAILABLE", "REQUEST_REQUIRED"].map(
+            (value) => ({
+              value,
+              label: t(
+                `evidenceMetadata.acquisitionMode.${value}`,
+                {
+                  delayMinutes:
+                    evidence.learnerMetadata.access.delayMinutes,
+                  costUnits:
+                    evidence.learnerMetadata.access.costUnits,
+                },
+              ),
+            }),
+          )}
+          onChange={(value) =>
+            update((target) => {
+              target.learnerMetadata.access.acquisitionMode =
+                value as ScenarioEvidenceItemV1["learnerMetadata"]["access"]["acquisitionMode"];
+            })
+          }
+        />
+        <NumberControl
+          id={`evidence-delay-${String(evidenceIndex)}`}
+          label={t("scenarioAuthor.builder.accessDelayMinutes")}
+          value={evidence.learnerMetadata.access.delayMinutes}
+          minimum={0}
+          onChange={(value) =>
+            update((target) => {
+              target.learnerMetadata.access.delayMinutes = value;
+            })
+          }
+        />
+        <NumberControl
+          id={`evidence-cost-${String(evidenceIndex)}`}
+          label={t("scenarioAuthor.builder.accessCostUnits")}
+          value={evidence.learnerMetadata.access.costUnits}
+          minimum={0}
+          onChange={(value) =>
+            update((target) => {
+              target.learnerMetadata.access.costUnits = value;
+            })
+          }
+        />
+        <SelectControl
+          id={`evidence-permission-policy-${String(
+            evidenceIndex,
+          )}`}
+          label={t(
+            "scenarioAuthor.builder.accessPermissionPolicy",
+          )}
+          value={
+            evidence.learnerMetadata.access.permissionPolicyId ??
+            ""
+          }
+          options={[
+            {
+              value: "",
+              label: t(
+                "scenarioAuthor.builder.optionalNotSpecified",
+              ),
+            },
+            ...scenario.policies.map((policy) => ({
+              value: policy.policyId,
+              label: policy.policyId,
+            })),
+          ]}
+          onChange={(value) =>
+            update((target) => {
+              if (value.length === 0) {
+                delete target.learnerMetadata.access
+                  .permissionPolicyId;
+              } else {
+                target.learnerMetadata.access.permissionPolicyId =
+                  value;
+              }
             })
           }
         />
@@ -1872,6 +2127,39 @@ function EvidenceItemEditor({
           })
         }
       />
+      <CheckboxList
+        legend={t(
+          "scenarioAuthor.builder.hiddenConditionReferences",
+        )}
+        options={Object.keys(
+          scenario.initialState.actualState,
+        ).map((field) => ({ value: field, label: field }))}
+        selected={
+          evidence.assessmentMetadata.hiddenConditionReferences
+        }
+        onChange={(values) =>
+          update((target) => {
+            target.assessmentMetadata.hiddenConditionReferences = [
+              ...values,
+            ];
+          })
+        }
+      />
+      <TextControl
+        id={`evidence-limitations-${String(evidenceIndex)}`}
+        label={t("scenarioAuthor.builder.limitationCodes")}
+        value={evidence.assessmentMetadata.limitationCodes.join(
+          ", ",
+        )}
+        onChange={(value) =>
+          update((target) => {
+            target.assessmentMetadata.limitationCodes = value
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          })
+        }
+      />
       <JsonValueEditor
         idPrefix={`evidence-content-${String(evidenceIndex)}`}
         label={t("scenarioAuthor.builder.evidenceContent")}
@@ -1883,7 +2171,7 @@ function EvidenceItemEditor({
             !Array.isArray(value)
           ) {
             update((target) => {
-              target.content = value as JsonObject;
+              target.content = value as DeepMutable<JsonObject>;
             });
           }
         }}
@@ -1915,8 +2203,11 @@ function IncidentEditor({
               ),
               "INCIDENT_NEW",
             );
-            const key =
-              `builder.${target.scenarioId}.${incidentId}`;
+            const key = uniqueLocalizationPrefix(
+              draft as unknown as ScenarioPackV1,
+              `builder.${target.scenarioId}.incident`,
+              [".title", ".message"],
+            );
             target.instructorIncidents.push({
               incidentId,
               version: "1.0.0",
@@ -1940,7 +2231,7 @@ function IncidentEditor({
       {scenario.instructorIncidents.map((incident, index) => (
         <article
           className="scenario-builder__collection-card"
-          key={`incident-${String(index)}`}
+          key={incident.title.localizationKey}
         >
           <div className="scenario-builder__collection-heading">
             <code>{incident.incidentId}</code>
@@ -2092,6 +2383,31 @@ function seedLocalizedKeys(
   }
 }
 
+function nodeLocalizationSuffixes(
+  type: ScenarioNodeV1["nodeType"],
+): readonly string[] {
+  switch (type) {
+    case "BRIEFING":
+      return [".title", ".body"];
+    case "DECISION":
+      return [
+        ".title",
+        ".prompt",
+        ".field.choice",
+        ".option.a",
+        ".option.b",
+      ];
+    case "COMMUNICATION":
+    case "CONSEQUENCE":
+    case "FEEDBACK":
+      return [".title", ".message"];
+    case "REFLECTION":
+      return [".title", ".prompt"];
+    default:
+      return [".title"];
+  }
+}
+
 function WorkflowStep({
   pack,
   scenario,
@@ -2107,9 +2423,15 @@ function WorkflowStep({
       changeScenarioPack(pack, (draft) => {
         const target = draft.scenarios[scenarioIndex];
         if (target === undefined) return;
+        const localizationPrefix = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${target.scenarioId}.node.${newNodeType.toLowerCase()}`,
+          nodeLocalizationSuffixes(newNodeType),
+        );
         const node = defaultScenarioNode(
           newNodeType,
           target as unknown as ScenarioDefinitionV1,
+          localizationPrefix,
         );
         target.nodes.push(
           node as unknown as (typeof target.nodes)[number],
@@ -2128,6 +2450,7 @@ function WorkflowStep({
         {t("scenarioAuthor.builder.workflow.heading")}
       </h4>
       <p>{t("scenarioAuthor.builder.workflow.help")}</p>
+      <WorkflowMap scenario={scenario} />
       <div className="scenario-builder__add-row">
         <SelectControl
           id="builder-new-node-type"
@@ -2152,7 +2475,7 @@ function WorkflowStep({
       <div className="scenario-builder__workflow">
         {scenario.nodes.map((node, nodeIndex) => (
           <NodeEditor
-            key={`node-${String(nodeIndex)}`}
+            key={node.title.localizationKey}
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
@@ -2162,6 +2485,68 @@ function WorkflowStep({
           />
         ))}
       </div>
+    </section>
+  );
+}
+
+function WorkflowMap({
+  scenario,
+}: {
+  readonly scenario: ScenarioDefinitionV1;
+}): ReactNode {
+  const t = useTranslator();
+  const reachable = reachableNodes(scenario);
+  return (
+    <section
+      className="scenario-builder__workflow-map"
+      aria-labelledby="scenario-builder-workflow-map-heading"
+    >
+      <div>
+        <h5 id="scenario-builder-workflow-map-heading">
+          {t("scenarioAuthor.builder.workflowMap")}
+        </h5>
+        <p>{t("scenarioAuthor.builder.workflowMapHelp")}</p>
+      </div>
+      <ol>
+        {scenario.nodes.map((node) => (
+          <li key={node.title.localizationKey}>
+            <div className="scenario-builder__workflow-map-node">
+              <code>{node.nodeId}</code>
+              <span className="status status--neutral">
+                {t(
+                  `scenarioAuthor.builder.nodeType.${node.nodeType}`,
+                )}
+              </span>
+              {node.nodeId === scenario.entryNodeId ? (
+                <span className="status status--neutral">
+                  {t("scenarioAuthor.builder.workflowEntry")}
+                </span>
+              ) : null}
+              <span
+                className={
+                  reachable.has(node.nodeId)
+                    ? "status status--pass"
+                    : "status status--warn"
+                }
+              >
+                {reachable.has(node.nodeId)
+                  ? t("scenarioAuthor.builder.workflowReachable")
+                  : t("scenarioAuthor.builder.workflowDisconnected")}
+              </span>
+            </div>
+            <p>
+              {node.transitions.length === 0
+                ? t("scenarioAuthor.builder.workflowStops")
+                : node.transitions
+                    .map(
+                      (transition) =>
+                        `${node.nodeId} → ${transition.toNodeId}`,
+                    )
+                    .join("; ")}
+            </p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -2300,7 +2685,21 @@ function NodeEditor({
           <button
             className="button button--quiet"
             type="button"
-            disabled={scenario.nodes.length <= 1}
+            disabled={
+              scenario.nodes.length <= 1 ||
+              countExactIdentifierOccurrences(
+                scenario,
+                node.nodeId,
+              ) > 1
+            }
+            title={
+              countExactIdentifierOccurrences(
+                scenario,
+                node.nodeId,
+              ) > 1
+                ? t("scenarioAuthor.builder.removeReferenced")
+                : undefined
+            }
             onClick={() =>
               onChange(
                 changeScenarioPack(pack, (draft) => {
@@ -2782,13 +3181,16 @@ function DecisionEditor({
       node.fields.map((field) => field.fieldId),
       "FIELD_NEW",
     );
-    const key =
-      `builder.${scenario.scenarioId}.${node.nodeId}.${fieldId}`;
     onChange(
       changeScenarioPack(pack, (draft) => {
         const target =
           draft.scenarios[scenarioIndex]?.nodes[nodeIndex];
         if (target?.nodeType !== "DECISION") return;
+        const key = uniqueLocalizationPrefix(
+          draft as unknown as ScenarioPackV1,
+          `builder.${scenario.scenarioId}.${node.nodeId}.field`,
+          [".prompt", ".option.a"],
+        );
         target.fields.push({
           fieldId,
           selection: "single",
@@ -2868,7 +3270,7 @@ function DecisionEditor({
         {node.fields.map((field, fieldIndex) => (
           <article
             className="scenario-builder__collection-card"
-            key={`decision-field-${String(fieldIndex)}`}
+            key={field.prompt.localizationKey}
           >
             <div className="scenario-builder__collection-heading">
               <code>{field.fieldId}</code>
@@ -2947,8 +3349,6 @@ function DecisionEditor({
                     ),
                     "OPTION_NEW",
                   );
-                  const key =
-                    `builder.${scenario.scenarioId}.${node.nodeId}.${field.fieldId}.${optionId}.label`;
                   onChange(
                     changeScenarioPack(pack, (draft) => {
                       const target =
@@ -2958,14 +3358,21 @@ function DecisionEditor({
                       if (target?.nodeType !== "DECISION") {
                         return;
                       }
+                      const key = uniqueLocalizationPrefix(
+                        draft as unknown as ScenarioPackV1,
+                        `builder.${scenario.scenarioId}.${node.nodeId}.${field.fieldId}.option`,
+                        [".label"],
+                      );
                       target.fields[fieldIndex]?.options.push({
                         optionId,
-                        label: { localizationKey: key },
+                        label: {
+                          localizationKey: `${key}.label`,
+                        },
                         authoredValue: optionId,
                       });
                       seedLocalizedKeys(
                         draft as unknown as ScenarioPackV1,
-                        [key],
+                        [`${key}.label`],
                       );
                     }),
                   );
@@ -2977,7 +3384,7 @@ function DecisionEditor({
             {field.options.map((option, optionIndex) => (
               <div
                 className="scenario-builder__nested-card"
-                key={`decision-option-${String(optionIndex)}`}
+                key={option.label.localizationKey}
               >
                 <div className="instructor-review__form-grid">
                   <TextControl
@@ -3417,111 +3824,131 @@ function AssessmentStep({
         {t("scenarioAuthor.builder.assessment.heading")}
       </h4>
       <p>{t("scenarioAuthor.builder.assessment.help")}</p>
-      <CheckboxList
-        legend={t("scenarioAuthor.builder.appliedRubrics")}
-        options={pack.rubrics.map((rubric) => ({
-          value: rubric.rubricId,
-          label: rubric.rubricId,
-        }))}
-        selected={scenario.rubricIds}
-        onChange={(values) =>
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              const target = draft.scenarios[scenarioIndex];
-              if (target !== undefined) target.rubricIds = [...values];
-            }),
-          )
-        }
-      />
-      <CheckboxList
-        legend={t("scenarioAuthor.builder.appliedEvidenceRules")}
-        options={pack.evidenceRules.map((rule) => ({
-          value: rule.evidenceRuleId,
-          label: rule.evidenceRuleId,
-        }))}
-        selected={scenario.evidenceRuleIds}
-        onChange={(values) =>
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              const target = draft.scenarios[scenarioIndex];
-              if (target !== undefined) {
-                target.evidenceRuleIds = [...values];
-              }
-            }),
-          )
-        }
-      />
-      <StructuredValueEditor
-        path="scenarios[].competencyTargets"
-        idPrefix="builder-competency-targets"
-        label={t("scenarioAuthor.builder.competencyTargets")}
-        value={scenario.competencyTargets as unknown as JsonValue}
-        pack={pack}
-        onPackChange={onChange}
-        onChange={(value) => {
-          if (!Array.isArray(value)) return;
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              const target = draft.scenarios[scenarioIndex];
-              if (target !== undefined) {
-                target.competencyTargets =
-                  value as unknown as typeof target.competencyTargets;
-              }
-            }),
-          );
-        }}
-      />
-      <StructuredValueEditor
-        path="competencyFrameworks"
-        idPrefix="builder-frameworks"
-        label={t("scenarioAuthor.builder.competencyFrameworks")}
-        value={pack.competencyFrameworks as unknown as JsonValue}
-        pack={pack}
-        onPackChange={onChange}
-        onChange={(value) => {
-          if (!Array.isArray(value)) return;
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              draft.competencyFrameworks =
-                value as unknown as typeof draft.competencyFrameworks;
-            }),
-          );
-        }}
-      />
-      <StructuredValueEditor
-        path="rubrics"
-        idPrefix="builder-rubrics"
-        label={t("scenarioAuthor.builder.rubrics")}
-        value={pack.rubrics as unknown as JsonValue}
-        pack={pack}
-        onPackChange={onChange}
-        onChange={(value) => {
-          if (!Array.isArray(value)) return;
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              draft.rubrics =
-                value as unknown as typeof draft.rubrics;
-            }),
-          );
-        }}
-      />
-      <StructuredValueEditor
-        path="evidenceRules"
-        idPrefix="builder-evidence-rules"
-        label={t("scenarioAuthor.builder.evidenceRules")}
-        value={pack.evidenceRules as unknown as JsonValue}
-        pack={pack}
-        onPackChange={onChange}
-        onChange={(value) => {
-          if (!Array.isArray(value)) return;
-          onChange(
-            changeScenarioPack(pack, (draft) => {
-              draft.evidenceRules =
-                value as unknown as typeof draft.evidenceRules;
-            }),
-          );
-        }}
-      />
+      <section className="scenario-builder__assessment-section">
+        <h5>{t("scenarioAuthor.builder.assessment.useHeading")}</h5>
+        <p>{t("scenarioAuthor.builder.assessment.useHelp")}</p>
+        <CheckboxList
+          legend={t("scenarioAuthor.builder.appliedRubrics")}
+          options={pack.rubrics.map((rubric) => ({
+            value: rubric.rubricId,
+            label: rubric.rubricId,
+          }))}
+          selected={scenario.rubricIds}
+          onChange={(values) =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target = draft.scenarios[scenarioIndex];
+                if (target !== undefined) {
+                  target.rubricIds = [...values];
+                }
+              }),
+            )
+          }
+        />
+        <CheckboxList
+          legend={t("scenarioAuthor.builder.appliedEvidenceRules")}
+          options={pack.evidenceRules.map((rule) => ({
+            value: rule.evidenceRuleId,
+            label: rule.evidenceRuleId,
+          }))}
+          selected={scenario.evidenceRuleIds}
+          onChange={(values) =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target = draft.scenarios[scenarioIndex];
+                if (target !== undefined) {
+                  target.evidenceRuleIds = [...values];
+                }
+              }),
+            )
+          }
+        />
+        <StructuredValueEditor
+          path="scenarios[].competencyTargets"
+          idPrefix="builder-competency-targets"
+          label={t("scenarioAuthor.builder.competencyTargets")}
+          value={scenario.competencyTargets as unknown as JsonValue}
+          pack={pack}
+          onPackChange={onChange}
+          onChange={(value) => {
+            if (!Array.isArray(value)) return;
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target = draft.scenarios[scenarioIndex];
+                if (target !== undefined) {
+                  target.competencyTargets =
+                    value as unknown as typeof target.competencyTargets;
+                }
+              }),
+            );
+          }}
+        />
+      </section>
+      <section className="scenario-builder__assessment-section">
+        <h5>
+          {t("scenarioAuthor.builder.assessment.frameworkHeading")}
+        </h5>
+        <p>{t("scenarioAuthor.builder.assessment.frameworkHelp")}</p>
+        <StructuredValueEditor
+          path="competencyFrameworks"
+          idPrefix="builder-frameworks"
+          label={t("scenarioAuthor.builder.competencyFrameworks")}
+          value={pack.competencyFrameworks as unknown as JsonValue}
+          pack={pack}
+          onPackChange={onChange}
+          onChange={(value) => {
+            if (!Array.isArray(value)) return;
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                draft.competencyFrameworks =
+                  value as unknown as typeof draft.competencyFrameworks;
+              }),
+            );
+          }}
+        />
+      </section>
+      <section className="scenario-builder__assessment-section">
+        <h5>{t("scenarioAuthor.builder.assessment.rubricHeading")}</h5>
+        <p>{t("scenarioAuthor.builder.assessment.rubricHelp")}</p>
+        <StructuredValueEditor
+          path="rubrics"
+          idPrefix="builder-rubrics"
+          label={t("scenarioAuthor.builder.rubrics")}
+          value={pack.rubrics as unknown as JsonValue}
+          pack={pack}
+          onPackChange={onChange}
+          onChange={(value) => {
+            if (!Array.isArray(value)) return;
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                draft.rubrics =
+                  value as unknown as typeof draft.rubrics;
+              }),
+            );
+          }}
+        />
+      </section>
+      <section className="scenario-builder__assessment-section">
+        <h5>{t("scenarioAuthor.builder.assessment.rulesHeading")}</h5>
+        <p>{t("scenarioAuthor.builder.assessment.rulesHelp")}</p>
+        <StructuredValueEditor
+          path="evidenceRules"
+          idPrefix="builder-evidence-rules"
+          label={t("scenarioAuthor.builder.evidenceRules")}
+          value={pack.evidenceRules as unknown as JsonValue}
+          pack={pack}
+          onPackChange={onChange}
+          onChange={(value) => {
+            if (!Array.isArray(value)) return;
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                draft.evidenceRules =
+                  value as unknown as typeof draft.evidenceRules;
+              }),
+            );
+          }}
+        />
+      </section>
     </section>
   );
 }
@@ -4267,7 +4694,7 @@ function StructuredObjectEditor({
             <StructuredValueEditor
               path={`${path}.${key}`}
               idPrefix={`${idPrefix}-${key}`}
-              label={schemaFieldLabel(key)}
+              label={schemaFieldLabel(key, t)}
               value={childValue}
               {...(pack === undefined ? {} : { pack })}
               {...(onPackChange === undefined
@@ -4430,6 +4857,44 @@ function structuredArrayDefault(
   return "";
 }
 
-function schemaFieldLabel(key: string): string {
-  return key;
+const SCHEMA_FIELD_LABELS: Readonly<Record<string, string>> = {
+  frameworkId: "scenarioAuthor.builder.schemaField.frameworkId",
+  competencyId: "scenarioAuthor.builder.schemaField.competencyId",
+  competencies: "scenarioAuthor.builder.schemaField.competencies",
+  description: "scenarioAuthor.builder.schemaField.description",
+  indicators: "scenarioAuthor.builder.schemaField.indicators",
+  indicatorId: "scenarioAuthor.builder.schemaField.indicatorId",
+  statement: "scenarioAuthor.builder.schemaField.statement",
+  rubricId: "scenarioAuthor.builder.schemaField.rubricId",
+  levels: "scenarioAuthor.builder.schemaField.levels",
+  value: "scenarioAuthor.builder.schemaField.levelValue",
+  label: "scenarioAuthor.builder.schemaField.label",
+  criteria: "scenarioAuthor.builder.schemaField.criteria",
+  criterionId: "scenarioAuthor.builder.schemaField.criterionId",
+  indicatorIds: "scenarioAuthor.builder.schemaField.indicatorIds",
+  evidenceRuleIds:
+    "scenarioAuthor.builder.schemaField.evidenceRuleIds",
+  evidenceRuleId:
+    "scenarioAuthor.builder.schemaField.evidenceRuleId",
+  operator: "scenarioAuthor.builder.schemaField.operator",
+  eventType: "scenarioAuthor.builder.schemaField.eventType",
+  fieldPath: "scenarioAuthor.builder.schemaField.fieldPath",
+  expectedValue:
+    "scenarioAuthor.builder.schemaField.expectedValue",
+  expectedValues:
+    "scenarioAuthor.builder.schemaField.expectedValues",
+  targetType: "scenarioAuthor.builder.schemaField.targetType",
+  version: "scenarioAuthor.builder.schemaField.version",
+  status: "scenarioAuthor.builder.schemaField.status",
+  title: "scenarioAuthor.builder.schemaField.title",
+};
+
+function schemaFieldLabel(
+  key: string,
+  translate: (localizationKey: string) => string,
+): string {
+  const localizationKey = SCHEMA_FIELD_LABELS[key];
+  return localizationKey === undefined
+    ? key
+    : translate(localizationKey);
 }

@@ -1,5 +1,10 @@
 import { strToU8 } from "fflate";
-import { render, screen, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
@@ -12,6 +17,7 @@ import {
 } from "./scenario-author-screen";
 
 afterEach(() => {
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -174,6 +180,304 @@ describe("scenario author workspace", () => {
     );
   });
 
+  it("keeps workflow references valid when an author renames a node", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1,
+      issues: [],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Workflow" }),
+    );
+    const entryNodeInput = screen.getAllByLabelText("Node ID")[0]!;
+    await user.clear(entryNodeInput);
+    await user.type(entryNodeInput, "NODE_RENAMED_ENTRY");
+    await user.click(
+      screen.getByRole("button", { name: "Identity" }),
+    );
+
+    expect(
+      screen.getByLabelText("Entry workflow node"),
+    ).toHaveValue("NODE_RENAMED_ENTRY");
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    expect(validatePack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenarios: [
+          expect.objectContaining({
+            entryNodeId: "NODE_RENAMED_ENTRY",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("keeps generated localization controls unique after IDs are edited", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Evidence and policies",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence" }),
+    );
+    const firstEvidenceId =
+      screen.getAllByLabelText("Evidence ID").at(-1)!;
+    await user.clear(firstEvidenceId);
+    await user.type(firstEvidenceId, "EVID_FIRST");
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence" }),
+    );
+
+    const evidenceSection = screen
+      .getByRole("heading", { name: "Evidence items" })
+      .closest("section");
+    if (evidenceSection === null) {
+      throw new Error("Expected evidence section.");
+    }
+    const localizedInputIds = Array.from(
+      evidenceSection.querySelectorAll<HTMLInputElement>(
+        'input[id$="-en"], input[id$="-vi"]',
+      ),
+    ).map((input) => input.id);
+    expect(new Set(localizedInputIds).size).toBe(
+      localizedInputIds.length,
+    );
+  });
+
+  it("exposes complete evidence provenance and assessment metadata", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Evidence and policies",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence" }),
+    );
+
+    expect(
+      screen.getByLabelText("Evidence owner organization"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Related hidden actual-state fields"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Access classification"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("Signature status")).getByRole(
+        "option",
+        { name: "Valid" },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("Reliability")).getByRole(
+        "option",
+        { name: "Not assessed" },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("recovers an unfinished scenario draft for the same author", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_RECOVERY",
+        email: "recovery@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    const firstRender = render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    const domain = screen.getByLabelText("Draft domain");
+    await user.clear(domain);
+    await user.type(domain, "trade-finance");
+    await waitFor(() => {
+      expect(window.localStorage.length).toBe(1);
+    });
+    firstRender.unmount();
+
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "Saved draft available",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Start a new scenario",
+      }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Restore draft" }),
+    );
+    expect(screen.getByLabelText("Draft domain")).toHaveValue(
+      "trade-finance",
+    );
+  });
+
+  it("opens the builder section named by a validation issue", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: false,
+      checkedCount: 42,
+      issues: [
+        {
+          code: "UNKNOWN_ORGANIZATION_REFERENCE",
+          path: "$.scenarios[0].evidenceItems[0].sourceOrganizationId",
+          message: "must reference a defined organization",
+        },
+      ],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Open relevant builder section",
+      }),
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Evidence, policies, and incidents",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("parses JSON, YAML, and a bounded scenario-pack ZIP as data", () => {
     expect(
       parseScenarioPackBytes(
@@ -238,6 +542,46 @@ describe("scenario author workspace", () => {
     const domain = screen.getByLabelText("Draft domain");
     await user.clear(domain);
     await user.type(domain, "pharmaceutical-quality");
+    await user.click(
+      screen.getByRole("button", {
+        name: "Evidence and policies",
+      }),
+    );
+    const referencedEvidence = screen
+      .getByText("EVID_PHARMA_SENSOR_SUMMARY")
+      .closest("article");
+    if (referencedEvidence === null) {
+      throw new Error("Expected the referenced evidence card.");
+    }
+    expect(
+      within(referencedEvidence).getAllByRole("button", {
+        name: "Remove",
+      })[0],
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Workflow" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Workflow map" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "NODE_PHARMA_BRIEFING → NODE_PHARMA_EVIDENCE",
+      ),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Assessment" }),
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "1. Apply assessment definitions to this scenario",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "4. Define automated evidence rules",
+      }),
+    ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", {
         name: "Validate without importing",

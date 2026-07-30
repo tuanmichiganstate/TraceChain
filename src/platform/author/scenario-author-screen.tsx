@@ -29,9 +29,95 @@ import type {
 } from "../contracts/scenario-pack";
 import { EvidenceAssessmentCatalog } from "../components/evidence-assessment-catalog";
 import { createScenarioBuilderStarter } from "./scenario-builder-model";
-import { ScenarioBuilder } from "./scenario-builder";
+import {
+  ScenarioBuilder,
+  type ScenarioBuilderStep,
+} from "./scenario-builder";
 
 const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
+const AUTHOR_DRAFT_SCHEMA_VERSION = "1";
+
+interface StoredAuthorDraftV1 {
+  readonly schemaVersion: "1";
+  readonly savedAt: string;
+  readonly pack: ScenarioPackV1;
+}
+
+function authorDraftStorageKey(userId: string): string {
+  return `tracechain.scenario-author.draft.v1:${userId}`;
+}
+
+function parseStoredAuthorDraft(
+  raw: string,
+): StoredAuthorDraftV1 | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return null;
+    }
+    const record = parsed as Readonly<Record<string, unknown>>;
+    if (
+      record.schemaVersion !== AUTHOR_DRAFT_SCHEMA_VERSION ||
+      typeof record.savedAt !== "string" ||
+      !isEditableScenarioPack(record.pack)
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: "1",
+      savedAt: record.savedAt,
+      pack: record.pack,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function builderStepForValidationPath(
+  path: string,
+): ScenarioBuilderStep {
+  if (
+    /\.(?:modeConfigurations|supportedModes)(?:\.|\[|$)/u.test(
+      path,
+    )
+  ) {
+    return "delivery";
+  }
+  if (
+    /\.(?:organizations|roles|initialState|assetTypes|staffProfiles)(?:\.|\[|$)/u.test(
+      path,
+    )
+  ) {
+    return "participants";
+  }
+  if (
+    /\.(?:policies|evidenceItems|instructorIncidents)(?:\.|\[|$)/u.test(
+      path,
+    )
+  ) {
+    return "evidence";
+  }
+  if (/\.(?:nodes|entryNodeId)(?:\.|\[|$)/u.test(path)) {
+    return "workflow";
+  }
+  if (
+    /\.(?:competencyFrameworks|competencyTargets|rubrics|rubricIds|evidenceRules|evidenceRuleIds|outcomeModels|counterfactual|auditVariantBanks|auditCase)(?:\.|\[|$)/u.test(
+      path,
+    )
+  ) {
+    return "assessment";
+  }
+  return path.includes(".manifest") ||
+    /\.(?:packId|version|status|scenarioId|title)(?:\.|\[|$)/u.test(
+      path,
+    )
+    ? "identity"
+    : "review";
+}
 
 interface AuthorSession {
   readonly userId: string;
@@ -332,6 +418,14 @@ export function ScenarioAuthorScreen({
   const [busy, setBusy] = useState(false);
   const [isSigningOut, setSigningOut] = useState(false);
   const [messageKey, setMessageKey] = useState<string | null>(null);
+  const [recoverableDraft, setRecoverableDraft] =
+    useState<StoredAuthorDraftV1 | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [draftSaveFailed, setDraftSaveFailed] = useState(false);
+  const [builderFocusRequest, setBuilderFocusRequest] = useState<{
+    readonly step: ScenarioBuilderStep;
+    readonly requestId: number;
+  }>();
 
   const mayAuthor =
     session?.roles.some((role) =>
@@ -356,6 +450,48 @@ export function ScenarioAuthorScreen({
 
   async function refresh() {
     setPacks(await resolvedApi.listPacks());
+  }
+
+  function clearStoredDraft(userId = session?.userId): void {
+    if (userId === undefined) return;
+    try {
+      window.localStorage.removeItem(authorDraftStorageKey(userId));
+    } catch {
+      // A storage-denied browser still permits authoring without recovery.
+    }
+    setRecoverableDraft(null);
+    setDraftSaved(false);
+    setDraftSaveFailed(false);
+  }
+
+  function beginCandidate(value: unknown, name: string): void {
+    clearStoredDraft();
+    setCandidate(value);
+    setFileName(name);
+    setReport(null);
+    setMessageKey(null);
+    setBuilderFocusRequest(undefined);
+  }
+
+  function restoreDraft(): void {
+    if (recoverableDraft === null) return;
+    setCandidate(structuredClone(recoverableDraft.pack));
+    setFileName(t("scenarioAuthor.draft.restoredName"));
+    setReport(null);
+    setMessageKey(null);
+    setRecoverableDraft(null);
+    setDraftSaved(true);
+  }
+
+  function openValidationIssue(path: string): void {
+    const step = builderStepForValidationPath(path);
+    setBuilderFocusRequest((current) => ({
+      step,
+      requestId: (current?.requestId ?? 0) + 1,
+    }));
+    window.setTimeout(() => {
+      document.querySelector<HTMLElement>("#scenario-builder")?.focus();
+    });
   }
 
   async function signOutFromLti(): Promise<void> {
@@ -384,6 +520,20 @@ export function ScenarioAuthorScreen({
       .then(async (loaded) => {
         if (!active) return;
         setSession(loaded);
+        try {
+          const storageKey = authorDraftStorageKey(loaded.userId);
+          const raw = window.localStorage.getItem(storageKey);
+          if (raw !== null) {
+            const stored = parseStoredAuthorDraft(raw);
+            if (stored === null) {
+              window.localStorage.removeItem(storageKey);
+            } else {
+              setRecoverableDraft(stored);
+            }
+          }
+        } catch {
+          setDraftSaveFailed(true);
+        }
         if (
           loaded.roles.some((role) =>
             ["instructor", "scenario-author", "administrator"].includes(role)
@@ -401,14 +551,51 @@ export function ScenarioAuthorScreen({
     };
   }, [resolvedApi]);
 
+  useEffect(() => {
+    if (session === null || !isEditableScenarioPack(candidate)) {
+      return;
+    }
+    const saveTimer = window.setTimeout(() => {
+      const stored: StoredAuthorDraftV1 = {
+        schemaVersion: "1",
+        savedAt: new Date().toISOString(),
+        pack: candidate,
+      };
+      try {
+        window.localStorage.setItem(
+          authorDraftStorageKey(session.userId),
+          JSON.stringify(stored),
+        );
+        setDraftSaved(true);
+        setDraftSaveFailed(false);
+      } catch {
+        setDraftSaveFailed(true);
+      }
+    }, 200);
+    return () => window.clearTimeout(saveTimer);
+  }, [candidate, session]);
+
+  useEffect(() => {
+    if (!isEditableScenarioPack(candidate) || draftSaved) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () =>
+      window.removeEventListener(
+        "beforeunload",
+        warnBeforeLeaving,
+      );
+  }, [candidate, draftSaved]);
+
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file === undefined) return;
     setReport(null);
     setMessageKey(null);
     try {
-      setCandidate(await parseScenarioPackFile(file));
-      setFileName(file.name);
+      beginCandidate(await parseScenarioPackFile(file), file.name);
     } catch (error) {
       setCandidate(undefined);
       setFileName("");
@@ -422,30 +609,28 @@ export function ScenarioAuthorScreen({
   }
 
   function loadPharmaceuticalStarter() {
-    setCandidate(structuredClone(pharmaceuticalPackTemplate));
-    setFileName(t("scenarioAuthor.template.pharmaceuticalColdChain"));
-    setReport(null);
-    setMessageKey(null);
+    beginCandidate(
+      structuredClone(pharmaceuticalPackTemplate),
+      t("scenarioAuthor.template.pharmaceuticalColdChain"),
+    );
   }
 
   function startNewScenario() {
-    setCandidate(
+    beginCandidate(
       createScenarioBuilderStarter(
         structuredClone(
           pharmaceuticalPackTemplate,
         ) as ScenarioPackV1,
       ),
+      t("scenarioAuthor.builder.starterName"),
     );
-    setFileName(t("scenarioAuthor.builder.starterName"));
-    setReport(null);
-    setMessageKey(null);
   }
 
   function loadAuditStarter() {
-    setCandidate(structuredClone(auditPackTemplate));
-    setFileName(t("scenarioAuthor.template.auditCaseBank"));
-    setReport(null);
-    setMessageKey(null);
+    beginCandidate(
+      structuredClone(auditPackTemplate),
+      t("scenarioAuthor.template.auditCaseBank"),
+    );
   }
 
   async function validate() {
@@ -471,6 +656,9 @@ export function ScenarioAuthorScreen({
       if (result.valid) {
         await refresh();
         setMessageKey("scenarioAuthor.imported");
+        clearStoredDraft();
+        setCandidate(undefined);
+        setFileName("");
       }
     } catch {
       setMessageKey("scenarioAuthor.error.import");
@@ -634,11 +822,38 @@ export function ScenarioAuthorScreen({
           <section className="card card--work">
             <h2>{t("scenarioAuthor.importHeading")}</h2>
             <p>{t("scenarioAuthor.importHelp")}</p>
+            {recoverableDraft === null ? null : (
+              <section
+                className="notice notice--standalone"
+                aria-labelledby="scenario-author-recovery-heading"
+              >
+                <h3 id="scenario-author-recovery-heading">
+                  {t("scenarioAuthor.draft.recoveryHeading")}
+                </h3>
+                <p>{t("scenarioAuthor.draft.recoveryHelp")}</p>
+                <div className="start__actions">
+                  <button
+                    className="button button--primary"
+                    type="button"
+                    onClick={restoreDraft}
+                  >
+                    {t("scenarioAuthor.draft.restore")}
+                  </button>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => clearStoredDraft()}
+                  >
+                    {t("scenarioAuthor.draft.discard")}
+                  </button>
+                </div>
+              </section>
+            )}
             <div className="start__actions">
               <button
                 className="button button--primary"
                 type="button"
-                disabled={busy}
+                disabled={busy || recoverableDraft !== null}
                 onClick={startNewScenario}
               >
                 {t("scenarioAuthor.builder.start")}
@@ -646,7 +861,7 @@ export function ScenarioAuthorScreen({
               <button
                 className="button button--secondary"
                 type="button"
-                disabled={busy}
+                disabled={busy || recoverableDraft !== null}
                 onClick={loadPharmaceuticalStarter}
               >
                 {t("scenarioAuthor.loadTemplate")}
@@ -654,7 +869,7 @@ export function ScenarioAuthorScreen({
               <button
                 className="button button--secondary"
                 type="button"
-                disabled={busy}
+                disabled={busy || recoverableDraft !== null}
                 onClick={loadAuditStarter}
               >
                 {t("scenarioAuthor.loadAuditTemplate")}
@@ -669,17 +884,31 @@ export function ScenarioAuthorScreen({
                 id="scenario-pack-file"
                 type="file"
                 accept=".json,.yaml,.yml,.zip,application/json,application/zip"
+                disabled={busy || recoverableDraft !== null}
                 onChange={(event) => void selectFile(event)}
               />
               {fileName.length === 0 ? null : <span>{fileName}</span>}
             </div>
             {isEditableScenarioPack(candidate) ? (
+              <p role="status">
+                {draftSaveFailed
+                  ? t("scenarioAuthor.draft.saveFailed")
+                  : draftSaved
+                    ? t("scenarioAuthor.draft.saved")
+                    : t("scenarioAuthor.draft.saving")}
+              </p>
+            ) : null}
+            {isEditableScenarioPack(candidate) ? (
               <>
                 <ScenarioBuilder
+                  key={builderFocusRequest?.requestId ?? 0}
                   pack={candidate}
+                  initialStep={builderFocusRequest?.step}
                   onChange={(updated) => {
                     setCandidate(updated);
                     setReport(null);
+                    setDraftSaved(false);
+                    setDraftSaveFailed(false);
                   }}
                 />
                 <AuditAuthoringSummary pack={candidate} />
@@ -719,7 +948,20 @@ export function ScenarioAuthorScreen({
                   {report.issues.map((issue) => (
                     <li key={`${issue.code}:${issue.path}`}>
                       <code>{issue.path}</code>: {issue.message}{" "}
-                      <code>{issue.code}</code>
+                      <code>{issue.code}</code>{" "}
+                      {isEditableScenarioPack(candidate) ? (
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          onClick={() =>
+                            openValidationIssue(issue.path)
+                          }
+                        >
+                          {t(
+                            "scenarioAuthor.validationOpenSection",
+                          )}
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
