@@ -404,12 +404,12 @@ limit remains unlimited.
   course creation and institutional directory synchronization remain
   deployment concerns.
 - The learner, instructor/rater, author, and administrator workspaces are
-  implemented. The complete coffee journey uses its native runtime profile. A
-  bounded generic runtime also makes the self-localized pharmaceutical starter
-  publishable, assignable, and completable through authored briefing,
-  evidence-release, structured-decision, consequence, feedback, and completion
-  nodes. Authored feedback is returned only after the instructor releases
-  assignment feedback.
+  implemented. The complete coffee journey uses its native runtime profile.
+  The generic runtime executes every declarative Scenario Builder node and
+  transition condition, including canonical proposals, scenario-controlled
+  organizational approvals, deterministic policy checks, role-visible
+  communications, named seeded outcomes, and bounded reflections. Authored
+  feedback is returned only after the instructor releases assignment feedback.
 - Graphical Guided, Challenge, and Assessment package jobs reuse the exact
   Node-generated artifacts and content-addressed R2 storage.
 - The hosted service exposes both the custody-transfer and quantity-correction

@@ -4,7 +4,10 @@ import {
   SequenceIdGenerator,
   type Clock,
 } from "../../domain/simulation/environment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type {
+  ScenarioDefinitionV1,
+  ScenarioPackV1,
+} from "../contracts/scenario-pack";
 import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
 import { MemoryCounterfactualRunRepository } from "../runs/counterfactual-repository";
 import { MemoryRunEventStore } from "../runs/event-store";
@@ -56,6 +59,265 @@ function publishedPack(): ScenarioPackV1 {
     publishedAt: NOW,
     publishedBy: instructor.userId,
   });
+}
+
+function fullVocabularyPack(): ScenarioPackV1 {
+  const base = structuredClone(packJson) as unknown as ScenarioPackV1;
+  const source = base.scenarios[0];
+  if (source === undefined) {
+    throw new Error("Expected the pharmaceutical starter scenario.");
+  }
+  const briefing = source.nodes.find(
+    (node) => node.nodeType === "BRIEFING",
+  );
+  const evidence = source.nodes.find(
+    (node) => node.nodeType === "EVIDENCE_RELEASE",
+  );
+  const decision = source.nodes.find(
+    (node) => node.nodeType === "DECISION",
+  );
+  const consequence = source.nodes.find(
+    (node) => node.nodeType === "CONSEQUENCE",
+  );
+  const feedback = source.nodes.find(
+    (node) => node.nodeType === "FEEDBACK",
+  );
+  const completion = source.nodes.find(
+    (node) => node.nodeType === "COMPLETION",
+  );
+  if (
+    briefing === undefined ||
+    evidence === undefined ||
+    decision === undefined ||
+    consequence === undefined ||
+    feedback === undefined ||
+    completion === undefined
+  ) {
+    throw new Error("Expected every starter workflow node.");
+  }
+  const scenario: ScenarioDefinitionV1 = {
+    ...source,
+    scenarioId: "SCN_GENERIC_FULL_VOCABULARY",
+    version: "1.0.0",
+    status: "draft",
+    policies: source.policies.map((policy) => ({
+      ...policy,
+      configuration: {
+        minimumEndorsements: 1,
+        requiredEndorsementRoleIds: [
+          "DISTRIBUTION_PHARMACIST",
+        ],
+      },
+    })),
+    entryNodeId: "NODE_FULL_BRIEFING",
+    nodes: [
+      {
+        ...briefing,
+        nodeId: "NODE_FULL_BRIEFING",
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_BRIEFING_EVIDENCE",
+            toNodeId: "NODE_FULL_EVIDENCE",
+            when: { kind: "ALWAYS" },
+          },
+        ],
+      },
+      {
+        ...evidence,
+        nodeId: "NODE_FULL_EVIDENCE",
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_EVIDENCE_DECISION",
+            toNodeId: "NODE_FULL_DECISION",
+            when: { kind: "ALWAYS" },
+          },
+        ],
+      },
+      {
+        ...decision,
+        nodeId: "NODE_FULL_DECISION",
+        transitions: decision.fields[0]!.options.map(
+          (option, index) => ({
+            transitionId: `TRANSITION_FULL_DECISION_PROPOSAL_${String(index + 1)}`,
+            toNodeId: "NODE_FULL_PROPOSAL",
+            when: {
+              kind: "DECISION_OPTION_SELECTED" as const,
+              decisionId: decision.decisionId,
+              optionId: option.optionId,
+            },
+          }),
+        ),
+      },
+      {
+        nodeId: "NODE_FULL_PROPOSAL",
+        nodeType: "TRANSACTION_PROPOSAL",
+        title: decision.title,
+        proposalType: "COLD_CHAIN_DISPOSITION",
+        sourceDecisionId: decision.decisionId,
+        policyIds: [source.policies[0]!.policyId],
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_PROPOSAL_ENDORSEMENT",
+            toNodeId: "NODE_FULL_ENDORSEMENT",
+            when: {
+              kind: "EVENT_OCCURRED",
+              eventType: "TRANSACTION_PROPOSED",
+            },
+          },
+        ],
+      },
+      {
+        nodeId: "NODE_FULL_ENDORSEMENT",
+        nodeType: "ENDORSEMENT",
+        title: decision.title,
+        proposalNodeId: "NODE_FULL_PROPOSAL",
+        policyId: source.policies[0]!.policyId,
+        permittedRoleIds: ["DISTRIBUTION_PHARMACIST"],
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_ENDORSEMENT_POLICY",
+            toNodeId: "NODE_FULL_POLICY",
+            when: {
+              kind: "EVENT_OCCURRED",
+              eventType: "ENDORSEMENT_RECORDED",
+            },
+          },
+        ],
+      },
+      {
+        nodeId: "NODE_FULL_POLICY",
+        nodeType: "POLICY_CHECK",
+        title: decision.title,
+        proposalNodeId: "NODE_FULL_PROPOSAL",
+        policyId: source.policies[0]!.policyId,
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_POLICY_COMMUNICATION_PASS",
+            toNodeId: "NODE_FULL_COMMUNICATION",
+            when: {
+              kind: "POLICY_RESULT",
+              policyId: source.policies[0]!.policyId,
+              outcome: "pass",
+            },
+          },
+          {
+            transitionId: "TRANSITION_FULL_POLICY_COMMUNICATION_FAIL",
+            toNodeId: "NODE_FULL_COMMUNICATION",
+            when: {
+              kind: "POLICY_RESULT",
+              policyId: source.policies[0]!.policyId,
+              outcome: "fail",
+            },
+          },
+        ],
+      },
+      {
+        nodeId: "NODE_FULL_COMMUNICATION",
+        nodeType: "COMMUNICATION",
+        title: briefing.title,
+        messageId: "MESSAGE_FULL_REVIEW",
+        message: briefing.body,
+        visibleToRoleIds: ["DISTRIBUTION_PHARMACIST"],
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_COMMUNICATION_RANDOM",
+            toNodeId: "NODE_FULL_STOCHASTIC",
+            when: {
+              kind: "EVENT_OCCURRED",
+              eventType: "COMMUNICATION_ACKNOWLEDGED",
+            },
+          },
+        ],
+      },
+      {
+        nodeId: "NODE_FULL_STOCHASTIC",
+        nodeType: "STOCHASTIC_EVENT",
+        title: evidence.title,
+        randomStreamId:
+          source.outcomeModels[0]!.randomStreamId,
+        outcomes:
+          source.outcomeModels[0]!.distribution ===
+          "weighted-categorical"
+            ? source.outcomeModels[0]!.outcomes.map(
+                (outcome, index) => ({
+                  outcomeId: `OUTCOME_FULL_${String(index + 1)}`,
+                  weight: outcome.weight,
+                  resultCode: outcome.outcomeCode,
+                }),
+              )
+            : [],
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_RANDOM_CONSEQUENCE",
+            toNodeId: "NODE_FULL_CONSEQUENCE",
+            when: { kind: "ALWAYS" },
+          },
+        ],
+      },
+      {
+        ...consequence,
+        nodeId: "NODE_FULL_CONSEQUENCE",
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_CONSEQUENCE_FEEDBACK",
+            toNodeId: "NODE_FULL_FEEDBACK",
+            when: { kind: "ALWAYS" },
+          },
+        ],
+      },
+      {
+        ...feedback,
+        nodeId: "NODE_FULL_FEEDBACK",
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_FEEDBACK_REFLECTION",
+            toNodeId: "NODE_FULL_REFLECTION",
+            when: { kind: "ALWAYS" },
+          },
+        ],
+      },
+      {
+        nodeId: "NODE_FULL_REFLECTION",
+        nodeType: "REFLECTION",
+        title: feedback.title,
+        reflectionId: "REFLECTION_FULL",
+        prompt: decision.prompt,
+        maximumLength: 300,
+        transitions: [
+          {
+            transitionId: "TRANSITION_FULL_REFLECTION_COMPLETION",
+            toNodeId: "NODE_FULL_COMPLETION",
+            when: {
+              kind: "EVENT_OCCURRED",
+              eventType: "REFLECTION_SUBMITTED",
+            },
+          },
+        ],
+      },
+      {
+        ...completion,
+        nodeId: "NODE_FULL_COMPLETION",
+        outcomeCode: "FULL_VOCABULARY_COMPLETE",
+      },
+    ],
+  };
+  const {
+    publication: _publication,
+    ...draftContent
+  } = base;
+  return publishScenarioPack(
+    {
+      ...draftContent,
+      packId: "PACK_GENERIC_FULL_VOCABULARY",
+      version: "1.0.0",
+      status: "draft",
+      scenarios: [scenario],
+    },
+    {
+      publishedAt: NOW,
+      publishedBy: instructor.userId,
+    },
+  );
 }
 
 function createService(store = new MemoryRunEventStore()) {
@@ -210,7 +472,7 @@ describe("GenericHostedRunService", () => {
     ).toHaveLength(alternative.state.version);
   });
 
-  it("registers only the node and transition subset it can execute", () => {
+  it("registers every declarative node and transition the Scenario Builder can author", () => {
     const scenario = publishedPack().scenarios[0];
     const firstNode = scenario?.nodes[0];
     const firstTransition = firstNode?.transitions[0];
@@ -223,7 +485,7 @@ describe("GenericHostedRunService", () => {
     }
     expect(hostedRuntimeKindFor(scenario)).toBe("generic-v1");
 
-    const unsupported = {
+    const eventTransition = {
       ...scenario,
       nodes: [
         {
@@ -241,7 +503,182 @@ describe("GenericHostedRunService", () => {
         ...scenario.nodes.slice(1),
       ],
     };
-    expect(hostedRuntimeKindFor(unsupported)).toBeNull();
+    expect(hostedRuntimeKindFor(eventTransition)).toBe(
+      "generic-v1",
+    );
+    expect(
+      hostedRuntimeKindFor(fullVocabularyPack().scenarios[0]!),
+    ).toBe("generic-v1");
+  });
+
+  it("executes and exactly replays the complete Scenario Builder vocabulary", async () => {
+    const pack = fullVocabularyPack();
+    const store = new MemoryRunEventStore();
+    const service = new GenericHostedRunService(
+      pack,
+      "SCN_GENERIC_FULL_VOCABULARY",
+      "1.0.0",
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    );
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_FULL_VOCABULARY",
+      runId: "RUN_FULL_VOCABULARY",
+      assignmentId: "ASSIGNMENT_FULL_VOCABULARY",
+      learnerUserId: learner.userId,
+      mode: "tutorial",
+    });
+    const atDecision = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_FULL_BRIEFING",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const decided = await service.submit(learner, {
+      commandType: "SUBMIT_STRUCTURED_DECISION",
+      commandId: "COMMAND_DECIDE_FULL",
+      runId: atDecision.state.runId,
+      expectedRunVersion: atDecision.state.version,
+      decisionId: "DECISION_PHARMA_RELEASE",
+      responses: {
+        shipmentAction: ["HOLD_AND_INVESTIGATE"],
+      },
+      justification:
+        "Hold while the evidence and approval path are reviewed.",
+    });
+    expect(decided.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_PROPOSAL",
+    );
+
+    const proposed = await service.submit(learner, {
+      commandType: "CREATE_TRANSACTION_PROPOSAL",
+      commandId: "COMMAND_PROPOSE_FULL",
+      runId: decided.state.runId,
+      expectedRunVersion: decided.state.version,
+    });
+    expect(proposed.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_ENDORSEMENT",
+    );
+    expect(proposed.state.activeTrustedContext).toMatchObject({
+      roleId: "DISTRIBUTION_PHARMACIST",
+      organizationId: "ORG_HEALTHCARE_DISTRIBUTOR",
+    });
+    expect(
+      proposed.state.transactionProposals.NODE_FULL_PROPOSAL,
+    ).toMatchObject({
+      proposalType: "COLD_CHAIN_DISPOSITION",
+      sourceDecisionId: "DECISION_PHARMA_RELEASE",
+      roleId: "QUALITY_MANAGER",
+      organizationId: "ORG_MEDICINE_MANUFACTURER",
+    });
+    expect(proposed.state.ledgerState).toEqual(
+      created.state.ledgerState,
+    );
+
+    const endorsed = await service.submit(learner, {
+      commandType: "RECORD_ENDORSEMENT",
+      commandId: "COMMAND_ENDORSE_FULL",
+      runId: proposed.state.runId,
+      expectedRunVersion: proposed.state.version,
+    });
+    expect(endorsed.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_COMMUNICATION",
+    );
+    expect(endorsed.state.policyEvaluations).toEqual([
+      expect.objectContaining({
+        policyCheckNodeId: "NODE_FULL_POLICY",
+        outcome: "pass",
+        reasonCodes: expect.arrayContaining([
+          "AUTHORED_ENDORSEMENTS_SATISFIED",
+          "ENDORSEMENT_THRESHOLD_SATISFIED",
+          "REQUIRED_ENDORSER_ROLES_SATISFIED",
+        ]),
+      }),
+    ]);
+    expect(
+      endorsed.state.endorsements.NODE_FULL_ENDORSEMENT,
+    ).toMatchObject({
+      assurance: "SCENARIO_APPROVAL_RECORD",
+      roleId: "DISTRIBUTION_PHARMACIST",
+    });
+
+    const acknowledged = await service.submit(learner, {
+      commandType: "ACKNOWLEDGE_COMMUNICATION",
+      commandId: "COMMAND_ACKNOWLEDGE_FULL",
+      runId: endorsed.state.runId,
+      expectedRunVersion: endorsed.state.version,
+    });
+    expect(acknowledged.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_CONSEQUENCE",
+    );
+    expect(
+      acknowledged.state.stochasticEvents.NODE_FULL_STOCHASTIC,
+    ).toMatchObject({
+      stochasticNodeId: "NODE_FULL_STOCHASTIC",
+      resultCode: expect.stringMatching(
+        /^(EXCURSION_CONFIRMED|SENSOR_FAULT_CONFIRMED)$/u,
+      ),
+    });
+
+    const atReflection = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_ADVANCE_FULL_CONSEQUENCE",
+      runId: acknowledged.state.runId,
+      expectedRunVersion: acknowledged.state.version,
+    });
+    expect(atReflection.state.workflowState.currentNodeId).toBe(
+      "NODE_FULL_REFLECTION",
+    );
+    const completed = await service.submit(learner, {
+      commandType: "SUBMIT_REFLECTION",
+      commandId: "COMMAND_REFLECT_FULL",
+      runId: atReflection.state.runId,
+      expectedRunVersion: atReflection.state.version,
+      reflectionId: "REFLECTION_FULL",
+      response:
+        "The decision needs both the evidence review and the authorized approval.",
+    });
+    expect(completed.state.status).toBe("completed");
+    expect(completed.state.reflections.REFLECTION_FULL).toMatchObject({
+      response:
+        "The decision needs both the evidence review and the authorized approval.",
+    });
+    expect(completed.state.ledgerState).toEqual(
+      created.state.ledgerState,
+    );
+
+    const events = await store.load(completed.state.runId);
+    expect(events.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining([
+        "TRANSACTION_PROPOSED",
+        "ENDORSEMENT_RECORDED",
+        "POLICY_EVALUATED",
+        "COMMUNICATION_ACKNOWLEDGED",
+        "STOCHASTIC_EVENT_RESOLVED",
+        "REFLECTION_SUBMITTED",
+      ]),
+    );
+    const replayed = await service.loadState(completed.state.runId);
+    expect(replayed).toEqual(completed.state);
+    const projection = await service.learnerProjection(
+      learner,
+      completed.state.runId,
+    );
+    expect(projection).not.toHaveProperty("actualState");
+    expect(projection.businessState).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recordId: "PROPOSAL_NODE_FULL_PROPOSAL",
+        }),
+        expect.objectContaining({
+          recordId: "ENDORSEMENT_NODE_FULL_ENDORSEMENT",
+        }),
+        expect.objectContaining({
+          recordId: "STOCHASTIC_NODE_FULL_STOCHASTIC",
+        }),
+      ]),
+    );
   });
 
   it("runs a second discipline from authored nodes without a scenario adapter", async () => {

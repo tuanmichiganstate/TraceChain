@@ -33,8 +33,69 @@ export interface GenericEvidenceRequestRecord {
   readonly permissionPolicyId?: string;
 }
 
+export interface GenericTransactionProposalRecord {
+  readonly proposalNodeId: string;
+  readonly proposalId: string;
+  readonly proposalType: string;
+  readonly sourceDecisionId: string;
+  readonly policyIds: readonly string[];
+  readonly sourceDecisionHash: string;
+  readonly proposalDigest: string;
+  readonly expectedRunVersion: number;
+  readonly proposedAt: string;
+  readonly organizationId: string;
+  readonly roleId: string;
+}
+
+export interface GenericEndorsementRecord {
+  readonly endorsementNodeId: string;
+  readonly proposalNodeId: string;
+  readonly proposalId: string;
+  readonly proposalDigest: string;
+  readonly policyId: string;
+  readonly organizationId: string;
+  readonly roleId: string;
+  readonly endorsedAt: string;
+  /**
+   * Generic authored packs record an organizational approval. They do not
+   * claim a cryptographic signature unless a native runtime supplies one.
+   */
+  readonly assurance: "SCENARIO_APPROVAL_RECORD";
+}
+
+export interface GenericPolicyEvaluationRecord {
+  readonly policyCheckNodeId: string;
+  readonly policyId: string;
+  readonly proposalNodeId: string;
+  readonly outcome: "pass" | "fail";
+  readonly reasonCodes: readonly string[];
+  readonly evaluatedAt: string;
+}
+
+export interface GenericCommunicationRecord {
+  readonly communicationNodeId: string;
+  readonly messageId: string;
+  readonly visibleToRoleIds: readonly string[];
+  readonly acknowledgedAt: string;
+  readonly acknowledgedByRoleId: string;
+}
+
+export interface GenericStochasticEventRecord {
+  readonly stochasticNodeId: string;
+  readonly outcomeId: string;
+  readonly resultCode: string;
+  readonly resolution: StochasticOutcomeResolutionV1;
+  readonly resolvedAt: string;
+}
+
+export interface GenericReflectionSubmission {
+  readonly reflectionId: string;
+  readonly response: string;
+  readonly submittedAt: string;
+}
+
 export interface GenericHostedRunState {
-  readonly schemaVersion: "1.2.0";
+  readonly schemaVersion: "2.0.0";
   readonly runtimeKind: "generic-v1";
   readonly runId: string;
   readonly assignmentId: string;
@@ -70,6 +131,24 @@ export interface GenericHostedRunState {
   readonly decisions: Readonly<
     Record<string, GenericDecisionSubmission>
   >;
+  readonly transactionProposals: Readonly<
+    Record<string, GenericTransactionProposalRecord>
+  >;
+  readonly endorsements: Readonly<
+    Record<string, GenericEndorsementRecord>
+  >;
+  readonly policyEvaluations:
+    readonly GenericPolicyEvaluationRecord[];
+  readonly communications: Readonly<
+    Record<string, GenericCommunicationRecord>
+  >;
+  readonly stochasticEvents: Readonly<
+    Record<string, GenericStochasticEventRecord>
+  >;
+  readonly reflections: Readonly<
+    Record<string, GenericReflectionSubmission>
+  >;
+  readonly occurredEventTypes: readonly string[];
   readonly competencyEvidence: readonly HostedCompetencyEvidence[];
   readonly workflowState: {
     readonly currentNodeId: string;
@@ -138,12 +217,38 @@ export interface SubmitGenericDecisionCommand
   readonly adverseEventProbabilityPercent?: number;
 }
 
+export interface CreateGenericTransactionProposalCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "CREATE_TRANSACTION_PROPOSAL";
+}
+
+export interface RecordGenericEndorsementCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "RECORD_ENDORSEMENT";
+}
+
+export interface AcknowledgeGenericCommunicationCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "ACKNOWLEDGE_COMMUNICATION";
+}
+
+export interface SubmitGenericReflectionCommand
+  extends GenericHostedCommandBase {
+  readonly commandType: "SUBMIT_REFLECTION";
+  readonly reflectionId: string;
+  readonly response: string;
+}
+
 export type GenericHostedCommand =
   | AdvanceGenericWorkflowCommand
   | InspectGenericEvidenceCommand
   | RequestGenericEvidenceCommand
   | ConsultGenericPolicyCommand
-  | SubmitGenericDecisionCommand;
+  | SubmitGenericDecisionCommand
+  | CreateGenericTransactionProposalCommand
+  | RecordGenericEndorsementCommand
+  | AcknowledgeGenericCommunicationCommand
+  | SubmitGenericReflectionCommand;
 
 export interface GenericHostedRunResult {
   readonly state: GenericHostedRunState;

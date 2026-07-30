@@ -1272,6 +1272,84 @@ function LearnerCompetencyProfile({
   );
 }
 
+function GenericAdvancedNodeDetails({
+  node,
+}: {
+  readonly node:
+    | NonNullable<
+        LearnerRunProjectionV1["presentation"]
+      >["currentNode"]
+    | undefined;
+}): ReactNode {
+  const t = useTranslator();
+  if (
+    node === undefined ||
+    ![
+      "TRANSACTION_PROPOSAL",
+      "ENDORSEMENT",
+      "POLICY_CHECK",
+      "STOCHASTIC_EVENT",
+    ].includes(node.nodeType)
+  ) {
+    return null;
+  }
+  return (
+    <>
+      <h4>{t("hostedLearner.authoredWorkflowDetails")}</h4>
+      <dl className="instructor-review__facts">
+        {node.proposalType === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.proposalType")}</dt>
+            <dd><code>{node.proposalType}</code></dd>
+          </div>
+        )}
+        {node.sourceDecisionId === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.sourceDecision")}</dt>
+            <dd><code>{node.sourceDecisionId}</code></dd>
+          </div>
+        )}
+        {node.proposalNodeId === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.proposalReference")}</dt>
+            <dd><code>{node.proposalNodeId}</code></dd>
+          </div>
+        )}
+        {node.policyId === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.policyReference")}</dt>
+            <dd><code>{node.policyId}</code></dd>
+          </div>
+        )}
+        {node.policyIds === undefined ||
+        node.policyIds.length === 0 ? null : (
+          <div>
+            <dt>{t("hostedLearner.appliedPolicies")}</dt>
+            <dd>{node.policyIds.join(", ")}</dd>
+          </div>
+        )}
+        {node.permittedRoleIds === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.permittedRoles")}</dt>
+            <dd>{node.permittedRoleIds.join(", ")}</dd>
+          </div>
+        )}
+        {node.randomStreamId === undefined ? null : (
+          <div>
+            <dt>{t("hostedLearner.randomStream")}</dt>
+            <dd><code>{node.randomStreamId}</code></dd>
+          </div>
+        )}
+      </dl>
+      {node.nodeType === "ENDORSEMENT" ? (
+        <p className="field__hint">
+          {t("hostedLearner.genericEndorsementDisclosure")}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function RunWorkspace({
   projection,
   busy,
@@ -1372,6 +1450,7 @@ function RunWorkspace({
             {currentNode?.message === undefined ? null : (
               <p>{runText(currentNode.message, t)}</p>
             )}
+            <GenericAdvancedNodeDetails node={currentNode} />
           </>
         )}
       </section>
@@ -2016,6 +2095,28 @@ function ActionControl({
       />
     );
   }
+  if (
+    action === "CREATE_TRANSACTION_PROPOSAL" ||
+    action === "RECORD_ENDORSEMENT" ||
+    action === "ACKNOWLEDGE_COMMUNICATION"
+  ) {
+    return (
+      <SimpleAction
+        action={action}
+        busy={busy}
+        onSubmit={() => onSubmit({ commandType: action })}
+      />
+    );
+  }
+  if (action === "SUBMIT_REFLECTION") {
+    return (
+      <GenericReflectionForm
+        projection={projection}
+        busy={busy}
+        onSubmit={onSubmit}
+      />
+    );
+  }
   if (action === "CREATE_CUSTODY_TRANSFER_PROPOSAL") {
     return <CustodyProposalForm busy={busy} onSubmit={onSubmit} />;
   }
@@ -2521,6 +2622,66 @@ function GenericDecisionForm({
           !confidenceValid ||
           !adverseProbabilityValid
         }
+      >
+        {t("hostedLearner.submit")}
+      </button>
+    </form>
+  );
+}
+
+function GenericReflectionForm({
+  projection,
+  busy,
+  onSubmit,
+}: ActionFormProps & {
+  readonly projection: LearnerRunProjectionV1;
+}): ReactNode {
+  const t = useTranslator();
+  const node = projection.presentation?.currentNode;
+  const [response, setResponse] = useState("");
+  if (
+    node === undefined ||
+    node.nodeType !== "REFLECTION" ||
+    node.reflectionId === undefined ||
+    node.maximumLength === undefined
+  ) {
+    return null;
+  }
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit({
+          commandType: "SUBMIT_REFLECTION",
+          reflectionId: node.reflectionId,
+          response,
+        });
+      }}
+    >
+      <div className="field">
+        <label
+          className="field__label"
+          htmlFor={`generic-reflection-${node.reflectionId}`}
+        >
+          {t("hostedLearner.reflectionResponse")}
+        </label>
+        <textarea
+          className="field__control"
+          id={`generic-reflection-${node.reflectionId}`}
+          value={response}
+          required
+          maxLength={node.maximumLength}
+          onChange={(event) => setResponse(event.target.value)}
+        />
+        <p className="field__hint">
+          {t("hostedLearner.reflectionLimit", {
+            maximum: node.maximumLength,
+          })}
+        </p>
+      </div>
+      <button
+        className="button button--primary"
+        disabled={busy || response.trim().length === 0}
       >
         {t("hostedLearner.submit")}
       </button>

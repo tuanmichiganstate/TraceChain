@@ -33,6 +33,9 @@ export type PlatformRunEventType =
   | "ENDORSED_TRANSACTION_REJECTED"
   | "TRANSACTION_COMMITTED"
   | "TRANSACTION_REJECTED"
+  | "POLICY_EVALUATED"
+  | "COMMUNICATION_ACKNOWLEDGED"
+  | "STOCHASTIC_EVENT_RESOLVED"
   | "WORKFLOW_ADVANCED"
   | "COMPETENCY_EVIDENCE_RECORDED"
   | "FEEDBACK_RELEASED"
@@ -198,8 +201,14 @@ export interface LearnerRunNodePresentationV1 {
     | "BRIEFING"
     | "EVIDENCE_RELEASE"
     | "DECISION"
+    | "TRANSACTION_PROPOSAL"
+    | "ENDORSEMENT"
+    | "POLICY_CHECK"
+    | "COMMUNICATION"
+    | "STOCHASTIC_EVENT"
     | "CONSEQUENCE"
     | "FEEDBACK"
+    | "REFLECTION"
     | "COMPLETION";
   readonly title: LearnerRunLocalizedTextV1;
   readonly body?: LearnerRunLocalizedTextV1;
@@ -212,6 +221,17 @@ export interface LearnerRunNodePresentationV1 {
   };
   readonly structuredResponse?:
     StructuredDecisionResponseConfigurationV1;
+  readonly proposalType?: string;
+  readonly sourceDecisionId?: string;
+  readonly policyIds?: readonly string[];
+  readonly proposalNodeId?: string;
+  readonly policyId?: string;
+  readonly permittedRoleIds?: readonly string[];
+  readonly messageId?: string;
+  readonly visibleToRoleIds?: readonly string[];
+  readonly randomStreamId?: string;
+  readonly reflectionId?: string;
+  readonly maximumLength?: number;
   readonly consequenceCode?: string;
   readonly feedbackCode?: string;
   readonly message?: LearnerRunLocalizedTextV1;

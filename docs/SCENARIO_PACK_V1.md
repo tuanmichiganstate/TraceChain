@@ -443,15 +443,17 @@ Guided/Challenge package jobs are now implemented. Application-user access and
 role provisioning are available in the administrator workspace; course
 management remains deployment administration. The pharmaceutical pack now
 contains both the starter and a richer two-decision transfer case. Both
-validate, preview, and run through the bounded generic hosted runtime.
-That runtime executes authored `BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`,
-`CONSEQUENCE`, `FEEDBACK`, and `COMPLETION` nodes, preserves deterministic
-outcome and event replay, projects only role-visible evidence, and records
-authored competency evidence. Business consequences appear in the run, while
+validate, preview, and run through the generic hosted runtime. That runtime
+executes the complete declarative node and transition vocabulary listed above,
+preserves deterministic outcome and event replay, performs
+scenario-controlled role handoff for endorsement and role-visible
+communication nodes, projects only role-visible evidence, and records authored
+competency evidence. Generic proposals, approvals, policy evaluations,
+communications, named stochastic outcomes, and reflections are append-only
+replay evidence; none is silently treated as a ledger mutation or
+cryptographic signature. Business consequences appear in the run, while
 authored feedback remains unavailable until the assignment's feedback release.
-Other V1 node types remain unavailable for assignment until their runtime
-behavior is implemented. SCORM continues to use the current compact
-deterministic TC3 journal.
+SCORM continues to use the current compact deterministic TC3 journal.
 
 The hosted counterfactual workflow is available for completed source runs at
 authored decision and condition points. A decision branch submits a real

@@ -1442,6 +1442,151 @@ describe("hosted learner workspace", () => {
     ).toBeInTheDocument();
   });
 
+  it("submits the advanced generic proposal, endorsement, communication, and reflection actions", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const base = projection("CREATE_TRANSACTION_PROPOSAL");
+    const { rerender } = render(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={base}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Create transaction proposal",
+      }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith({
+      commandType: "CREATE_TRANSACTION_PROPOSAL",
+    });
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={{
+            ...base,
+            workflowState: {
+              ...base.workflowState,
+              permittedActionIds: ["RECORD_ENDORSEMENT"],
+            },
+          }}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Record the authorized organizational approval",
+      }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith({
+      commandType: "RECORD_ENDORSEMENT",
+    });
+
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={{
+            ...base,
+            workflowState: {
+              ...base.workflowState,
+              permittedActionIds: [
+                "ACKNOWLEDGE_COMMUNICATION",
+              ],
+            },
+          }}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Acknowledge the message",
+      }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith({
+      commandType: "ACKNOWLEDGE_COMMUNICATION",
+    });
+
+    const reflectionProjection: LearnerRunProjectionV1 = {
+      ...base,
+      workflowState: {
+        currentNodeId: "NODE_REFLECTION",
+        completedNodeIds: [],
+        permittedActionIds: ["SUBMIT_REFLECTION"],
+      },
+      presentation: {
+        scenarioTitle: {
+          localizationKey: "scenario.title",
+          valuesByLocale: { en: "Scenario" },
+        },
+        roleName: {
+          localizationKey: "role.title",
+          valuesByLocale: { en: "Reviewer" },
+        },
+        currentNode: {
+          nodeId: "NODE_REFLECTION",
+          nodeType: "REFLECTION",
+          title: {
+            localizationKey: "reflection.title",
+            valuesByLocale: { en: "Reflect on the decision" },
+          },
+          reflectionId: "REFLECTION_001",
+          prompt: {
+            localizationKey: "reflection.prompt",
+            valuesByLocale: {
+              en: "Which evidence mattered most?",
+            },
+          },
+          maximumLength: 120,
+        },
+        evidenceTitles: {},
+        policyTitles: {},
+        instructorIncidents: [],
+        professionalConsequences: [],
+        modeConfiguration: {
+          mode: "tutorial",
+          allowHints: true,
+          allowRetry: true,
+          allowBacktracking: true,
+          feedbackTiming: "immediate",
+          showScores: true,
+          outcomeStrategy: "forced",
+          seedPolicy: "generated",
+          allowCommunication: false,
+          allowEvidenceRequests: false,
+        },
+      },
+    };
+    rerender(
+      <LocaleProvider locale="en">
+        <HostedRunActionControls
+          projection={reflectionProjection}
+          busy={false}
+          onSubmit={onSubmit}
+        />
+      </LocaleProvider>,
+    );
+    await user.type(
+      screen.getByLabelText("Your reflection"),
+      "The custody evidence was decisive.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Submit" }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith({
+      commandType: "SUBMIT_REFLECTION",
+      reflectionId: "REFLECTION_001",
+      response: "The custody evidence was decisive.",
+    });
+  });
+
   it("preserves an incorrect discrepancy choice in the submitted command", async () => {
     const discrepancyProjection = {
       ...projection("SUBMIT_DISCREPANCY_DECISION"),

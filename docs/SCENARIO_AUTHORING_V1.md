@@ -134,24 +134,49 @@ The repository's independent demonstration overlays reference the pack's exact
 `PHARMA_COLD_CHAIN` framework version and remain owned, adopted, validated, and
 versioned separately. They do not calculate attainment or add another score.
 
-The starter was the first scenario exercised by the generic hosted
-runtime. Once published, it can be assigned and completed through its authored
-`BRIEFING`, `EVIDENCE_RELEASE`, `DECISION`, `CONSEQUENCE`, `FEEDBACK`, and
-`COMPLETION` nodes. The runtime uses the pack's embedded localization,
-role-visible evidence, mode configuration, deterministic outcome model,
-decision schema, evidence rule, and rubric references. Consequences are shown
-as part of the run; authored feedback follows the assignment's existing
-instructor-release boundary. The complete coffee journey uses its registered
-native `tracechain-coffee-v2` runtime profile.
+The starter was the first scenario exercised by the generic hosted runtime.
+Published scenarios without a native profile can now be assigned and completed
+through the complete Builder vocabulary: `BRIEFING`, `EVIDENCE_RELEASE`,
+`DECISION`, `TRANSACTION_PROPOSAL`, `ENDORSEMENT`, `POLICY_CHECK`,
+`COMMUNICATION`, `STOCHASTIC_EVENT`, `CONSEQUENCE`, `FEEDBACK`, `REFLECTION`,
+and `COMPLETION`. All four declarative transition conditions are executable.
+The runtime uses the pack's embedded localization, role-visible evidence, mode
+configuration, deterministic outcome model, decision schema, evidence rule,
+and rubric references. Consequences are shown as part of the run; authored
+feedback follows the assignment's existing instructor-release boundary. The
+complete coffee journey still uses its registered native
+`tracechain-coffee-v2` runtime profile.
 
-These are deliberately bounded runtime contracts, not a claim that every V1
-node type is executable. A scenario is assignable through the generic runtime
-only when it has no native domain runtime profile and every node belongs to the
-six-node subset above. Its transitions must use `ALWAYS` or
-`DECISION_OPTION_SELECTED`; policy-result and event-history transitions are not
-yet part of this runtime. Unsupported nodes or transitions remain valid
-authoring content but are excluded from assignment options until their runtime
-behavior exists.
+Generic transaction proposals bind the exact source decision, run, scenario,
+policy references, trusted organization and role, and current run version in a
+canonical SHA-256 digest. They do not mutate the ledger. An `ENDORSEMENT` node
+records a scenario-controlled organizational approval after handing execution
+to the first authored permitted role; it is explicitly not represented as a
+cryptographic signature. Scenarios that teach genuine Ed25519 evidence must
+use a native signing runtime and its educational identity fixtures.
+
+`POLICY_CHECK` is passive and deterministic. It evaluates proposal presence,
+the proposal's policy references, every matching authored endorsement node,
+and these optional declarative policy-configuration fields:
+
+```text
+result
+requiredDecisionOptionIds
+prohibitedDecisionOptionIds
+minimumEndorsements
+requiredEndorsementRoleIds
+requiredPolicyConsultation
+authorizedRoleId
+authorizedOrganizationId
+```
+
+Authorization policies fail closed when they do not declare a supported
+trusted role or organization. `STOCHASTIC_EVENT` nodes use a named seeded draw;
+the same source inputs reproduce the same outcome and event hash.
+`COMMUNICATION` acknowledges an authored role-visible message, and
+`REFLECTION` stores one bounded response. Policy and stochastic nodes advance
+inside the same prospective durable event batch. No advanced generic node
+silently changes ledger state.
 
 ## Import safety
 

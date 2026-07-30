@@ -10,9 +10,22 @@ const GENERIC_V1_NODE_TYPES = new Set([
   "BRIEFING",
   "EVIDENCE_RELEASE",
   "DECISION",
+  "TRANSACTION_PROPOSAL",
+  "ENDORSEMENT",
+  "POLICY_CHECK",
+  "COMMUNICATION",
+  "STOCHASTIC_EVENT",
   "CONSEQUENCE",
   "FEEDBACK",
+  "REFLECTION",
   "COMPLETION",
+]);
+
+const GENERIC_V1_TRANSITION_CONDITIONS = new Set([
+  "ALWAYS",
+  "DECISION_OPTION_SELECTED",
+  "POLICY_RESULT",
+  "EVENT_OCCURRED",
 ]);
 
 export function isGenericHostedRuntimeScenario(
@@ -27,9 +40,9 @@ export function isGenericHostedRuntimeScenario(
         GENERIC_V1_NODE_TYPES.has(node.nodeType) &&
         node.transitions.every(
           (transition) =>
-            transition.when.kind === "ALWAYS" ||
-            transition.when.kind ===
-              "DECISION_OPTION_SELECTED",
+            GENERIC_V1_TRANSITION_CONDITIONS.has(
+              transition.when.kind,
+            ),
         ),
     )
   );
