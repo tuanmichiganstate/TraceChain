@@ -12,6 +12,10 @@ import {
 } from "react";
 import { useTranslator } from "../../app/providers/locale-provider";
 import type { LocaleCode } from "../../localization/i18n";
+import type {
+  LtiLaunchType,
+  LtiLearningContextV2,
+} from "../contracts/lti";
 import type { ApplicationRole } from "../contracts/run-events";
 import type {
   ScenarioPackComparisonV1,
@@ -31,12 +35,17 @@ const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
 
 interface AuthorSession {
   readonly userId: string;
-  readonly email: string;
+  readonly email?: string;
+  readonly displayName?: string;
   readonly roles: readonly ApplicationRole[];
+  readonly authenticationSource?: "sites" | "lti";
+  readonly ltiLaunchType?: LtiLaunchType;
+  readonly learningContext?: LtiLearningContextV2;
 }
 
 export interface ScenarioAuthoringApi {
   loadSession(): Promise<AuthorSession>;
+  logoutSession?(): Promise<void>;
   listPacks(): Promise<readonly ScenarioPackListItemV1[]>;
   validatePack(candidate: unknown): Promise<ScenarioPackValidationReportV1>;
   importPack(candidate: unknown): Promise<ScenarioPackValidationReportV1>;
@@ -114,6 +123,15 @@ export function createScenarioAuthoringApi(
   return {
     async loadSession() {
       return apiJson<AuthorSession>(fetcher, "/api/v1/session");
+    },
+    async logoutSession() {
+      const response = await fetcher("/api/lti/v1/logout", {
+        method: "POST",
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new ScenarioAuthoringApiError("LTI_LOGOUT_FAILED");
+      }
     },
     async listPacks() {
       return (
@@ -312,6 +330,7 @@ export function ScenarioAuthorScreen({
   const [toVersion, setToVersion] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [busy, setBusy] = useState(false);
+  const [isSigningOut, setSigningOut] = useState(false);
   const [messageKey, setMessageKey] = useState<string | null>(null);
 
   const mayAuthor =
@@ -322,6 +341,11 @@ export function ScenarioAuthorScreen({
     session?.roles.some((role) =>
       ["instructor", "scenario-author", "administrator"].includes(role)
     ) ?? false;
+  const accountLabel =
+    session?.email ??
+    session?.displayName ??
+    session?.userId ??
+    "";
   const visiblePacks = useMemo(
     () =>
       statusFilter === "all"
@@ -332,6 +356,25 @@ export function ScenarioAuthorScreen({
 
   async function refresh() {
     setPacks(await resolvedApi.listPacks());
+  }
+
+  async function signOutFromLti(): Promise<void> {
+    if (
+      session?.authenticationSource !== "lti" ||
+      resolvedApi.logoutSession === undefined
+    ) {
+      return;
+    }
+    setSigningOut(true);
+    try {
+      await resolvedApi.logoutSession();
+      window.location.assign(
+        session.learningContext?.returnUrl ?? "/author",
+      );
+    } catch {
+      setMessageKey("instructorReview.lti.logoutFailed");
+      setSigningOut(false);
+    }
   }
 
   useEffect(() => {
@@ -512,7 +555,7 @@ export function ScenarioAuthorScreen({
   }
 
   return (
-    <main className="start" id="main-content">
+    <main className="start instructor-review" id="main-content">
       <div className="start__inner">
         <header className="instructor-review__header">
           <p className="eyebrow">{t("scenarioAuthor.eyebrow")}</p>
@@ -523,10 +566,61 @@ export function ScenarioAuthorScreen({
         {session === null ? (
           <p role="status">{t("scenarioAuthor.loading")}</p>
         ) : (
-          <section className="card card--reference">
+          <section className="card card--reference instructor-review__session-card">
             <h2>{t("scenarioAuthor.account")}</h2>
-            <p>{session.email}</p>
-            <p>{session.roles.join(", ")}</p>
+            <dl className="instructor-review__facts">
+              <div>
+                <dt>{t("instructorReview.account")}</dt>
+                <dd>{accountLabel}</dd>
+              </div>
+              <div>
+                <dt>{t("instructorReview.roles")}</dt>
+                <dd>
+                  {session.roles
+                    .map((role) => t(`adminAccess.role.${role}`))
+                    .join(", ")}
+                </dd>
+              </div>
+              {session.authenticationSource === "lti" &&
+              session.learningContext !== undefined ? (
+                <>
+                  <div>
+                    <dt>{t("instructorReview.lti.connection")}</dt>
+                    <dd>{t("instructorReview.lti.connected")}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("instructorReview.lti.course")}</dt>
+                    <dd>
+                      {session.learningContext.contextTitle ??
+                        session.learningContext.contextLabel ??
+                        session.learningContext.contextId}
+                    </dd>
+                  </div>
+                </>
+              ) : null}
+            </dl>
+            {session.authenticationSource === "lti" ? (
+              <div className="instructor-review__form-actions">
+                {session.learningContext?.returnUrl === undefined ? null : (
+                  <a
+                    className="button button--secondary"
+                    href={session.learningContext.returnUrl}
+                  >
+                    {t("instructorReview.lti.returnToMoodle")}
+                  </a>
+                )}
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={isSigningOut}
+                  onClick={() => void signOutFromLti()}
+                >
+                  {isSigningOut
+                    ? t("instructorReview.lti.signingOut")
+                    : t("instructorReview.lti.signOut")}
+                </button>
+              </div>
+            ) : null}
           </section>
         )}
 

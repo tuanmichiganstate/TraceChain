@@ -90,6 +90,23 @@ function configuredIssuer(value: unknown, path: string): string {
   return candidate;
 }
 
+function optionalResourceLinkIds(
+  value: unknown,
+  path: string,
+): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 32) {
+    invalid(`${path} must contain at most 32 resource-link IDs.`);
+  }
+  const values = value.map((candidate, index) =>
+    text(candidate, `${path}[${String(index)}]`, 512),
+  );
+  if (new Set(values).size !== values.length) {
+    invalid(`${path} must not contain duplicate resource-link IDs.`);
+  }
+  return [...values].sort();
+}
+
 export function parsePublicJwks(
   value: unknown,
   path: string,
@@ -148,6 +165,10 @@ export function parseLtiPlatformRegistrations(
     if (!IDENTIFIER_PATTERN.test(registrationId)) {
       invalid(`${path}.registrationId is invalid.`);
     }
+    const scenarioAuthorResourceLinkIds = optionalResourceLinkIds(
+      candidate.scenarioAuthorResourceLinkIds,
+      `${path}.scenarioAuthorResourceLinkIds`,
+    );
     const registration: LtiPlatformRegistrationV1 = {
       schemaVersion: "1.0.0",
       registrationId,
@@ -166,6 +187,11 @@ export function parseLtiPlatformRegistrations(
               candidate.tokenEndpoint,
               `${path}.tokenEndpoint`,
             ),
+          }),
+      ...(scenarioAuthorResourceLinkIds === undefined
+        ? {}
+        : {
+            scenarioAuthorResourceLinkIds,
           }),
       ...(candidate.platformJwks === undefined
         ? {}

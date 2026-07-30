@@ -16,6 +16,68 @@ afterEach(() => {
 });
 
 describe("scenario author workspace", () => {
+  it("shows the verified Moodle author context without expanding its role", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_AUTHOR_001",
+        displayName: "Moodle Scenario Author",
+        roles: ["scenario-author"],
+        authenticationSource: "lti",
+        ltiLaunchType: "resource-link",
+        learningContext: {
+          schemaVersion: "2.0.0",
+          provider: "lti-1.3",
+          launchType: "resource-link",
+          issuer: "https://moodle.example.edu",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_BLOCKCHAIN_001",
+          resourceLinkId: "RESOURCE_TRACECHAIN_AUTHOR",
+          contextTitle: "Blockchain Governance",
+          returnUrl:
+            "https://moodle.example.edu/course/view.php?id=42",
+        },
+      }),
+      logoutSession: vi.fn(),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText("Moodle Scenario Author"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Scenario author")).toBeInTheDocument();
+    expect(screen.getByText("Moodle course launch")).toBeInTheDocument();
+    expect(screen.getByText("Blockchain Governance")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Return to Moodle" }),
+    ).toHaveAttribute(
+      "href",
+      "https://moodle.example.edu/course/view.php?id=42",
+    );
+    expect(
+      screen.getByRole("button", { name: "Sign out" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByText("Instructor"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Administrator"),
+    ).not.toBeInTheDocument();
+  });
+
   it("builds a complete scenario draft through the no-code wizard", async () => {
     const validatePack = vi.fn().mockResolvedValue({
       schemaVersion: "1.0.0",

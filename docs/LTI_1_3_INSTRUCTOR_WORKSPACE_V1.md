@@ -1,16 +1,17 @@
-# LTI 1.3 Core, Deep Linking, AGS, and NRPS V5
+# LTI 1.3 Core, Author Launch, Deep Linking, AGS, and NRPS V6
 
-Status: implemented locally; the current LTI integration has not been
-registered in Moodle or deployed.
+Status: implemented in the application. The Scenario Author launch remains
+inactive until its exact Moodle resource-link ID is added to the server-owned
+registration and that configuration is deployed.
 
 ## Purpose and boundary
 
 TraceChain accepts Moodle LTI 1.3 Resource Link launches for the existing
-hosted `/instructor` and `/learner` workspaces and Deep Linking requests for
-course assignment selection. Every launch reuses the same hosted application,
-API, D1 database, assignment model, simulation engine, reporting services, and
-static client assets. LTI does not create a parallel application or
-authentication system.
+hosted `/instructor`, `/author`, and `/learner` workspaces and Deep Linking
+requests for course assignment selection. Every launch reuses the same hosted
+application, API, D1 database, assignment model, simulation engine, reporting
+services, and static client assets. LTI does not create a parallel application
+or authentication system.
 
 The implementation supports LTI 1.3 Core launch, a bounded LTI Deep Linking
 2.0 content-selection flow, final Assignment and Grade Services 2.0 outcome
@@ -24,6 +25,8 @@ course-roster synchronization:
 - automatic creation of a durable external instructor or learner identity;
 - an eight-hour server-side HTTP-only session carrying exactly one TraceChain
   application role;
+- a server-allowlisted Scenario Author resource link that converts a verified
+  full Instructor launch into one session-scoped `scenario-author` principal;
 - course-context binding for instructor assignments, runs, and
   counterfactual records;
 - exact assignment binding for each learner session;
@@ -52,8 +55,8 @@ course-roster synchronization:
 - completed generic evidence-based runs reported as `PendingManual` without
   inventing an automatic score;
 - an empty signed response when the instructor cancels; and
-- localized launch recovery plus instructor return-to-Moodle and sign-out
-  controls.
+- localized launch recovery plus instructor and author return-to-Moodle and
+  sign-out controls.
 
 It deliberately does not implement:
 
@@ -91,11 +94,19 @@ separate endpoints and a separate session cookie:
 /api/lti/v1/nrps/sync
 ```
 
-The existing direct Sites-authenticated session remains available. An LTI
-session grants either `instructor` or `learner`, never a union of platform
+The existing direct Sites-authenticated session remains available. An ordinary
+LTI session grants either `instructor` or `learner`, never a union of platform
 roles. An instructor session carries one Moodle course context. A learner
 session carries that course context and one exact TraceChain assignment ID.
-Neither launch infers author, rater, or administrator authority.
+Neither ordinary launch infers author, rater, or administrator authority.
+
+One separately configured resource link may grant session-scoped
+`scenario-author` authority. TraceChain requires both the standard full LTI
+Instructor role and an exact resource-link ID listed in the server-owned
+registration. A custom parameter, query parameter, launch name, or client
+request cannot grant this role. The resulting principal has only
+`scenario-author`; it does not inherit instructor, rater, learner, or
+administrator access.
 
 Protected API operations authorize the resolved principal again at the worker
 and repository boundaries. A separate instructor host would add cross-origin
@@ -146,6 +157,45 @@ assignment form offers an explicit **Synchronize Moodle roster** action. The
 action reads the launched course only; opening the instructor workspace does
 not synchronize automatically.
 
+### Scenario Author activity
+
+Create a separate Moodle External tool activity for scenario authoring. It
+uses the same tool registration and launch endpoint as the instructor
+activity, but its exact signed resource-link ID must be present in the matching
+server registration's `scenarioAuthorResourceLinkIds`.
+
+The activity must send the standard full LTI Instructor role. Moodle controls
+who may open the activity through its course role and activity-access rules.
+TraceChain then applies its own narrower checks:
+
+- the issuer, client, deployment, course, role, and resource-link claims must
+  pass the normal signed launch validation;
+- the resource-link ID must match the server allowlist exactly;
+- the launch opens `/author`;
+- the session receives only `scenario-author`;
+- NRPS is not retained because authoring does not need a learner roster; and
+- `/instructor` assignment data and `/admin` remain forbidden.
+
+Do not use a custom parameter such as
+`tracechain_workspace=scenario-author` as authorization. TraceChain ignores it
+for privilege decisions.
+
+To obtain the opaque resource-link ID safely:
+
+1. Create and launch the new Moodle activity once as a full Instructor before
+   allowlisting it.
+2. In the launched TraceChain tab, open `/api/v1/session`.
+3. Copy `learningContext.resourceLinkId`, which came from the verified signed
+   launch.
+4. Add that exact value to `scenarioAuthorResourceLinkIds` in the matching
+   server registration.
+5. Apply the runtime configuration and launch the activity again.
+
+The same resource-link ID may not be guessed from the Moodle activity title.
+Any Instructor who can launch an allowlisted activity receives Scenario Author
+authority for that session, so Moodle access to this activity must be
+restricted intentionally.
+
 ### Learner activity through Deep Linking
 
 First create the TraceChain assignment through the course's instructor
@@ -188,10 +238,18 @@ into only that assignment.
     "deploymentId": "456",
     "authorizationEndpoint": "https://moodle.example.edu/mod/lti/auth.php",
     "jwksUri": "https://moodle.example.edu/mod/lti/certs.php",
-    "tokenEndpoint": "https://moodle.example.edu/mod/lti/token.php"
+    "tokenEndpoint": "https://moodle.example.edu/mod/lti/token.php",
+    "scenarioAuthorResourceLinkIds": [
+      "OPAQUE_RESOURCE_LINK_ID_FROM_VERIFIED_LAUNCH"
+    ]
   }
 ]
 ```
+
+`scenarioAuthorResourceLinkIds` is optional, bounded to 32 unique values, and
+defaults to no Moodle author access. Removing an ID revokes author authority
+from existing LTI sessions on their next API request because the live
+server-owned registration is rechecked.
 
 `TRACECHAIN_LTI_TOOL_JWKS_JSON` contains the public tool keyset Moodle records:
 
@@ -254,6 +312,12 @@ Moodle External tool
        bind verified course context
        retain a valid signed NRPS endpoint when Moodle supplies one
        open /instructor
+  -> Allowlisted Scenario Author resource link:
+       require the verified full Instructor role
+       provision the same base external instructor identity
+       suppress NRPS because authoring does not use a roster
+       resolve each API request to only scenario-author
+       open /author
   -> Instructor-initiated roster synchronization:
        obtain a token for contextmembership.readonly with private_key_jwt
        read the exact course learner snapshot through bounded pagination
@@ -455,7 +519,7 @@ The current fresh-install D1 schema contains:
 
 - `lti_login_states`;
 - `external_user_identities`;
-- `lti_sessions`, including launch purpose, the exact application role,
+- `lti_sessions`, including launch purpose, the base LTI application role,
   optional learner assignment binding, bounded Deep Linking settings, and
   exactly-once selection state plus the signed response needed for an exact
   retry, together with the signed learner launch's optional AGS endpoint and
@@ -472,7 +536,9 @@ The current fresh-install D1 schema contains:
   enrollment.
 
 Only hashed login state, nonce, and session tokens are stored. ID tokens are
-not persisted.
+not persisted. Scenario Author authority is not copied into a session row; the
+worker rechecks the signed session context against the live server allowlist on
+every API request.
 
 TraceChain has a pre-release no-migration policy. Before deployment, the
 runtime schema guard compares the exact schema marker, discards an absent or
@@ -523,7 +589,15 @@ Before enabling real Moodle learner activities:
 26. Confirm a replayed state and invalid platform or tool signature are
     rejected.
 27. Confirm instructor return-to-Moodle and sign-out behavior.
-28. Confirm direct hosted sessions and SCORM activities behave as before.
+28. Create a separate Scenario Author activity, capture its verified
+    `resourceLinkId`, and add only that ID to the server registration.
+29. Confirm that activity opens `/author` with only the `scenario-author`
+    role, and that return-to-Moodle and sign-out work.
+30. Confirm an unlisted Instructor activity remains `/instructor`, even if it
+    sends `tracechain_workspace=scenario-author`.
+31. Confirm a learner launch, instructor assignment API, and administrator API
+    are denied from the author session.
+32. Confirm direct hosted sessions and SCORM activities behave as before.
 
 This repository change does not perform registration or deployment
 automatically.

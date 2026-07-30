@@ -67,6 +67,42 @@ describe("LTI registration validation", () => {
     );
   });
 
+  it("validates the server-approved scenario-author resource links", () => {
+    const [parsed] = parseLtiPlatformRegistrations(
+      JSON.stringify([
+        registration({
+          scenarioAuthorResourceLinkIds: [
+            "RESOURCE_TRACECHAIN_AUTHOR",
+          ],
+        }),
+      ]),
+    );
+    expect(parsed?.scenarioAuthorResourceLinkIds).toEqual([
+      "RESOURCE_TRACECHAIN_AUTHOR",
+    ]);
+
+    for (const scenarioAuthorResourceLinkIds of [
+      [""],
+      ["RESOURCE_AUTHOR", "RESOURCE_AUTHOR"],
+      Array.from(
+        { length: 33 },
+        (_value, index) => `RESOURCE_AUTHOR_${String(index)}`,
+      ),
+    ]) {
+      expect(() =>
+        parseLtiPlatformRegistrations(
+          JSON.stringify([
+            registration({ scenarioAuthorResourceLinkIds }),
+          ]),
+        ),
+      ).toThrowError(
+        expect.objectContaining({
+          code: "LTI_REGISTRATION_CONFIGURATION_INVALID",
+        }),
+      );
+    }
+  });
+
   it("rejects private material in a public keyset", () => {
     expect(() =>
       parseToolPublicJwks(

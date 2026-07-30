@@ -604,6 +604,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       jwksUri: `${issuer}/mod/lti/certs.php`,
       tokenEndpoint: `${issuer}/mod/lti/token.php`,
       platformJwks: { keys: [publicJwk] },
+      scenarioAuthorResourceLinkIds: [
+        "RESOURCE_TRACECHAIN_AUTHOR",
+      ],
     },
   ]);
   env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
@@ -781,6 +784,100 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         )
         .get(sessionBody.userId).email,
       null,
+    );
+
+    const authorLogin = await initiateLogin();
+    const authorLaunch = await launch({
+      ...authorLogin,
+      resourceLinkId: "RESOURCE_TRACECHAIN_AUTHOR",
+      subject: "MOODLE_AUTHOR_42",
+      email: "author@example.edu",
+      name: "Scenario author",
+    });
+    assert.equal(
+      authorLaunch.status,
+      303,
+      await authorLaunch.clone().text(),
+    );
+    assert.equal(
+      authorLaunch.headers.get("location"),
+      "/author?locale=en",
+    );
+    const authorCookie = authorLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const authorSession = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie: authorCookie },
+      }),
+      env,
+    );
+    assert.equal(
+      authorSession.status,
+      200,
+      await authorSession.clone().text(),
+    );
+    assert.deepEqual(
+      (await authorSession.json()).roles,
+      ["scenario-author"],
+    );
+    const authorCatalog = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/scenario-packs", {
+        headers: { cookie: authorCookie },
+      }),
+      env,
+    );
+    assert.equal(
+      authorCatalog.status,
+      200,
+      await authorCatalog.clone().text(),
+    );
+    for (const forbiddenPath of [
+      "/api/v1/assignments",
+      "/api/v1/admin/users",
+    ]) {
+      const forbidden = await worker.fetch(
+        new Request(`https://tracechain.example${forbiddenPath}`, {
+          headers: { cookie: authorCookie },
+        }),
+        env,
+      );
+      assert.equal(
+        forbidden.status,
+        403,
+        `${forbiddenPath} must remain outside the author link`,
+      );
+      assert.equal(
+        (await forbidden.json()).error.code,
+        "APPLICATION_ROLE_REQUIRED",
+      );
+    }
+
+    const unapprovedAuthorLogin = await initiateLogin();
+    const unapprovedAuthorLaunch = await launch({
+      ...unapprovedAuthorLogin,
+      resourceLinkId: "RESOURCE_NOT_APPROVED_FOR_AUTHORING",
+      subject: "MOODLE_INSTRUCTOR_CUSTOM_CLAIM",
+      custom: {
+        tracechain_workspace: "scenario-author",
+      },
+    });
+    assert.equal(
+      unapprovedAuthorLaunch.headers.get("location"),
+      "/instructor?locale=en",
+    );
+    const unapprovedAuthorCookie = unapprovedAuthorLaunch.headers
+      .get("set-cookie")
+      .split(";")[0];
+    const unapprovedAuthorSession = await worker.fetch(
+      new Request("https://tracechain.example/api/v1/session", {
+        headers: { cookie: unapprovedAuthorCookie },
+      }),
+      env,
+    );
+    assert.deepEqual(
+      (await unapprovedAuthorSession.json()).roles,
+      ["instructor"],
     );
 
     const originalFetch = globalThis.fetch;

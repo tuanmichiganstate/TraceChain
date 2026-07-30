@@ -166,19 +166,22 @@ comparison metrics, reuses valid downstream commands, pauses on divergence,
 captures reflection, and provides role-filtered branch and assignment
 analytics exports. The
 hosted work does not alter the current SCORM activity.
-The hosted instructor and learner workspaces support bounded LTI 1.3 Core
-resource-link launches from Moodle. TraceChain verifies the signed Moodle
-launch, provisions exactly the verified instructor or learner role, scopes
-records to the verified course context, and binds a learner session to the
-single assignment named by the signed activity custom claim. LTI Deep Linking
-lets a verified instructor select one active course assignment and returns a
-signed, assignment-bound resource link with a 100-point line item when Moodle
-accepts one. AGS returns final completion and the existing score for Coffee,
-Audit, and Technical Lab runs; evidence-only generic runs remain pending
-manual grading. A verified LTI instructor launch may also advertise NRPS 2.0;
-the instructor can explicitly synchronize the exact course's read-only learner
-roster before selecting learners for a new assignment. Moodle SCORM-attempt
-access remains deferred.
+The hosted instructor, Scenario Author, and learner workspaces support bounded
+LTI 1.3 Core resource-link launches from Moodle. TraceChain verifies the
+signed Moodle launch, scopes records to the verified course context, and binds
+a learner session to the single assignment named by the signed activity custom
+claim. Ordinary links provision exactly the verified instructor or learner
+role. A separate server-allowlisted resource link may instead grant only
+session-scoped `scenario-author` authority to a verified full Instructor
+launch; custom parameters cannot elevate a link. LTI Deep Linking lets a
+verified instructor select one active course assignment and returns a signed,
+assignment-bound resource link with a 100-point line item when Moodle accepts
+one. AGS returns final completion and the existing score for Coffee, Audit, and
+Technical Lab runs; evidence-only generic runs remain pending manual grading.
+A verified LTI instructor launch may also advertise NRPS 2.0; the instructor
+can explicitly synchronize the exact course's read-only learner roster before
+selecting learners for a new assignment. Moodle SCORM-attempt access remains
+deferred.
 The pharmaceutical transfer case also supports one scenario-authored,
 versioned instructor incident; its release is permission-controlled,
 append-only, replayable, and cannot edit hidden state or prior decisions.

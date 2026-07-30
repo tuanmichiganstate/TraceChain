@@ -1,8 +1,8 @@
 # Hosted role workspaces V1
 
 TraceChain relies on deployment authentication or a verified Moodle LTI 1.3
-instructor launch, followed by server-provisioned application roles. A request
-body cannot grant an application role, assert a Moodle context, or assert a
+launch, followed by server-provisioned application roles. A request body
+cannot grant an application role, assert a Moodle context, or assert a
 simulation identity.
 
 ## Routes
@@ -16,6 +16,7 @@ simulation identity.
 | `/instructor` | Moodle LTI instructor | The same instructor workspace under the verified Moodle course context; no learner, author, rater, or administrator role is inferred |
 | `/instructor` | rater | Review evidence and save append-only ratings without assignment, publication, moderation, or package controls |
 | `/author` | scenario-author | Import, edit, validate, preview, compare, publish, and retire scenario packs |
+| `/author` | Moodle LTI Scenario Author activity | The same author workspace with only session-scoped `scenario-author`; requires a full Instructor role and an exact resource-link ID in the server allowlist |
 | `/instructor` and `/author` | administrator | Management, moderation, package, and authoring controls |
 | `/admin` | administrator | Provision application access, assign server-owned roles, and disable or reactivate users |
 
@@ -33,6 +34,12 @@ SCORM attempts. For activities created through Deep Linking, AGS returns final
 completion and an existing automatic score when the runtime has one; generic
 evidence-based runs remain pending manual grading. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
+
+The Scenario Author activity is a separately allowlisted resource link.
+Moodle controls who may open that activity; TraceChain additionally requires
+the signed full Instructor role and the exact server-configured resource-link
+ID. The resulting session is deliberately not an instructor or administrator
+session. A custom LTI parameter cannot elevate an ordinary instructor link.
 
 An LTI Deep Linking launch is narrower than the instructor workspace. It lists
 only active TraceChain assignments already bound to the verified Moodle course

@@ -59,6 +59,12 @@ export interface LtiPlatformRegistrationV1 {
   readonly jwksUri: string;
   readonly tokenEndpoint?: string;
   /**
+   * Resource links created and restricted by the Moodle administrator that
+   * may open the hosted Scenario Author workspace. A normal instructor link
+   * never receives author authority, even when it supplies a custom claim.
+   */
+  readonly scenarioAuthorResourceLinkIds?: readonly string[];
+  /**
    * Test and isolated-development fixture only. Hosted registrations should
    * use the platform JWKS URI so Moodle key rotation remains effective.
    */

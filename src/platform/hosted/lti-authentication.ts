@@ -31,6 +31,7 @@ import {
   type LtiPlatformRegistrationV1,
 } from "../contracts/lti";
 import type { HostedAssignmentV1 } from "../contracts/assessment";
+import type { ApplicationPrincipal } from "./access";
 import {
   D1LtiAuthenticationRepository,
   type ConsumedLtiLoginState,
@@ -691,6 +692,7 @@ function learningContext(
   readonly deepLinkingSettings?: LtiDeepLinkingSettingsV1;
   readonly agsEndpoint?: LtiAgsEndpointV1;
   readonly nrpsEndpoint?: LtiNrpsEndpointV1;
+  readonly scenarioAuthorLaunch: boolean;
 } {
   if (payload[LTI_VERSION_CLAIM] !== "1.3.0") {
     throw new LtiAuthenticationError(
@@ -764,6 +766,13 @@ function learningContext(
           512,
         )
       : undefined;
+  const scenarioAuthorLaunch =
+    applicationRole === "instructor" &&
+    launchType === "resource-link" &&
+    resourceLinkId !== undefined &&
+    (registration.scenarioAuthorResourceLinkIds ?? []).includes(
+      resourceLinkId,
+    );
   const launchPresentation =
     typeof payload[LTI_LAUNCH_PRESENTATION_CLAIM] === "object" &&
     payload[LTI_LAUNCH_PRESENTATION_CLAIM] !== null &&
@@ -818,13 +827,14 @@ function learningContext(
       ? agsEndpoint(payload, registration)
       : undefined;
   const selectedNrpsEndpoint =
-    applicationRole === "instructor"
+    applicationRole === "instructor" && !scenarioAuthorLaunch
       ? nrpsEndpoint(payload, registration)
       : undefined;
   return {
     roles: [...new Set(rolesValue)].sort(),
     applicationRole,
     launchType,
+    scenarioAuthorLaunch,
     ...(assignmentId === undefined ? {} : { assignmentId }),
     ...(selectedDeepLinkingSettings === undefined
       ? {}
@@ -848,6 +858,47 @@ function learningContext(
       ...(contextTitle === undefined ? {} : { contextTitle }),
       ...(returnUrl === undefined ? {} : { returnUrl }),
     },
+  };
+}
+
+/**
+ * Convert an instructor LTI session into a least-privilege author session only
+ * when its exact Moodle resource link is allowlisted by the server-owned
+ * registration. Signed custom claims alone never grant this role.
+ */
+export function authorizeLtiSessionPrincipal(
+  principal: ApplicationPrincipal | null,
+  registrations: readonly LtiPlatformRegistrationV1[],
+): ApplicationPrincipal | null {
+  const context = principal?.learningContext;
+  if (
+    principal === null ||
+    principal.authenticationSource !== "lti" ||
+    principal.ltiLaunchType !== "resource-link" ||
+    !principal.roles.includes("instructor") ||
+    context?.resourceLinkId === undefined
+  ) {
+    return principal;
+  }
+  const resourceLinkId = context.resourceLinkId;
+  const registration = registrations.find(
+    (candidate) =>
+      candidate.issuer === context.issuer &&
+      candidate.clientId === context.clientId &&
+      candidate.deploymentId === context.deploymentId,
+  );
+  if (
+    registration === undefined ||
+    !(registration.scenarioAuthorResourceLinkIds ?? []).includes(
+      resourceLinkId,
+    )
+  ) {
+    return principal;
+  }
+  return {
+    ...principal,
+    roles: ["scenario-author"],
+    ltiNrpsAvailable: false,
   };
 }
 
@@ -904,6 +955,7 @@ export async function completeLtiLaunch(options: {
     deepLinkingSettings: selectedDeepLinkingSettings,
     agsEndpoint: selectedAgsEndpoint,
     nrpsEndpoint: selectedNrpsEndpoint,
+    scenarioAuthorLaunch,
   } = learningContext(payload, registration);
   const assignment =
     applicationRole === "learner" && assignmentId !== undefined
@@ -985,11 +1037,13 @@ export async function completeLtiLaunch(options: {
     launchType === "deep-linking"
       ? `/instructor?ltiDeepLink=1&locale=${locale}` +
         `#${LTI_DEEP_LINK_SESSION_FRAGMENT_PARAMETER}=${sessionToken}`
+      : scenarioAuthorLaunch
+        ? `/author?locale=${locale}`
       : applicationRole === "instructor"
-      ? `/instructor?locale=${locale}`
-      : `/learner?assignmentId=${encodeURIComponent(
-          assignmentId!,
-        )}&locale=${locale}`;
+        ? `/instructor?locale=${locale}`
+        : `/learner?assignmentId=${encodeURIComponent(
+            assignmentId!,
+          )}&locale=${locale}`;
   return new Response(null, {
     status: 303,
     headers: {

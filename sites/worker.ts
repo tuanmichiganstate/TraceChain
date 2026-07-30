@@ -38,6 +38,7 @@ import {
   resolveAuthenticatedPrincipal,
 } from "../src/platform/hosted/authenticated-principal";
 import {
+  authorizeLtiSessionPrincipal,
   beginLtiLogin,
   clearLtiSessionCookie,
   completeLtiLaunch,
@@ -1889,13 +1890,22 @@ async function apiResponse(
   );
   const clock = new SystemUtcClock();
   const sessionToken = ltiSessionToken(request);
-  let principal: ApplicationPrincipal | null =
+  const ltiRegistrations =
     sessionToken === null
-      ? null
-      : await new D1LtiAuthenticationRepository(
-          environment.DB,
-          clock,
-        ).findActiveSession(sha256Hex(sessionToken));
+      ? []
+      : parseLtiPlatformRegistrations(
+          environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+        );
+  let principal: ApplicationPrincipal | null =
+    authorizeLtiSessionPrincipal(
+      sessionToken === null
+        ? null
+        : await new D1LtiAuthenticationRepository(
+            environment.DB,
+            clock,
+          ).findActiveSession(sha256Hex(sessionToken)),
+      ltiRegistrations,
+    );
   if (principal === null) {
     try {
       principal = await resolveAuthenticatedPrincipal(
