@@ -648,6 +648,42 @@ describe("scenario-pack validation", () => {
     }
   });
 
+  it("rejects stochastic workflow outcomes that do not match their outcome model", () => {
+    const invalid = structuredClone(packJson);
+    const scenario = invalid.scenarios[0]!;
+    const model = scenario.outcomeModels[0]!;
+    scenario.nodes.push({
+      nodeId: "NODE_STOCHASTIC_MISMATCH",
+      nodeType: "STOCHASTIC_EVENT",
+      title: scenario.nodes[0]!.title,
+      randomStreamId: model.randomStreamId,
+      outcomes: [
+        {
+          outcomeId: "DRAW_A",
+          weight: 1,
+          resultCode: "OUTCOME_NOT_IN_MODEL",
+        },
+        {
+          outcomeId: "DRAW_B",
+          weight: 1,
+          resultCode: "OUTCOME_ALSO_NOT_IN_MODEL",
+        },
+      ],
+      transitions: [],
+    } as unknown as (typeof scenario.nodes)[number]);
+
+    const result = validate(invalid);
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "STOCHASTIC_OUTCOME_MODEL_MISMATCH",
+          path: expect.stringContaining(".nodes["),
+        }),
+      ]),
+    );
+  });
+
   it("rejects inconsistent structured decision response bounds", () => {
     const invalid = structuredClone(packJson);
     const decisionNode = invalid.scenarios[0]?.nodes.find(

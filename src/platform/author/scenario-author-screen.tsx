@@ -427,6 +427,7 @@ export function ScenarioAuthorScreen({
     readonly step: ScenarioBuilderStep;
     readonly requestId: number;
   }>();
+  const [builderInstanceId, setBuilderInstanceId] = useState(0);
 
   const mayAuthor =
     session?.roles.some((role) =>
@@ -472,6 +473,7 @@ export function ScenarioAuthorScreen({
     setReport(null);
     setMessageKey(null);
     setBuilderFocusRequest(undefined);
+    setBuilderInstanceId((current) => current + 1);
   }
 
   function restoreDraft(): void {
@@ -482,6 +484,7 @@ export function ScenarioAuthorScreen({
     setMessageKey(null);
     setRecoverableDraft(null);
     setDraftSaved(true);
+    setBuilderInstanceId((current) => current + 1);
   }
 
   function openValidationIssue(path: string): void {
@@ -936,9 +939,10 @@ export function ScenarioAuthorScreen({
             {isEditableScenarioPack(candidate) ? (
               <>
                 <ScenarioBuilder
-                  key={builderFocusRequest?.requestId ?? 0}
+                  key={builderInstanceId}
                   pack={candidate}
                   initialStep={builderFocusRequest?.step}
+                  focusRequestId={builderFocusRequest?.requestId}
                   onChange={(updated) => {
                     setCandidate(updated);
                     setReport(null);

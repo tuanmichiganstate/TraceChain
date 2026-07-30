@@ -1,5 +1,6 @@
 import { strToU8 } from "fflate";
 import {
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -149,6 +150,27 @@ describe("scenario author workspace", () => {
       screen.getAllByLabelText("Organization ID");
     await user.clear(organizationIds.at(-1)!);
     await user.type(organizationIds.at(-1)!, "ORG_RETAILER");
+
+    await user.click(
+      screen.getByRole("button", { name: "Review" }),
+    );
+    const previewHeading = screen.getByRole("heading", {
+      name: "Preview this working draft",
+    });
+    const previewSection = previewHeading.closest("section");
+    if (previewSection === null) {
+      throw new Error("Expected a working-draft preview section.");
+    }
+    expect(
+      within(previewSection).getByText(
+        "New professional decision scenario: 2 reachable workflow nodes",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection).getByText(
+        "Review the professional situation",
+      ),
+    ).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", {
@@ -301,6 +323,11 @@ describe("scenario author workspace", () => {
     expect(new Set(localizedInputIds).size).toBe(
       localizedInputIds.length,
     );
+    expect(
+      localizedInputIds.every(
+        (id) => !id.includes("builder.newScenario"),
+      ),
+    ).toBe(true);
   });
 
   it("exposes complete evidence provenance and assessment metadata", async () => {
@@ -404,6 +431,9 @@ describe("scenario author workspace", () => {
     );
     await user.click(
       screen.getByRole("button", { name: "Add evidence" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Workflow" }),
     );
     await user.click(
       screen.getByRole("button", { name: "Add incident" }),
@@ -567,6 +597,9 @@ describe("scenario author workspace", () => {
       screen.getByRole("checkbox", { name: "Standard" }),
     );
 
+    expect(
+      screen.getByLabelText("Mode configuration to edit"),
+    ).toHaveValue("tutorial");
     expect(screen.getByLabelText("Outcome model")).toHaveValue(
       "OUTCOME_MODEL_DEFAULT",
     );
@@ -594,6 +627,171 @@ describe("scenario author workspace", () => {
         ],
       }),
     );
+  });
+
+  it("creates independent evidence rules and can undo an accidental edit", async () => {
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+
+    const domain = screen.getByLabelText("Draft domain");
+    fireEvent.change(domain, {
+      target: { value: "air-cargo-safety" },
+    });
+    expect(domain).toHaveValue("air-cargo-safety");
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(domain).toHaveValue("professional-decision");
+    await user.click(screen.getByRole("button", { name: "Redo" }));
+    expect(domain).toHaveValue("air-cargo-safety");
+
+    await user.click(
+      screen.getByRole("button", { name: "Assessment" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence rule" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence rule" }),
+    );
+    expect(
+      screen
+        .getAllByLabelText("Evidence rule ID")
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual([
+      "EVIDENCE_RULE_NEW",
+      "EVIDENCE_RULE_NEW_2",
+      "EVIDENCE_RULE_NEW_3",
+    ]);
+  });
+
+  it("keeps evidence access controls in an immediately valid combination", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1_200,
+      issues: [],
+      packId: "PACK_NEW_SCENARIO",
+      version: "1.0.0",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Evidence and policies",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add policy" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add policy" }),
+    );
+    await user.selectOptions(
+      screen.getAllByLabelText("Policy type").at(-1)!,
+      "AUTHORIZATION",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add evidence" }),
+    );
+
+    const permission = screen.getByLabelText(
+      "Permission policy (optional)",
+    );
+    expect(
+      within(permission).queryByRole("option", {
+        name: "POLICY_NEW",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(permission).getByRole("option", {
+        name: "POLICY_NEW_2",
+      }),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByLabelText("Acquisition mode"),
+      "REQUEST_REQUIRED",
+    );
+    fireEvent.change(screen.getByLabelText("Access delay (minutes)"), {
+      target: { value: "45" },
+    });
+    fireEvent.change(screen.getByLabelText("Access cost units"), {
+      target: { value: "3" },
+    });
+    await user.selectOptions(permission, "POLICY_NEW_2");
+    await user.selectOptions(
+      screen.getAllByLabelText("Policy type").at(-1)!,
+      "BUSINESS_RULE",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    expect(
+      (
+        validatePack.mock.calls.at(-1)?.[0] as ScenarioPackV1
+      ).scenarios[0]?.evidenceItems[0]?.learnerMetadata.access
+        .permissionPolicyId,
+    ).toBeUndefined();
+
+    await user.selectOptions(
+      screen.getByLabelText("Acquisition mode"),
+      "AVAILABLE",
+    );
+
+    expect(screen.getByLabelText("Access delay (minutes)")).toHaveValue(
+      0,
+    );
+    expect(screen.getByLabelText("Access cost units")).toHaveValue(0);
+    expect(permission).toHaveValue("");
   });
 
   it("inserts a new authored step before completion and keeps the simple path connected", async () => {
@@ -695,6 +893,9 @@ describe("scenario author workspace", () => {
       screen.getByRole("button", {
         name: "Evidence and policies",
       }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Workflow" }),
     );
 
     expect(
@@ -984,7 +1185,7 @@ describe("scenario author workspace", () => {
     );
     expect(
       screen.getByRole("heading", {
-        name: "Evidence, policies, and incidents",
+        name: "Evidence and policies",
       }),
     ).toBeInTheDocument();
   });

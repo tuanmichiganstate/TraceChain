@@ -185,4 +185,36 @@ describe("Scenario Builder model", () => {
         ?.outcomeModelId,
     ).toBe("OUTCOME_MODEL_PROCUREMENT_REVIEW");
   });
+
+  it("keeps identical newly added evidence rules independently addressable", () => {
+    const source = createScenarioBuilderStarter(
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+    );
+    const added = changeScenarioPack(source, (draft) => {
+      const first = draft.evidenceRules[0]!;
+      draft.evidenceRules.push({
+        ...structuredClone(first),
+        evidenceRuleId: "EVIDENCE_RULE_NEW_2",
+      });
+    });
+    const reconciled = reconcileScenarioPackReferences(source, added);
+
+    expect(
+      reconciled.evidenceRules.map((rule) => rule.evidenceRuleId),
+    ).toEqual(["EVIDENCE_RULE_NEW", "EVIDENCE_RULE_NEW_2"]);
+
+    const edited = changeScenarioPack(reconciled, (draft) => {
+      draft.evidenceRules[1]!.eventType = "RECALL_INITIATED";
+    });
+    const editedReconciled = reconcileScenarioPackReferences(
+      reconciled,
+      edited,
+    );
+    expect(editedReconciled.evidenceRules[0]?.eventType).toBe(
+      "DECISION_SUBMITTED",
+    );
+    expect(editedReconciled.evidenceRules[1]?.eventType).toBe(
+      "RECALL_INITIATED",
+    );
+  });
 });

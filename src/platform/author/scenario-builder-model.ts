@@ -539,11 +539,14 @@ function packIdentifiers(
         identifier: criterion.criterionId,
       })),
     ]),
-    ...pack.evidenceRules.map((rule) => ({
-      stableKey: `evidence-rule:${JSON.stringify({
-        ...rule,
-        evidenceRuleId: undefined,
-      })}`,
+    ...pack.evidenceRules.map((rule, index) => ({
+      /*
+       * Evidence rules have no localized title or other immutable authored
+       * key. Their collection position is stable because this editor only
+       * appends and removes rules; using the remaining rule content made two
+       * newly created, otherwise-identical rules look like one rename.
+       */
+      stableKey: `evidence-rule:${String(index)}`,
       identifier: rule.evidenceRuleId,
     })),
   ];
@@ -874,15 +877,26 @@ export function defaultScenarioNode(
         visibleToRoleIds: [],
       };
     case "STOCHASTIC_EVENT":
-      return {
-        ...common,
-        nodeType: type,
-        randomStreamId: "RANDOM_STREAM_DEFAULT",
-        outcomes: [
-          { outcomeId: "OUTCOME_A", weight: 1, resultCode: "RESULT_A" },
-          { outcomeId: "OUTCOME_B", weight: 1, resultCode: "RESULT_B" },
-        ],
-      };
+      {
+        const model = scenario.outcomeModels[0];
+        const resultCodes =
+          model === undefined
+            ? ["OUTCOME_A", "OUTCOME_B"]
+            : model.distribution === "bernoulli"
+              ? [model.onTrue, model.onFalse]
+              : model.outcomes.map((outcome) => outcome.outcomeCode);
+        return {
+          ...common,
+          nodeType: type,
+          randomStreamId:
+            model?.randomStreamId ?? "RANDOM_STREAM_DEFAULT",
+          outcomes: resultCodes.map((resultCode, index) => ({
+            outcomeId: `DRAW_${String(index + 1)}`,
+            weight: 1,
+            resultCode,
+          })),
+        };
+      }
     case "CONSEQUENCE":
       return {
         ...common,

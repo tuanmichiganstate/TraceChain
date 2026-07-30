@@ -1165,6 +1165,10 @@ function validateNodeContent(
   proposalNodeIds: ReadonlySet<string>,
   counterfactualDimensionIds: ReadonlySet<string>,
   counterfactualMetricIds: ReadonlySet<string>,
+  outcomeCodesByRandomStream: ReadonlyMap<
+    string,
+    ReadonlySet<string>
+  >,
 ): void {
   const nodeType = node.nodeType;
   switch (nodeType) {
@@ -1752,11 +1756,28 @@ function validateNodeContent(
         ],
         path,
       );
-      context.string(node.randomStreamId, `${path}.randomStreamId`, {
-        identifier: true,
-      });
       {
-        const outcomes = context.array(node.outcomes, `${path}.outcomes`);
+        const randomStreamId = context.string(
+          node.randomStreamId,
+          `${path}.randomStreamId`,
+          { identifier: true },
+        );
+        const expectedOutcomeCodes =
+          randomStreamId === null
+            ? undefined
+            : outcomeCodesByRandomStream.get(randomStreamId);
+        context.check(
+          randomStreamId === null ||
+            expectedOutcomeCodes !== undefined,
+          "UNKNOWN_STOCHASTIC_OUTCOME_MODEL",
+          `${path}.randomStreamId`,
+          "must match the random stream of an authored outcome model",
+        );
+        const resultCodes: string[] = [];
+        const outcomes = context.array(
+          node.outcomes,
+          `${path}.outcomes`,
+        );
         if (outcomes !== null) {
           context.check(
             outcomes.length >= 2,
@@ -1780,11 +1801,33 @@ function validateNodeContent(
             context.number(outcome.weight, `${outcomePath}.weight`, {
               minimum: Number.EPSILON,
             });
-            context.string(outcome.resultCode, `${outcomePath}.resultCode`, {
-              identifier: true,
-            });
+            const resultCode = context.string(
+              outcome.resultCode,
+              `${outcomePath}.resultCode`,
+              { identifier: true },
+            );
+            if (resultCode !== null) {
+              resultCodes.push(resultCode);
+              context.check(
+                expectedOutcomeCodes === undefined ||
+                  expectedOutcomeCodes.has(resultCode),
+                "STOCHASTIC_OUTCOME_MODEL_MISMATCH",
+                `${outcomePath}.resultCode`,
+                "must be an outcome code in the model for this random stream",
+              );
+            }
           });
         }
+        context.check(
+          expectedOutcomeCodes === undefined ||
+            (resultCodes.length === expectedOutcomeCodes.size &&
+              [...expectedOutcomeCodes].every((code) =>
+                resultCodes.includes(code),
+              )),
+          "STOCHASTIC_OUTCOME_MODEL_MISMATCH",
+          `${path}.outcomes`,
+          "must cover every outcome code in the model for this random stream exactly once",
+        );
       }
       break;
     case "CONSEQUENCE":
@@ -2413,6 +2456,10 @@ function validateScenarioNodes(
   roleIds: ReadonlySet<string>,
   counterfactualDimensionIds: ReadonlySet<string>,
   counterfactualMetricIds: ReadonlySet<string>,
+  outcomeCodesByRandomStream: ReadonlyMap<
+    string,
+    ReadonlySet<string>
+  >,
 ): void {
   const nodes = context.array(scenario.nodes, `${path}.nodes`);
   if (nodes === null) return;
@@ -2489,6 +2536,7 @@ function validateScenarioNodes(
       proposalNodeIds,
       counterfactualDimensionIds,
       counterfactualMetricIds,
+      outcomeCodesByRandomStream,
     );
     const targets = validateTransitions(
       context,
@@ -2977,6 +3025,10 @@ function validateScenario(
     `${path}.outcomeModels`,
   );
   const outcomeCodesByModel = new Map<string, ReadonlySet<string>>();
+  const outcomeCodesByRandomStream = new Map<
+    string,
+    ReadonlySet<string>
+  >();
   if (outcomeModels !== null) {
     outcomeModels.forEach((value, index) => {
       const modelPath = `${path}.outcomeModels[${String(index)}]`;
@@ -2991,7 +3043,7 @@ function validateScenario(
         `${modelPath}.outcomeModelId`,
         { identifier: true },
       );
-      context.string(
+      const randomStreamId = context.string(
         model.randomStreamId,
         `${modelPath}.randomStreamId`,
         { identifier: true },
@@ -3035,10 +3087,17 @@ function validateScenario(
           onTrue !== null &&
           onFalse !== null
         ) {
-          outcomeCodesByModel.set(
-            outcomeModelId,
-            new Set([onTrue, onFalse]),
-          );
+          const codes = new Set([onTrue, onFalse]);
+          outcomeCodesByModel.set(outcomeModelId, codes);
+          if (randomStreamId !== null) {
+            context.check(
+              !outcomeCodesByRandomStream.has(randomStreamId),
+              "DUPLICATE_RANDOM_STREAM",
+              `${modelPath}.randomStreamId`,
+              "must be unique among outcome models in this scenario",
+            );
+            outcomeCodesByRandomStream.set(randomStreamId, codes);
+          }
         }
         return;
       }
@@ -3100,7 +3159,17 @@ function validateScenario(
         "must not contain duplicate outcome codes",
       );
       if (outcomeModelId !== null) {
-        outcomeCodesByModel.set(outcomeModelId, new Set(codes));
+        const codeSet = new Set(codes);
+        outcomeCodesByModel.set(outcomeModelId, codeSet);
+        if (randomStreamId !== null) {
+          context.check(
+            !outcomeCodesByRandomStream.has(randomStreamId),
+            "DUPLICATE_RANDOM_STREAM",
+            `${modelPath}.randomStreamId`,
+            "must be unique among outcome models in this scenario",
+          );
+          outcomeCodesByRandomStream.set(randomStreamId, codeSet);
+        }
       }
     });
   }
@@ -3873,6 +3942,7 @@ function validateScenario(
     roleIds,
     counterfactualDimensionIds,
     counterfactualMetricIds,
+    outcomeCodesByRandomStream,
   );
   validateEvidenceRequestReachability(context, scenario, path);
   validateAuditCase(

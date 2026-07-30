@@ -38,6 +38,40 @@ test("authors a complete scenario without code at desktop and phone widths", asy
     .fill("an-toan-nuoc-do-thi");
 
   await page
+    .getByRole("button", { name: "Thành phần và trạng thái" })
+    .click();
+  const actualStateEditor = page
+    .locator("details.scenario-builder__structured")
+    .filter({ hasText: "Trạng thái thực tế" })
+    .first();
+  await actualStateEditor
+    .getByLabel("Tên thuộc tính mới")
+    .fill("shipment");
+  await actualStateEditor
+    .getByRole("button", { name: "Thêm thuộc tính" })
+    .click();
+  await actualStateEditor
+    .getByLabel("Kiểu giá trị")
+    .selectOption("object");
+  const nestedShipmentEditor = actualStateEditor
+    .locator("details.scenario-builder__structured")
+    .filter({ hasText: "shipment" })
+    .first();
+  await nestedShipmentEditor.locator(":scope > summary").click();
+  await nestedShipmentEditor
+    .getByLabel("Tên thuộc tính mới")
+    .fill("temperatureC");
+  await nestedShipmentEditor
+    .getByRole("button", { name: "Thêm thuộc tính" })
+    .click();
+  await nestedShipmentEditor
+    .getByLabel("Kiểu giá trị")
+    .selectOption("number");
+  const nestedValue = nestedShipmentEditor.getByLabel("temperatureC");
+  await nestedValue.fill("4.5");
+  await expect(nestedValue).toHaveValue("4.5");
+
+  await page
     .getByRole("button", { name: "Chế độ triển khai" })
     .click();
   await expect(
@@ -68,6 +102,10 @@ test("authors a complete scenario without code at desktop and phone widths", asy
   await page
     .getByRole("button", { name: "Bằng chứng và chính sách" })
     .click();
+
+  await page
+    .getByRole("button", { name: "Quy trình", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Thêm sự cố" }),
   ).toBeDisabled();
@@ -76,10 +114,6 @@ test("authors a complete scenario without code at desktop and phone widths", asy
       "Hãy thêm ít nhất một mục bằng chứng trước khi tạo sự cố.",
     ),
   ).toBeVisible();
-
-  await page
-    .getByRole("button", { name: "Quy trình", exact: true })
-    .click();
   await expect(
     page.getByRole("button", { name: "Thêm nút" }),
   ).toBeVisible();
@@ -88,15 +122,18 @@ test("authors a complete scenario without code at desktop and phone widths", asy
   ).toHaveValue("NODE_BRIEFING");
   await page.getByLabel("Loại nút").first().selectOption("DECISION");
   await page.getByRole("button", { name: "Thêm nút" }).click();
-  expect(
-    await page
-      .locator('select[id^="node-type-"]')
-      .evaluateAll((controls) =>
-        controls.map(
-          (control) => (control as HTMLSelectElement).value,
-        ),
-      ),
-  ).toEqual(["BRIEFING", "DECISION", "COMPLETION"]);
+  await expect(
+    page.getByLabel("Nút quy trình cần chỉnh sửa"),
+  ).toHaveValue("1");
+  await expect(
+    page.locator('select[id^="node-type-"]'),
+  ).toHaveValue("DECISION");
+  await expect(
+    page.getByRole("button", { name: "Chỉnh sửa nút" }),
+  ).toHaveCount(2);
+  await expect(
+    page.getByRole("button", { name: "Đang chỉnh sửa" }),
+  ).toHaveCount(1);
 
   await page.getByRole("button", { name: "Đánh giá" }).click();
   await expect(page.getByLabel("Mã khung")).toBeVisible();
@@ -115,6 +152,14 @@ test("authors a complete scenario without code at desktop and phone widths", asy
     page.getByRole("heading", {
       name: "Kiểm tra toàn bộ hợp đồng",
     }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Xem trước bản nháp đang biên soạn",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/3 nút quy trình có thể đi tới/u),
   ).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 568 });

@@ -1,5 +1,7 @@
 import {
+  useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,6 +41,7 @@ import {
   updateLocalizedValue,
 } from "./scenario-builder-model";
 import { validateScenarioPack } from "../scenario-packs/validation";
+import { createScenarioRolePreview } from "../scenario-packs/authoring";
 
 const BUILDER_STEPS = [
   "identity",
@@ -78,15 +81,41 @@ export function ScenarioBuilder({
   pack,
   onChange,
   initialStep,
+  focusRequestId,
 }: {
   readonly pack: ScenarioPackV1;
   readonly onChange: (pack: ScenarioPackV1) => void;
   readonly initialStep?: ScenarioBuilderStep | undefined;
+  readonly focusRequestId?: number | undefined;
 }): ReactNode {
   const t = useTranslator();
-  const [step, setStep] =
-    useState<ScenarioBuilderStep>(initialStep ?? "identity");
+  const [navigation, setNavigation] = useState<{
+    readonly step: ScenarioBuilderStep;
+    readonly focusRequestId: number | undefined;
+  }>({
+    step: initialStep ?? "identity",
+    focusRequestId,
+  });
+  if (navigation.focusRequestId !== focusRequestId) {
+    setNavigation({
+      step: initialStep ?? navigation.step,
+      focusRequestId,
+    });
+  }
+  const step = navigation.step;
+  function setStep(nextStep: ScenarioBuilderStep): void {
+    setNavigation((current) => ({
+      ...current,
+      step: nextStep,
+    }));
+  }
   const [selectedScenarioIndex, setScenarioIndex] = useState(0);
+  const undoHistory = useRef<ScenarioPackV1[]>([]);
+  const redoHistory = useRef<ScenarioPackV1[]>([]);
+  const [historyCounts, setHistoryCounts] = useState({
+    undo: 0,
+    redo: 0,
+  });
   const scenarioIndex =
     pack.scenarios[selectedScenarioIndex] === undefined
       ? 0
@@ -112,7 +141,40 @@ export function ScenarioBuilder({
     ) > 0;
 
   function commitChange(updated: ScenarioPackV1): void {
-    onChange(reconcileScenarioPackReferences(pack, updated));
+    const reconciled = reconcileScenarioPackReferences(pack, updated);
+    if (JSON.stringify(reconciled) === JSON.stringify(pack)) return;
+    undoHistory.current = [
+      ...undoHistory.current.slice(-99),
+      structuredClone(pack),
+    ];
+    redoHistory.current = [];
+    setHistoryCounts({
+      undo: undoHistory.current.length,
+      redo: 0,
+    });
+    onChange(reconciled);
+  }
+
+  function undo(): void {
+    const previous = undoHistory.current.pop();
+    if (previous === undefined) return;
+    redoHistory.current.push(structuredClone(pack));
+    setHistoryCounts({
+      undo: undoHistory.current.length,
+      redo: redoHistory.current.length,
+    });
+    onChange(previous);
+  }
+
+  function redo(): void {
+    const next = redoHistory.current.pop();
+    if (next === undefined) return;
+    undoHistory.current.push(structuredClone(pack));
+    setHistoryCounts({
+      undo: undoHistory.current.length,
+      redo: redoHistory.current.length,
+    });
+    onChange(next);
   }
 
   function addScenario(): void {
@@ -181,6 +243,22 @@ export function ScenarioBuilder({
             ))}
           </select>
           <div className="scenario-builder__compact-actions">
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={historyCounts.undo === 0}
+              onClick={undo}
+            >
+              {t("scenarioAuthor.builder.undo")}
+            </button>
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={historyCounts.redo === 0}
+              onClick={redo}
+            >
+              {t("scenarioAuthor.builder.redo")}
+            </button>
             <button
               className="button button--secondary"
               type="button"
@@ -502,6 +580,7 @@ function NumberControl({
   value,
   minimum,
   maximum,
+  disabled = false,
   onChange,
 }: {
   readonly id: string;
@@ -509,6 +588,7 @@ function NumberControl({
   readonly value: number;
   readonly minimum?: number;
   readonly maximum?: number;
+  readonly disabled?: boolean;
   readonly onChange: (value: number) => void;
 }): ReactNode {
   return (
@@ -523,6 +603,7 @@ function NumberControl({
         value={value}
         min={minimum}
         max={maximum}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </div>
@@ -534,12 +615,14 @@ function SelectControl({
   label,
   value,
   options,
+  disabled = false,
   onChange,
 }: {
   readonly id: string;
   readonly label: string;
   readonly value: string;
   readonly options: readonly Option[];
+  readonly disabled?: boolean;
   readonly onChange: (value: string) => void;
 }): ReactNode {
   return (
@@ -551,6 +634,7 @@ function SelectControl({
         className="field__control"
         id={id}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       >
         {options.map((option) => (
@@ -597,6 +681,7 @@ function LocalizedTextControl({
   readonly multiline?: boolean;
   readonly onChange: (pack: ScenarioPackV1) => void;
 }): ReactNode {
+  const idPrefix = useId();
   return (
     <fieldset className="scenario-builder__localized">
       <legend>{heading}</legend>
@@ -604,7 +689,7 @@ function LocalizedTextControl({
         {pack.supportedLocales.map((locale) => (
           <TextControl
             key={locale}
-            id={`${localizationKey}-${locale}`}
+            id={`${idPrefix}-${locale}`}
             label={locale}
             value={
               pack.localizationCatalogs?.[locale]?.[
@@ -695,7 +780,6 @@ function DeliveryStep({
         }
       }),
     );
-    if (enabled) setActiveMode(mode);
   }
 
   function updateConfiguration(
@@ -1997,12 +2081,6 @@ function EvidenceStep({
           />
         ))}
       </CollectionSection>
-      <IncidentEditor
-        pack={pack}
-        scenario={scenario}
-        scenarioIndex={scenarioIndex}
-        onChange={onChange}
-      />
     </section>
   );
 }
@@ -2099,10 +2177,42 @@ function PolicyEditor({
             ),
           }))}
           onChange={(value) =>
-            update((target) => {
-              target.policyType =
-                value as ScenarioPolicyV1["policyType"];
-            })
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const targetScenario =
+                  draft.scenarios[scenarioIndex];
+                const target =
+                  targetScenario?.policies[policyIndex];
+                if (
+                  targetScenario === undefined ||
+                  target === undefined
+                ) {
+                  return;
+                }
+                target.policyType =
+                  value as ScenarioPolicyV1["policyType"];
+                if (value === "AUTHORIZATION") {
+                  target.configuration = {
+                    authorizedRoleId:
+                      targetScenario.roles[0]?.roleId ?? "",
+                    authorizedOrganizationId:
+                      targetScenario.organizations[0]
+                        ?.organizationId ?? "",
+                  };
+                  return;
+                }
+                target.configuration = {};
+                targetScenario.evidenceItems.forEach((evidence) => {
+                  if (
+                    evidence.learnerMetadata.access
+                      .permissionPolicyId === target.policyId
+                  ) {
+                    delete evidence.learnerMetadata.access
+                      .permissionPolicyId;
+                  }
+                });
+              }),
+            )
           }
         />
       </div>
@@ -2461,10 +2571,48 @@ function EvidenceItemEditor({
             }),
           )}
           onChange={(value) =>
-            update((target) => {
-              target.learnerMetadata.access.acquisitionMode =
-                value as ScenarioEvidenceItemV1["learnerMetadata"]["access"]["acquisitionMode"];
-            })
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const targetScenario =
+                  draft.scenarios[scenarioIndex];
+                const target =
+                  targetScenario?.evidenceItems[evidenceIndex];
+                if (
+                  targetScenario === undefined ||
+                  target === undefined
+                ) {
+                  return;
+                }
+                target.learnerMetadata.access.acquisitionMode =
+                  value as ScenarioEvidenceItemV1["learnerMetadata"]["access"]["acquisitionMode"];
+                if (value === "AVAILABLE") {
+                  target.learnerMetadata.access.delayMinutes = 0;
+                  target.learnerMetadata.access.costUnits = 0;
+                  delete target.learnerMetadata.access
+                    .permissionPolicyId;
+                  return;
+                }
+                targetScenario.modeConfigurations.forEach(
+                  (configuration) => {
+                    configuration.allowEvidenceRequests = true;
+                  },
+                );
+                const authorizationPolicy =
+                  targetScenario.policies.find(
+                    (policy) =>
+                      policy.policyType === "AUTHORIZATION",
+                  );
+                if (
+                  target.learnerMetadata.access
+                    .permissionPolicyId === undefined &&
+                  authorizationPolicy !== undefined
+                ) {
+                  target.learnerMetadata.access
+                    .permissionPolicyId =
+                    authorizationPolicy.policyId;
+                }
+              }),
+            )
           }
         />
         <NumberControl
@@ -2472,6 +2620,10 @@ function EvidenceItemEditor({
           label={t("scenarioAuthor.builder.accessDelayMinutes")}
           value={evidence.learnerMetadata.access.delayMinutes}
           minimum={0}
+          disabled={
+            evidence.learnerMetadata.access.acquisitionMode ===
+            "AVAILABLE"
+          }
           onChange={(value) =>
             update((target) => {
               target.learnerMetadata.access.delayMinutes = value;
@@ -2483,6 +2635,10 @@ function EvidenceItemEditor({
           label={t("scenarioAuthor.builder.accessCostUnits")}
           value={evidence.learnerMetadata.access.costUnits}
           minimum={0}
+          disabled={
+            evidence.learnerMetadata.access.acquisitionMode ===
+            "AVAILABLE"
+          }
           onChange={(value) =>
             update((target) => {
               target.learnerMetadata.access.costUnits = value;
@@ -2507,11 +2663,20 @@ function EvidenceItemEditor({
                 "scenarioAuthor.builder.optionalNotSpecified",
               ),
             },
-            ...scenario.policies.map((policy) => ({
-              value: policy.policyId,
-              label: policy.policyId,
-            })),
+            ...scenario.policies
+              .filter(
+                (policy) =>
+                  policy.policyType === "AUTHORIZATION",
+              )
+              .map((policy) => ({
+                value: policy.policyId,
+                label: policy.policyId,
+              })),
           ]}
+          disabled={
+            evidence.learnerMetadata.access.acquisitionMode ===
+            "AVAILABLE"
+          }
           onChange={(value) =>
             update((target) => {
               if (value.length === 0) {
@@ -2882,8 +3047,15 @@ function WorkflowStep({
   const t = useTranslator();
   const [newNodeType, setNewNodeType] =
     useState<ScenarioNodeV1["nodeType"]>("BRIEFING");
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState(0);
+  const activeNodeIndex =
+    scenario.nodes[selectedNodeIndex] === undefined
+      ? Math.max(0, scenario.nodes.length - 1)
+      : selectedNodeIndex;
+  const activeNode = scenario.nodes[activeNodeIndex];
 
   function addNode(): void {
+    let insertedIndex = scenario.nodes.length;
     onChange(
       changeScenarioPack(pack, (draft) => {
         const target = draft.scenarios[scenarioIndex];
@@ -2911,6 +3083,7 @@ function WorkflowStep({
             node as unknown as (typeof target.nodes)[number],
           );
         } else {
+          insertedIndex = completionIndex;
           const completion = target.nodes[completionIndex];
           const predecessor = target.nodes[completionIndex - 1];
           if (
@@ -2943,6 +3116,7 @@ function WorkflowStep({
         );
       }),
     );
+    setSelectedNodeIndex(insertedIndex);
   }
 
   return (
@@ -2951,7 +3125,11 @@ function WorkflowStep({
         {t("scenarioAuthor.builder.workflow.heading")}
       </h4>
       <p>{t("scenarioAuthor.builder.workflow.help")}</p>
-      <WorkflowMap scenario={scenario} />
+      <WorkflowMap
+        scenario={scenario}
+        activeNodeIndex={activeNodeIndex}
+        onSelectNode={setSelectedNodeIndex}
+      />
       <div className="scenario-builder__add-row">
         <SelectControl
           id="builder-new-node-type"
@@ -2973,27 +3151,50 @@ function WorkflowStep({
           {t("scenarioAuthor.builder.addNode")}
         </button>
       </div>
+      <SelectControl
+        id="builder-active-node"
+        label={t("scenarioAuthor.builder.editNode")}
+        value={String(activeNodeIndex)}
+        options={scenario.nodes.map((node, index) => ({
+          value: String(index),
+          label: `${node.nodeId} — ${t(
+            `scenarioAuthor.builder.nodeType.${node.nodeType}`,
+          )}`,
+        }))}
+        onChange={(value) => setSelectedNodeIndex(Number(value))}
+      />
       <div className="scenario-builder__workflow">
-        {scenario.nodes.map((node, nodeIndex) => (
+        {activeNode === undefined ? null : (
           <NodeEditor
-            key={node.title.localizationKey}
+            key={activeNode.title.localizationKey}
             pack={pack}
             scenario={scenario}
             scenarioIndex={scenarioIndex}
-            node={node}
-            nodeIndex={nodeIndex}
+            node={activeNode}
+            nodeIndex={activeNodeIndex}
             onChange={onChange}
+            onMoved={setSelectedNodeIndex}
           />
-        ))}
+        )}
       </div>
+      <IncidentEditor
+        pack={pack}
+        scenario={scenario}
+        scenarioIndex={scenarioIndex}
+        onChange={onChange}
+      />
     </section>
   );
 }
 
 function WorkflowMap({
   scenario,
+  activeNodeIndex,
+  onSelectNode,
 }: {
   readonly scenario: ScenarioDefinitionV1;
+  readonly activeNodeIndex: number;
+  readonly onSelectNode: (index: number) => void;
 }): ReactNode {
   const t = useTranslator();
   const reachable = reachableNodes(scenario);
@@ -3009,7 +3210,7 @@ function WorkflowMap({
         <p>{t("scenarioAuthor.builder.workflowMapHelp")}</p>
       </div>
       <ol>
-        {scenario.nodes.map((node) => (
+        {scenario.nodes.map((node, index) => (
           <li key={node.title.localizationKey}>
             <div className="scenario-builder__workflow-map-node">
               <code>{node.nodeId}</code>
@@ -3034,6 +3235,18 @@ function WorkflowMap({
                   ? t("scenarioAuthor.builder.workflowReachable")
                   : t("scenarioAuthor.builder.workflowDisconnected")}
               </span>
+              <button
+                className="button button--quiet"
+                type="button"
+                aria-current={
+                  index === activeNodeIndex ? "true" : undefined
+                }
+                onClick={() => onSelectNode(index)}
+              >
+                {index === activeNodeIndex
+                  ? t("scenarioAuthor.builder.editingNode")
+                  : t("scenarioAuthor.builder.editThisNode")}
+              </button>
             </div>
             <p>
               {node.transitions.length === 0
@@ -3093,9 +3306,11 @@ function NodeEditor({
   node,
   nodeIndex,
   onChange,
+  onMoved,
 }: BuilderStepProps & {
   readonly node: ScenarioNodeV1;
   readonly nodeIndex: number;
+  readonly onMoved?: (index: number) => void;
 }): ReactNode {
   const t = useTranslator();
   function updateRecord(
@@ -3150,6 +3365,7 @@ function NodeEditor({
         if (moved !== undefined) nodes.splice(destination, 0, moved);
       }),
     );
+    onMoved?.(destination);
   }
   return (
     <article className="scenario-builder__node">
@@ -5696,6 +5912,54 @@ function ReviewStep({
   onChange,
 }: BuilderStepProps): ReactNode {
   const t = useTranslator();
+  const [selectedPreviewRole, setSelectedPreviewRole] = useState(
+    scenario.roles[0]?.roleId ?? "",
+  );
+  const [selectedPreviewMode, setSelectedPreviewMode] =
+    useState<HostedRunMode>(
+      scenario.supportedModes[0] ?? "tutorial",
+    );
+  const [selectedPreviewLocale, setSelectedPreviewLocale] = useState(
+    pack.supportedLocales[0] ?? "en",
+  );
+  const previewRole = scenario.roles.some(
+    (role) => role.roleId === selectedPreviewRole,
+  )
+    ? selectedPreviewRole
+    : scenario.roles[0]?.roleId ?? "";
+  const previewMode = scenario.supportedModes.includes(
+    selectedPreviewMode,
+  )
+    ? selectedPreviewMode
+    : scenario.supportedModes[0] ?? "tutorial";
+  const previewLocale = pack.supportedLocales.includes(
+    selectedPreviewLocale as (typeof pack.supportedLocales)[number],
+  )
+    ? selectedPreviewLocale
+    : pack.supportedLocales[0] ?? "en";
+  const workingPreview = useMemo(() => {
+    if (previewRole.length === 0) return null;
+    try {
+      return createScenarioRolePreview({
+        pack,
+        scenarioId: scenario.scenarioId,
+        scenarioVersion: scenario.version,
+        locale: previewLocale,
+        mode: previewMode,
+        roleId: previewRole,
+        localizationCatalogs: {},
+      });
+    } catch {
+      return null;
+    }
+  }, [
+    pack,
+    previewLocale,
+    previewMode,
+    previewRole,
+    scenario.scenarioId,
+    scenario.version,
+  ]);
   const reachableNodeIds = useMemo(
     () => reachableNodes(scenario),
     [scenario],
@@ -5841,6 +6105,80 @@ function ReviewStep({
       <p className="notice notice--standalone">
         {t("scenarioAuthor.builder.serverValidation")}
       </p>
+      <section
+        className="scenario-builder__workflow-map"
+        aria-labelledby="scenario-builder-working-preview-heading"
+      >
+        <div>
+          <h5 id="scenario-builder-working-preview-heading">
+            {t("scenarioAuthor.builder.workingPreview")}
+          </h5>
+          <p>{t("scenarioAuthor.builder.workingPreviewHelp")}</p>
+        </div>
+        <div className="instructor-review__form-grid">
+          <SelectControl
+            id="builder-preview-role"
+            label={t("scenarioAuthor.builder.previewRole")}
+            value={previewRole}
+            options={scenario.roles.map((role) => ({
+              value: role.roleId,
+              label: role.roleId,
+            }))}
+            onChange={setSelectedPreviewRole}
+          />
+          <SelectControl
+            id="builder-preview-mode"
+            label={t("scenarioAuthor.builder.previewMode")}
+            value={previewMode}
+            options={scenario.supportedModes.map((mode) => ({
+              value: mode,
+              label: t(`scenarioAuthor.mode.${mode}`),
+            }))}
+            onChange={(value) =>
+              setSelectedPreviewMode(value as HostedRunMode)
+            }
+          />
+          <SelectControl
+            id="builder-preview-locale"
+            label={t("scenarioAuthor.builder.previewLocale")}
+            value={previewLocale}
+            options={pack.supportedLocales.map((locale) => ({
+              value: locale,
+              label: locale,
+            }))}
+            onChange={setSelectedPreviewLocale}
+          />
+        </div>
+        {workingPreview === null ? (
+          <p className="notice notice--standalone">
+            {t("scenarioAuthor.builder.workingPreviewUnavailable")}
+          </p>
+        ) : (
+          <>
+            <p>
+              {t("scenarioAuthor.builder.workingPreviewSummary", {
+                title: workingPreview.scenarioTitle,
+                count: workingPreview.nodes.length,
+              })}
+            </p>
+            <ol>
+              {workingPreview.nodes.map((node) => (
+                <li key={node.nodeId}>
+                  <div className="scenario-builder__workflow-map-node">
+                    <code>{node.nodeId}</code>
+                    <span className="status status--neutral">
+                      {t(
+                        `scenarioAuthor.builder.nodeType.${node.nodeType}`,
+                      )}
+                    </span>
+                  </div>
+                  <p>{node.title}</p>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </section>
       <details className="scenario-builder__advanced">
         <summary>{t("scenarioAuthor.builder.advanced")}</summary>
         <p>{t("scenarioAuthor.builder.advancedHelp")}</p>
