@@ -1736,6 +1736,15 @@ interface AssignmentScenarioOption {
     readonly HostedRunModeConfigurationV1[];
   readonly experienceConfigurations:
     HostedAssignmentScenarioOptionV1["experienceConfigurations"];
+  readonly summary: HostedAssignmentScenarioOptionV1["summary"];
+  readonly summaryLabels: {
+    readonly description: string;
+    readonly educationalPurpose: string;
+    readonly organizationTitles: Readonly<Record<string, string>>;
+    readonly roleTitles: Readonly<Record<string, string>>;
+    readonly evidenceTitles: Readonly<Record<string, string>>;
+    readonly policyTitles: Readonly<Record<string, string>>;
+  };
   readonly counterfactualDecisionPoints: readonly {
     readonly nodeId: string;
     readonly decisionId: string;
@@ -1765,7 +1774,10 @@ function assignmentOptionText(
   key: string,
   t: Translator,
 ): string {
-  const localized = option.labelsByLocale[t.locale];
+  const localized =
+    option.labelsByLocale[t.locale] ??
+    option.labelsByLocale["en"] ??
+    Object.values(option.labelsByLocale)[0];
   const value =
     kind === "pack"
       ? localized?.packTitle
@@ -1779,50 +1791,67 @@ function assignmentScenarioOptions(
 ): readonly AssignmentScenarioOption[] {
   return available
     .filter((option) => option.supportedModes.length > 0)
-    .map((option) => ({
-      key: scenarioOptionKey(
-        option.packId,
-        option.packVersion,
-        option.scenarioId,
-        option.scenarioVersion,
-      ),
-      label: t("instructorReview.assignmentScenarioOption", {
-        pack: assignmentOptionText(
-          option,
-          "pack",
-          option.packTitleKey,
-          t,
+    .map((option) => {
+      const localized =
+        option.labelsByLocale[t.locale] ??
+        option.labelsByLocale["en"] ??
+        Object.values(option.labelsByLocale)[0];
+      return {
+        key: scenarioOptionKey(
+          option.packId,
+          option.packVersion,
+          option.scenarioId,
+          option.scenarioVersion,
         ),
-        scenario: assignmentOptionText(
-          option,
-          "scenario",
-          option.scenarioTitleKey,
-          t,
-        ),
+        label: t("instructorReview.assignmentScenarioOption", {
+          pack: assignmentOptionText(
+            option,
+            "pack",
+            option.packTitleKey,
+            t,
+          ),
+          scenario: assignmentOptionText(
+            option,
+            "scenario",
+            option.scenarioTitleKey,
+            t,
+          ),
+          packVersion: option.packVersion,
+          scenarioVersion: option.scenarioVersion,
+        }),
+        packId: option.packId,
         packVersion: option.packVersion,
+        scenarioId: option.scenarioId,
         scenarioVersion: option.scenarioVersion,
-      }),
-      packId: option.packId,
-      packVersion: option.packVersion,
-      scenarioId: option.scenarioId,
-      scenarioVersion: option.scenarioVersion,
-      supportedModes: option.supportedModes,
-      modeConfigurations: option.modeConfigurations,
-      experienceConfigurations:
-        option.experienceConfigurations,
-      counterfactualDecisionPoints:
-        option.counterfactualDecisionPoints.map((point) => ({
-          nodeId: point.nodeId,
-          decisionId: point.decisionId,
-          label:
-            option.labelsByLocale[t.locale]
-              ?.counterfactualDecisionTitles[point.nodeId] ??
-            t(point.titleKey),
-          maximumBranchesPerLearner:
-            point.maximumBranchesPerLearner,
-          reflectionRequired: point.reflectionRequired,
-        })),
-    }))
+        supportedModes: option.supportedModes,
+        modeConfigurations: option.modeConfigurations,
+        experienceConfigurations:
+          option.experienceConfigurations,
+        summary: option.summary,
+        summaryLabels: {
+          description: localized?.description ?? "",
+          educationalPurpose:
+            localized?.educationalPurpose ?? "",
+          organizationTitles:
+            localized?.organizationTitles ?? {},
+          roleTitles: localized?.roleTitles ?? {},
+          evidenceTitles: localized?.evidenceTitles ?? {},
+          policyTitles: localized?.policyTitles ?? {},
+        },
+        counterfactualDecisionPoints:
+          option.counterfactualDecisionPoints.map((point) => ({
+            nodeId: point.nodeId,
+            decisionId: point.decisionId,
+            label:
+              localized?.counterfactualDecisionTitles[
+                point.nodeId
+              ] ?? t(point.titleKey),
+            maximumBranchesPerLearner:
+              point.maximumBranchesPerLearner,
+            reflectionRequired: point.reflectionRequired,
+          })),
+      };
+    })
     .sort((left, right) =>
       left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
     );
@@ -1834,6 +1863,300 @@ function preferredAssignmentMode(
   return supportedModes.includes("standard")
     ? "standard"
     : (supportedModes[0] ?? "standard");
+}
+
+function ScenarioSummary({
+  scenario,
+}: {
+  readonly scenario: AssignmentScenarioOption;
+}): ReactNode {
+  const t = useTranslator();
+  const { summary, summaryLabels } = scenario;
+  const organizations = summary.organizationIds.map(
+    (organizationId) => ({
+      id: organizationId,
+      title:
+        summaryLabels.organizationTitles[organizationId] ??
+        organizationId,
+    }),
+  );
+  const roles = summary.roleIds.map((roleId) => ({
+    id: roleId,
+    title: summaryLabels.roleTitles[roleId] ?? roleId,
+  }));
+  const responseRequirements = [
+    summary.requiredResponses.writtenJustification
+      ? t("instructorReview.scenarioSummary.response.written")
+      : null,
+    summary.requiredResponses.evidenceCitations
+      ? t("instructorReview.scenarioSummary.response.evidence")
+      : null,
+    summary.requiredResponses.policyCitations
+      ? t("instructorReview.scenarioSummary.response.policy")
+      : null,
+    summary.requiredResponses.confidenceRating
+      ? t("instructorReview.scenarioSummary.response.confidence")
+      : null,
+    summary.requiredResponses.adverseEventProbability
+      ? t("instructorReview.scenarioSummary.response.risk")
+      : null,
+  ].filter((value): value is string => value !== null);
+  const activity =
+    summary.activity.kind === "WORKFLOW"
+      ? summary.activity.learningStageCount === undefined
+        ? t("instructorReview.scenarioSummary.activity.workflow", {
+            decisions: summary.activity.decisionCount,
+            nodes: summary.authoredNodeCount,
+          })
+        : t(
+            "instructorReview.scenarioSummary.activity.stagedWorkflow",
+            {
+              decisions: summary.activity.decisionCount,
+              stages: summary.activity.learningStageCount,
+            },
+          )
+      : summary.activity.kind === "AUDIT"
+        ? t("instructorReview.scenarioSummary.activity.audit", {
+            records: summary.activity.sourceRecordCount,
+            findings: summary.activity.maximumFindingCount,
+          })
+        : t(
+            "instructorReview.scenarioSummary.activity.technicalLab",
+            { modules: summary.activity.moduleCount },
+          );
+  const assessment =
+    summary.assessment.scoredElementCount === 0
+      ? t("instructorReview.scenarioSummary.assessment.none")
+      : summary.assessment.maximumScore === undefined
+        ? t("instructorReview.scenarioSummary.assessment.elements", {
+            elements: summary.assessment.scoredElementCount,
+          })
+        : t(
+            "instructorReview.scenarioSummary.assessment.scored",
+            {
+              elements: summary.assessment.scoredElementCount,
+              score: summary.assessment.maximumScore,
+            },
+          );
+  const evidence = summary.evidenceItems.map(({ evidenceId }) => ({
+    id: evidenceId,
+    title: summaryLabels.evidenceTitles[evidenceId] ?? evidenceId,
+  }));
+  const policies = summary.policyIds.map((policyId) => ({
+    id: policyId,
+    title: summaryLabels.policyTitles[policyId] ?? policyId,
+  }));
+
+  return (
+    <section
+      className="card card--reference instructor-review__scenario-summary"
+      aria-label={t("instructorReview.scenarioSummary.heading")}
+    >
+      <h3>{t("instructorReview.scenarioSummary.heading")}</h3>
+      <p>{summaryLabels.description}</p>
+      <p>
+        <strong>
+          {t("instructorReview.scenarioSummary.purposeLabel")}
+        </strong>{" "}
+        {summaryLabels.educationalPurpose}
+      </p>
+      <dl className="instructor-review__facts instructor-review__scenario-summary-facts">
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.activity")}</dt>
+          <dd>{activity}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.organizations")}</dt>
+          <dd>
+            {organizations.length === 0 ? (
+              t("instructorReview.scenarioSummary.none")
+            ) : (
+              <ul className="instructor-review__compact-list">
+                {organizations.map((organization) => (
+                  <li key={organization.id}>
+                    {organization.title}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.roles")}</dt>
+          <dd>
+            {roles.length === 0 ? (
+              t("instructorReview.scenarioSummary.none")
+            ) : (
+              <ul className="instructor-review__compact-list">
+                {roles.map((role) => (
+                  <li key={role.id}>{role.title}</li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.evidencePolicy")}</dt>
+          <dd>
+            {t(
+              "instructorReview.scenarioSummary.evidencePolicyValue",
+              {
+                evidence: summary.evidenceItems.length,
+                policies: summary.policyIds.length,
+              },
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.responses")}</dt>
+          <dd>
+            {responseRequirements.length === 0 ? (
+              t("instructorReview.scenarioSummary.responses.none")
+            ) : (
+              <ul className="instructor-review__compact-list">
+                {responseRequirements.map((requirement) => (
+                  <li key={requirement}>{requirement}</li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.assessment")}</dt>
+          <dd>{assessment}</dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.competencies")}</dt>
+          <dd>
+            {t("instructorReview.scenarioSummary.competenciesValue", {
+              targets: summary.competencyTargetCount,
+              rubrics: summary.rubricCount,
+            })}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("instructorReview.scenarioSummary.media")}</dt>
+          <dd>
+            {t("instructorReview.scenarioSummary.mediaValue", {
+              staff: summary.learnerVisibleStaffCount,
+              images: summary.referencedImageCount,
+            })}
+          </dd>
+        </div>
+      </dl>
+      <details className="instructor-review__scenario-inventory">
+        <summary>
+          {t("instructorReview.scenarioSummary.inventory")}
+        </summary>
+        <div className="instructor-review__scenario-inventory-grid">
+          <div>
+            <h4>
+              {t("instructorReview.scenarioSummary.evidenceHeading")}
+            </h4>
+            {evidence.length === 0 ? (
+              <p>{t("instructorReview.scenarioSummary.none")}</p>
+            ) : (
+              <ul>
+                {evidence.map((item) => (
+                  <li key={item.id}>{item.title}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <h4>
+              {t("instructorReview.scenarioSummary.policyHeading")}
+            </h4>
+            {policies.length === 0 ? (
+              <p>{t("instructorReview.scenarioSummary.none")}</p>
+            ) : (
+              <ul>
+                {policies.map((policy) => (
+                  <li key={policy.id}>{policy.title}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </details>
+      <details className="instructor-review__scenario-technical">
+        <summary>
+          {t("instructorReview.scenarioSummary.technicalDetails")}
+        </summary>
+        <p>{t("instructorReview.scenarioSummary.technicalHelp")}</p>
+        <dl className="instructor-review__facts instructor-review__scenario-technical-facts">
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.identity")}</dt>
+            <dd>
+              <code>
+                {scenario.packId}@{scenario.packVersion} /{" "}
+                {scenario.scenarioId}@{scenario.scenarioVersion}
+              </code>
+            </dd>
+          </div>
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.domain")}</dt>
+            <dd>{summary.domain}</dd>
+          </div>
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.runtime")}</dt>
+            <dd>
+              {t(
+                `instructorReview.scenarioSummary.runtime.${summary.runtimeKind}`,
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.status")}</dt>
+            <dd>
+              {t(
+                `instructorReview.scenarioSummary.status.${summary.scenarioStatus}`,
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.hiddenStructure")}</dt>
+            <dd>
+              {t(
+                "instructorReview.scenarioSummary.hiddenStructureValue",
+                {
+                  outcomes:
+                    summary.instructorOnly
+                      .stochasticOutcomeModelCount,
+                  incidents:
+                    summary.instructorOnly.instructorIncidentCount,
+                  counterfactuals:
+                    summary.instructorOnly
+                      .counterfactualDecisionCount +
+                    summary.instructorOnly
+                      .counterfactualConditionCount,
+                },
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("instructorReview.scenarioSummary.authoredNodes")}</dt>
+            <dd>{summary.authoredNodeCount}</dd>
+          </div>
+          {summary.instructorOnly.auditVariantCalibrationStatus ===
+          undefined ? null : (
+            <div>
+              <dt>
+                {t(
+                  "instructorReview.scenarioSummary.calibration",
+                )}
+              </dt>
+              <dd>
+                {t(
+                  `instructorReview.scenarioSummary.calibration.${summary.instructorOnly.auditVariantCalibrationStatus}`,
+                )}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </details>
+    </section>
+  );
 }
 
 function optionalLocalDateTimeToUtc(
@@ -2298,6 +2621,9 @@ function AssignmentCreation({
             {t("instructorReview.assignmentScenarioHelp")}
           </span>
         </div>
+        {selectedScenario === undefined ? null : (
+          <ScenarioSummary scenario={selectedScenario} />
+        )}
         <div className="field">
           <label className="field__label" htmlFor="assignment-mode">
             {t("instructorReview.mode")}

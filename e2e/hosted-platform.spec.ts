@@ -1112,7 +1112,7 @@ test("creates an assignment from the published hosted scenario library", async (
   const availableFrom = "2026-08-01T02:00:00.000Z";
   const availableUntil = "2026-08-02T10:00:00.000Z";
   const option = {
-    schemaVersion: "1.1.0",
+    schemaVersion: "3.0.0",
     packId: "PACK_STANDARD_COFFEE_STAGE3",
     packVersion: "1.7.0",
     scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
@@ -1125,6 +1125,23 @@ test("creates an assignment from the published hosted scenario library", async (
       en: {
         packTitle: "TraceChain coffee evidence and custody",
         scenarioTitle: "Conflicting certificate evidence",
+        description:
+          "Investigate evidence and make accountable coffee supply-chain decisions.",
+        educationalPurpose:
+          "Distinguish record integrity from business truth.",
+        organizationTitles: {
+          ORG_COOPERATIVE: "Coffee cooperative",
+        },
+        roleTitles: {
+          ROLE_QUALITY_OFFICER: "Quality officer",
+        },
+        evidenceTitles: {
+          EVID_CERTIFICATE_RECORD: "Quality certificate record",
+        },
+        policyTitles: {
+          POLICY_CERTIFICATE_AUTHORITY:
+            "Certificate authority policy",
+        },
         counterfactualDecisionTitles: {},
       },
     },
@@ -1157,6 +1174,50 @@ test("creates an assignment from the published hosted scenario library", async (
         allowEvidenceRequests: true,
       },
     ],
+    experienceConfigurations: [],
+    summary: {
+      schemaVersion: "1.0.0",
+      domain: "coffee-supply-chain",
+      scenarioStatus: "published",
+      runtimeKind: "OPERATIONS",
+      authoredNodeCount: 49,
+      organizationIds: ["ORG_COOPERATIVE"],
+      roleIds: ["ROLE_QUALITY_OFFICER"],
+      evidenceItems: [
+        {
+          evidenceId: "EVID_CERTIFICATE_RECORD",
+          evidenceType: "CERTIFICATE",
+        },
+      ],
+      policyIds: ["POLICY_CERTIFICATE_AUTHORITY"],
+      learnerVisibleStaffCount: 2,
+      referencedImageCount: 3,
+      competencyTargetCount: 13,
+      rubricCount: 1,
+      requiredResponses: {
+        writtenJustification: true,
+        evidenceCitations: true,
+        policyCitations: true,
+        confidenceRating: true,
+        adverseEventProbability: true,
+      },
+      assessment: {
+        scoredElementCount: 12,
+        maximumScore: 100,
+      },
+      activity: {
+        kind: "WORKFLOW",
+        decisionCount: 12,
+        reflectionCount: 0,
+        learningStageCount: 9,
+      },
+      instructorOnly: {
+        stochasticOutcomeModelCount: 1,
+        instructorIncidentCount: 2,
+        counterfactualDecisionCount: 3,
+        counterfactualConditionCount: 0,
+      },
+    },
     counterfactualDecisionPoints: [],
   };
   let submitted: Record<string, unknown> | null = null;
@@ -1256,6 +1317,22 @@ test("creates an assignment from the published hosted scenario library", async (
   );
   await expect(form.getByLabel("Pack ID")).toHaveCount(0);
   await expect(form.getByLabel("Scenario ID")).toHaveCount(0);
+  const scenarioSummary = form.locator("section").filter({
+    has: page.getByRole("heading", { name: "Scenario summary" }),
+  });
+  await expect(scenarioSummary).toContainText(
+    "12 decision nodes across 9 learning stages",
+  );
+  await expect(scenarioSummary).toContainText("Quality officer");
+  await expect(
+    scenarioSummary.getByText("Quality certificate record"),
+  ).toBeHidden();
+  await scenarioSummary
+    .getByText("View evidence and policy inventory")
+    .click();
+  await expect(
+    scenarioSummary.getByText("Quality certificate record"),
+  ).toBeVisible();
   await expect(
     form.getByLabel("Run mode").locator("option"),
   ).toHaveCount(2);

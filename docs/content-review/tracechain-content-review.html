@@ -37,7 +37,7 @@
 <li><a href="#group-hostedAudit"><span>hostedAudit</span><b>114</b></a></li>
 <li><a href="#group-hostedLearner"><span>hostedLearner</span><b>229</b></a></li>
 <li><a href="#group-hostedPortal"><span>hostedPortal</span><b>18</b></a></li>
-<li><a href="#group-instructorReview"><span>instructorReview</span><b>467</b></a></li>
+<li><a href="#group-instructorReview"><span>instructorReview</span><b>519</b></a></li>
 <li><a href="#group-ledger"><span>ledger</span><b>20</b></a></li>
 <li><a href="#group-lifecycle"><span>lifecycle</span><b>12</b></a></li>
 <li><a href="#group-lineage"><span>lineage</span><b>10</b></a></li>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>3340/3340</b>chuỗi song ngữ</li>
+    <li><b>3392/3392</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -3880,7 +3880,7 @@
 </article>
 </section>
 <section id="group-instructorReview">
-  <h2>instructorReview <span>467 chuỗi</span></h2>
+  <h2>instructorReview <span>519 chuỗi</span></h2>
   <article class="entry" data-locale-key="instructorReview.account">
   <header><code>instructorReview.account</code></header>
   <p class="vi" lang="vi">Tài khoản</p>
@@ -5990,6 +5990,266 @@
   <header><code>instructorReview.scenarioId</code></header>
   <p class="vi" lang="vi">Mã kịch bản</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario ID</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.activity">
+  <header><code>instructorReview.scenarioSummary.activity</code></header>
+  <p class="vi" lang="vi">Cấu trúc hoạt động</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Activity structure</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.activity.audit">
+  <header><code>instructorReview.scenarioSummary.activity.audit</code></header>
+  <p class="vi" lang="vi">{records} hồ sơ nguồn, tối đa {findings} phát hiện và một kết luận bắt buộc</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{records} source records, up to {findings} findings, and one required conclusion</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.activity.stagedWorkflow">
+  <header><code>instructorReview.scenarioSummary.activity.stagedWorkflow</code></header>
+  <p class="vi" lang="vi">{decisions} nút quyết định trong {stages} bước học tập</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{decisions} decision nodes across {stages} learning stages</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.activity.technicalLab">
+  <header><code>instructorReview.scenarioSummary.activity.technicalLab</code></header>
+  <p class="vi" lang="vi">{modules} mô-đun phòng thí nghiệm theo thứ tự</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{modules} ordered laboratory modules</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.activity.workflow">
+  <header><code>instructorReview.scenarioSummary.activity.workflow</code></header>
+  <p class="vi" lang="vi">{decisions} nút quyết định trong {nodes} nút quy trình đã biên soạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">{decisions} decision nodes across {nodes} authored workflow nodes</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.assessment">
+  <header><code>instructorReview.scenarioSummary.assessment</code></header>
+  <p class="vi" lang="vi">Bằng chứng đánh giá</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Assessment evidence</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.assessment.elements">
+  <header><code>instructorReview.scenarioSummary.assessment.elements</code></header>
+  <p class="vi" lang="vi">Thành phần được chấm: {elements}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scored elements: {elements}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.assessment.none">
+  <header><code>instructorReview.scenarioSummary.assessment.none</code></header>
+  <p class="vi" lang="vi">Bản tóm tắt kịch bản không ghi nhận thành phần nào được chấm tự động</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No automatically scored elements are declared in this scenario summary</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.assessment.scored">
+  <header><code>instructorReview.scenarioSummary.assessment.scored</code></header>
+  <p class="vi" lang="vi">Thành phần được chấm: {elements} · Tối đa: {score} điểm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scored elements: {elements} · Maximum: {score} points</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.authoredNodes">
+  <header><code>instructorReview.scenarioSummary.authoredNodes</code></header>
+  <p class="vi" lang="vi">Nút quy trình đã biên soạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authored workflow nodes</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.calibration">
+  <header><code>instructorReview.scenarioSummary.calibration</code></header>
+  <p class="vi" lang="vi">Hiệu chuẩn biến thể kiểm toán</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Audit variant calibration</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.calibration.DRAFT">
+  <header><code>instructorReview.scenarioSummary.calibration.DRAFT</code></header>
+  <p class="vi" lang="vi">Bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.calibration.EXPERT_REVIEWED">
+  <header><code>instructorReview.scenarioSummary.calibration.EXPERT_REVIEWED</code></header>
+  <p class="vi" lang="vi">Đã được chuyên gia rà soát</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Expert reviewed</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.calibration.PILOT_CALIBRATED">
+  <header><code>instructorReview.scenarioSummary.calibration.PILOT_CALIBRATED</code></header>
+  <p class="vi" lang="vi">Đã hiệu chuẩn qua thí điểm</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Pilot calibrated</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.calibration.RETIRED">
+  <header><code>instructorReview.scenarioSummary.calibration.RETIRED</code></header>
+  <p class="vi" lang="vi">Đã ngừng sử dụng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Retired</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.competencies">
+  <header><code>instructorReview.scenarioSummary.competencies</code></header>
+  <p class="vi" lang="vi">Phạm vi năng lực</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Competency coverage</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.competenciesValue">
+  <header><code>instructorReview.scenarioSummary.competenciesValue</code></header>
+  <p class="vi" lang="vi">Mục tiêu năng lực: {targets} · Rubric: {rubrics}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Competency targets: {targets} · Rubrics: {rubrics}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.domain">
+  <header><code>instructorReview.scenarioSummary.domain</code></header>
+  <p class="vi" lang="vi">Lĩnh vực đã biên soạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authored domain</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.evidenceHeading">
+  <header><code>instructorReview.scenarioSummary.evidenceHeading</code></header>
+  <p class="vi" lang="vi">Bằng chứng người học có thể xem xét</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence learners can investigate</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.evidencePolicy">
+  <header><code>instructorReview.scenarioSummary.evidencePolicy</code></header>
+  <p class="vi" lang="vi">Bằng chứng và chính sách</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence and policies</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.evidencePolicyValue">
+  <header><code>instructorReview.scenarioSummary.evidencePolicyValue</code></header>
+  <p class="vi" lang="vi">Mục bằng chứng: {evidence} · Chính sách: {policies}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence items: {evidence} · Policies: {policies}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.heading">
+  <header><code>instructorReview.scenarioSummary.heading</code></header>
+  <p class="vi" lang="vi">Tóm tắt kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario summary</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.hiddenStructure">
+  <header><code>instructorReview.scenarioSummary.hiddenStructure</code></header>
+  <p class="vi" lang="vi">Cấu trúc ẩn đã biên soạn</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Authored hidden structure</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.hiddenStructureValue">
+  <header><code>instructorReview.scenarioSummary.hiddenStructureValue</code></header>
+  <p class="vi" lang="vi">Mô hình kết quả ngẫu nhiên: {outcomes} · Sự cố do giảng viên phát hành: {incidents} · Điểm phản thực: {counterfactuals}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Stochastic outcome models: {outcomes} · Instructor incidents: {incidents} · Counterfactual points: {counterfactuals}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.identity">
+  <header><code>instructorReview.scenarioSummary.identity</code></header>
+  <p class="vi" lang="vi">Định danh nội dung chính xác</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Exact content identity</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.inventory">
+  <header><code>instructorReview.scenarioSummary.inventory</code></header>
+  <p class="vi" lang="vi">Xem danh mục bằng chứng và chính sách</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">View evidence and policy inventory</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.media">
+  <header><code>instructorReview.scenarioSummary.media</code></header>
+  <p class="vi" lang="vi">Hỗ trợ trực quan</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Visual support</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.mediaValue">
+  <header><code>instructorReview.scenarioSummary.mediaValue</code></header>
+  <p class="vi" lang="vi">Hồ sơ nhân sự hiển thị cho người học: {staff} · Hình ảnh được sử dụng: {images}</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Learner-visible staff profiles: {staff} · Referenced images: {images}</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.none">
+  <header><code>instructorReview.scenarioSummary.none</code></header>
+  <p class="vi" lang="vi">Không có</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">None</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.organizations">
+  <header><code>instructorReview.scenarioSummary.organizations</code></header>
+  <p class="vi" lang="vi">Tổ chức tham gia</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Participating organizations</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.policyHeading">
+  <header><code>instructorReview.scenarioSummary.policyHeading</code></header>
+  <p class="vi" lang="vi">Chính sách người học có thể tham khảo</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Policies learners can consult</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.purposeLabel">
+  <header><code>instructorReview.scenarioSummary.purposeLabel</code></header>
+  <p class="vi" lang="vi">Mục đích giáo dục:</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Educational purpose:</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.response.confidence">
+  <header><code>instructorReview.scenarioSummary.response.confidence</code></header>
+  <p class="vi" lang="vi">Mức độ tin tưởng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Confidence rating</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.response.evidence">
+  <header><code>instructorReview.scenarioSummary.response.evidence</code></header>
+  <p class="vi" lang="vi">Trích dẫn bằng chứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Evidence citations</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.response.policy">
+  <header><code>instructorReview.scenarioSummary.response.policy</code></header>
+  <p class="vi" lang="vi">Trích dẫn chính sách</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Policy citations</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.response.risk">
+  <header><code>instructorReview.scenarioSummary.response.risk</code></header>
+  <p class="vi" lang="vi">Ước tính xác suất sự kiện bất lợi</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Adverse-event probability estimate</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.response.written">
+  <header><code>instructorReview.scenarioSummary.response.written</code></header>
+  <p class="vi" lang="vi">Lý giải hoặc diễn giải bằng văn bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Written justification or interpretation</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.responses">
+  <header><code>instructorReview.scenarioSummary.responses</code></header>
+  <p class="vi" lang="vi">Yêu cầu đối với câu trả lời</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Response requirements</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.responses.none">
+  <header><code>instructorReview.scenarioSummary.responses.none</code></header>
+  <p class="vi" lang="vi">Không có yêu cầu trả lời có cấu trúc bổ sung</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">No additional structured response</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.roles">
+  <header><code>instructorReview.scenarioSummary.roles</code></header>
+  <p class="vi" lang="vi">Vai trò người học</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Learner roles</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.runtime">
+  <header><code>instructorReview.scenarioSummary.runtime</code></header>
+  <p class="vi" lang="vi">Môi trường hoạt động của người học</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Learner runtime</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.runtime.AUDIT">
+  <header><code>instructorReview.scenarioSummary.runtime.AUDIT</code></header>
+  <p class="vi" lang="vi">Không gian kiểm toán chuyên biệt</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Specialized audit workspace</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.runtime.GENERIC">
+  <header><code>instructorReview.scenarioSummary.runtime.GENERIC</code></header>
+  <p class="vi" lang="vi">Môi trường quyết định nghề nghiệp dùng chung</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Generic professional-decision runtime</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.runtime.OPERATIONS">
+  <header><code>instructorReview.scenarioSummary.runtime.OPERATIONS</code></header>
+  <p class="vi" lang="vi">Mô phỏng nghiệp vụ chuỗi cung ứng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Supply-chain operations simulation</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.runtime.TECHNICAL_LAB">
+  <header><code>instructorReview.scenarioSummary.runtime.TECHNICAL_LAB</code></header>
+  <p class="vi" lang="vi">Phòng thí nghiệm kỹ thuật</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Technical Laboratory</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.status">
+  <header><code>instructorReview.scenarioSummary.status</code></header>
+  <p class="vi" lang="vi">Trạng thái kịch bản</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Scenario status</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.status.draft">
+  <header><code>instructorReview.scenarioSummary.status.draft</code></header>
+  <p class="vi" lang="vi">Bản nháp</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Draft</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.status.published">
+  <header><code>instructorReview.scenarioSummary.status.published</code></header>
+  <p class="vi" lang="vi">Đã công bố</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Published</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.status.retired">
+  <header><code>instructorReview.scenarioSummary.status.retired</code></header>
+  <p class="vi" lang="vi">Đã ngừng sử dụng</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Retired</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.status.validated">
+  <header><code>instructorReview.scenarioSummary.status.validated</code></header>
+  <p class="vi" lang="vi">Đã xác thực</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">Validated</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.technicalDetails">
+  <header><code>instructorReview.scenarioSummary.technicalDetails</code></header>
+  <p class="vi" lang="vi">Xem chi tiết thiết kế dành cho giảng viên</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">View instructor-only design details</p></details>
+</article>
+  <article class="entry" data-locale-key="instructorReview.scenarioSummary.technicalHelp">
+  <header><code>instructorReview.scenarioSummary.technicalHelp</code></header>
+  <p class="vi" lang="vi">Phần này chỉ trình bày siêu dữ liệu cấu trúc. Trạng thái thực tế ẩn, đáp án, đánh giá độ tin cậy của bằng chứng và kết quả đã xảy ra không được hiển thị.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This section contains structural metadata only. Hidden actual state, answer keys, evidence-reliability judgments, and realized outcomes are not included.</p></details>
 </article>
   <article class="entry" data-locale-key="instructorReview.scenarioVersion">
   <header><code>instructorReview.scenarioVersion</code></header>
@@ -17020,7 +17280,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>cb998e3c6d76f1269b32178b5e619481c168402d</code> · SHA-256 nguồn: <code>1cebef4b9a0d41ac4b6ca73bdd232be125a54ac68bfcc51e32181323fcef77dc</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>924271fd241b4fc727b5d095220c662437e4d07e</code> · SHA-256 nguồn: <code>b26def099d7219529600bfb3d0ba293a50b991b607c4eae0be608f5623312e2d</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

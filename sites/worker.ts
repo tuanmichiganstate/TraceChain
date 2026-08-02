@@ -204,6 +204,7 @@ import {
   scenarioPackBundleFilename,
   ScenarioPackBundleError,
 } from "../src/platform/scenario-packs/scenario-pack-bundle";
+import { projectInstructorScenarioSummary } from "../src/platform/scenario-packs/instructor-summary";
 import {
   compareScenarioPackVersions,
   createScenarioRolePreview,
@@ -218,6 +219,8 @@ import { hasRegisteredHostedRuntime } from "../src/platform/hosted/runtime-regis
 import {
   isTechnicalLabHostedContent,
   resolveHostedTechnicalLabExperience,
+  TECHNICAL_LAB_HOSTED_MAXIMUM_SCORE,
+  TECHNICAL_LAB_HOSTED_MODULE_COUNT,
   technicalLabHostedPackAdapter,
 } from "../src/technical-lab/hosted-pack-adapter";
 import {
@@ -326,8 +329,7 @@ function runnableHostedModeProfiles(
 
 function assignmentOptionLabels(
   pack: ScenarioPackV2,
-  packTitleKey: string,
-  scenarioTitleKey: string,
+  scenario: ScenarioDefinitionV1,
   counterfactualDecisionTitles: Readonly<
     Record<string, string>
   >,
@@ -341,9 +343,48 @@ function assignmentOptionLabels(
       return [
         locale,
         {
-          packTitle: catalog?.[packTitleKey] ?? packTitleKey,
+          packTitle:
+            catalog?.[pack.manifest.title.localizationKey] ??
+            pack.manifest.title.localizationKey,
           scenarioTitle:
-            catalog?.[scenarioTitleKey] ?? scenarioTitleKey,
+            catalog?.[scenario.title.localizationKey] ??
+            scenario.title.localizationKey,
+          description:
+            catalog?.[pack.manifest.description.localizationKey] ??
+            pack.manifest.description.localizationKey,
+          educationalPurpose:
+            catalog?.[
+              pack.manifest.educationalPurpose.localizationKey
+            ] ?? pack.manifest.educationalPurpose.localizationKey,
+          organizationTitles: Object.fromEntries(
+            scenario.organizations.map((organization) => [
+              organization.organizationId,
+              catalog?.[
+                organization.displayName.localizationKey
+              ] ?? organization.displayName.localizationKey,
+            ]),
+          ),
+          roleTitles: Object.fromEntries(
+            scenario.roles.map((role) => [
+              role.roleId,
+              catalog?.[role.displayName.localizationKey] ??
+                role.displayName.localizationKey,
+            ]),
+          ),
+          evidenceTitles: Object.fromEntries(
+            scenario.evidenceItems.map((evidence) => [
+              evidence.evidenceId,
+              catalog?.[evidence.title.localizationKey] ??
+                evidence.title.localizationKey,
+            ]),
+          ),
+          policyTitles: Object.fromEntries(
+            scenario.policies.map((policy) => [
+              policy.policyId,
+              catalog?.[policy.title.localizationKey] ??
+                policy.title.localizationKey,
+            ]),
+          ),
           counterfactualDecisionTitles: Object.fromEntries(
             Object.entries(counterfactualDecisionTitles).map(
               ([nodeId, localizationKey]) => [
@@ -2926,7 +2967,7 @@ async function apiResponse(
                     ]),
                   );
                 return [{
-                  schemaVersion: "2.0.0" as const,
+                  schemaVersion: "3.0.0" as const,
                   packId: pack.packId,
                   packVersion: pack.version,
                   scenarioId: scenario.scenarioId,
@@ -2937,9 +2978,12 @@ async function apiResponse(
                     scenario.title.localizationKey,
                   labelsByLocale: assignmentOptionLabels(
                     pack,
-                    pack.manifest.title.localizationKey,
-                    scenario.title.localizationKey,
+                    scenario,
                     counterfactualDecisionTitles,
+                  ),
+                  summary: projectInstructorScenarioSummary(
+                    pack,
+                    scenario,
                   ),
                   ...runnableModes,
                   counterfactualDecisionPoints:
@@ -2970,7 +3014,7 @@ async function apiResponse(
           : "en",
       );
     const technicalOption: HostedAssignmentScenarioOptionV1 = {
-      schemaVersion: "2.0.0",
+      schemaVersion: "3.0.0",
       packId: technicalLabHostedPackAdapter.packId,
       packVersion: technicalLabHostedPackAdapter.version,
       scenarioId: technicalScenario.scenarioId,
@@ -2981,10 +3025,18 @@ async function apiResponse(
       scenarioTitleKey: technicalScenario.title.localizationKey,
       labelsByLocale: assignmentOptionLabels(
         technicalLabHostedPackAdapter,
-        technicalLabHostedPackAdapter.manifest.title
-          .localizationKey,
-        technicalScenario.title.localizationKey,
+        technicalScenario,
         {},
+      ),
+      summary: projectInstructorScenarioSummary(
+        technicalLabHostedPackAdapter,
+        technicalScenario,
+        {
+          technicalLabModuleCount:
+            TECHNICAL_LAB_HOSTED_MODULE_COUNT,
+          technicalLabMaximumScore:
+            TECHNICAL_LAB_HOSTED_MAXIMUM_SCORE,
+        },
       ),
       supportedModes: technicalScenario.supportedModes,
       modeConfigurations: technicalScenario.modeConfigurations,

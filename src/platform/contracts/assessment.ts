@@ -1,6 +1,7 @@
 import type { LtiLearningContextV2 } from "./lti";
 import type { HostedRunModeConfigurationV1 } from "./scenario-pack";
 import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
+import type { VersionLifecycleStatus } from "./content";
 
 export type AssignmentRunMode =
   | "tutorial"
@@ -134,8 +135,72 @@ export interface CreateHostedAssignmentRequest {
   readonly availableUntil?: string;
 }
 
+export type HostedScenarioActivitySummaryV1 =
+  | {
+      readonly kind: "WORKFLOW";
+      readonly decisionCount: number;
+      readonly reflectionCount: number;
+      readonly learningStageCount?: number;
+    }
+  | {
+      readonly kind: "AUDIT";
+      readonly sourceRecordCount: number;
+      readonly maximumFindingCount: number;
+      readonly conclusionRequired: true;
+    }
+  | {
+      readonly kind: "TECHNICAL_LAB";
+      readonly moduleCount: number;
+    };
+
+export interface HostedAssignmentScenarioSummaryV1 {
+  readonly schemaVersion: "1.0.0";
+  readonly domain: string;
+  readonly scenarioStatus: VersionLifecycleStatus;
+  readonly runtimeKind:
+    | "OPERATIONS"
+    | "AUDIT"
+    | "TECHNICAL_LAB"
+    | "GENERIC";
+  readonly authoredNodeCount: number;
+  readonly organizationIds: readonly string[];
+  readonly roleIds: readonly string[];
+  readonly evidenceItems: readonly {
+    readonly evidenceId: string;
+    readonly evidenceType: string;
+  }[];
+  readonly policyIds: readonly string[];
+  readonly learnerVisibleStaffCount: number;
+  readonly referencedImageCount: number;
+  readonly competencyTargetCount: number;
+  readonly rubricCount: number;
+  readonly requiredResponses: {
+    readonly writtenJustification: boolean;
+    readonly evidenceCitations: boolean;
+    readonly policyCitations: boolean;
+    readonly confidenceRating: boolean;
+    readonly adverseEventProbability: boolean;
+  };
+  readonly assessment: {
+    readonly scoredElementCount: number;
+    readonly maximumScore?: number;
+  };
+  readonly activity: HostedScenarioActivitySummaryV1;
+  readonly instructorOnly: {
+    readonly stochasticOutcomeModelCount: number;
+    readonly instructorIncidentCount: number;
+    readonly counterfactualDecisionCount: number;
+    readonly counterfactualConditionCount: number;
+    readonly auditVariantCalibrationStatus?:
+      | "DRAFT"
+      | "EXPERT_REVIEWED"
+      | "PILOT_CALIBRATED"
+      | "RETIRED";
+  };
+}
+
 export interface HostedAssignmentScenarioOptionV1 {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly packId: string;
   readonly packVersion: string;
   readonly scenarioId: string;
@@ -148,6 +213,13 @@ export interface HostedAssignmentScenarioOptionV1 {
       {
         readonly packTitle: string;
         readonly scenarioTitle: string;
+        readonly description: string;
+        readonly educationalPurpose: string;
+        readonly organizationTitles:
+          Readonly<Record<string, string>>;
+        readonly roleTitles: Readonly<Record<string, string>>;
+        readonly evidenceTitles: Readonly<Record<string, string>>;
+        readonly policyTitles: Readonly<Record<string, string>>;
         readonly counterfactualDecisionTitles:
           Readonly<Record<string, string>>;
       }
@@ -162,6 +234,7 @@ export interface HostedAssignmentScenarioOptionV1 {
       TraceChainExperienceConfigurationV2;
     readonly configurationHash: string;
   }[];
+  readonly summary: HostedAssignmentScenarioSummaryV1;
   readonly counterfactualDecisionPoints: readonly {
     readonly nodeId: string;
     readonly decisionId: string;

@@ -22,7 +22,7 @@ const disabledCounterfactualReplay = {
 } as const;
 
 const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
-  schemaVersion: "2.0.0",
+  schemaVersion: "3.0.0",
   packId: "PACK_STANDARD_COFFEE_STAGE3",
   packVersion: "1.7.0",
   scenarioId: "SCN_COFFEE_STAGE3_FOUNDATION",
@@ -35,6 +35,24 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
     en: {
       packTitle: "TraceChain coffee evidence and custody",
       scenarioTitle: "Conflicting certificate evidence",
+      description:
+        "Investigate evidence and make accountable coffee supply-chain decisions.",
+      educationalPurpose:
+        "Distinguish record integrity from business truth while balancing safety and operations.",
+      organizationTitles: {
+        ORG_COOPERATIVE: "Coffee cooperative",
+        ORG_PROCESSOR: "Coffee processor",
+      },
+      roleTitles: {
+        ROLE_QUALITY_OFFICER: "Quality officer",
+      },
+      evidenceTitles: {
+        EVID_CERTIFICATE_RECORD: "Quality certificate record",
+      },
+      policyTitles: {
+        POLICY_CERTIFICATE_AUTHORITY:
+          "Certificate authority policy",
+      },
       counterfactualDecisionTitles: {
         NODE_CERTIFICATE_DECISION:
           "Certificate decision",
@@ -101,6 +119,49 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
     },
   ],
   experienceConfigurations: [],
+  summary: {
+    schemaVersion: "1.0.0",
+    domain: "coffee-supply-chain",
+    scenarioStatus: "published",
+    runtimeKind: "OPERATIONS",
+    authoredNodeCount: 49,
+    organizationIds: ["ORG_COOPERATIVE", "ORG_PROCESSOR"],
+    roleIds: ["ROLE_QUALITY_OFFICER"],
+    evidenceItems: [
+      {
+        evidenceId: "EVID_CERTIFICATE_RECORD",
+        evidenceType: "CERTIFICATE",
+      },
+    ],
+    policyIds: ["POLICY_CERTIFICATE_AUTHORITY"],
+    learnerVisibleStaffCount: 2,
+    referencedImageCount: 3,
+    competencyTargetCount: 13,
+    rubricCount: 1,
+    requiredResponses: {
+      writtenJustification: true,
+      evidenceCitations: true,
+      policyCitations: true,
+      confidenceRating: true,
+      adverseEventProbability: true,
+    },
+    assessment: {
+      scoredElementCount: 12,
+      maximumScore: 100,
+    },
+    activity: {
+      kind: "WORKFLOW",
+      decisionCount: 12,
+      reflectionCount: 1,
+      learningStageCount: 9,
+    },
+    instructorOnly: {
+      stochasticOutcomeModelCount: 1,
+      instructorIncidentCount: 2,
+      counterfactualDecisionCount: 1,
+      counterfactualConditionCount: 0,
+    },
+  },
   counterfactualDecisionPoints: [
     {
       nodeId: "NODE_CERTIFICATE_DECISION",
@@ -805,6 +866,55 @@ describe("instructor review screen", () => {
     expect(
       form.queryByLabelText("Learner user IDs"),
     ).not.toBeInTheDocument();
+    const summaryHeading = form.getByRole("heading", {
+      name: "Scenario summary",
+    });
+    const scenarioSummary = summaryHeading.closest("section");
+    if (scenarioSummary === null) {
+      throw new Error("Expected scenario summary section.");
+    }
+    const summaryView = within(scenarioSummary);
+    expect(
+      summaryView.getByText(
+        "Investigate evidence and make accountable coffee supply-chain decisions.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      summaryView.getByText(
+        "12 decision nodes across 9 learning stages",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      summaryView.getByText("Quality officer"),
+    ).toBeInTheDocument();
+    expect(
+      summaryView.getByText("Evidence items: 1 · Policies: 1"),
+    ).toBeInTheDocument();
+    const inventorySummary = summaryView.getByText(
+      "View evidence and policy inventory",
+    );
+    const inventory = inventorySummary.closest("details");
+    expect(inventory).not.toHaveAttribute("open");
+    await user.click(inventorySummary);
+    expect(inventory).toHaveAttribute("open");
+    expect(
+      summaryView.getByText("Quality certificate record"),
+    ).toBeInTheDocument();
+    expect(
+      summaryView.getByText("Certificate authority policy"),
+    ).toBeInTheDocument();
+    const technicalSummary = summaryView.getByText(
+      "View instructor-only design details",
+    );
+    const technicalDetails = technicalSummary.closest("details");
+    expect(technicalDetails).not.toHaveAttribute("open");
+    await user.click(technicalSummary);
+    expect(technicalDetails).toHaveAttribute("open");
+    expect(
+      summaryView.getByText(
+        "PACK_STANDARD_COFFEE_STAGE3@1.7.0 / SCN_COFFEE_STAGE3_FOUNDATION@1.7.0",
+      ),
+    ).toBeInTheDocument();
     const publishedSettings = form.getByLabelText(
       "Published mode settings",
     );

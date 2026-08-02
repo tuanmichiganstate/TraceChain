@@ -3782,6 +3782,37 @@ test("creates an exact published assignment for a provisioned learner", async ()
         },
       ],
     );
+    assert.equal(coffeeOption.schemaVersion, "3.0.0");
+    assert.equal(coffeeOption.summary.runtimeKind, "OPERATIONS");
+    assert.equal(coffeeOption.summary.authoredNodeCount, 49);
+    assert.deepEqual(coffeeOption.summary.activity, {
+      kind: "WORKFLOW",
+      decisionCount: 12,
+      reflectionCount: 0,
+      learningStageCount: 9,
+    });
+    assert.equal(coffeeOption.summary.competencyTargetCount, 13);
+    assert.equal(coffeeOption.summary.assessment.maximumScore, 100);
+    assert.equal(
+      coffeeOption.summary.assessment.scoredElementCount > 0,
+      true,
+    );
+    assert.equal(
+      coffeeOption.labelsByLocale.en.organizationTitles[
+        coffeeOption.summary.organizationIds[0]
+      ].length > 0,
+      true,
+    );
+    assert.equal(
+      JSON.stringify(coffeeOption.summary).includes("actualState"),
+      false,
+    );
+    assert.equal(
+      JSON.stringify(coffeeOption.summary).includes(
+        "correctOptionIdsByField",
+      ),
+      false,
+    );
     assert.equal(Object.hasOwn(coffeeOption, "initialState"), false);
 
     const learnerOptions = await worker.fetch(
@@ -4621,6 +4652,16 @@ test("creates and resumes the built-in Technical Laboratory through hosted D1 AP
         runtimeId: "TECHNICAL_LAB",
       },
     );
+    assert.equal(technicalOption.schemaVersion, "3.0.0");
+    assert.equal(technicalOption.summary.runtimeKind, "TECHNICAL_LAB");
+    assert.deepEqual(technicalOption.summary.activity, {
+      kind: "TECHNICAL_LAB",
+      moduleCount: 7,
+    });
+    assert.deepEqual(technicalOption.summary.assessment, {
+      scoredElementCount: 7,
+      maximumScore: 100,
+    });
 
     const assignmentId = "ASSIGNMENT_TECHNICAL_LAB_SITE";
     const createAssignment = await worker.fetch(

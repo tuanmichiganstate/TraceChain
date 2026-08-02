@@ -18,6 +18,10 @@ import { permissionedFoundationsLabBundle } from "./permissioned-foundations-pac
 export const TECHNICAL_LAB_HOSTED_SCENARIO_ID =
   "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS";
 export const TECHNICAL_LAB_HOSTED_SCENARIO_VERSION = "1.0.0";
+export const TECHNICAL_LAB_HOSTED_MODULE_COUNT =
+  permissionedFoundationsLabBundle.modules.length;
+export const TECHNICAL_LAB_HOSTED_MAXIMUM_SCORE =
+  permissionedFoundationsLabBundle.pack.scoringContract.maximumScore;
 
 export const TECHNICAL_LAB_HOSTED_MODE_CONFIGURATION:
   HostedRunModeConfigurationV1 = {
