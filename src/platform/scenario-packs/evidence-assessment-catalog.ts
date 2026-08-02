@@ -3,7 +3,7 @@ import type {
   AssignmentEvidenceAssessmentCatalogV1,
   ScenarioEvidenceAssessmentCatalogV1,
 } from "../contracts/evidence-assessment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 
 export class EvidenceAssessmentCatalogError extends Error {
   constructor(
@@ -16,7 +16,7 @@ export class EvidenceAssessmentCatalogError extends Error {
 }
 
 function exactScenario(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   scenarioId: string,
   scenarioVersion: string,
 ) {
@@ -35,7 +35,7 @@ function exactScenario(
 }
 
 function localizedValues(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   localizationKey: string,
   bundledCatalogs: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
@@ -58,7 +58,7 @@ function localizedValues(
 }
 
 export function createScenarioEvidenceAssessmentCatalog(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly localizationCatalogs: Readonly<
@@ -121,7 +121,7 @@ export function createScenarioEvidenceAssessmentCatalog(options: {
 
 export function createAssignmentEvidenceAssessmentCatalog(options: {
   readonly assignment: HostedAssignmentV1;
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly localizationCatalogs: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
   >;

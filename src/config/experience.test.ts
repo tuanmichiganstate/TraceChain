@@ -4,7 +4,7 @@ import auditPackJson from "../../scenario-packs/guided-coffee-audit/tracechain.p
 import practiceAuditPackJson from "../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
 import challengeAuditPackJson from "../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import type {
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../platform/contracts/scenario-pack";
 import {
   resolveHostedExperienceConfiguration,
@@ -27,14 +27,14 @@ import {
 } from "./experience";
 import { validateConfiguration } from "./validation";
 
-const pack = packJson as ScenarioPackV1;
+const pack = packJson as ScenarioPackV2;
 const scenario = pack.scenarios[0];
-const auditPack = auditPackJson as ScenarioPackV1;
+const auditPack = auditPackJson as ScenarioPackV2;
 const auditScenario = auditPack.scenarios[0];
-const practiceAuditPack = practiceAuditPackJson as ScenarioPackV1;
+const practiceAuditPack = practiceAuditPackJson as ScenarioPackV2;
 const practiceAuditScenario = practiceAuditPack.scenarios[0];
 const challengeAuditPack =
-  challengeAuditPackJson as ScenarioPackV1;
+  challengeAuditPackJson as ScenarioPackV2;
 const challengeAuditScenario = challengeAuditPack.scenarios[0];
 
 if (

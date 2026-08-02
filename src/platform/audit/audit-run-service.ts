@@ -27,7 +27,7 @@ import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
   HostedRunModeConfigurationV1,
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import {
   HostedAuthorizationError,
@@ -256,7 +256,7 @@ export class AuditHostedRunService {
   >;
 
   constructor(
-    private readonly pack: ScenarioPackV1,
+    private readonly pack: ScenarioPackV2,
     scenarioId: string,
     scenarioVersion: string,
     private readonly eventStore: RunEventStore,

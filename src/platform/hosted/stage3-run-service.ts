@@ -46,7 +46,7 @@ import { isJsonObject } from "../contracts/json";
 import type { InstructorRunReplayV1 } from "../contracts/run-replay";
 import type {
   DecisionNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
 import { evaluateAutomatedEvidenceRule } from "../runs/automated-evidence-rule";
@@ -898,7 +898,7 @@ export class HostedStage3RunService {
   private readonly domainRuntime: CoffeeHostedDomainRuntime;
 
   constructor(
-    private readonly pack: ScenarioPackV1,
+    private readonly pack: ScenarioPackV2,
     private readonly eventStore: RunEventStore,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
@@ -918,7 +918,7 @@ export class HostedStage3RunService {
     );
     return scenario === undefined
       ? undefined
-      : staffProfileProjection(this.pack, scenario, roleId);
+      : staffProfileProjection(this.pack, scenario, roleId, state.runId);
   }
 
   async createCounterfactualBranch(

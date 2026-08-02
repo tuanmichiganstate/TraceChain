@@ -6,7 +6,7 @@ import { isJsonObject } from "../contracts/json";
 import type { RunEventV1 } from "../contracts/run-events";
 import type {
   DecisionNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import type { HostedRuntimeCommand } from "./hosted-runtime-service";
 import { HostedRunCommandError } from "./run-command-error";
@@ -65,7 +65,7 @@ function originalOptionIds(event: RunEventV1): readonly string[] {
 }
 
 function scenarioDecisionNodes(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   scenarioId: string,
   scenarioVersion: string,
 ): readonly DecisionNodeV1[] {
@@ -88,7 +88,7 @@ function scenarioDecisionNodes(
 }
 
 export function counterfactualDecisionPoints(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly sourceRunId: string;
   readonly events: readonly RunEventV1[];
 }): readonly CounterfactualDecisionPointV1[] {
@@ -136,7 +136,7 @@ export function counterfactualDecisionPoints(options: {
 }
 
 export function counterfactualConditionPoints(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly sourceRunId: string;
   readonly events: readonly RunEventV1[];
 }): readonly CounterfactualConditionPointV1[] {

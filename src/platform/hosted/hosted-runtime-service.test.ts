@@ -5,7 +5,7 @@ import {
   FixedClock,
   SequenceIdGenerator,
 } from "../../domain/simulation/environment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { MemoryRunEventStore } from "../runs/event-store";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
@@ -39,7 +39,7 @@ function fixture(
   const pack = publishScenarioPack(result.pack, {
     publishedAt: NOW,
     publishedBy: instructor.userId,
-  }) as ScenarioPackV1;
+  }) as ScenarioPackV2;
   const store = new MemoryRunEventStore();
   return {
     store,

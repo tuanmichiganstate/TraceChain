@@ -1,6 +1,6 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.12.0",
+  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "schemaVersion": "2.0.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
   "version": "1.11.0",
   "status": "draft",
@@ -677,90 +677,125 @@
       "eventType": "DECISION_SUBMITTED"
     }
   ],
-  "portraitAssets": [
+  "imageAssets": [
     {
       "assetId": "PORTRAIT_PRODUCER_MANAGER",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "producer-manager.webp",
       "filePath": "media/staff/producer-manager.webp",
       "sha256": "e12d002f111b56d9f8209db549c8fd58bc183e4f68f8478b182cbff3a853f616",
+      "byteLength": 35106,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.producerManager.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_CERTIFICATION_OFFICER",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "certification-officer.webp",
       "filePath": "media/staff/certification-officer.webp",
       "sha256": "96d744a37b95d82cceb9a6f58399b3a64a3cf7a740621829b7c81bb7bf4c5d11",
+      "byteLength": 25112,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.certificationOfficer.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_LOGISTICS_COORDINATOR",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "logistics-coordinator.webp",
       "filePath": "media/staff/logistics-coordinator.webp",
       "sha256": "3863c4f85ced3fee1916ee145ce6f817d30fc9a36ff62f58d18f576d3ad2a95c",
+      "byteLength": 21394,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.logisticsCoordinator.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_PROCESSING_MANAGER",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "processing-manager.webp",
       "filePath": "media/staff/processing-manager.webp",
       "sha256": "d83c3d90d5268c9d985428faeb5fac8be610e15f900801e7d800d5d5024b985f",
+      "byteLength": 22158,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.processingManager.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_SHIPPING_CLERK",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "shipping-clerk.webp",
       "filePath": "media/staff/shipping-clerk.webp",
       "sha256": "f51510f254decd6ff1fb03844300238b6942e4381f21ae53dd97dc4977af2fc5",
+      "byteLength": 26338,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.shippingClerk.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_RETAIL_MANAGER",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "retail-manager.webp",
       "filePath": "media/staff/retail-manager.webp",
       "sha256": "12aa24499b1b73d608d93f4e527d7f4748e85ab85b02dc634b863daa35f10fae",
+      "byteLength": 21248,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.retailManager.alt"
+      }
     },
     {
       "assetId": "PORTRAIT_REGULATORY_AUDITOR",
+      "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
       "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
-      "fictionalSubject": true,
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "regulatory-auditor.webp",
       "filePath": "media/staff/regulatory-auditor.webp",
       "sha256": "25a7526bb2258722e7a6febed2a03f2397346ff71a3a5fe260badeda6a1ea4c5",
+      "byteLength": 21302,
       "width": 480,
       "height": 600,
-      "format": "webp",
-      "developmentPlaceholder": false
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "staff.regulatoryAuditor.alt"
+      }
     }
   ],
   "auditVariantBanks": [],

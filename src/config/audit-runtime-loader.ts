@@ -7,7 +7,7 @@ import type {
 } from "../platform/contracts/audit";
 import type {
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../platform/contracts/scenario-pack";
 import {
   resolveAuditVariant,
@@ -31,7 +31,7 @@ import type { RuntimeFetch } from "./runtime-loader";
 export interface AuditRuntimePackage {
   readonly configuration: AuditSimulationConfiguration;
   readonly configurationHash: string;
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenario: ScenarioDefinitionV1;
   readonly auditCase: AuditCaseDefinitionV1;
   readonly variantBank: AuditVariantBankDefinitionV1 | null;

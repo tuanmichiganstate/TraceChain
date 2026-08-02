@@ -12,7 +12,7 @@ import type {
   LearnerCompetencyRatingV1,
 } from "../contracts/competency-report";
 import type {
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import {
   adoptedCurriculumOverlaysForPack,
@@ -327,7 +327,7 @@ function projectOverlay(
 }
 
 export function createAssignmentCurriculumCrosswalkReport(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly overlays: readonly CurriculumCrosswalkOverlayV2[];
   readonly competencyReport: HostedAssignmentCompetencyReportV1;
 }): AssignmentCurriculumOverlayReportV2 {

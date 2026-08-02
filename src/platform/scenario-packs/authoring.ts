@@ -10,7 +10,7 @@ import type {
   DecisionNodeV1,
   HostedRunMode,
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
   TransitionConditionV1,
 } from "../contracts/scenario-pack";
 import { modeConfigurationFor } from "../runs/mode-configuration";
@@ -153,7 +153,7 @@ function previewTransitionCondition(
 }
 
 export function createScenarioRolePreview(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly locale: string;
@@ -302,8 +302,8 @@ function flatten(
 }
 
 export function compareScenarioPackVersions(
-  from: ScenarioPackV1,
-  to: ScenarioPackV1,
+  from: ScenarioPackV2,
+  to: ScenarioPackV2,
 ): ScenarioPackComparisonV1 {
   if (
     from.packId !== to.packId ||

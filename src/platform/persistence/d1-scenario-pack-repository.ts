@@ -1,6 +1,6 @@
 import type { Clock } from "../../domain/simulation/environment";
 import type { ScenarioPackListItemV1 } from "../contracts/scenario-authoring";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   publishScenarioPack,
   ScenarioPackPublicationError,
@@ -123,7 +123,7 @@ function parseStoredPack(
   row: StoredPackRow,
   packId: string,
   version: string,
-): ScenarioPackV1 {
+): ScenarioPackV2 {
   let candidate: unknown;
   try {
     candidate = JSON.parse(row.pack_json);
@@ -207,7 +207,7 @@ export class D1ScenarioPackRepository
     private readonly authenticatedUserId: string,
   ) {}
 
-  async saveDraft(pack: ScenarioPackV1): Promise<void> {
+  async saveDraft(pack: ScenarioPackV2): Promise<void> {
     const validation = validateScenarioPack(pack);
     if (!validation.isValid) {
       const firstIssue = validation.issues[0];
@@ -248,7 +248,7 @@ export class D1ScenarioPackRepository
     packId: string,
     version: string,
     metadata: PublishScenarioPackMetadata,
-  ): Promise<ScenarioPackV1> {
+  ): Promise<ScenarioPackV2> {
     const stored = await this.find(packId, version);
     if (stored === null) {
       throw new ScenarioPackPublicationError(
@@ -293,7 +293,7 @@ export class D1ScenarioPackRepository
   async find(
     packId: string,
     version: string,
-  ): Promise<ScenarioPackV1 | null> {
+  ): Promise<ScenarioPackV2 | null> {
     const row = await this.database
       .prepare(SELECT_PACK)
       .bind(packId, version)

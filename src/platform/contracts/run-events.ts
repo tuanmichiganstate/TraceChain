@@ -177,11 +177,19 @@ export interface LearnerRunStaffProfileV1 {
   readonly displayName: LearnerRunLocalizedTextV1;
   readonly roleTitle: LearnerRunLocalizedTextV1;
   readonly organizationName: LearnerRunLocalizedTextV1;
+  readonly portraitAssetId: string;
   readonly portraitPath: string;
   readonly portraitAlt: LearnerRunLocalizedTextV1;
   readonly shortProfile?: LearnerRunLocalizedTextV1;
   readonly professionalResponsibility?: LearnerRunLocalizedTextV1;
   readonly fictional: true;
+}
+
+export interface LearnerRunImageV2 {
+  readonly assetId: string;
+  readonly url: string;
+  readonly alt: LearnerRunLocalizedTextV1;
+  readonly caption?: LearnerRunLocalizedTextV1;
 }
 
 export interface LearnerRunDecisionOptionV1 {
@@ -212,6 +220,7 @@ export interface LearnerRunNodePresentationV1 {
     | "REFLECTION"
     | "COMPLETION";
   readonly title: LearnerRunLocalizedTextV1;
+  readonly image?: LearnerRunImageV2;
   readonly body?: LearnerRunLocalizedTextV1;
   readonly decisionId?: string;
   readonly prompt?: LearnerRunLocalizedTextV1;
@@ -295,6 +304,7 @@ export interface LearnerRunPresentationV1 {
   readonly evidenceTitles: Readonly<
     Record<string, LearnerRunLocalizedTextV1>
   >;
+  readonly evidenceImages?: Readonly<Record<string, LearnerRunImageV2>>;
   readonly evidencePresentations?: Readonly<
     Record<string, LearnerRunEvidencePresentationV1>
   >;

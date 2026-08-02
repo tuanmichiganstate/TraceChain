@@ -1,5 +1,5 @@
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   MemoryScenarioPackRepository,
   publishScenarioPack,
@@ -8,7 +8,7 @@ import {
 } from "./publication";
 import { validateScenarioPack } from "./validation";
 
-function draftPack(): ScenarioPackV1 {
+function draftPack(): ScenarioPackV2 {
   const result = validateScenarioPack(structuredClone(packJson));
   if (!result.isValid) throw new Error("The test pack must be valid.");
   return result.pack;
@@ -46,7 +46,7 @@ describe("scenario-pack publication", () => {
 
   it("detects changes to published content", () => {
     const published = publishScenarioPack(draftPack(), publication);
-    const changed = structuredClone(published) as ScenarioPackV1;
+    const changed = structuredClone(published) as ScenarioPackV2;
     const manifest = changed.manifest.title as { localizationKey: string };
     manifest.localizationKey = "platformPack.changed.title";
 

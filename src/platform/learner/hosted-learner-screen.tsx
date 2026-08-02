@@ -16,6 +16,7 @@ import type {
   ApplicationRole,
   LearnerRunAuthoredFeedbackV1,
   LearnerRunEvidencePresentationV1,
+  LearnerRunImageV2,
   LearnerRunLocalizedTextV1,
   LearnerRunProjectionV1,
 } from "../contracts/run-events";
@@ -269,6 +270,27 @@ function runText(
     value.valuesByLocale.en ??
     Object.values(value.valuesByLocale)[0] ??
     t(value.localizationKey)
+  );
+}
+
+function HostedScenarioImage({
+  image,
+}: {
+  readonly image: LearnerRunImageV2;
+}): ReactNode {
+  const t = useTranslator();
+  return (
+    <figure className="hosted-scenario-image">
+      <img
+        src={image.url}
+        alt={runText(image.alt, t)}
+        loading="lazy"
+        decoding="async"
+      />
+      {image.caption === undefined ? null : (
+        <figcaption>{runText(image.caption, t)}</figcaption>
+      )}
+    </figure>
   );
 }
 
@@ -797,6 +819,8 @@ export function HostedEvidenceLibrary({
                 : runText(authoredTitle, t);
             const recordValue = asObject(record.value);
             const inspected = recordValue?.inspected === true;
+            const evidenceImage =
+              presentation?.evidenceImages?.[record.recordId];
             return (
               <li key={record.recordId}>
                 {!contextualInspection ? (
@@ -813,6 +837,11 @@ export function HostedEvidenceLibrary({
                     >
                       <summary>{title}</summary>
                       <div>
+                        {evidenceImage === undefined ? null : (
+                          <HostedScenarioImage
+                            image={evidenceImage}
+                          />
+                        )}
                         <HostedEvidenceValue
                           recordId={record.recordId}
                           value={record.value}
@@ -1817,6 +1846,9 @@ function RunWorkspace({
         {presentation === undefined ? null : (
           <>
             <h3>{runText(presentation.scenarioTitle, t)}</h3>
+            {currentNode?.image === undefined ? null : (
+              <HostedScenarioImage image={currentNode.image} />
+            )}
             {currentNode?.body === undefined ? null : (
               <p>{runText(currentNode.body, t)}</p>
             )}

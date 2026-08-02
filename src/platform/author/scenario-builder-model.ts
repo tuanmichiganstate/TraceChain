@@ -2,7 +2,7 @@ import type {
   HostedRunMode,
   ScenarioDefinitionV1,
   ScenarioNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import en from "../../locales/en.json";
 import vi from "../../locales/vi.json";
@@ -17,16 +17,16 @@ export type DeepMutable<Value> =
       : Value;
 
 export function changeScenarioPack(
-  pack: ScenarioPackV1,
-  mutation: (draft: DeepMutable<ScenarioPackV1>) => void,
-): ScenarioPackV1 {
-  const draft = structuredClone(pack) as DeepMutable<ScenarioPackV1>;
+  pack: ScenarioPackV2,
+  mutation: (draft: DeepMutable<ScenarioPackV2>) => void,
+): ScenarioPackV2 {
+  const draft = structuredClone(pack) as DeepMutable<ScenarioPackV2>;
   mutation(draft);
   return draft;
 }
 
 function catalogValue(
-  draft: DeepMutable<ScenarioPackV1>,
+  draft: DeepMutable<ScenarioPackV2>,
   locale: string,
   localizationKey: string,
   value: string,
@@ -41,11 +41,11 @@ function catalogValue(
 }
 
 export function updateLocalizedValue(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   localizationKey: string,
   locale: string,
   value: string,
-): ScenarioPackV1 {
+): ScenarioPackV2 {
   return changeScenarioPack(pack, (draft) => {
     catalogValue(draft, locale, localizationKey, value);
   });
@@ -71,7 +71,7 @@ export function uniqueIdentifier(
 }
 
 function setStarterText(
-  draft: DeepMutable<ScenarioPackV1>,
+  draft: DeepMutable<ScenarioPackV2>,
   localizationKey: string,
   catalogKey: keyof typeof en,
 ): void {
@@ -80,8 +80,8 @@ function setStarterText(
 }
 
 export function createScenarioBuilderStarter(
-  source: ScenarioPackV1,
-): ScenarioPackV1 {
+  source: ScenarioPackV2,
+): ScenarioPackV2 {
   const keys = {
     packTitle: "builder.newScenario.manifest.title",
     packDescription: "builder.newScenario.manifest.description",
@@ -190,7 +190,7 @@ export function createScenarioBuilderStarter(
         eventType: "DECISION_SUBMITTED",
       },
     ],
-    portraitAssets: [],
+    imageAssets: [],
     auditVariantBanks: [],
     scenarios: [
       {
@@ -287,7 +287,7 @@ export function createScenarioBuilderStarter(
       },
     ],
     assetHashes: {},
-  } satisfies ScenarioPackV1;
+  } satisfies ScenarioPackV2;
 
   setStarterText(
     draft,
@@ -388,7 +388,7 @@ export function createScenarioBuilderStarter(
 }
 
 export function uniqueLocalizationPrefix(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   requestedPrefix: string,
   suffixes: readonly string[],
 ): string {
@@ -516,7 +516,7 @@ function scenarioIdentifiers(
 }
 
 function packIdentifiers(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly StableIdentifier[] {
   return [
     ...pack.scenarios.map((scenario) => ({
@@ -666,9 +666,9 @@ function replaceExactIdentifiers<Value>(
  * so deleting or reordering a collection cannot be mistaken for a rename.
  */
 export function reconcileScenarioPackReferences(
-  previous: ScenarioPackV1,
-  next: ScenarioPackV1,
-): ScenarioPackV1 {
+  previous: ScenarioPackV2,
+  next: ScenarioPackV2,
+): ScenarioPackV2 {
   let reconciled = structuredClone(next);
   const packReplacements = changedIdentifierMap(
     packIdentifiers(previous),
@@ -747,9 +747,9 @@ function rekeyLocalizedReferences(
 }
 
 export function appendIndependentScenarioCopy(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   sourceScenarioIndex: number,
-): ScenarioPackV1 {
+): ScenarioPackV2 {
   return changeScenarioPack(pack, (draft) => {
     const source = draft.scenarios[sourceScenarioIndex];
     if (source === undefined) return;

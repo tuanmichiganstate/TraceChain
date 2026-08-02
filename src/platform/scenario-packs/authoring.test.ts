@@ -2,7 +2,7 @@ import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.
 import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import en from "../../locales/en.json";
 import vi from "../../locales/vi.json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   compareScenarioPackVersions,
   createScenarioRolePreview,
@@ -10,7 +10,7 @@ import {
 } from "./authoring";
 import { validateScenarioPack } from "./validation";
 
-function validPack(): ScenarioPackV1 {
+function validPack(): ScenarioPackV2 {
   const result = validateScenarioPack(structuredClone(packJson), {
     localizationCatalogs: { en, vi },
   });
@@ -198,7 +198,7 @@ describe("scenario authoring services", () => {
 
   it("compares two immutable version definitions by stable JSON path", () => {
     const from = validPack();
-    const to = structuredClone(from) as ScenarioPackV1;
+    const to = structuredClone(from) as ScenarioPackV2;
     const mutable = to as {
       version: string;
       manifest: { domain: string };

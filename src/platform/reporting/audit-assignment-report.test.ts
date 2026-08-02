@@ -3,11 +3,11 @@ import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-aud
 import { LECTURER_PRESETS } from "../../config/presets";
 import type { AuditLearnerProjectionV1 } from "../contracts/audit";
 import type { HostedAssignmentReportV1 } from "../contracts/assessment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { InstructorTimelineItem } from "../hosted/stage3-types";
 import { createAuditAssignmentReport } from "./audit-assignment-report";
 
-const pack = challengeAuditPackJson as unknown as ScenarioPackV1;
+const pack = challengeAuditPackJson as unknown as ScenarioPackV2;
 const bank = pack.auditVariantBanks[0]!;
 
 function projection(): AuditLearnerProjectionV1 {

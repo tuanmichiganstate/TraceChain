@@ -13,7 +13,7 @@ import type {
 import type {
   HostedRunModeConfigurationV1,
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import type {
   ScenarioPackValidationIssueV1,
@@ -308,7 +308,7 @@ export interface HostedExperienceConfigurationValidation {
  * before accepting new content.
  */
 export function validateHostedExperienceConfigurations(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): HostedExperienceConfigurationValidation {
   const issues: ScenarioPackValidationIssueV1[] = [];
   let checkedCount = 0;

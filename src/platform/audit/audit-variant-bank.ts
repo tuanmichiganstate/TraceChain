@@ -18,7 +18,7 @@ import type {
 } from "../contracts/audit";
 import type {
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 
 export interface AuditVariantBankValidationIssue {
@@ -71,7 +71,7 @@ function selectionBank(
 }
 
 function auditCaseFor(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   scenarioId: string,
   scenarioVersion: string,
 ): AuditCaseDefinitionV1 | undefined {
@@ -83,7 +83,7 @@ function auditCaseFor(
 }
 
 export function validateAuditVariantBank(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly bank: AuditVariantBankDefinitionV1;
 }): AuditVariantBankValidationResult {
   const issues: AuditVariantBankValidationIssue[] = [];
@@ -288,7 +288,7 @@ export function auditVariantAssignmentForIndex(options: {
 }
 
 export function resolveAuditVariant(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly bank: AuditVariantBankDefinitionV1;
   readonly assignment: AuditVariantAssignmentV1;
 }): {

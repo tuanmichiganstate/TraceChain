@@ -21,7 +21,7 @@ import type {
 import type {
   HostedRunMode,
   HostedRunModeConfigurationV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import type { RunEventStore } from "../runs/event-store";
 import type { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
@@ -197,7 +197,7 @@ function isStage3CaseVariant(value: string): value is Stage3CaseVariant {
 }
 
 export function createHostedRuntimeService(options: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
   readonly eventStore: RunEventStore;

@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-describe("published scenario-pack JSON Schema", () => {
+describe("published scenario-pack V2 JSON Schema", () => {
   it("is valid JSON with a stable versioned identity", () => {
     const path = resolve(
       process.cwd(),
-      "schemas/tracechain-scenario-pack-v1.schema.json",
+      "schemas/tracechain-scenario-pack-v2.schema.json",
     );
     const schema = JSON.parse(readFileSync(path, "utf8")) as {
       $schema?: string;
@@ -25,11 +25,12 @@ describe("published scenario-pack JSON Schema", () => {
     expect(schema.$schema).toBe(
       "https://json-schema.org/draft/2020-12/schema",
     );
-    expect(schema.$id).toContain("tracechain-scenario-pack-v1");
-    expect(schema.title).toBe("TraceChain Scenario Pack V1.12");
+    expect(schema.$id).toContain("tracechain-scenario-pack-v2");
+    expect(schema.title).toBe("TraceChain Scenario Pack V2");
     expect(schema.properties).toHaveProperty("schemaVersion");
     expect(schema.properties).toHaveProperty("scenarios");
     expect(schema.properties).toHaveProperty("auditVariantBanks");
+    expect(schema.properties).toHaveProperty("imageAssets");
     expect(schema.$defs.scenario.required).toEqual(
       expect.arrayContaining([
         "modeConfigurations",

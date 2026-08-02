@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import type { HostedAssignmentReportV1 } from "../contracts/assessment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { CompetencyEvidenceProjection } from "../hosted/stage3-types";
 import {
   createAssignmentCompetencyReport,
@@ -9,7 +9,7 @@ import {
 } from "./assignment-competency-report";
 import { resolveHostedExperienceConfiguration } from "../runs/experience-configuration";
 
-const pack = packJson as ScenarioPackV1;
+const pack = packJson as ScenarioPackV2;
 const scenario = pack.scenarios[0];
 
 if (scenario === undefined) {

@@ -1,7 +1,7 @@
 import type {
   DecisionNodeV1,
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../src/platform/contracts/scenario-pack";
 import type {
   CreateHostedAssignmentRequest,
@@ -194,6 +194,17 @@ import {
 import { assignmentStartAvailability } from "../src/platform/runs/assignment-availability";
 import { ScenarioPackPublicationError } from "../src/platform/scenario-packs/publication";
 import {
+  inspectScenarioImage,
+  MAXIMUM_SCENARIO_IMAGE_BYTES,
+  scenarioImageFilePath,
+  ScenarioImageError,
+} from "../src/platform/scenario-packs/image-assets";
+import {
+  createScenarioPackBundle,
+  scenarioPackBundleFilename,
+  ScenarioPackBundleError,
+} from "../src/platform/scenario-packs/scenario-pack-bundle";
+import {
   compareScenarioPackVersions,
   createScenarioRolePreview,
   ScenarioAuthoringError,
@@ -220,6 +231,9 @@ interface AssetBinding {
 
 interface R2ObjectBodyLike {
   readonly body: ReadableStream<Uint8Array> | null;
+  readonly httpMetadata?: {
+    readonly contentType?: string;
+  };
 }
 
 interface R2BucketLike {
@@ -259,10 +273,11 @@ const HOSTED_APP_ROUTE =
 const MAXIMUM_COMMAND_BYTES = 64 * 1024;
 const MAXIMUM_PACK_BYTES = 2 * 1024 * 1024;
 const MAXIMUM_SCORM_ARTIFACT_BYTES = 25 * 1024 * 1024;
+const SCENARIO_IMAGE_STORAGE_PREFIX = "scenario-images/";
 const scenarioPackCatalogs = { en, vi } as const;
 
 function runnableHostedModeProfiles(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   scenario: ScenarioDefinitionV1,
 ): Pick<
   HostedAssignmentScenarioOptionV1,
@@ -310,7 +325,7 @@ function runnableHostedModeProfiles(
 }
 
 function assignmentOptionLabels(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   packTitleKey: string,
   scenarioTitleKey: string,
   counterfactualDecisionTitles: Readonly<
@@ -440,6 +455,117 @@ function requiredText(
     );
   }
   return value;
+}
+
+function pathScenarioAsset(pathname: string): string | null {
+  const match = /^\/api\/v1\/scenario-assets\/([a-f0-9]{64})$/u.exec(
+    pathname,
+  );
+  return match?.[1] ?? null;
+}
+
+function pathRunAsset(
+  pathname: string,
+): { readonly runId: string; readonly assetId: string } | null {
+  const match =
+    /^\/api\/v1\/runs\/([^/]+)\/assets\/([^/]+)$/u.exec(pathname);
+  if (match?.[1] === undefined || match[2] === undefined) return null;
+  return {
+    runId: decodeURIComponent(match[1]),
+    assetId: decodeURIComponent(match[2]),
+  };
+}
+
+async function boundedRequestBytes(
+  request: Request,
+  maximumBytes: number,
+): Promise<Uint8Array> {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > maximumBytes
+  ) {
+    throw new ScenarioImageError(
+      "IMAGE_TOO_LARGE",
+      "The uploaded image exceeds its authored size limit.",
+    );
+  }
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength > maximumBytes) {
+    throw new ScenarioImageError(
+      "IMAGE_TOO_LARGE",
+      "The uploaded image exceeds its authored size limit.",
+    );
+  }
+  return bytes;
+}
+
+function scenarioImageStorageKey(sha256: string): string {
+  return `${SCENARIO_IMAGE_STORAGE_PREFIX}${sha256}`;
+}
+
+async function storedObjectBytes(
+  object: R2ObjectBodyLike | null,
+): Promise<Uint8Array | null> {
+  if (object?.body === null || object === null) return null;
+  return new Uint8Array(await new Response(object.body).arrayBuffer());
+}
+
+async function scenarioImageBytes(
+  request: Request,
+  environment: WorkerEnvironment,
+  image: ScenarioPackV2["imageAssets"][number],
+): Promise<Uint8Array | null> {
+  const stored = await storedObjectBytes(
+    await environment.ARTIFACTS.get(
+      scenarioImageStorageKey(image.sha256),
+    ),
+  );
+  const bytes =
+    stored ??
+    (await (async () => {
+      const response = await environment.ASSETS.fetch(
+        new Request(new URL(`/${image.filePath}`, request.url)),
+      );
+      return response.ok
+        ? new Uint8Array(await response.arrayBuffer())
+        : null;
+    })());
+  if (bytes === null) return null;
+  try {
+    const inspected = inspectScenarioImage(
+      bytes,
+      image.originalFileName,
+    );
+    return inspected.sha256 === image.sha256 &&
+      inspected.byteLength === image.byteLength &&
+      inspected.width === image.width &&
+      inspected.height === image.height &&
+      inspected.mimeType === image.mimeType
+      ? bytes
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function scenarioPackAssetBytes(
+  request: Request,
+  environment: WorkerEnvironment,
+  pack: ScenarioPackV2,
+): Promise<ReadonlyMap<string, Uint8Array>> {
+  const assets = new Map<string, Uint8Array>();
+  for (const image of pack.imageAssets) {
+    const bytes = await scenarioImageBytes(request, environment, image);
+    if (bytes === null) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        `Declared scenario image ${image.assetId} is unavailable or does not match its metadata.`,
+      );
+    }
+    assets.set(image.filePath, bytes);
+  }
+  return assets;
 }
 
 function storedAuditVariantAssignment(
@@ -1019,6 +1145,14 @@ function enforceSameOriginMutation(request: Request): void {
 }
 
 function errorResponse(error: unknown): Response {
+  if (
+    error instanceof ScenarioImageError ||
+    error instanceof ScenarioPackBundleError
+  ) {
+    return jsonResponse(400, {
+      error: { code: error.code },
+    });
+  }
   if (error instanceof AuthenticatedPrincipalError) {
     return jsonResponse(
       error.code === "AUTHENTICATION_REQUIRED" ? 401 : 403,
@@ -1511,7 +1645,7 @@ async function findHostedContentPack(
   principalUserId: string,
   packId: string,
   packVersion: string,
-): Promise<ScenarioPackV1 | null> {
+): Promise<ScenarioPackV2 | null> {
   if (isTechnicalLabHostedContent(packId, packVersion)) {
     return technicalLabHostedPackAdapter;
   }
@@ -1527,7 +1661,7 @@ async function hostedServiceForRun(
   principalUserId: string,
   runId: string,
 ): Promise<{
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly service: HostedRuntimeService;
 }> {
   const store = new D1RunEventStore(environment.DB);
@@ -2115,6 +2249,113 @@ async function apiResponse(
   }
 
   if (
+    request.method === "POST" &&
+    url.pathname === "/api/v1/scenario-assets"
+  ) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const fileName = requiredText(
+      url.searchParams.get("fileName"),
+      "fileName",
+    );
+    const purpose = requiredText(
+      url.searchParams.get("purpose"),
+      "purpose",
+    );
+    if (
+      purpose !== "STAFF_PORTRAIT" &&
+      purpose !== "SCENE_ILLUSTRATION" &&
+      purpose !== "EVIDENCE_IMAGE"
+    ) {
+      throw new HostedRunCommandError(
+        "INVALID_COMMAND",
+        "purpose must be a supported scenario-image purpose.",
+      );
+    }
+    const bytes = await boundedRequestBytes(
+      request,
+      MAXIMUM_SCENARIO_IMAGE_BYTES,
+    );
+    const inspected = inspectScenarioImage(bytes, fileName);
+    const filePath = scenarioImageFilePath(purpose, inspected);
+    await environment.ARTIFACTS.put(
+      scenarioImageStorageKey(inspected.sha256),
+      Uint8Array.from(bytes).buffer,
+      {
+        httpMetadata: { contentType: inspected.mimeType },
+        customMetadata: {
+          sha256: inspected.sha256,
+          filePath,
+          uploadedByUserId: principal.userId,
+        },
+      },
+    );
+    return jsonResponse(201, {
+      image: { ...inspected, purpose, filePath },
+    });
+  }
+
+  const scenarioAssetSha256 = pathScenarioAsset(url.pathname);
+  if (request.method === "GET" && scenarioAssetSha256 !== null) {
+    requireApplicationRole(principal, [
+      "scenario-author",
+      "administrator",
+    ]);
+    const object = await environment.ARTIFACTS.get(
+      scenarioImageStorageKey(scenarioAssetSha256),
+    );
+    let stored = await storedObjectBytes(object);
+    let fallbackContentType: string | undefined;
+    if (stored === null) {
+      const filePath = url.searchParams.get("path") ?? "";
+      const fileName = url.searchParams.get("fileName") ?? "";
+      if (
+        filePath.startsWith("media/") &&
+        !filePath.includes("\\") &&
+        !filePath.split("/").includes("..") &&
+        fileName.length > 0
+      ) {
+        const response = await environment.ASSETS.fetch(
+          new Request(new URL(`/${filePath}`, request.url)),
+        );
+        if (response.ok) {
+          const candidate = new Uint8Array(await response.arrayBuffer());
+          try {
+            const inspected = inspectScenarioImage(candidate, fileName);
+            if (inspected.sha256 === scenarioAssetSha256) {
+              stored = candidate;
+              fallbackContentType = inspected.mimeType;
+            }
+          } catch {
+            // The endpoint returns not found when static bytes do not verify.
+          }
+        }
+      }
+    }
+    if (stored === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_IMAGE_NOT_FOUND" },
+      });
+    }
+    const contentType =
+      object?.httpMetadata?.contentType ??
+      fallbackContentType ??
+      "application/octet-stream";
+    return withSecurityHeaders(
+      new Response(Uint8Array.from(stored).buffer, {
+        status: 200,
+        headers: {
+          "cache-control": "private, max-age=3600, immutable",
+          "content-type": contentType,
+          "x-content-sha256": scenarioAssetSha256,
+        },
+      }),
+    );
+  }
+
+  if (
     request.method === "GET" &&
     url.pathname === "/api/v1/scorm-package-jobs"
   ) {
@@ -2351,7 +2592,8 @@ async function apiResponse(
     if (!report.valid) {
       return jsonResponse(422, { report });
     }
-    const pack = body.pack as ScenarioPackV1;
+    const pack = body.pack as ScenarioPackV2;
+    await scenarioPackAssetBytes(request, environment, pack);
     await new D1ScenarioPackRepository(
       environment.DB,
       new SystemUtcClock(),
@@ -2398,6 +2640,50 @@ async function apiResponse(
       });
     }
     return jsonResponse(200, { pack });
+  }
+
+  const scenarioPackBundleVersion = pathScenarioPackVersion(
+    url.pathname,
+    "bundle",
+  );
+  if (
+    request.method === "GET" &&
+    scenarioPackBundleVersion !== null
+  ) {
+    requireApplicationRole(principal, [
+      "instructor",
+      "scenario-author",
+      "administrator",
+    ]);
+    const pack = await new D1ScenarioPackRepository(
+      environment.DB,
+      new SystemUtcClock(),
+      principal.userId,
+    ).find(
+      scenarioPackBundleVersion.packId,
+      scenarioPackBundleVersion.version,
+    );
+    if (pack === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_PACK_NOT_FOUND" },
+      });
+    }
+    const bytes = createScenarioPackBundle(
+      pack,
+      await scenarioPackAssetBytes(request, environment, pack),
+    );
+    return withSecurityHeaders(
+      new Response(Uint8Array.from(bytes).buffer, {
+        status: 200,
+        headers: {
+          "cache-control": "no-store",
+          "content-disposition":
+            `attachment; filename="${scenarioPackBundleFilename(pack)}"`,
+          "content-length": String(bytes.byteLength),
+          "content-type": "application/zip",
+        },
+      }),
+    );
   }
 
   const previewPackVersion = pathScenarioPackVersion(
@@ -2486,14 +2772,29 @@ async function apiResponse(
       "administrator",
     ]);
     const clock = new SystemUtcClock();
-    const published = await new D1ScenarioPackRepository(
+    const repository = new D1ScenarioPackRepository(
       environment.DB,
       clock,
       principal.userId,
-    ).publish(publishPackVersion.packId, publishPackVersion.version, {
+    );
+    const draft = await repository.find(
+      publishPackVersion.packId,
+      publishPackVersion.version,
+    );
+    if (draft === null) {
+      return jsonResponse(404, {
+        error: { code: "SCENARIO_PACK_NOT_FOUND" },
+      });
+    }
+    await scenarioPackAssetBytes(request, environment, draft);
+    const published = await repository.publish(
+      publishPackVersion.packId,
+      publishPackVersion.version,
+      {
       publishedAt: clock.now(),
       publishedBy: principal.userId,
-    });
+      },
+    );
     return jsonResponse(201, {
       packId: published.packId,
       version: published.version,
@@ -2558,7 +2859,8 @@ async function apiResponse(
       clock,
       principal.userId,
     );
-    const pack = body.pack as unknown as ScenarioPackV1;
+    const pack = body.pack as unknown as ScenarioPackV2;
+    await scenarioPackAssetBytes(request, environment, pack);
     await repository.saveDraft(pack);
     const published = await repository.publish(
       pack.packId,
@@ -5305,6 +5607,59 @@ async function apiResponse(
         ? {}
         : { ltiGradeReturn }),
     });
+  }
+
+  const runAsset = pathRunAsset(url.pathname);
+  if (request.method === "GET" && runAsset !== null) {
+    const { pack, service } = await hostedServiceForRun(
+      environment,
+      principal.userId,
+      runAsset.runId,
+    );
+    const projection = await service.learnerProjection(
+      principal,
+      runAsset.runId,
+    );
+    const allowedAssetIds = new Set([
+      projection.staffProfile?.portraitAssetId,
+      projection.presentation?.currentNode.image?.assetId,
+      ...Object.values(
+        projection.presentation?.evidenceImages ?? {},
+      ).map((image) => image.assetId),
+    ]);
+    if (!allowedAssetIds.has(runAsset.assetId)) {
+      throw new HostedAuthorizationError(
+        "RUN_ACCESS_DENIED",
+        "The scenario image is not visible in the learner's current run projection.",
+      );
+    }
+    const image = pack.imageAssets.find(
+      (candidate) => candidate.assetId === runAsset.assetId,
+    );
+    if (image === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The visible scenario image is absent from the exact pack.",
+      );
+    }
+    const bytes = await scenarioImageBytes(request, environment, image);
+    if (bytes === null) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "The visible scenario image does not match the exact pack.",
+      );
+    }
+    return withSecurityHeaders(
+      new Response(Uint8Array.from(bytes).buffer, {
+        status: 200,
+        headers: {
+          "cache-control": "private, no-store",
+          "content-length": String(bytes.byteLength),
+          "content-type": image.mimeType,
+          "x-content-sha256": image.sha256,
+        },
+      }),
+    );
   }
 
   const learnerRunId = pathRunId(url.pathname);

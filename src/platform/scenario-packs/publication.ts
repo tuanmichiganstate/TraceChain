@@ -2,7 +2,7 @@ import { canonicalize } from "../../infrastructure/hashing/canonicalize";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type { ContentPublication } from "../contracts/content";
 import type { ScenarioPackListItemV1 } from "../contracts/scenario-authoring";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   validateHostedExperienceConfigurations,
 } from "../runs/experience-configuration";
@@ -20,7 +20,7 @@ export interface RetireScenarioPackMetadata {
 }
 
 export interface RetireScenarioPackResult {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly wasIdempotentReplay: boolean;
 }
 
@@ -43,8 +43,8 @@ function deepFreeze<T>(value: T, visited = new Set<object>()): T {
 }
 
 function publicationHashInput(
-  pack: ScenarioPackV1,
-): Omit<ScenarioPackV1, "publication"> & {
+  pack: ScenarioPackV2,
+): Omit<ScenarioPackV2, "publication"> & {
   readonly publication: Omit<ContentPublication, "contentHash">;
 } {
   const { publication, ...content } = pack;
@@ -63,15 +63,15 @@ function publicationHashInput(
 }
 
 export function calculateScenarioPackContentHash(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): string {
   return sha256Hex(canonicalize(publicationHashInput(pack)));
 }
 
 export function publishScenarioPack(
-  draft: ScenarioPackV1,
+  draft: ScenarioPackV2,
   metadata: PublishScenarioPackMetadata,
-): ScenarioPackV1 {
+): ScenarioPackV2 {
   const validation = validateScenarioPack(draft);
   if (!validation.isValid) {
     const firstIssue = validation.issues[0];
@@ -103,7 +103,7 @@ export function publishScenarioPack(
     );
   }
 
-  const withoutHash: ScenarioPackV1 = {
+  const withoutHash: ScenarioPackV2 = {
     ...structuredClone(draft),
     status: "published",
     publication: {
@@ -113,7 +113,7 @@ export function publishScenarioPack(
     },
   };
   const contentHash = calculateScenarioPackContentHash(withoutHash);
-  const published: ScenarioPackV1 = {
+  const published: ScenarioPackV2 = {
     ...withoutHash,
     publication: {
       contentHash,
@@ -133,7 +133,7 @@ export function publishScenarioPack(
   return deepFreeze(published);
 }
 
-export function verifyScenarioPackContentHash(pack: ScenarioPackV1): boolean {
+export function verifyScenarioPackContentHash(pack: ScenarioPackV2): boolean {
   return (
     pack.publication !== undefined &&
     pack.publication.contentHash === calculateScenarioPackContentHash(pack)
@@ -141,13 +141,13 @@ export function verifyScenarioPackContentHash(pack: ScenarioPackV1): boolean {
 }
 
 export interface ScenarioPackRepository {
-  saveDraft(pack: ScenarioPackV1): Promise<void>;
+  saveDraft(pack: ScenarioPackV2): Promise<void>;
   publish(
     packId: string,
     version: string,
     metadata: PublishScenarioPackMetadata,
-  ): Promise<ScenarioPackV1>;
-  find(packId: string, version: string): Promise<ScenarioPackV1 | null>;
+  ): Promise<ScenarioPackV2>;
+  find(packId: string, version: string): Promise<ScenarioPackV2 | null>;
   list(): Promise<readonly ScenarioPackListItemV1[]>;
   retire(
     packId: string,
@@ -157,7 +157,7 @@ export interface ScenarioPackRepository {
 }
 
 export class MemoryScenarioPackRepository implements ScenarioPackRepository {
-  private readonly versions = new Map<string, ScenarioPackV1>();
+  private readonly versions = new Map<string, ScenarioPackV2>();
   private readonly metadata = new Map<
     string,
     {
@@ -169,7 +169,7 @@ export class MemoryScenarioPackRepository implements ScenarioPackRepository {
     }
   >();
 
-  async saveDraft(pack: ScenarioPackV1): Promise<void> {
+  async saveDraft(pack: ScenarioPackV2): Promise<void> {
     const validation = validateScenarioPack(pack);
     if (!validation.isValid) {
       const firstIssue = validation.issues[0];
@@ -205,7 +205,7 @@ export class MemoryScenarioPackRepository implements ScenarioPackRepository {
     packId: string,
     version: string,
     metadata: PublishScenarioPackMetadata,
-  ): Promise<ScenarioPackV1> {
+  ): Promise<ScenarioPackV2> {
     const key = this.key(packId, version);
     const stored = this.versions.get(key);
     if (stored === undefined) {
@@ -227,7 +227,7 @@ export class MemoryScenarioPackRepository implements ScenarioPackRepository {
     return published;
   }
 
-  async find(packId: string, version: string): Promise<ScenarioPackV1 | null> {
+  async find(packId: string, version: string): Promise<ScenarioPackV2 | null> {
     return this.versions.get(this.key(packId, version)) ?? null;
   }
 

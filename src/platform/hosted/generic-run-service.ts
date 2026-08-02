@@ -33,8 +33,9 @@ import type {
 import type {
   DecisionNodeV1,
   ScenarioDefinitionV1,
+  ScenarioImageReferenceV2,
   ScenarioNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
   ScenarioPolicyV1,
   ScenarioTransitionV1,
   StochasticOutcomeModelV1,
@@ -274,7 +275,7 @@ export class GenericHostedRunService {
   private readonly scenario: ScenarioDefinitionV1;
 
   constructor(
-    private readonly pack: ScenarioPackV1,
+    private readonly pack: ScenarioPackV2,
     scenarioId: string,
     scenarioVersion: string,
     private readonly eventStore: RunEventStore,
@@ -1318,6 +1319,7 @@ export class GenericHostedRunService {
         this.pack,
         this.scenario,
         state.activeTrustedContext.roleId,
+        state.runId,
       ),
       timing: this.runTiming(
         state,
@@ -1352,6 +1354,7 @@ export class GenericHostedRunService {
         this.pack,
         this.scenario,
         loaded.state.activeTrustedContext.roleId,
+        loaded.state.runId,
       ),
       timing: this.runTiming(
         loaded.state,
@@ -1386,6 +1389,7 @@ export class GenericHostedRunService {
         this.pack,
         this.scenario,
         loaded.state.activeTrustedContext.roleId,
+        loaded.state.runId,
       ),
       timing: this.runTiming(
         loaded.state,
@@ -1433,6 +1437,7 @@ export class GenericHostedRunService {
         this.pack,
         this.scenario,
         roleId,
+        state.runId,
       ),
       presentation: this.presentation(state),
     };
@@ -1657,6 +1662,7 @@ export class GenericHostedRunService {
           this.pack,
           this.scenario,
           state.activeTrustedContext.roleId,
+          state.runId,
         ),
         presentation: this.presentation(state),
       },
@@ -4596,6 +4602,31 @@ export class GenericHostedRunService {
     };
   }
 
+  private imagePresentation(
+    reference: ScenarioImageReferenceV2,
+    runId: string,
+  ): NonNullable<LearnerRunPresentationV1["currentNode"]["image"]> {
+    const asset = this.pack.imageAssets.find(
+      (candidate) => candidate.assetId === reference.assetId,
+    );
+    if (asset === undefined) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        `Scenario image ${reference.assetId} is absent from the exact pack.`,
+      );
+    }
+    const alt = reference.alt ?? asset.defaultAlt;
+    const caption = reference.caption ?? asset.caption;
+    return {
+      assetId: asset.assetId,
+      url: `/api/v1/runs/${encodeURIComponent(runId)}/assets/${encodeURIComponent(asset.assetId)}`,
+      alt: this.localizedText(alt.localizationKey),
+      ...(caption === undefined
+        ? {}
+        : { caption: this.localizedText(caption.localizationKey) }),
+    };
+  }
+
   private decisionAssessmentResults(
     state: GenericHostedRunState,
   ): readonly {
@@ -4776,6 +4807,12 @@ export class GenericHostedRunService {
             }),
       };
     }
+    if (node.image !== undefined) {
+      currentNode = {
+        ...currentNode,
+        image: this.imagePresentation(node.image, state.runId),
+      };
+    }
     const visibleEvidence = this.scenario.evidenceItems.filter(
       (evidence) =>
         [
@@ -4838,6 +4875,19 @@ export class GenericHostedRunService {
           evidence.evidenceId,
           this.localizedText(evidence.title.localizationKey),
         ]),
+      ),
+      evidenceImages: Object.fromEntries(
+        visibleEvidence.flatMap((evidence) =>
+          evidence.image === undefined ||
+          !state.inspectedEvidenceIds.includes(evidence.evidenceId)
+            ? []
+            : [
+                [
+                  evidence.evidenceId,
+                  this.imagePresentation(evidence.image, state.runId),
+                ] as const,
+              ],
+        ),
       ),
       evidencePresentations: Object.fromEntries(
         visibleEvidence.flatMap((evidence) => {

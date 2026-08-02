@@ -9,8 +9,10 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import { LocaleProvider } from "../../app/providers/locale-provider";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
+import { createScenarioPackBundle } from "../scenario-packs/scenario-pack-bundle";
 import {
   parseScenarioPackBytes,
   ScenarioAuthorScreen,
@@ -785,7 +787,7 @@ describe("scenario author workspace", () => {
     );
     expect(
       (
-        validatePack.mock.calls.at(-1)?.[0] as ScenarioPackV1
+        validatePack.mock.calls.at(-1)?.[0] as ScenarioPackV2
       ).scenarios[0]?.evidenceItems[0]?.learnerMetadata.access
         .permissionPolicyId,
     ).toBeUndefined();
@@ -854,7 +856,7 @@ describe("scenario author workspace", () => {
     );
 
     const submitted = validatePack.mock.calls[0]?.[0] as
-      | ScenarioPackV1
+      | ScenarioPackV2
       | undefined;
     const nodes = submitted?.scenarios[0]?.nodes;
     expect(nodes?.map((node) => node.nodeType)).toEqual([
@@ -1204,24 +1206,133 @@ describe("scenario author workspace", () => {
         "pack.json",
         strToU8('{"packId":"PACK_JSON"}'),
       ),
-    ).toEqual({ packId: "PACK_JSON" });
+    ).toEqual({
+      pack: { packId: "PACK_JSON" },
+      assets: new Map(),
+    });
     expect(
       parseScenarioPackBytes(
         "pack.yaml",
         strToU8("packId: PACK_YAML\nversion: 1.0.0\n"),
       ),
-    ).toEqual({ packId: "PACK_YAML", version: "1.0.0" });
+    ).toEqual({
+      pack: { packId: "PACK_YAML", version: "1.0.0" },
+      assets: new Map(),
+    });
     expect(
       parseScenarioPackBytes(
         "pack.zip",
-        Uint8Array.from(
-          Buffer.from(
-            "UEsDBBQAAAAIAKqr+Fzpd68TFwAAABUAAAAdAAAAc2NlbmFyaW8vdHJhY2VjaGFpbi5wYWNrLmpzb26rVipITM72TFGyUgpwdPaOj/IMUKoFAFBLAQIUABQAAAAIAKqr+Fzpd68TFwAAABUAAAAdAAAAAAAAAAAAAAAAAAAAAABzY2VuYXJpby90cmFjZWNoYWluLnBhY2suanNvblBLBQYAAAAAAQABAEsAAABSAAAAAAA=",
-            "base64",
-          ),
+        createScenarioPackBundle(
+          pharmaceuticalPackJson as ScenarioPackV2,
+          new Map(),
         ),
       ),
-    ).toEqual({ packId: "PACK_ZIP" });
+    ).toEqual({
+      pack: pharmaceuticalPackJson,
+      assets: new Map(),
+    });
+  });
+
+  it("uploads, documents, and assigns a scene image through the no-code media step", async () => {
+    const validatePack = vi.fn().mockResolvedValue({
+      schemaVersion: "1.0.0",
+      valid: true,
+      checkedCount: 1_200,
+      issues: [],
+    });
+    const uploadImage = vi.fn().mockResolvedValue({
+      originalFileName: "warehouse.png",
+      sha256: "a".repeat(64),
+      byteLength: 128,
+      width: 640,
+      height: 480,
+      mimeType: "image/png",
+      extension: "png",
+      purpose: "SCENE_ILLUSTRATION",
+      filePath: "media/scenes/warehouse-aaaaaaaaaaaa.png",
+    });
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_AUTHOR_001",
+        email: "author@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack,
+      importPack: vi.fn(),
+      uploadImage,
+      loadImage: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Start a new scenario",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Images and media" }),
+    );
+    await user.upload(
+      screen.getByLabelText("Image file"),
+      new File([new Uint8Array([1, 2, 3])], "warehouse.png", {
+        type: "image/png",
+      }),
+    );
+    await user.type(
+      screen.getByLabelText("License, source, or approval reference"),
+      "COURSE_AUTHOR_RELEASE_001",
+    );
+    await user.type(
+      screen.getByLabelText("Alternative text (en)"),
+      "Warehouse receiving area",
+    );
+    await user.type(
+      screen.getByLabelText("Alternative text (vi)"),
+      "Khu vực tiếp nhận của kho",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Upload image" }),
+    );
+    expect(uploadImage).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "warehouse.png" }),
+      "SCENE_ILLUSTRATION",
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Scene image for NODE_BRIEFING"),
+      "IMAGE_SCENE",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Validate without importing",
+      }),
+    );
+    expect(validatePack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageAssets: [
+          expect.objectContaining({
+            assetId: "IMAGE_SCENE",
+            filePath: "media/scenes/warehouse-aaaaaaaaaaaa.png",
+            licenseOrApprovalReference: "COURSE_AUTHOR_RELEASE_001",
+          }),
+        ],
+        assetHashes: {
+          "media/scenes/warehouse-aaaaaaaaaaaa.png": "a".repeat(64),
+        },
+      }),
+    );
+    expect(
+      validatePack.mock.calls[0]?.[0].scenarios[0].nodes[0].image,
+    ).toEqual({ assetId: "IMAGE_SCENE" });
   });
 
   it("loads the self-localized disciplinary starter through the same validator", async () => {
@@ -1455,7 +1566,7 @@ describe("scenario author workspace", () => {
   });
 
   it("lists lifecycle actions and generates a role-filtered preview", async () => {
-    const pack = structuredClone(packJson) as ScenarioPackV1;
+    const pack = structuredClone(packJson) as ScenarioPackV2;
     const scenario = pack.scenarios[0];
     if (scenario === undefined) throw new Error("Expected scenario.");
     const item = {
@@ -1669,7 +1780,7 @@ describe("scenario author workspace", () => {
   });
 
   it("loads a mutable library draft back into the Scenario Builder", async () => {
-    const pack = structuredClone(packJson) as ScenarioPackV1;
+    const pack = structuredClone(packJson) as ScenarioPackV2;
     const item = {
       schemaVersion: "1.0.0" as const,
       packId: pack.packId,

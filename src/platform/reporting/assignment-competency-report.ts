@@ -11,7 +11,7 @@ import type {
   RubricCriterionV1,
   RubricDefinitionV1,
 } from "../contracts/rubric";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { CompetencyEvidenceProjection } from "../hosted/stage3-types";
 
 export class AssignmentCompetencyReportError extends Error {
@@ -31,7 +31,7 @@ export interface RunCompetencyEvidenceInput {
 
 export interface CreateAssignmentCompetencyReportInput {
   readonly assignmentReport: HostedAssignmentReportV1;
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly evidenceByRun: readonly RunCompetencyEvidenceInput[];
 }
 
@@ -120,7 +120,7 @@ function indicatorReferences(
 }
 
 function rubricCriteria(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   rubricIds: readonly string[],
 ): ReadonlyMap<string, RubricCriterionReference> {
   const result = new Map<string, RubricCriterionReference>();

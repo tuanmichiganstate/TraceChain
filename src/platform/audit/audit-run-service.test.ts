@@ -4,7 +4,7 @@ import {
   FixedClock,
   SequenceIdGenerator,
 } from "../../domain/simulation/environment";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { ApplicationPrincipal } from "../hosted/access";
 import { MemoryRunEventStore } from "../runs/event-store";
 import { publishScenarioPack } from "../scenario-packs/publication";
@@ -24,7 +24,7 @@ const learner: ApplicationPrincipal = {
   roles: ["learner"],
 };
 
-function publishedPack(): ScenarioPackV1 {
+function publishedPack(): ScenarioPackV2 {
   const result = validateScenarioPack(structuredClone(packJson));
   if (!result.isValid) {
     throw new Error(

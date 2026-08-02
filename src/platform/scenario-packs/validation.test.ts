@@ -6,7 +6,7 @@ import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
 import vi from "../../locales/vi.json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { validateScenarioPack } from "./validation";
 
 const validate = (value: unknown) =>
@@ -14,7 +14,7 @@ const validate = (value: unknown) =>
     localizationCatalogs: { en, vi },
   });
 
-function validPack(): ScenarioPackV1 {
+function validPack(): ScenarioPackV2 {
   const result = validate(structuredClone(packJson));
   if (!result.isValid) {
     throw new Error(
@@ -443,11 +443,11 @@ describe("scenario-pack validation", () => {
     const pack = validPack();
     const scenario = pack.scenarios[0]!;
 
-    expect(pack.portraitAssets).toHaveLength(7);
+    expect(pack.imageAssets).toHaveLength(7);
     expect(scenario.staffProfiles).toHaveLength(7);
     for (const profile of scenario.staffProfiles) {
       expect(
-        pack.portraitAssets.some(
+        pack.imageAssets.some(
           (asset) => asset.assetId === profile.portraitAssetId,
         ),
       ).toBe(true);
@@ -475,7 +475,7 @@ describe("scenario-pack validation", () => {
 
   it("rejects remote portrait media", () => {
     const invalid = structuredClone(packJson);
-    invalid.portraitAssets[0]!.filePath =
+    invalid.imageAssets[0]!.filePath =
       "https://example.test/staff.webp";
 
     const result = validate(invalid);
@@ -484,8 +484,8 @@ describe("scenario-pack validation", () => {
     expect(result.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          code: "INVALID_PORTRAIT_PATH",
-          path: "$.portraitAssets[0].filePath",
+          code: "INVALID_IMAGE_PATH",
+          path: "$.imageAssets[0].filePath",
         }),
       ]),
     );
@@ -493,7 +493,7 @@ describe("scenario-pack validation", () => {
 
   it("rejects a portrait hash that disagrees with the asset manifest", () => {
     const invalid = structuredClone(packJson);
-    invalid.portraitAssets[0]!.sha256 = "0".repeat(64);
+    invalid.imageAssets[0]!.sha256 = "0".repeat(64);
 
     const result = validate(invalid);
 
@@ -501,7 +501,25 @@ describe("scenario-pack validation", () => {
     expect(result.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          code: "PORTRAIT_ASSET_HASH_MISMATCH",
+          code: "IMAGE_ASSET_HASH_MISMATCH",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects asset hashes that do not belong to a declared image", () => {
+    const invalid = structuredClone(packJson);
+    const hashes = invalid.assetHashes as Record<string, string>;
+    hashes["media/undeclared.bin"] = "0".repeat(64);
+
+    const result = validate(invalid);
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "UNDECLARED_ASSET_HASH",
+          path: "$.assetHashes.media/undeclared.bin",
         }),
       ]),
     );

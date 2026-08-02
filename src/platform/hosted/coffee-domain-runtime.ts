@@ -53,7 +53,7 @@ import {
   PRODUCER_CONTEXT,
 } from "../../scenarios/coffee-traceability/commands";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { verifyScenarioPackContentHash } from "../scenario-packs/publication";
 import type {
   CreateHostedStage3RunRequest,
@@ -148,7 +148,7 @@ export class CoffeeHostedDomainRuntime {
   private readonly hostedScenarioVersion: string;
   private readonly configurationHash: string;
 
-  constructor(pack: ScenarioPackV1) {
+  constructor(pack: ScenarioPackV2) {
     if (
       pack.status !== "published" ||
       pack.publication === undefined ||

@@ -8,7 +8,7 @@ import {
   readFileSync,
   rmSync,
 } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -98,6 +98,52 @@ try {
       );
       continue;
     }
+    let assetFailure = false;
+    for (const image of result.pack.imageAssets) {
+      const candidates = [
+        resolve(dirname(packPath), image.filePath),
+        resolve(projectRoot, "public", image.filePath),
+      ];
+      const assetPath = candidates.find((candidate) => existsSync(candidate));
+      if (assetPath === undefined) {
+        failed = true;
+        assetFailure = true;
+        console.error(
+          `${packPath}: declared image is missing: ${image.filePath}.`,
+        );
+        continue;
+      }
+      try {
+        const bytes = new Uint8Array(readFileSync(assetPath));
+        const inspected = validator.inspectScenarioImage(
+          bytes,
+          image.originalFileName,
+        );
+        if (
+          inspected.sha256 !== image.sha256 ||
+          inspected.byteLength !== image.byteLength ||
+          inspected.width !== image.width ||
+          inspected.height !== image.height ||
+          inspected.mimeType !== image.mimeType ||
+          result.pack.assetHashes[image.filePath] !== image.sha256
+        ) {
+          failed = true;
+          assetFailure = true;
+          console.error(
+            `${packPath}: image metadata does not match ${image.filePath}.`,
+          );
+        }
+      } catch (error) {
+        failed = true;
+        assetFailure = true;
+        console.error(
+          `${packPath}: invalid image ${image.filePath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+    if (assetFailure) continue;
     console.log(
       `Platform pack valid: ${result.pack.packId}@${result.pack.version} (${result.checkedCount} checks).`,
     );

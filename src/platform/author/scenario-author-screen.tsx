@@ -1,4 +1,3 @@
-import { unzipSync, strFromU8 } from "fflate";
 import { JSON_SCHEMA, load as loadYaml } from "js-yaml";
 import auditPackTemplate from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import pharmaceuticalPackTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
@@ -26,14 +25,23 @@ import type {
 } from "../contracts/scenario-authoring";
 import type {
   HostedRunMode,
-  ScenarioPackV1,
+  ScenarioImageAssetV2,
+  ScenarioImagePurposeV2,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import { EvidenceAssessmentCatalog } from "../components/evidence-assessment-catalog";
 import { createScenarioBuilderStarter } from "./scenario-builder-model";
 import {
   ScenarioBuilder,
+  type ScenarioBuilderImageUpload,
   type ScenarioBuilderStep,
 } from "./scenario-builder";
+import {
+  createScenarioPackBundle,
+  MAXIMUM_SCENARIO_BUNDLE_BYTES,
+  parseScenarioPackBundle,
+  scenarioPackBundleFilename,
+} from "../scenario-packs/scenario-pack-bundle";
 
 const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
 const AUTHOR_DRAFT_SCHEMA_VERSION = "1";
@@ -41,7 +49,7 @@ const AUTHOR_DRAFT_SCHEMA_VERSION = "1";
 interface StoredAuthorDraftV1 {
   readonly schemaVersion: "1";
   readonly savedAt: string;
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
 }
 
 function authorDraftStorageKey(userId: string): string {
@@ -95,6 +103,9 @@ function builderStepForValidationPath(
   ) {
     return "participants";
   }
+  if (/\.(?:imageAssets|image|portraitAssetId)(?:\.|\[|$)/u.test(path)) {
+    return "media";
+  }
   if (
     /\.(?:policies|evidenceItems|instructorIncidents)(?:\.|\[|$)/u.test(
       path,
@@ -136,7 +147,12 @@ export interface ScenarioAuthoringApi {
   listPacks(): Promise<readonly ScenarioPackListItemV1[]>;
   validatePack(candidate: unknown): Promise<ScenarioPackValidationReportV1>;
   importPack(candidate: unknown): Promise<ScenarioPackValidationReportV1>;
-  loadPack(packId: string, version: string): Promise<ScenarioPackV1>;
+  uploadImage?(
+    file: File,
+    purpose: ScenarioImagePurposeV2,
+  ): Promise<ScenarioBuilderImageUpload>;
+  loadImage?(image: ScenarioImageAssetV2): Promise<Uint8Array>;
+  loadPack(packId: string, version: string): Promise<ScenarioPackV2>;
   preview(options: {
     readonly packId: string;
     readonly version: string;
@@ -252,9 +268,52 @@ export function createScenarioAuthoringApi(
         )
       ).report;
     },
+    async uploadImage(file, purpose) {
+      const parameters = new URLSearchParams({
+        fileName: file.name,
+        purpose,
+      });
+      const response = await fetcher(
+        `/api/v1/scenario-assets?${parameters.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": file.type || "application/octet-stream",
+          },
+          body: await file.arrayBuffer(),
+        },
+      );
+      const body = (await response.json()) as {
+        readonly image?: ScenarioBuilderImageUpload;
+        readonly error?: { readonly code?: string };
+      };
+      if (!response.ok || body.image === undefined) {
+        throw new ScenarioAuthoringApiError(
+          body.error?.code ?? "SCENARIO_IMAGE_UPLOAD_FAILED",
+        );
+      }
+      return body.image;
+    },
+    async loadImage(image) {
+      const parameters = new URLSearchParams({
+        path: image.filePath,
+        fileName: image.originalFileName,
+      });
+      const response = await fetcher(
+        `/api/v1/scenario-assets/${encodeURIComponent(image.sha256)}?${parameters.toString()}`,
+        { headers: { accept: image.mimeType } },
+      );
+      if (!response.ok) {
+        throw new ScenarioAuthoringApiError(
+          "SCENARIO_IMAGE_DOWNLOAD_FAILED",
+        );
+      }
+      return new Uint8Array(await response.arrayBuffer());
+    },
     async loadPack(packId, version) {
       return (
-        await apiJson<{ readonly pack: ScenarioPackV1 }>(
+        await apiJson<{ readonly pack: ScenarioPackV2 }>(
           fetcher,
           `/api/v1/scenario-packs/${encodeURIComponent(packId)}/versions/${encodeURIComponent(version)}`,
         )
@@ -317,7 +376,7 @@ function parseText(name: string, text: string): unknown {
 
 function isEditableScenarioPack(
   candidate: unknown,
-): candidate is ScenarioPackV1 {
+): candidate is ScenarioPackV2 {
   if (
     typeof candidate !== "object" ||
     candidate === null ||
@@ -334,52 +393,38 @@ function isEditableScenarioPack(
   );
 }
 
+export interface ParsedScenarioPackImport {
+  readonly pack: unknown;
+  readonly assets: ReadonlyMap<string, Uint8Array>;
+}
+
 export function parseScenarioPackBytes(
   name: string,
   bytes: Uint8Array,
-): unknown {
-  if (bytes.byteLength > MAXIMUM_IMPORT_BYTES) {
+): ParsedScenarioPackImport {
+  const isZip = name.toLowerCase().endsWith(".zip");
+  if (
+    bytes.byteLength >
+    (isZip ? MAXIMUM_SCENARIO_BUNDLE_BYTES : MAXIMUM_IMPORT_BYTES)
+  ) {
     throw new ScenarioAuthoringApiError("IMPORT_FILE_TOO_LARGE");
   }
-  if (!name.toLowerCase().endsWith(".zip")) {
-    return parseText(
+  if (isZip) {
+    const parsed = parseScenarioPackBundle(bytes);
+    return { pack: parsed.pack, assets: parsed.assets };
+  }
+  return {
+    pack: parseText(
       name,
       new TextDecoder("utf-8", { fatal: true }).decode(bytes),
-    );
-  }
-  let expandedBytes = 0;
-  const archive = unzipSync(bytes, {
-    filter(file) {
-      expandedBytes += Number.isFinite(file.originalSize)
-        ? file.originalSize
-        : file.size;
-      return expandedBytes <= MAXIMUM_IMPORT_BYTES;
-    },
-  });
-  if (expandedBytes > MAXIMUM_IMPORT_BYTES) {
-    throw new ScenarioAuthoringApiError("IMPORT_FILE_TOO_LARGE");
-  }
-  const entries = Object.entries(archive).filter(([path]) => {
-    const basename = path.split("/").at(-1)?.toLowerCase() ?? "";
-    return (
-      basename === "tracechain.pack.json" ||
-      /\.(?:json|ya?ml)$/u.test(basename)
-    );
-  });
-  const preferred =
-    entries.find(
-      ([path]) =>
-        path.split("/").at(-1)?.toLowerCase() ===
-        "tracechain.pack.json",
-    ) ??
-    (entries.length === 1 ? entries[0] : undefined);
-  if (preferred === undefined) {
-    throw new ScenarioAuthoringApiError("IMPORT_ARCHIVE_AMBIGUOUS");
-  }
-  return parseText(preferred[0], strFromU8(preferred[1]));
+    ),
+    assets: new Map(),
+  };
 }
 
-async function parseScenarioPackFile(file: File): Promise<unknown> {
+async function parseScenarioPackFile(
+  file: File,
+): Promise<ParsedScenarioPackImport> {
   return parseScenarioPackBytes(
     file.name,
     new Uint8Array(await file.arrayBuffer()),
@@ -409,7 +454,7 @@ export function ScenarioAuthorScreen({
   const [fileName, setFileName] = useState("");
   const [report, setReport] =
     useState<ScenarioPackValidationReportV1 | null>(null);
-  const [selected, setSelected] = useState<ScenarioPackV1 | null>(null);
+  const [selected, setSelected] = useState<ScenarioPackV2 | null>(null);
   const [preview, setPreview] = useState<ScenarioRolePreviewV1 | null>(null);
   const [comparison, setComparison] =
     useState<ScenarioPackComparisonV1 | null>(null);
@@ -599,7 +644,40 @@ export function ScenarioAuthorScreen({
     setReport(null);
     setMessageKey(null);
     try {
-      beginCandidate(await parseScenarioPackFile(file), file.name);
+      const imported = await parseScenarioPackFile(file);
+      if (imported.assets.size > 0) {
+        if (
+          !isEditableScenarioPack(imported.pack) ||
+          resolvedApi.uploadImage === undefined
+        ) {
+          throw new ScenarioAuthoringApiError(
+            "SCENARIO_IMAGE_UPLOAD_FAILED",
+          );
+        }
+        for (const image of imported.pack.imageAssets) {
+          const bytes = imported.assets.get(image.filePath);
+          if (bytes === undefined) {
+            throw new ScenarioAuthoringApiError(
+              "SCENARIO_IMAGE_UPLOAD_FAILED",
+            );
+          }
+          const uploaded = await resolvedApi.uploadImage(
+            new File([Uint8Array.from(bytes)], image.originalFileName, {
+              type: image.mimeType,
+            }),
+            image.purpose,
+          );
+          if (
+            uploaded.sha256 !== image.sha256 ||
+            uploaded.filePath !== image.filePath
+          ) {
+            throw new ScenarioAuthoringApiError(
+              "SCENARIO_IMAGE_UPLOAD_FAILED",
+            );
+          }
+        }
+      }
+      beginCandidate(imported.pack, file.name);
     } catch (error) {
       setCandidate(undefined);
       setFileName("");
@@ -624,7 +702,7 @@ export function ScenarioAuthorScreen({
       createScenarioBuilderStarter(
         structuredClone(
           pharmaceuticalPackTemplate,
-        ) as ScenarioPackV1,
+        ) as ScenarioPackV2,
       ),
       t("scenarioAuthor.builder.starterName"),
     );
@@ -666,6 +744,40 @@ export function ScenarioAuthorScreen({
       }
     } catch {
       setMessageKey("scenarioAuthor.error.import");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadCandidate(): Promise<void> {
+    if (
+      !isEditableScenarioPack(candidate) ||
+      resolvedApi.loadImage === undefined
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMessageKey(null);
+    try {
+      const assets = new Map<string, Uint8Array>();
+      for (const image of candidate.imageAssets) {
+        assets.set(
+          image.filePath,
+          await resolvedApi.loadImage(image),
+        );
+      }
+      const bytes = createScenarioPackBundle(candidate, assets);
+      const url = URL.createObjectURL(
+        new Blob([Uint8Array.from(bytes)], { type: "application/zip" }),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = scenarioPackBundleFilename(candidate);
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setMessageKey("scenarioAuthor.bundleDownloaded");
+    } catch {
+      setMessageKey("scenarioAuthor.error.bundleDownload");
     } finally {
       setBusy(false);
     }
@@ -943,6 +1055,12 @@ export function ScenarioAuthorScreen({
                   pack={candidate}
                   initialStep={builderFocusRequest?.step}
                   focusRequestId={builderFocusRequest?.requestId}
+                  {...(resolvedApi.uploadImage === undefined
+                    ? {}
+                    : { onUploadImage: resolvedApi.uploadImage })}
+                  imageUrl={(image) =>
+                    `/api/v1/scenario-assets/${encodeURIComponent(image.sha256)}?${new URLSearchParams({ path: image.filePath, fileName: image.originalFileName }).toString()}`
+                  }
                   onChange={(updated) => {
                     setCandidate(updated);
                     setReport(null);
@@ -969,6 +1087,18 @@ export function ScenarioAuthorScreen({
                 onClick={() => void importCandidate()}
               >
                 {t("scenarioAuthor.import")}
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={
+                  !isEditableScenarioPack(candidate) ||
+                  busy ||
+                  resolvedApi.loadImage === undefined
+                }
+                onClick={() => void downloadCandidate()}
+              >
+                {t("scenarioAuthor.downloadBundle")}
               </button>
             </div>
             {report === null ? null : (
@@ -1065,6 +1195,13 @@ export function ScenarioAuthorScreen({
                           >
                             {t("scenarioAuthor.previewPack")}
                           </button>
+                          <a
+                            className="button button--secondary"
+                            href={`/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}/versions/${encodeURIComponent(pack.version)}/bundle`}
+                            download
+                          >
+                            {t("scenarioAuthor.downloadBundle")}
+                          </a>
                           {mayAuthor &&
                           (pack.status === "draft" ||
                             pack.status === "validated") ? (
@@ -1229,7 +1366,7 @@ export function ScenarioAuthorScreen({
 function AuditAuthoringSummary({
   pack,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
 }): ReactNode {
   const t = useTranslator();
   const cases = pack.scenarios.flatMap((scenario) =>
@@ -1496,7 +1633,7 @@ function PreviewWorkflow({
 }
 
 function scenarioReference(
-  scenario: ScenarioPackV1["scenarios"][number] | undefined,
+  scenario: ScenarioPackV2["scenarios"][number] | undefined,
 ): string {
   return scenario === undefined
     ? ""
@@ -1509,7 +1646,7 @@ function scenarioReference(
 function PreviewFields({
   pack,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
 }): ReactNode {
   const t = useTranslator();
   const firstScenario = pack.scenarios[0];

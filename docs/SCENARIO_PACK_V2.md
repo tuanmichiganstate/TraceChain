@@ -1,11 +1,11 @@
-# TraceChain scenario-pack V1.11
+# TraceChain scenario-pack V2
 
-The V1.11 scenario-pack format is the active contract for the hosted
+The V2 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
 The normative machine-readable schema is
-`schemas/tracechain-scenario-pack-v1.schema.json`. Runtime validation adds
+`schemas/tracechain-scenario-pack-v2.schema.json`. Runtime validation adds
 cross-reference, localization, graph-reachability, runtime-profile, and
 executable-content checks that JSON Schema alone cannot express.
 
@@ -51,7 +51,7 @@ A pack contains:
 - versioned competency frameworks and performance indicators;
 - analytic rubrics and declarative evidence rules;
 - one or more scenario versions;
-- approved fictional portrait assets and scenario staff profiles;
+- approved staff, scene, and evidence images plus scenario staff profiles;
 - referenced asset hashes; and
 - publication metadata for immutable published or retired versions.
 
@@ -64,32 +64,75 @@ application values only inside that pack. Competency, indicator, rubric, evidenc
 organization, role, policy, evidence, decision, node, transition, and native
 runtime references are validated.
 
-## Staff profiles and portrait media
+## Image assets and references
 
-`portraitAssets` is a pack-level registry of approved, immutable media. Each
-entry records a stable asset ID, provenance or approval reference, fictional
-subject declaration, local `media/staff/` path, SHA-256 digest, intrinsic
-dimensions, WebP format, and a release-placeholder flag. The same path and
+`imageAssets` is the pack-level registry of approved, immutable media. Each
+entry records a stable asset ID; purpose; source type; licence or approval
+reference; rights declaration; original file name; content-addressed package
+path; SHA-256 digest; byte length; intrinsic dimensions; MIME type; localized
+default alternative text; and optional localized caption. The same path and
 digest must appear in `assetHashes`.
 
-Each scenario owns its `staffProfiles`. A profile references one scenario role,
-one organization, and one pack portrait asset, with localized name, role title,
+Supported purposes and package directories are:
+
+```text
+STAFF_PORTRAIT     media/staff/
+SCENE_ILLUSTRATION media/scenes/
+EVIDENCE_IMAGE     media/evidence/
+```
+
+WebP, PNG, and JPEG are supported. Each image is limited to 5 MiB and 8192 by
+8192 pixels; the semantic validator additionally requires at least 64 by 64
+pixels. One pack may contain at most 60 images and 25 MiB of image bytes.
+
+Each scenario owns its `staffProfiles`. A profile references one role, one
+organization, and one staff-portrait asset, with localized name, role title,
 portrait description, optional short profile, and optional professional
-responsibility. Evidence may reference a profile through `staffProfileId`.
-Portraits never supply actor identity, authorization, signatures, or
-endorsement evidence.
+responsibility. Workflow nodes may reference a scene illustration. Evidence
+records may reference an evidence image. Each reference may supply localized
+alternative text or caption that overrides the asset default in that exact
+context.
 
-Portable packs may select only assets registered in the pack. The authoring UI
-does not accept arbitrary image URLs. Published scenario versions retain exact
-profile and asset references so hosted replay resolves the professional
-identity used by that historical run.
+Purpose compatibility is enforced. Portraits never supply actor identity,
+authorization, signatures, or endorsement evidence. Scene illustrations do
+not reveal hidden state. Evidence images follow the same release and inspection
+boundary as their evidence record and are not projected merely because the
+pack contains their bytes.
 
-SCORM packages contain `media-manifest.json` plus the referenced local WebP
-files. Generation validates the authored hashes against the source bytes;
-package verification repeats that check, validates dimensions and localization,
-and rejects missing, remote, unapproved, or placeholder media. Portrait media
-is package-specific runtime content, while the JavaScript and CSS remain one
-shared static application build across all Operations and Audit packages.
+Portable packs may select only registered assets. The authoring UI accepts
+bounded local uploads but never remote image URLs. It derives image metadata
+from the bytes and requires provenance, rights, and localized alternative-text
+metadata. Published versions retain exact asset references so hosted replay
+resolves the same presentation used by the historical run.
+
+The existing SCORM packages continue to validate their media manifests and
+source bytes independently. Hosted scenario bundles and SCORM packages are
+different deliverables; neither embeds package-specific media into the shared
+JavaScript application bundle.
+
+## Self-contained scenario bundle
+
+The portable hosted-platform bundle is a ZIP with this canonical inventory:
+
+```text
+tracechain.pack.json
+media/staff/...
+media/scenes/...
+media/evidence/...
+```
+
+The root manifest is the exact `ScenarioPackV2`. Every other entry must be
+declared in `assetHashes`; missing and undeclared entries are rejected. Import
+re-inspects every image and verifies its format, dimensions, MIME type, byte
+length, and digest. Absolute paths, parent traversal, schemes, backslashes, and
+oversized entries are rejected. The full compressed and expanded bundle limit
+is 30 MiB.
+
+Export sorts paths and normalizes ZIP timestamps. The same pack and asset bytes
+therefore produce a byte-identical ZIP. In hosted delivery, uploaded bytes use
+content-addressed object storage while D1 keeps the versioned pack metadata.
+Learner media is served only through a run-authorized endpoint and only when
+the exact role-filtered projection permits the corresponding image.
 
 Every scenario must provide `modeConfigurations`, `outcomeModels`,
 `instructorIncidents`, `counterfactualComparisonDimensions`, and
@@ -167,7 +210,7 @@ completeness, or factual truth.
 
 ## Workflow nodes
 
-V1 permits these declarative node types:
+V2 permits these declarative node types:
 
 ```text
 BRIEFING
@@ -193,7 +236,7 @@ node must be reachable.
 Every authored free-text input declares a maximum length. Decision fields use
 stable option IDs and JSON-compatible authored values.
 
-A decision may also declare a bounded `structuredResponse`. V1 supports
+A decision may also declare a bounded `structuredResponse`. V2 supports
 scenario-controlled evidence- and policy-citation counts, a numeric confidence
 range, and an adverse-event probability percentage range. Each field
 independently declares whether it is required. Runtime validation rejects empty
@@ -226,14 +269,14 @@ metric ID and an authored causal classification for changed values.
 An authored `counterfactualConditions` entry defines a stable condition ID,
 fork node, release boundary, permitted creators, bounded value IDs, constrained
 runtime condition key, information-fidelity flag, dimension references, branch
-limit, and reflection requirement. V1 accepts no arbitrary state path or
+limit, and reflection requirement. V2 accepts no arbitrary state path or
 executable expression. The coffee runtime currently supports one key,
 `COFFEE_CASE_VARIANT`, at the certificate decision. The server keeps the
 original decision unchanged and applies only an author-approved value.
 
 ## Instructor incidents and professional consequences
 
-V1.5 adds bounded `instructorIncidents`. Each incident has an immutable ID and
+The contract includes bounded `instructorIncidents`. Each incident has an immutable ID and
 version, localized title and message, exact release nodes, permitted visible
 roles, existing evidence references, and optional effects on declared
 professional consequence dimensions.
@@ -276,7 +319,7 @@ the 39/61 operational/knowledge split.
 
 ## Audit cases
 
-The Audit contract introduced in V1.9 remains part of V1.11 without creating a second
+The Audit contract remains part of V2 without creating a second
 application or transaction system. A scenario selects
 `tracechain-audit-v1` and references one bounded `auditCase`.
 
@@ -317,7 +360,7 @@ high-stakes equivalence.
 
 ## Curriculum ownership boundary
 
-V1.11 keeps institution-, program-, and course-owned curriculum mappings out of
+V2 keeps institution-, program-, and course-owned curriculum mappings out of
 the scenario-pack contract. Packs continue to own stable TraceChain
 competencies, performance indicators, and observable evidence definitions.
 

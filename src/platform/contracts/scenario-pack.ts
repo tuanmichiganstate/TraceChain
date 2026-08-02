@@ -92,20 +92,45 @@ export interface ScenarioRoleV1 {
   readonly displayName: LocalizedText;
 }
 
-export interface ScenarioPortraitAssetV1 {
+export type ScenarioImagePurposeV2 =
+  | "STAFF_PORTRAIT"
+  | "SCENE_ILLUSTRATION"
+  | "EVIDENCE_IMAGE";
+
+export type ScenarioImageMimeTypeV2 =
+  | "image/webp"
+  | "image/png"
+  | "image/jpeg";
+
+export interface ScenarioImageAssetV2 {
   readonly assetId: string;
+  readonly purpose: ScenarioImagePurposeV2;
   readonly sourceType:
     | "AI_GENERATED"
     | "LICENSED_STOCK"
-    | "ORIGINAL_WITH_RELEASE";
+    | "ORIGINAL_WITH_RELEASE"
+    | "CREATIVE_COMMONS"
+    | "PUBLIC_DOMAIN";
   readonly licenseOrApprovalReference: string;
-  readonly fictionalSubject: true;
+  readonly rightsDeclaration:
+    | "NO_IDENTIFIABLE_PEOPLE"
+    | "FICTIONAL_PEOPLE"
+    | "RELEASED_PEOPLE";
+  readonly originalFileName: string;
   readonly filePath: string;
   readonly sha256: string;
+  readonly byteLength: number;
   readonly width: number;
   readonly height: number;
-  readonly format: "webp";
-  readonly developmentPlaceholder: false;
+  readonly mimeType: ScenarioImageMimeTypeV2;
+  readonly defaultAlt: LocalizedText;
+  readonly caption?: LocalizedText;
+}
+
+export interface ScenarioImageReferenceV2 {
+  readonly assetId: string;
+  readonly alt?: LocalizedText;
+  readonly caption?: LocalizedText;
 }
 
 export interface ScenarioStaffProfileV1 {
@@ -226,6 +251,7 @@ export interface ScenarioEvidenceItemV1 {
     ScenarioEvidenceAssessmentMetadataV1;
   readonly learnerPresentation?:
     ScenarioEvidenceLearnerPresentationV1;
+  readonly image?: ScenarioImageReferenceV2;
   readonly content: JsonObject;
 }
 
@@ -279,6 +305,7 @@ export interface ScenarioTransitionV1 {
 interface ScenarioNodeBaseV1 {
   readonly nodeId: string;
   readonly title: LocalizedText;
+  readonly image?: ScenarioImageReferenceV2;
   readonly transitions: readonly ScenarioTransitionV1[];
 }
 
@@ -588,9 +615,9 @@ export interface ScenarioDefinitionV1 {
   readonly auditCase?: AuditCaseDefinitionV1;
 }
 
-export interface ScenarioPackV1 {
+export interface ScenarioPackV2 {
   readonly $schema?: string;
-  readonly schemaVersion: "1.12.0";
+  readonly schemaVersion: "2.0.0";
   readonly packId: string;
   readonly version: string;
   readonly status: VersionLifecycleStatus;
@@ -602,7 +629,7 @@ export interface ScenarioPackV1 {
   readonly competencyFrameworks: readonly CompetencyFrameworkV1[];
   readonly rubrics: readonly RubricDefinitionV1[];
   readonly evidenceRules: readonly AutomatedEvidenceRuleV1[];
-  readonly portraitAssets: readonly ScenarioPortraitAssetV1[];
+  readonly imageAssets: readonly ScenarioImageAssetV2[];
   readonly auditVariantBanks:
     readonly AuditVariantBankDefinitionV1[];
   readonly scenarios: readonly ScenarioDefinitionV1[];

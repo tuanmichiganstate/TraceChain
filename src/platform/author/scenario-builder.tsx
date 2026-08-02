@@ -24,8 +24,10 @@ import type {
   HostedRunMode,
   ScenarioDefinitionV1,
   ScenarioEvidenceItemV1,
+  ScenarioImageAssetV2,
+  ScenarioImagePurposeV2,
   ScenarioNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
   ScenarioPolicyV1,
 } from "../contracts/scenario-pack";
 import {
@@ -47,6 +49,7 @@ const BUILDER_STEPS = [
   "identity",
   "delivery",
   "participants",
+  "media",
   "evidence",
   "workflow",
   "assessment",
@@ -54,6 +57,18 @@ const BUILDER_STEPS = [
 ] as const;
 
 export type ScenarioBuilderStep = (typeof BUILDER_STEPS)[number];
+
+export interface ScenarioBuilderImageUpload {
+  readonly originalFileName: string;
+  readonly sha256: string;
+  readonly byteLength: number;
+  readonly width: number;
+  readonly height: number;
+  readonly mimeType: ScenarioImageAssetV2["mimeType"];
+  readonly extension: "webp" | "png" | "jpg" | "jpeg";
+  readonly purpose: ScenarioImagePurposeV2;
+  readonly filePath: string;
+}
 
 const NODE_TYPES: readonly ScenarioNodeV1["nodeType"][] = [
   "BRIEFING",
@@ -82,11 +97,18 @@ export function ScenarioBuilder({
   onChange,
   initialStep,
   focusRequestId,
+  onUploadImage,
+  imageUrl,
 }: {
-  readonly pack: ScenarioPackV1;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly pack: ScenarioPackV2;
+  readonly onChange: (pack: ScenarioPackV2) => void;
   readonly initialStep?: ScenarioBuilderStep | undefined;
   readonly focusRequestId?: number | undefined;
+  readonly onUploadImage?: (
+    file: File,
+    purpose: ScenarioImagePurposeV2,
+  ) => Promise<ScenarioBuilderImageUpload>;
+  readonly imageUrl?: (image: ScenarioImageAssetV2) => string;
 }): ReactNode {
   const t = useTranslator();
   const [navigation, setNavigation] = useState<{
@@ -110,8 +132,8 @@ export function ScenarioBuilder({
     }));
   }
   const [selectedScenarioIndex, setScenarioIndex] = useState(0);
-  const undoHistory = useRef<ScenarioPackV1[]>([]);
-  const redoHistory = useRef<ScenarioPackV1[]>([]);
+  const undoHistory = useRef<ScenarioPackV2[]>([]);
+  const redoHistory = useRef<ScenarioPackV2[]>([]);
   const [historyCounts, setHistoryCounts] = useState({
     undo: 0,
     redo: 0,
@@ -140,7 +162,7 @@ export function ScenarioBuilder({
       scenario.scenarioId,
     ) > 0;
 
-  function commitChange(updated: ScenarioPackV1): void {
+  function commitChange(updated: ScenarioPackV2): void {
     const reconciled = reconcileScenarioPackReferences(pack, updated);
     if (JSON.stringify(reconciled) === JSON.stringify(pack)) return;
     undoHistory.current = [
@@ -335,6 +357,16 @@ export function ScenarioBuilder({
             onChange={commitChange}
           />
         ) : null}
+        {step === "media" ? (
+          <MediaStep
+            pack={pack}
+            scenario={scenario}
+            scenarioIndex={scenarioIndex}
+            onChange={commitChange}
+            {...(onUploadImage === undefined ? {} : { onUploadImage })}
+            {...(imageUrl === undefined ? {} : { imageUrl })}
+          />
+        ) : null}
         {step === "evidence" ? (
           <EvidenceStep
             pack={pack}
@@ -526,16 +558,36 @@ function IdentityStep({
 }
 
 interface BuilderStepProps {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenario: ScenarioDefinitionV1;
   readonly scenarioIndex: number;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }
 
 interface Option {
   readonly value: string;
   readonly label: string;
 }
+
+const IMAGE_PURPOSES: readonly ScenarioImagePurposeV2[] = [
+  "SCENE_ILLUSTRATION",
+  "EVIDENCE_IMAGE",
+  "STAFF_PORTRAIT",
+];
+
+const IMAGE_SOURCE_TYPES: readonly ScenarioImageAssetV2["sourceType"][] = [
+  "ORIGINAL_WITH_RELEASE",
+  "AI_GENERATED",
+  "LICENSED_STOCK",
+  "CREATIVE_COMMONS",
+  "PUBLIC_DOMAIN",
+];
+
+const IMAGE_RIGHTS: readonly ScenarioImageAssetV2["rightsDeclaration"][] = [
+  "NO_IDENTIFIABLE_PEOPLE",
+  "FICTIONAL_PEOPLE",
+  "RELEASED_PEOPLE",
+];
 
 function TextControl({
   id,
@@ -676,10 +728,10 @@ function LocalizedTextControl({
   onChange,
 }: {
   readonly heading: string;
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly localizationKey: string;
   readonly multiline?: boolean;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const idPrefix = useId();
   return (
@@ -1329,14 +1381,14 @@ function WeightedOutcomeEditor({
   outcomes,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenarioIndex: number;
   readonly modelIndex: number;
   readonly outcomes: readonly {
     readonly outcomeCode: string;
     readonly weight: number;
   }[];
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   function update(
@@ -1527,7 +1579,7 @@ function nodeDependents(
 }
 
 function competencyDependents(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   competencyId: string,
 ): readonly string[] {
   return pack.scenarios
@@ -1540,7 +1592,7 @@ function competencyDependents(
 }
 
 function indicatorDependents(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   indicatorId: string,
 ): readonly string[] {
   return [
@@ -1564,7 +1616,7 @@ function indicatorDependents(
 }
 
 function rubricDependents(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   rubricId: string,
 ): readonly string[] {
   return pack.scenarios
@@ -1573,7 +1625,7 @@ function rubricDependents(
 }
 
 function evidenceRuleDependents(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   evidenceRuleId: string,
 ): readonly string[] {
   return [
@@ -1626,7 +1678,7 @@ function ParticipantsStep({
           "ORG_NEW",
         );
         const localizationPrefix = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${target.scenarioId}.organization`,
           [".name"],
         );
@@ -1658,7 +1710,7 @@ function ParticipantsStep({
           "ROLE_NEW",
         );
         const localizationPrefix = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${target.scenarioId}.role`,
           [".name"],
         );
@@ -1942,6 +1994,375 @@ function CollectionSection({
   );
 }
 
+function MediaStep({
+  pack,
+  scenario,
+  scenarioIndex,
+  onChange,
+  onUploadImage,
+  imageUrl,
+}: BuilderStepProps & {
+  readonly onUploadImage?: (
+    file: File,
+    purpose: ScenarioImagePurposeV2,
+  ) => Promise<ScenarioBuilderImageUpload>;
+  readonly imageUrl?: (image: ScenarioImageAssetV2) => string;
+}): ReactNode {
+  const t = useTranslator();
+  const [file, setFile] = useState<File | null>(null);
+  const [purpose, setPurpose] = useState<ScenarioImagePurposeV2>(
+    "SCENE_ILLUSTRATION",
+  );
+  const [sourceType, setSourceType] = useState<
+    ScenarioImageAssetV2["sourceType"]
+  >("ORIGINAL_WITH_RELEASE");
+  const [rights, setRights] = useState<
+    ScenarioImageAssetV2["rightsDeclaration"]
+  >("NO_IDENTIFIABLE_PEOPLE");
+  const [reference, setReference] = useState("");
+  const [altValues, setAltValues] = useState<Readonly<Record<string, string>>>(
+    {},
+  );
+  const [uploading, setUploading] = useState(false);
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const purposeAssets = (assetPurpose: ScenarioImagePurposeV2) =>
+    pack.imageAssets.filter((asset) => asset.purpose === assetPurpose);
+  const unassignedOption: Option = {
+    value: "",
+    label: t("scenarioAuthor.builder.media.unassigned"),
+  };
+
+  function imageIsUsed(assetId: string): boolean {
+    return pack.scenarios.some(
+      (candidate) =>
+        candidate.staffProfiles.some(
+          (profile) => profile.portraitAssetId === assetId,
+        ) ||
+        candidate.nodes.some((node) => node.image?.assetId === assetId) ||
+        candidate.evidenceItems.some(
+          (evidence) => evidence.image?.assetId === assetId,
+        ),
+    );
+  }
+
+  async function upload(): Promise<void> {
+    if (
+      file === null ||
+      onUploadImage === undefined ||
+      reference.trim().length === 0 ||
+      pack.supportedLocales.some(
+        (locale) => (altValues[locale] ?? "").trim().length === 0,
+      )
+    ) {
+      return;
+    }
+    setUploading(true);
+    setUploadFailed(false);
+    try {
+      const uploaded = await onUploadImage(file, purpose);
+      const assetId = uniqueIdentifier(
+        pack.imageAssets.map((asset) => asset.assetId),
+        `IMAGE_${purpose.replace(/_IMAGE|_ILLUSTRATION|_PORTRAIT/gu, "")}`,
+      );
+      const localizationPrefix = uniqueLocalizationPrefix(
+        pack,
+        `builder.image.${assetId.toLowerCase()}`,
+        [".alt"],
+      );
+      onChange(
+        changeScenarioPack(pack, (draft) => {
+          const localizationKey = `${localizationPrefix}.alt`;
+          for (const locale of draft.supportedLocales) {
+            draft.localizationCatalogs ??= {};
+            draft.localizationCatalogs[locale] ??= {};
+            draft.localizationCatalogs[locale]![localizationKey] =
+              (altValues[locale] ?? "").trim();
+          }
+          draft.imageAssets.push({
+            assetId,
+            purpose,
+            sourceType,
+            licenseOrApprovalReference: reference.trim(),
+            rightsDeclaration: rights,
+            originalFileName: uploaded.originalFileName,
+            filePath: uploaded.filePath,
+            sha256: uploaded.sha256,
+            byteLength: uploaded.byteLength,
+            width: uploaded.width,
+            height: uploaded.height,
+            mimeType: uploaded.mimeType,
+            defaultAlt: { localizationKey },
+          });
+          draft.assetHashes[uploaded.filePath] = uploaded.sha256;
+        }),
+      );
+      setFile(null);
+      setReference("");
+      setAltValues({});
+    } catch {
+      setUploadFailed(true);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="builder-media-heading">
+      <h4 id="builder-media-heading">
+        {t("scenarioAuthor.builder.media.heading")}
+      </h4>
+      <p>{t("scenarioAuthor.builder.media.help")}</p>
+      {onUploadImage === undefined ? (
+        <p className="notice notice--standalone">
+          {t("scenarioAuthor.builder.media.uploadUnavailable")}
+        </p>
+      ) : (
+        <fieldset className="scenario-builder__localized">
+          <legend>{t("scenarioAuthor.builder.media.uploadHeading")}</legend>
+          <div className="instructor-review__form-grid">
+            <div className="field">
+              <label className="field__label" htmlFor="builder-image-file">
+                {t("scenarioAuthor.builder.media.file")}
+              </label>
+              <input
+                className="field__control"
+                id="builder-image-file"
+                type="file"
+                accept="image/webp,image/png,image/jpeg,.webp,.png,.jpg,.jpeg"
+                onChange={(event) =>
+                  setFile(event.target.files?.[0] ?? null)
+                }
+              />
+            </div>
+            <SelectControl
+              id="builder-image-purpose"
+              label={t("scenarioAuthor.builder.media.purpose")}
+              value={purpose}
+              options={IMAGE_PURPOSES.map((value) => ({
+                value,
+                label: t(`scenarioAuthor.builder.media.purpose.${value}`),
+              }))}
+              onChange={(value) =>
+                setPurpose(value as ScenarioImagePurposeV2)
+              }
+            />
+            <SelectControl
+              id="builder-image-source"
+              label={t("scenarioAuthor.builder.media.source")}
+              value={sourceType}
+              options={IMAGE_SOURCE_TYPES.map((value) => ({
+                value,
+                label: t(`scenarioAuthor.builder.media.source.${value}`),
+              }))}
+              onChange={(value) =>
+                setSourceType(value as ScenarioImageAssetV2["sourceType"])
+              }
+            />
+            <SelectControl
+              id="builder-image-rights"
+              label={t("scenarioAuthor.builder.media.rights")}
+              value={rights}
+              options={IMAGE_RIGHTS.map((value) => ({
+                value,
+                label: t(`scenarioAuthor.builder.media.rights.${value}`),
+              }))}
+              onChange={(value) =>
+                setRights(
+                  value as ScenarioImageAssetV2["rightsDeclaration"],
+                )
+              }
+            />
+            <TextControl
+              id="builder-image-reference"
+              label={t("scenarioAuthor.builder.media.reference")}
+              value={reference}
+              onChange={setReference}
+            />
+            {pack.supportedLocales.map((locale) => (
+              <TextControl
+                key={locale}
+                id={`builder-image-alt-${locale}`}
+                label={t("scenarioAuthor.builder.media.alt", { locale })}
+                value={altValues[locale] ?? ""}
+                onChange={(value) =>
+                  setAltValues((current) => ({
+                    ...current,
+                    [locale]: value,
+                  }))
+                }
+              />
+            ))}
+          </div>
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={
+              uploading ||
+              file === null ||
+              reference.trim().length === 0 ||
+              pack.supportedLocales.some(
+                (locale) =>
+                  (altValues[locale] ?? "").trim().length === 0,
+              )
+            }
+            onClick={() => void upload()}
+          >
+            {uploading
+              ? t("scenarioAuthor.builder.media.uploading")
+              : t("scenarioAuthor.builder.media.upload")}
+          </button>
+          {uploadFailed ? (
+            <p className="notice notice--standalone" role="alert">
+              {t("scenarioAuthor.builder.media.uploadFailed")}
+            </p>
+          ) : null}
+        </fieldset>
+      )}
+
+      <h5>{t("scenarioAuthor.builder.media.library")}</h5>
+      {pack.imageAssets.length === 0 ? (
+        <p>{t("scenarioAuthor.builder.media.empty")}</p>
+      ) : (
+        <div className="scenario-builder__media-grid">
+          {pack.imageAssets.map((image) => (
+            <article
+              className="scenario-builder__collection-card scenario-builder__media-card"
+              key={image.assetId}
+            >
+              {imageUrl === undefined ? null : (
+                <img
+                  src={imageUrl(image)}
+                  alt={
+                    pack.localizationCatalogs?.[t.locale]?.[
+                      image.defaultAlt.localizationKey
+                    ] ?? image.originalFileName
+                  }
+                  loading="lazy"
+                />
+              )}
+              <h6>{image.assetId}</h6>
+              <p>{image.originalFileName}</p>
+              <p>
+                {t("scenarioAuthor.builder.media.dimensions", {
+                  width: image.width,
+                  height: image.height,
+                  bytes: image.byteLength,
+                })}
+              </p>
+              <span className="status status--neutral">
+                {t(`scenarioAuthor.builder.media.purpose.${image.purpose}`)}
+              </span>
+              <button
+                className="button button--quiet"
+                type="button"
+                disabled={imageIsUsed(image.assetId)}
+                onClick={() =>
+                  onChange(
+                    changeScenarioPack(pack, (draft) => {
+                      draft.imageAssets = draft.imageAssets.filter(
+                        (candidate) => candidate.assetId !== image.assetId,
+                      );
+                      delete draft.assetHashes[image.filePath];
+                    }),
+                  )
+                }
+              >
+                {t(
+                  imageIsUsed(image.assetId)
+                    ? "scenarioAuthor.builder.media.inUse"
+                    : "scenarioAuthor.builder.remove",
+                )}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <h5>{t("scenarioAuthor.builder.media.assignments")}</h5>
+      {scenario.staffProfiles.map((profile, index) => (
+        <SelectControl
+          key={profile.staffProfileId}
+          id={`builder-staff-image-${String(index)}`}
+          label={t("scenarioAuthor.builder.media.staffAssignment", {
+            id: profile.staffProfileId,
+          })}
+          value={profile.portraitAssetId}
+          options={[
+            unassignedOption,
+            ...purposeAssets("STAFF_PORTRAIT").map((image) => ({
+              value: image.assetId,
+              label: image.originalFileName,
+            })),
+          ]}
+          onChange={(value) =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target = draft.scenarios[scenarioIndex]?.staffProfiles[index];
+                if (target !== undefined) target.portraitAssetId = value;
+              }),
+            )
+          }
+        />
+      ))}
+      {scenario.nodes.map((node, index) => (
+        <SelectControl
+          key={node.nodeId}
+          id={`builder-node-image-${String(index)}`}
+          label={t("scenarioAuthor.builder.media.nodeAssignment", {
+            id: node.nodeId,
+          })}
+          value={node.image?.assetId ?? ""}
+          options={[
+            unassignedOption,
+            ...purposeAssets("SCENE_ILLUSTRATION").map((image) => ({
+              value: image.assetId,
+              label: image.originalFileName,
+            })),
+          ]}
+          onChange={(value) =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target = draft.scenarios[scenarioIndex]?.nodes[index];
+                if (target === undefined) return;
+                if (value.length === 0) delete target.image;
+                else target.image = { assetId: value };
+              }),
+            )
+          }
+        />
+      ))}
+      {scenario.evidenceItems.map((evidence, index) => (
+        <SelectControl
+          key={evidence.evidenceId}
+          id={`builder-evidence-image-${String(index)}`}
+          label={t("scenarioAuthor.builder.media.evidenceAssignment", {
+            id: evidence.evidenceId,
+          })}
+          value={evidence.image?.assetId ?? ""}
+          options={[
+            unassignedOption,
+            ...purposeAssets("EVIDENCE_IMAGE").map((image) => ({
+              value: image.assetId,
+              label: image.originalFileName,
+            })),
+          ]}
+          onChange={(value) =>
+            onChange(
+              changeScenarioPack(pack, (draft) => {
+                const target =
+                  draft.scenarios[scenarioIndex]?.evidenceItems[index];
+                if (target === undefined) return;
+                if (value.length === 0) delete target.image;
+                else target.image = { assetId: value };
+              }),
+            )
+          }
+        />
+      ))}
+    </section>
+  );
+}
+
 function EvidenceStep({
   pack,
   scenario,
@@ -1960,7 +2381,7 @@ function EvidenceStep({
           "POLICY_NEW",
         );
         const key = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${target.scenarioId}.policy`,
           [".title", ".statement"],
         );
@@ -1974,7 +2395,7 @@ function EvidenceStep({
           configuration: {},
         });
         seedLocalizedKeys(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           [`${key}.title`, `${key}.statement`],
         );
       }),
@@ -2001,7 +2422,7 @@ function EvidenceStep({
           "EVIDENCE_NEW",
         );
         const key = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${target.scenarioId}.evidence`,
           [".title", ".summary", ".field.finding"],
         );
@@ -2044,7 +2465,7 @@ function EvidenceStep({
           content: { finding: "" },
         });
         seedLocalizedKeys(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           [
             `${key}.title`,
             `${key}.summary`,
@@ -2287,7 +2708,7 @@ function EvidenceItemEditor({
   function update(
     mutation: (
       target: DeepMutable<ScenarioEvidenceItemV1>,
-      draft: DeepMutable<ScenarioPackV1>,
+      draft: DeepMutable<ScenarioPackV2>,
     ) => void,
   ): void {
     onChange(
@@ -2796,7 +3217,7 @@ function EvidenceItemEditor({
                     const localizationKey =
                       `${target.title.localizationKey}.field.${fieldPath}`;
                     seedLocalizedKeys(
-                      draft as unknown as ScenarioPackV1,
+                      draft as unknown as ScenarioPackV2,
                       [localizationKey],
                     );
                     return {
@@ -2915,7 +3336,7 @@ function EvidenceItemEditor({
                             `${targetField.label.localizationKey}.unit`;
                           targetField.unit = { localizationKey };
                           seedLocalizedKeys(
-                            draft as unknown as ScenarioPackV1,
+                            draft as unknown as ScenarioPackV2,
                             [localizationKey],
                           );
                         })
@@ -2986,7 +3407,7 @@ function EvidenceItemEditor({
                               },
                             };
                             seedLocalizedKeys(
-                              draft as unknown as ScenarioPackV1,
+                              draft as unknown as ScenarioPackV2,
                               [localizationKey],
                             );
                           })
@@ -3085,7 +3506,7 @@ function IncidentEditor({
               "INCIDENT_NEW",
             );
             const key = uniqueLocalizationPrefix(
-              draft as unknown as ScenarioPackV1,
+              draft as unknown as ScenarioPackV2,
               `builder.${target.scenarioId}.incident`,
               [".title", ".message"],
             );
@@ -3104,7 +3525,7 @@ function IncidentEditor({
               professionalConsequenceEffects: {},
             });
             seedLocalizedKeys(
-              draft as unknown as ScenarioPackV1,
+              draft as unknown as ScenarioPackV2,
               [`${key}.title`, `${key}.message`],
             );
           }),
@@ -3287,7 +3708,7 @@ function CheckboxList({
 }
 
 function seedLocalizedKeys(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   localizationKeys: readonly string[],
 ): void {
   const mutable = pack as unknown as {
@@ -3357,7 +3778,7 @@ function WorkflowStep({
         const target = draft.scenarios[scenarioIndex];
         if (target === undefined) return;
         const localizationPrefix = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${target.scenarioId}.node.${newNodeType.toLowerCase()}`,
           nodeLocalizationSuffixes(newNodeType),
         );
@@ -3407,7 +3828,7 @@ function WorkflowStep({
           );
         }
         seedNodeLocalizedText(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           node,
         );
       }),
@@ -3562,7 +3983,7 @@ function WorkflowMap({
 }
 
 function seedNodeLocalizedText(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   node: ScenarioNodeV1,
 ): void {
   const keys = [node.title.localizationKey];
@@ -3626,7 +4047,7 @@ function NodeEditor({
   function updateNode(
     mutation: (
       target: DeepMutable<ScenarioNodeV1>,
-      draft: DeepMutable<ScenarioPackV1>,
+      draft: DeepMutable<ScenarioPackV2>,
     ) => void,
   ): void {
     onChange(
@@ -3669,7 +4090,7 @@ function NodeEditor({
         target.nodes[nodeIndex] =
           retained as unknown as (typeof target.nodes)[number];
         seedNodeLocalizedText(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           retained,
         );
       }),
@@ -3817,7 +4238,7 @@ function NodeSpecificEditor(
   function updateNode(
     mutation: (
       target: DeepMutable<ScenarioNodeV1>,
-      draft: DeepMutable<ScenarioPackV1>,
+      draft: DeepMutable<ScenarioPackV2>,
     ) => void,
   ): void {
     onChange(
@@ -4189,7 +4610,7 @@ function NodeSpecificEditor(
                           localizationKey,
                         };
                         seedLocalizedKeys(
-                          draft as unknown as ScenarioPackV1,
+                          draft as unknown as ScenarioPackV2,
                           [localizationKey],
                         );
                       })
@@ -4280,7 +4701,7 @@ function NodeSpecificEditor(
                     label: { localizationKey },
                   });
                   seedLocalizedKeys(
-                    draft as unknown as ScenarioPackV1,
+                    draft as unknown as ScenarioPackV2,
                     [localizationKey],
                   );
                 })
@@ -4489,7 +4910,7 @@ function DecisionEditor({
           draft.scenarios[scenarioIndex]?.nodes[nodeIndex];
         if (target?.nodeType !== "DECISION") return;
         const key = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${scenario.scenarioId}.${node.nodeId}.field`,
           [".prompt", ".option.a"],
         );
@@ -4508,7 +4929,7 @@ function DecisionEditor({
           ],
         });
         seedLocalizedKeys(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           [`${key}.prompt`, `${key}.option.a`],
         );
       }),
@@ -4759,7 +5180,7 @@ function DecisionEditor({
                         return;
                       }
                       const key = uniqueLocalizationPrefix(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         `builder.${scenario.scenarioId}.${node.nodeId}.${field.fieldId}.option`,
                         [".label"],
                       );
@@ -4771,7 +5192,7 @@ function DecisionEditor({
                         authoredValue: optionId,
                       });
                       seedLocalizedKeys(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         [`${key}.label`],
                       );
                     }),
@@ -5035,8 +5456,8 @@ function TransitionEditor({
 }
 
 function updateTransition(
-  pack: ScenarioPackV1,
-  onChange: (pack: ScenarioPackV1) => void,
+  pack: ScenarioPackV2,
+  onChange: (pack: ScenarioPackV2) => void,
   options: {
     readonly scenarioIndex: number;
     readonly nodeIndex: number;
@@ -5311,7 +5732,7 @@ function AssessmentStep({
 }
 
 function competencyDefinitions(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly CompetencyDefinitionV1[] {
   return pack.competencyFrameworks.flatMap(
     (framework) => framework.competencies,
@@ -5319,7 +5740,7 @@ function competencyDefinitions(
 }
 
 function indicatorDefinitions(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly PerformanceIndicatorV1[] {
   return competencyDefinitions(pack).flatMap(
     (competency) => competency.indicators,
@@ -5476,8 +5897,8 @@ function CompetencyFrameworkEditor({
   pack,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly pack: ScenarioPackV2;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   function updateFramework(
@@ -5511,7 +5932,7 @@ function CompetencyFrameworkEditor({
           "COMPETENCY_NEW",
         );
         const key = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${frameworkId.toLowerCase()}`,
           [
             ".title",
@@ -5549,7 +5970,7 @@ function CompetencyFrameworkEditor({
           ],
         });
         seedLocalizedKeys(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           [
             `${key}.title`,
             `${key}.competency.title`,
@@ -5671,7 +6092,7 @@ function CompetencyFrameworkEditor({
                         "COMPETENCY_NEW",
                       );
                       const key = uniqueLocalizationPrefix(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         `builder.${selected.frameworkId.toLowerCase()}.competency`,
                         [
                           ".title",
@@ -5700,7 +6121,7 @@ function CompetencyFrameworkEditor({
                         ],
                       });
                       seedLocalizedKeys(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         [
                           `${key}.title`,
                           `${key}.description`,
@@ -5740,11 +6161,11 @@ function CompetencyEditor({
   competencyIndex,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly frameworkIndex: number;
   readonly competency: CompetencyDefinitionV1;
   readonly competencyIndex: number;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   function update(
@@ -5852,7 +6273,7 @@ function CompetencyEditor({
                   `${target.competencyId}.PI`,
                 );
                 const key = uniqueLocalizationPrefix(
-                  draft as unknown as ScenarioPackV1,
+                  draft as unknown as ScenarioPackV2,
                   `builder.${target.competencyId.toLowerCase()}.indicator`,
                   [".statement"],
                 );
@@ -5864,7 +6285,7 @@ function CompetencyEditor({
                   },
                 });
                 seedLocalizedKeys(
-                  draft as unknown as ScenarioPackV1,
+                  draft as unknown as ScenarioPackV2,
                   [`${key}.statement`],
                 );
               }),
@@ -5951,8 +6372,8 @@ function RubricEditor({
   pack,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly pack: ScenarioPackV2;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   const indicators = indicatorDefinitions(pack);
@@ -5981,7 +6402,7 @@ function RubricEditor({
           "CRITERION_NEW",
         );
         const key = uniqueLocalizationPrefix(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           `builder.${rubricId.toLowerCase()}`,
           [
             ".title",
@@ -6026,7 +6447,7 @@ function RubricEditor({
           ],
         });
         seedLocalizedKeys(
-          draft as unknown as ScenarioPackV1,
+          draft as unknown as ScenarioPackV2,
           [
             `${key}.title`,
             `${key}.level0`,
@@ -6123,7 +6544,7 @@ function RubricEditor({
                           ...target.levels.map((level) => level.value),
                         ) + 1;
                       const key = uniqueLocalizationPrefix(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         `builder.${target.rubricId.toLowerCase()}.level`,
                         [".label"],
                       );
@@ -6132,7 +6553,7 @@ function RubricEditor({
                         label: { localizationKey: `${key}.label` },
                       });
                       seedLocalizedKeys(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         [`${key}.label`],
                       );
                     }),
@@ -6201,7 +6622,7 @@ function RubricEditor({
                         "CRITERION_NEW",
                       );
                       const key = uniqueLocalizationPrefix(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         `builder.${target.rubricId.toLowerCase()}.criterion`,
                         [".title", ".description"],
                       );
@@ -6233,7 +6654,7 @@ function RubricEditor({
                               ],
                       });
                       seedLocalizedKeys(
-                        draft as unknown as ScenarioPackV1,
+                        draft as unknown as ScenarioPackV2,
                         [`${key}.title`, `${key}.description`],
                       );
                     }),
@@ -6269,12 +6690,12 @@ function RubricCriterionEditor({
   indicators,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly rubricIndex: number;
   readonly criterion: RubricCriterionV1;
   readonly criterionIndex: number;
   readonly indicators: readonly PerformanceIndicatorV1[];
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   function update(
@@ -6375,8 +6796,8 @@ function EvidenceRuleEditor({
   pack,
   onChange,
 }: {
-  readonly pack: ScenarioPackV1;
-  readonly onChange: (pack: ScenarioPackV1) => void;
+  readonly pack: ScenarioPackV2;
+  readonly onChange: (pack: ScenarioPackV2) => void;
 }): ReactNode {
   const t = useTranslator();
   const indicators = indicatorDefinitions(pack);
@@ -6952,18 +7373,18 @@ function ReviewStep({
           }}
         />
         <StructuredValueEditor
-          path="portraitAssets"
+          path="imageAssets"
           idPrefix="builder-portrait-assets"
-          label={t("scenarioAuthor.builder.portraitAssets")}
-          value={pack.portraitAssets as unknown as JsonValue}
+          label={t("scenarioAuthor.builder.imageAssets")}
+          value={pack.imageAssets as unknown as JsonValue}
           pack={pack}
           onPackChange={onChange}
           onChange={(value) => {
             if (!Array.isArray(value)) return;
             onChange(
               changeScenarioPack(pack, (draft) => {
-                draft.portraitAssets =
-                  value as unknown as typeof draft.portraitAssets;
+                draft.imageAssets =
+                  value as unknown as typeof draft.imageAssets;
               }),
             );
           }}
@@ -7072,7 +7493,7 @@ function AdvancedCoverageSummary({
   pack,
   scenario,
 }: {
-  readonly pack: ScenarioPackV1;
+  readonly pack: ScenarioPackV2;
   readonly scenario: ScenarioDefinitionV1;
 }): ReactNode {
   const t = useTranslator();
@@ -7094,8 +7515,8 @@ function AdvancedCoverageSummary({
       value: scenario.counterfactualConditions.length,
     },
     {
-      label: t("scenarioAuthor.builder.portraitAssets"),
-      value: pack.portraitAssets.length,
+      label: t("scenarioAuthor.builder.imageAssets"),
+      value: pack.imageAssets.length,
     },
     {
       label: t("scenarioAuthor.builder.auditVariantBanks"),
@@ -7145,7 +7566,7 @@ function reachableNodes(
   return visited;
 }
 
-function localizedTextGaps(pack: ScenarioPackV1): readonly string[] {
+function localizedTextGaps(pack: ScenarioPackV2): readonly string[] {
   const keys = new Set<string>();
   function visit(value: unknown): void {
     if (Array.isArray(value)) {
@@ -7240,8 +7661,8 @@ function StructuredValueEditor({
   readonly idPrefix: string;
   readonly label: string;
   readonly value: JsonValue;
-  readonly pack?: ScenarioPackV1;
-  readonly onPackChange?: (pack: ScenarioPackV1) => void;
+  readonly pack?: ScenarioPackV2;
+  readonly onPackChange?: (pack: ScenarioPackV2) => void;
   readonly onChange: (value: JsonValue) => void;
   readonly openByDefault?: boolean;
 }): ReactNode {
@@ -7340,8 +7761,8 @@ function StructuredArrayEditor({
   readonly idPrefix: string;
   readonly label: string;
   readonly value: readonly JsonValue[];
-  readonly pack?: ScenarioPackV1;
-  readonly onPackChange?: (pack: ScenarioPackV1) => void;
+  readonly pack?: ScenarioPackV2;
+  readonly onPackChange?: (pack: ScenarioPackV2) => void;
   readonly onChange: (value: JsonValue) => void;
   readonly openByDefault: boolean;
 }): ReactNode {
@@ -7470,8 +7891,8 @@ function StructuredObjectEditor({
   readonly idPrefix: string;
   readonly label: string;
   readonly value: Readonly<Record<string, JsonValue>>;
-  readonly pack?: ScenarioPackV1;
-  readonly onPackChange?: (pack: ScenarioPackV1) => void;
+  readonly pack?: ScenarioPackV2;
+  readonly onPackChange?: (pack: ScenarioPackV2) => void;
   readonly onChange: (value: JsonValue) => void;
   readonly openByDefault: boolean;
 }): ReactNode {

@@ -3,7 +3,7 @@ import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pac
 import { AUDIT_GUIDED_PRESET } from "../../config/presets";
 import { hashConfiguration } from "../../config/hash";
 import type { AuditRuntimePackage } from "../../config/audit-runtime-loader";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import type { Ta2AuditSnapshot } from "../../infrastructure/persistence/ta2-audit-codec";
@@ -17,7 +17,7 @@ function runtime(): AuditRuntimePackage {
   const pack = publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
     publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
-  }) as ScenarioPackV1;
+  }) as ScenarioPackV2;
   const scenario = pack.scenarios[0]!;
   return {
     configuration: AUDIT_GUIDED_PRESET,

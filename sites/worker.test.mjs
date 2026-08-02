@@ -1,4 +1,4 @@
-/* global Request, Response, TextEncoder, URL, URLSearchParams, structuredClone */
+/* global Request, Response, TextDecoder, TextEncoder, URL, URLSearchParams, structuredClone */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -19,6 +19,7 @@ import {
   jwtVerify,
   SignJWT,
 } from "jose";
+import { unzipSync } from "fflate";
 
 const buildDirectory = await mkdtemp(
   join(tmpdir(), "tracechain-worker-test-"),
@@ -227,6 +228,18 @@ function createAssetEnvironment(
               },
             });
           }
+          if (pathname.startsWith("/media/")) {
+            try {
+              return new Response(
+                await readFile(
+                  new URL(`../public${pathname}`, import.meta.url),
+                ),
+                { status: 200 },
+              );
+            } catch {
+              // Fall through to the authored 404 below.
+            }
+          }
           if (
             redirectNavigationToRoot &&
             request.headers.get("accept")?.includes("text/html")
@@ -240,6 +253,7 @@ function createAssetEnvironment(
           return new Response("Not found", { status: 404 });
         },
       },
+      ARTIFACTS: createArtifactBucket(),
     },
   };
 }
@@ -258,7 +272,10 @@ function createArtifactBucket() {
       const object = objects.get(key);
       return object === undefined
         ? null
-        : { body: new Response(object.bytes).body };
+        : {
+            body: new Response(object.bytes).body,
+            httpMetadata: object.options?.httpMetadata,
+          };
     },
   };
 }
@@ -2468,6 +2485,49 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
       "author@example.edu",
       ["scenario-author"],
     );
+    const uploadedImageBytes = await readFile(
+      new URL(
+        "../public/media/staff/producer-manager.webp",
+        import.meta.url,
+      ),
+    );
+    const uploadedImage = await worker.fetch(
+      new Request(
+        "https://tracechain.example/api/v1/scenario-assets" +
+          "?fileName=producer-manager.webp&purpose=STAFF_PORTRAIT",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "image/webp",
+            "oai-authenticated-user-email": "author@example.edu",
+            origin: "https://tracechain.example",
+          },
+          body: uploadedImageBytes,
+        },
+      ),
+      env,
+    );
+    assert.equal(
+      uploadedImage.status,
+      201,
+      await uploadedImage.clone().text(),
+    );
+    const uploadedImageMetadata = (await uploadedImage.json()).image;
+    assert.equal(uploadedImageMetadata.width, 480);
+    assert.equal(uploadedImageMetadata.height, 600);
+    assert.equal(uploadedImageMetadata.mimeType, "image/webp");
+    const downloadedImage = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-assets/${uploadedImageMetadata.sha256}`,
+        { email: "author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(downloadedImage.status, 200);
+    assert.deepEqual(
+      new Uint8Array(await downloadedImage.arrayBuffer()),
+      new Uint8Array(uploadedImageBytes),
+    );
     const pack = await standardCoffeePack();
     const invalid = structuredClone(pack);
     invalid.scenarios[0].entryNodeId = "MISSING_NODE";
@@ -2500,6 +2560,35 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     );
     assert.equal(imported.status, 201, await imported.clone().text());
     assert.equal((await imported.json()).report.valid, true);
+
+    const bundle = await worker.fetch(
+      apiRequest(
+        `/api/v1/scenario-packs/${encodeURIComponent(pack.packId)}` +
+          `/versions/${encodeURIComponent(pack.version)}/bundle`,
+        { email: "author@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(bundle.status, 200, await bundle.clone().text());
+    assert.match(
+      bundle.headers.get("content-disposition") ?? "",
+      /TraceChain_.*\.zip/u,
+    );
+    const bundleEntries = unzipSync(
+      new Uint8Array(await bundle.arrayBuffer()),
+    );
+    assert.deepEqual(
+      Object.keys(bundleEntries).sort(),
+      ["tracechain.pack.json", ...Object.keys(pack.assetHashes)].sort(),
+    );
+    assert.equal(
+      JSON.parse(
+        new TextDecoder().decode(
+          bundleEntries["tracechain.pack.json"],
+        ),
+      ).schemaVersion,
+      "2.0.0",
+    );
 
     const listedDraft = await worker.fetch(
       apiRequest("/api/v1/scenario-packs", {
@@ -5154,6 +5243,49 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(create.status, 201, await create.clone().text());
     assert.equal((await create.json()).version, 2);
+
+    const initialLearnerView = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}`, {
+        email: "learner@example.edu",
+      }),
+      env,
+    );
+    assert.equal(
+      initialLearnerView.status,
+      200,
+      await initialLearnerView.clone().text(),
+    );
+    const initialProjection = (await initialLearnerView.json()).projection;
+    const visiblePortraitAssetId =
+      initialProjection.staffProfile.portraitAssetId;
+    const visiblePortrait = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${runId}/assets/${visiblePortraitAssetId}`,
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(
+      visiblePortrait.status,
+      200,
+      await visiblePortrait.clone().text(),
+    );
+    assert.equal(visiblePortrait.headers.get("content-type"), "image/webp");
+    const hiddenPortraitAssetId = pack.imageAssets.find(
+      (image) => image.assetId !== visiblePortraitAssetId,
+    ).assetId;
+    const hiddenPortrait = await worker.fetch(
+      apiRequest(
+        `/api/v1/runs/${runId}/assets/${hiddenPortraitAssetId}`,
+        { email: "learner@example.edu" },
+      ),
+      env,
+    );
+    assert.equal(hiddenPortrait.status, 403);
+    assert.equal(
+      (await hiddenPortrait.json()).error.code,
+      "RUN_ACCESS_DENIED",
+    );
 
     const inspect = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {

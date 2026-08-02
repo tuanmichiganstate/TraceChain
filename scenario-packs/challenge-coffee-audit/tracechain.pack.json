@@ -1,6 +1,6 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.12.0",
+  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "schemaVersion": "2.0.0",
   "packId": "PACK_CHALLENGE_COFFEE_AUDIT",
   "version": "1.0.0",
   "status": "draft",
@@ -469,7 +469,7 @@
       "eventType": "AUDIT_CONCLUSION_SUBMITTED"
     }
   ],
-  "portraitAssets": [],
+  "imageAssets": [],
   "auditVariantBanks": [
     {
       "bankId": "BANK_COFFEE_AUDIT_CHALLENGE_V1",

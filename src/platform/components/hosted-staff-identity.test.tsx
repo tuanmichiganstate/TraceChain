@@ -24,6 +24,7 @@ const profile: LearnerRunStaffProfileV1 = {
       vi: "Tổ chức chứng nhận VietCert",
     },
   },
+  portraitAssetId: "PORTRAIT_CERTIFICATION_OFFICER",
   portraitPath: "media/staff/certification-officer.webp",
   portraitAlt: {
     localizationKey: "staff.certificationOfficer.alt",

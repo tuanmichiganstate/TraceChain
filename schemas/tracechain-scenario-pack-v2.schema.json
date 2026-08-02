@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v1.schema.json",
-  "title": "TraceChain Scenario Pack V1.12",
+  "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v2.schema.json",
+  "title": "TraceChain Scenario Pack V2",
   "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
@@ -15,14 +15,14 @@
     "competencyFrameworks",
     "rubrics",
     "evidenceRules",
-    "portraitAssets",
+    "imageAssets",
     "auditVariantBanks",
     "scenarios",
     "assetHashes"
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "1.12.0" },
+    "schemaVersion": { "const": "2.0.0" },
     "packId": { "$ref": "#/$defs/identifier" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "$ref": "#/$defs/lifecycleStatus" },
@@ -65,9 +65,9 @@
       "type": "array",
       "items": { "$ref": "#/$defs/evidenceRule" }
     },
-    "portraitAssets": {
+    "imageAssets": {
       "type": "array",
-      "items": { "$ref": "#/$defs/portraitAsset" }
+      "items": { "$ref": "#/$defs/imageAsset" }
     },
     "auditVariantBanks": {
       "type": "array",
@@ -356,44 +356,86 @@
         "displayName": { "$ref": "#/$defs/localizedText" }
       }
     },
-    "portraitAsset": {
+    "imageAsset": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "assetId",
+        "purpose",
         "sourceType",
         "licenseOrApprovalReference",
-        "fictionalSubject",
+        "rightsDeclaration",
+        "originalFileName",
         "filePath",
         "sha256",
+        "byteLength",
         "width",
         "height",
-        "format",
-        "developmentPlaceholder"
+        "mimeType",
+        "defaultAlt"
       ],
       "properties": {
         "assetId": { "$ref": "#/$defs/identifier" },
+        "purpose": {
+          "enum": [
+            "STAFF_PORTRAIT",
+            "SCENE_ILLUSTRATION",
+            "EVIDENCE_IMAGE"
+          ]
+        },
         "sourceType": {
           "enum": [
             "AI_GENERATED",
             "LICENSED_STOCK",
-            "ORIGINAL_WITH_RELEASE"
+            "ORIGINAL_WITH_RELEASE",
+            "CREATIVE_COMMONS",
+            "PUBLIC_DOMAIN"
           ]
         },
         "licenseOrApprovalReference": {
           "type": "string",
           "minLength": 1
         },
-        "fictionalSubject": { "const": true },
+        "rightsDeclaration": {
+          "enum": [
+            "NO_IDENTIFIABLE_PEOPLE",
+            "FICTIONAL_PEOPLE",
+            "RELEASED_PEOPLE"
+          ]
+        },
+        "originalFileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "pattern": "^[^/\\\\]+$"
+        },
         "filePath": {
           "type": "string",
-          "pattern": "^media/staff/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\:]+\\.webp$"
+          "pattern": "^media/(?:staff|scenes|evidence)/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\:]+\\.(?:webp|png|jpe?g)$"
         },
         "sha256": { "$ref": "#/$defs/sha256" },
-        "width": { "type": "integer", "minimum": 320 },
-        "height": { "type": "integer", "minimum": 400 },
-        "format": { "const": "webp" },
-        "developmentPlaceholder": { "const": false }
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5242880
+        },
+        "width": { "type": "integer", "minimum": 64, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 64, "maximum": 8192 },
+        "mimeType": {
+          "enum": ["image/webp", "image/png", "image/jpeg"]
+        },
+        "defaultAlt": { "$ref": "#/$defs/localizedText" },
+        "caption": { "$ref": "#/$defs/localizedText" }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/identifier" },
+        "alt": { "$ref": "#/$defs/localizedText" },
+        "caption": { "$ref": "#/$defs/localizedText" }
       }
     },
     "staffProfile": {
@@ -632,6 +674,7 @@
         "learnerPresentation": {
           "$ref": "#/$defs/evidenceLearnerPresentation"
         },
+        "image": { "$ref": "#/$defs/imageReference" },
         "content": { "type": "object" }
       }
     },
@@ -1077,6 +1120,7 @@
           ]
         },
         "title": { "$ref": "#/$defs/localizedText" },
+        "image": { "$ref": "#/$defs/imageReference" },
         "transitions": {
           "type": "array",
           "items": { "$ref": "#/$defs/transition" }

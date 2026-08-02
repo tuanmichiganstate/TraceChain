@@ -1,15 +1,15 @@
-# Scenario authoring V1
+# Scenario authoring V2
 
 ## Scope
 
-The authenticated `/author` workspace is the Phase 6 authoring boundary. It
-uses the same `ScenarioPackV1`, validator, content hash, and D1 repository as
+The authenticated `/author` workspace is the scenario-authoring boundary. It
+uses the same `ScenarioPackV2`, validator, content hash, and D1 repository as
 the command-line validator and hosted run APIs.
 
 The first release supports:
 
-- a seven-step no-code Scenario Builder using the canonical pack contract;
-- JSON, YAML, and bounded ZIP import;
+- an eight-step no-code Scenario Builder using the canonical pack contract;
+- JSON and YAML manifest import plus complete bounded scenario-bundle import;
 - a built-in pharmaceutical cold-chain starter and transfer case;
 - bilingual pack and scenario identity;
 - delivery-mode, deterministic outcome, participant, role, and initial-state
@@ -19,7 +19,9 @@ The first release supports:
 - structured advanced editing for optional pack and scenario sections;
 - path-specific schema and semantic validation;
 - deterministic role-and-mode preview;
-- preview and selection of approved fictional staff portraits;
+- upload, rights documentation, bilingual alternative text, preview, and
+  assignment of approved staff, scene, and evidence images;
+- deterministic, self-contained scenario-bundle ZIP export;
 - exact-version comparison;
 - immutable publication; and
 - retirement metadata that does not alter published content.
@@ -31,19 +33,21 @@ Audit starter supplies their complete schema-shaped examples.
 
 ## Scenario Builder
 
-The builder edits `ScenarioPackV1` directly. It does not translate a simpler
+The builder edits `ScenarioPackV2` directly. It does not translate a simpler
 wizard format into the pack later and does not create a parallel runtime. Its
-seven steps are:
+eight steps are:
 
 1. identity and bilingual description;
 2. delivery modes and deterministic outcome models;
 3. organizations, trusted roles, and actual, business, ledger, and information
    state;
-4. policies, evidence metadata and content, and instructor incidents;
-5. the complete workflow-node union and conditional transitions;
-6. competency targets, frameworks, analytic rubrics, and automated evidence
+4. approved media, provenance, rights, bilingual alternative text, and image
+   assignment;
+5. policies, evidence metadata and content, and instructor incidents;
+6. the complete workflow-node union and conditional transitions;
+7. competency targets, frameworks, analytic rubrics, and automated evidence
    rules; and
-7. localization, reachability, coverage, and advanced schema review.
+8. localization, reachability, coverage, and advanced schema review.
 
 Authors may add, remove, and reorder workflow content without writing source
 code. New nodes enter the simple path before completion, while authors retain
@@ -85,20 +89,35 @@ The standard coffee native pack uses the application catalogues. This preserves
 the existing SCORM localization contract while
 allowing new disciplinary authoring packs to be self-contained.
 
-## Staff portraits
+## Image authoring
 
-The Scenario Builder shows the staff profiles already authored in a scenario and
-allows each profile to select from that pack's approved `portraitAssets`
-registry. It does not accept remote URLs, upload arbitrary files, or generate
-images. A portable pack author must provide the local WebP, immutable digest,
-dimensions, source/approval metadata, fictional declaration, bilingual
-identity text, and valid role and organization references before validation
-will pass.
+The Media step accepts bounded WebP, PNG, and JPEG uploads. TraceChain inspects
+the actual bytes, derives the SHA-256 digest, dimensions, byte length, MIME
+type, and content-addressed package path, and stores the bytes outside the
+JavaScript bundle. The author must select the image purpose and source type,
+declare how identifiable people are handled, record a licence or approval
+reference, and provide alternative text for every supported locale.
+
+The pack-level `imageAssets` registry supports three purposes:
+
+```text
+STAFF_PORTRAIT
+SCENE_ILLUSTRATION
+EVIDENCE_IMAGE
+```
+
+Staff profiles may select only staff portraits, workflow nodes may select only
+scene illustrations, and evidence records may select only evidence images.
+The Builder previews the media library and prevents deletion while an asset is
+referenced. It accepts no remote image URL and never trusts author-entered
+dimensions, MIME types, or digests.
 
 Human presence is presentation data. It does not modify the active trusted
 role, cryptographic signer, authorization result, or endorsement policy. A
-published replacement requires a new versioned pack rather than mutating an
-existing historical run.
+scene image does not reveal hidden state. An evidence image is projected only
+when the evidence itself is released and appears only after the learner
+inspects that record. A published replacement requires a new versioned pack
+rather than mutating an existing historical run.
 
 ## Starter pack
 
@@ -187,17 +206,33 @@ the same source inputs reproduce the same outcome and event hash.
 inside the same prospective durable event batch. No advanced generic node
 silently changes ledger state.
 
-## Import safety
+## Import, export, and bundle safety
 
-The browser accepts at most 2 MiB before and after ZIP expansion. A ZIP must
-contain an unambiguous `tracechain.pack.json` or one unambiguous JSON/YAML
-candidate. The validator rejects executable property names, invalid
-references, unreachable nodes, dead ends, localization gaps, unsupported
-modes, and nondeterministic outcome configuration.
+A JSON or YAML import is a manifest-only authoring input and is limited to
+2 MiB. A ZIP import is a canonical scenario bundle: it contains exactly one
+root `tracechain.pack.json` plus every byte named by `assetHashes`. A bundle is
+limited to 30 MiB compressed and expanded, each image to 5 MiB, the image
+collection to 25 MiB, and the pack to 60 images. Paths are relative, bounded,
+and cannot contain parent traversal, absolute paths, schemes, or backslashes.
+
+For every bundle image, import recomputes and verifies the image format,
+dimensions, byte length, MIME type, and SHA-256 digest. Missing, undeclared,
+malformed, or mismatched assets fail the complete import; learner data is
+never silently truncated. Export produces the same canonical structure with
+sorted entries and normalized ZIP timestamps, so identical pack content and
+image bytes produce byte-identical ZIPs.
+
+The validator also rejects executable property names, invalid references,
+unreachable nodes, dead ends, localization gaps, unsupported modes, and
+nondeterministic outcome configuration.
 
 Imported drafts remain mutable. Publication creates a deterministic content
 hash and makes that exact version immutable. Retirement changes repository
 metadata only; existing assignments and replay retain the original content.
+
+The scenario-bundle ZIP is hosted-platform content, not a SCORM package. It is
+ready to import into another TraceChain Scenario Author workspace. SCORM
+generation remains a separate packaging workflow.
 
 ## Repository validation
 

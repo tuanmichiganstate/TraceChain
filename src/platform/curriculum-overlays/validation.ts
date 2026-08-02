@@ -2,7 +2,7 @@ import type {
   CurriculumCrosswalkOverlayV2,
 } from "../contracts/curriculum-crosswalk";
 import { isJsonObject } from "../contracts/json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 
 export interface CurriculumOverlayValidationIssue {
   readonly code: string;
@@ -532,7 +532,7 @@ export function validateCurriculumOverlay(
 
 export function curriculumOverlayCompatibilityIssues(
   overlay: CurriculumCrosswalkOverlayV2,
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly CurriculumOverlayValidationIssue[] {
   const issues: CurriculumOverlayValidationIssue[] = [];
   const referencedFrameworkKeys = new Set(
@@ -576,7 +576,7 @@ export function curriculumOverlayCompatibilityIssues(
 
 export function adoptedCurriculumOverlaysForPack(
   overlays: readonly CurriculumCrosswalkOverlayV2[],
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly CurriculumCrosswalkOverlayV2[] {
   return overlays
     .filter(

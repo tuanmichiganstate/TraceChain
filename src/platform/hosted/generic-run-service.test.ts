@@ -6,8 +6,9 @@ import {
 } from "../../domain/simulation/environment";
 import type {
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
+import type { DeepMutable } from "../author/scenario-builder-model";
 import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
 import { MemoryCounterfactualRunRepository } from "../runs/counterfactual-repository";
 import { MemoryRunEventStore } from "../runs/event-store";
@@ -46,7 +47,7 @@ class AdvancingClock implements Clock {
   }
 }
 
-function publishedPack(): ScenarioPackV1 {
+function publishedPack(): ScenarioPackV2 {
   const result = validateScenarioPack(structuredClone(packJson));
   if (!result.isValid) {
     throw new Error(
@@ -61,8 +62,8 @@ function publishedPack(): ScenarioPackV1 {
   });
 }
 
-function fullVocabularyPack(): ScenarioPackV1 {
-  const base = structuredClone(packJson) as unknown as ScenarioPackV1;
+function fullVocabularyPack(): ScenarioPackV2 {
+  const base = structuredClone(packJson) as unknown as ScenarioPackV2;
   const source = base.scenarios[0];
   if (source === undefined) {
     throw new Error("Expected the pharmaceutical starter scenario.");
@@ -361,6 +362,120 @@ function createTransferService(
 }
 
 describe("GenericHostedRunService", () => {
+  it("projects only the active scene and inspected evidence images as run-scoped URLs", async () => {
+    const draft = structuredClone(
+      packJson,
+    ) as unknown as DeepMutable<ScenarioPackV2>;
+    const scenario = draft.scenarios[0]!;
+    const localizationKey = "test.images.coldRoom.alt";
+    draft.localizationCatalogs ??= {};
+    draft.localizationCatalogs.en ??= {};
+    draft.localizationCatalogs.vi ??= {};
+    draft.localizationCatalogs.en[localizationKey] = "Cold room inspection";
+    draft.localizationCatalogs.vi[localizationKey] = "Kiểm tra kho lạnh";
+    const sceneHash = "1".repeat(64);
+    const evidenceHash = "2".repeat(64);
+    draft.imageAssets = [
+      {
+        assetId: "IMAGE_COLD_ROOM",
+        purpose: "SCENE_ILLUSTRATION",
+        sourceType: "ORIGINAL_WITH_RELEASE",
+        licenseOrApprovalReference: "TEST_RELEASE",
+        rightsDeclaration: "NO_IDENTIFIABLE_PEOPLE",
+        originalFileName: "cold-room.png",
+        filePath: "media/scenes/cold-room.png",
+        sha256: sceneHash,
+        byteLength: 100,
+        width: 640,
+        height: 480,
+        mimeType: "image/png",
+        defaultAlt: { localizationKey },
+      },
+      {
+        assetId: "IMAGE_SENSOR_SCREEN",
+        purpose: "EVIDENCE_IMAGE",
+        sourceType: "ORIGINAL_WITH_RELEASE",
+        licenseOrApprovalReference: "TEST_RELEASE",
+        rightsDeclaration: "NO_IDENTIFIABLE_PEOPLE",
+        originalFileName: "sensor-screen.png",
+        filePath: "media/evidence/sensor-screen.png",
+        sha256: evidenceHash,
+        byteLength: 100,
+        width: 640,
+        height: 480,
+        mimeType: "image/png",
+        defaultAlt: { localizationKey },
+      },
+    ];
+    draft.assetHashes = {
+      "media/scenes/cold-room.png": sceneHash,
+      "media/evidence/sensor-screen.png": evidenceHash,
+    };
+    scenario.nodes[0]!.image = { assetId: "IMAGE_COLD_ROOM" };
+    scenario.evidenceItems[0]!.image = {
+      assetId: "IMAGE_SENSOR_SCREEN",
+    };
+    const pack = publishScenarioPack(draft, {
+      publishedAt: NOW,
+      publishedBy: instructor.userId,
+    });
+    const service = new GenericHostedRunService(
+      pack,
+      scenario.scenarioId,
+      scenario.version,
+      new MemoryRunEventStore(),
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    );
+    const created = await service.createRun(instructor, {
+      commandId: "COMMAND_CREATE_IMAGE_RUN",
+      runId: "RUN_IMAGE_PRESENTATION",
+      assignmentId: "ASSIGNMENT_IMAGE_PRESENTATION",
+      learnerUserId: learner.userId,
+      mode: "tutorial",
+    });
+    const firstProjection = await service.learnerProjection(
+      learner,
+      created.state.runId,
+    );
+    expect(firstProjection.presentation?.currentNode.image).toMatchObject({
+      assetId: "IMAGE_COLD_ROOM",
+      url: "/api/v1/runs/RUN_IMAGE_PRESENTATION/assets/IMAGE_COLD_ROOM",
+    });
+    expect(firstProjection.presentation?.evidenceImages).toEqual({});
+
+    const advanced = await service.submit(learner, {
+      commandType: "ADVANCE_WORKFLOW",
+      commandId: "COMMAND_RELEASE_IMAGE_EVIDENCE",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const releasedProjection = await service.learnerProjection(
+      learner,
+      advanced.state.runId,
+    );
+    expect(releasedProjection.presentation?.evidenceImages).toEqual({});
+
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_IMAGE_EVIDENCE",
+      runId: advanced.state.runId,
+      expectedRunVersion: advanced.state.version,
+      evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+    });
+    const inspectedProjection = await service.learnerProjection(
+      learner,
+      inspected.state.runId,
+    );
+    expect(
+      inspectedProjection.presentation?.evidenceImages
+        ?.EVID_PHARMA_SENSOR_SUMMARY,
+    ).toMatchObject({
+      assetId: "IMAGE_SENSOR_SCREEN",
+      url: "/api/v1/runs/RUN_IMAGE_PRESENTATION/assets/IMAGE_SENSOR_SCREEN",
+    });
+  });
+
   it("runs an alternative decision from a copy-on-write fork through the normal command engine", async () => {
     const store = new MemoryRunEventStore();
     const branches = new MemoryCounterfactualRunRepository();

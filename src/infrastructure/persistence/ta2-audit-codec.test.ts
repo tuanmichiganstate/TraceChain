@@ -3,7 +3,7 @@ import guidedPackJson from "../../../scenario-packs/guided-coffee-audit/tracecha
 import practicePackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
 import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import type { AuditCaseDefinitionV1 } from "../../platform/contracts/audit";
-import type { ScenarioPackV1 } from "../../platform/contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../../platform/contracts/scenario-pack";
 import { auditVariantAssignmentForIndex } from "../../platform/audit/audit-variant-bank";
 import {
   decodeTa2AuditSnapshot,
@@ -14,13 +14,13 @@ import {
   type Ta2AuditSnapshot,
 } from "./ta2-audit-codec";
 
-const guidedPack = guidedPackJson as ScenarioPackV1;
+const guidedPack = guidedPackJson as ScenarioPackV2;
 const guidedScenario = guidedPack.scenarios[0]!;
 const guidedAuditCase = guidedScenario.auditCase!;
-const practicePack = practicePackJson as ScenarioPackV1;
+const practicePack = practicePackJson as ScenarioPackV2;
 const practiceScenario = practicePack.scenarios[0]!;
 const practiceAuditCase = practiceScenario.auditCase!;
-const challengePack = challengePackJson as ScenarioPackV1;
+const challengePack = challengePackJson as ScenarioPackV2;
 const challengeBank = challengePack.auditVariantBanks[0]!;
 
 const schema: Ta2AuditCodecSchema = {

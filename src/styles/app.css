@@ -3317,6 +3317,33 @@
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
 }
 
+.scenario-builder__media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.scenario-builder__media-card img,
+.hosted-scenario-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 28rem;
+  object-fit: contain;
+  border-radius: var(--radius-medium);
+}
+
+.hosted-scenario-image {
+  max-width: 52rem;
+  margin: var(--space-4) 0;
+}
+
+.hosted-scenario-image figcaption {
+  margin-top: var(--space-2);
+  color: var(--colour-text-muted);
+}
+
 .scenario-builder__advanced > summary,
 .scenario-builder__structured > summary {
   cursor: pointer;

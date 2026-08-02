@@ -2,7 +2,7 @@ import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-
 import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import type {
   ScenarioNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import {
@@ -21,7 +21,7 @@ describe("Scenario Builder model", () => {
   it("creates a complete valid draft without changing its source", () => {
     const source = structuredClone(
       pharmaceuticalPackJson,
-    ) as ScenarioPackV1;
+    ) as ScenarioPackV2;
     const original = structuredClone(source);
 
     const starter = createScenarioBuilderStarter(source);
@@ -69,7 +69,7 @@ describe("Scenario Builder model", () => {
 
   it("provides a schema-shaped starting node for every workflow type", () => {
     const scenario = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     ).scenarios[0]!;
     const nodeTypes: readonly ScenarioNodeV1["nodeType"][] = [
       "BRIEFING",
@@ -124,7 +124,7 @@ describe("Scenario Builder model", () => {
 
   it("does not reuse an authored localization reference without an inline catalog", () => {
     const starter = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     );
     const withoutCatalog = changeScenarioPack(starter, (draft) => {
       delete draft.localizationCatalogs;
@@ -154,7 +154,7 @@ describe("Scenario Builder model", () => {
 
   it("gives a copied scenario independent localized content", () => {
     const starter = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     );
     const copied = appendIndependentScenarioCopy(starter, 0);
     const first = copied.scenarios[0]!;
@@ -178,7 +178,7 @@ describe("Scenario Builder model", () => {
   it("updates pack-level references when a scenario identifier changes", () => {
     const source = structuredClone(
       challengeAuditPackJson,
-    ) as ScenarioPackV1;
+    ) as ScenarioPackV2;
     const renamed = changeScenarioPack(source, (draft) => {
       draft.scenarios[0]!.scenarioId =
         "SCN_COFFEE_AUDIT_CHALLENGE_RENAMED";
@@ -198,7 +198,7 @@ describe("Scenario Builder model", () => {
 
   it("updates mode references when an outcome model identifier changes", () => {
     const source = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     );
     const renamed = changeScenarioPack(source, (draft) => {
       draft.scenarios[0]!.outcomeModels[0]!.outcomeModelId =
@@ -217,7 +217,7 @@ describe("Scenario Builder model", () => {
 
   it("keeps identical newly added evidence rules independently addressable", () => {
     const source = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     );
     const added = changeScenarioPack(source, (draft) => {
       const first = draft.evidenceRules[0]!;
@@ -249,7 +249,7 @@ describe("Scenario Builder model", () => {
 
   it("lets an author repair one duplicated evidence-rule identifier at a time", () => {
     const starter = createScenarioBuilderStarter(
-      structuredClone(pharmaceuticalPackJson) as ScenarioPackV1,
+      structuredClone(pharmaceuticalPackJson) as ScenarioPackV2,
     );
     const duplicated = changeScenarioPack(starter, (draft) => {
       const sourceRule = draft.evidenceRules[0]!;

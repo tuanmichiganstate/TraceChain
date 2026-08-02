@@ -5,7 +5,7 @@ import type {
   HostedAssignmentCompetencyReportV1,
   LearnerCompetencyIndicatorV1,
 } from "../contracts/competency-report";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   repositoryCurriculumOverlays,
 } from "../curriculum-overlays/repository-overlays";
@@ -16,7 +16,7 @@ import {
   serializeAssignmentCurriculumCrosswalkReportJson,
 } from "./curriculum-crosswalk-report";
 
-const pack = pharmaceuticalPackJson as ScenarioPackV1;
+const pack = pharmaceuticalPackJson as ScenarioPackV2;
 const scenario = pack.scenarios.find(
   (candidate) =>
     candidate.scenarioId === "SCN_PHARMA_COLD_CHAIN_TRANSFER",

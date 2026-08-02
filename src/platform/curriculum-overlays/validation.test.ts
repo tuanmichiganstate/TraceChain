@@ -5,7 +5,7 @@ import coffeePackJson from "../../../scenario-packs/standard-coffee-stage3/trace
 import type {
   CurriculumCrosswalkOverlayV2,
 } from "../contracts/curriculum-crosswalk";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import {
   adoptedCurriculumOverlaysForPack,
@@ -13,7 +13,7 @@ import {
   validateCurriculumOverlay,
 } from "./validation";
 
-function pack(value: unknown): ScenarioPackV1 {
+function pack(value: unknown): ScenarioPackV2 {
   const result = validateScenarioPack(value);
   if (!result.isValid) {
     throw new Error(

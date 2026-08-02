@@ -27,7 +27,7 @@ current implementation contract.
 - [Hosted runtime profiles](HOSTED_RUN_MODES_V1.md)
 - [Hosted coffee API](HOSTED_STAGE3_API.md)
 - [LTI 1.3 Core, Scenario Author launch, Deep Linking, AGS, and NRPS](LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md)
-- [Scenario-pack contract](SCENARIO_PACK_V1.md)
+- [Scenario-pack contract](SCENARIO_PACK_V2.md)
 - [Assignment evidence export](ASSIGNMENT_EXPORT_V3.md)
 - [Run replay](RUN_REPLAY_V1.md)
 - [Rubric moderation](RUBRIC_MODERATION_V1.md)
@@ -40,7 +40,7 @@ current implementation contract.
 ## Authoring and delivery
 
 - [Content authoring](CONTENT_AUTHORING.md)
-- [Scenario authoring](SCENARIO_AUTHORING_V1.md)
+- [Scenario authoring](SCENARIO_AUTHORING_V2.md)
 - [Localization guide](LOCALIZATION_GUIDE.md)
 - [Staff portrait assets and runtime rules](STAFF_PORTRAIT_ASSET_BRIEFS.md)
 - [Learner evidence sufficiency audit](LEARNER_EVIDENCE_SUFFICIENCY_AUDIT.md)

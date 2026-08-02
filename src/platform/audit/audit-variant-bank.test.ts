@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import packJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   allocateHostedAuditVariant,
   auditVariantAssignmentForIndex,
@@ -9,7 +9,7 @@ import {
   validateAuditVariantBank,
 } from "./audit-variant-bank";
 
-const pack = packJson as ScenarioPackV1;
+const pack = packJson as ScenarioPackV2;
 const bank = pack.auditVariantBanks[0]!;
 
 describe("Audit curated variant bank", () => {

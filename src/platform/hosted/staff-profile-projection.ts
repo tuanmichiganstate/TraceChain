@@ -6,11 +6,11 @@ import type {
 } from "../contracts/run-events";
 import type {
   ScenarioDefinitionV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 
 function localizedText(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   localizationKey: string,
 ): LearnerRunLocalizedTextV1 {
   const fallbackCatalogs: Readonly<
@@ -30,9 +30,10 @@ function localizedText(
 }
 
 export function staffProfileProjection(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
   scenario: ScenarioDefinitionV1,
   roleId: string,
+  runId?: string,
 ): LearnerRunStaffProfileV1 | undefined {
   const profile = scenario.staffProfiles.find(
     (candidate) =>
@@ -44,7 +45,7 @@ export function staffProfileProjection(
     (candidate) =>
       candidate.organizationId === profile.organizationId,
   );
-  const portrait = pack.portraitAssets.find(
+  const portrait = pack.imageAssets.find(
     (candidate) => candidate.assetId === profile.portraitAssetId,
   );
   if (organization === undefined || portrait === undefined) return undefined;
@@ -57,7 +58,11 @@ export function staffProfileProjection(
       pack,
       organization.displayName.localizationKey,
     ),
-    portraitPath: `./${portrait.filePath}`,
+    portraitAssetId: portrait.assetId,
+    portraitPath:
+      runId === undefined
+        ? `./${portrait.filePath}`
+        : `/api/v1/runs/${encodeURIComponent(runId)}/assets/${encodeURIComponent(portrait.assetId)}`,
     portraitAlt: localizedText(pack, profile.portraitAlt.localizationKey),
     ...(profile.shortProfile === undefined
       ? {}

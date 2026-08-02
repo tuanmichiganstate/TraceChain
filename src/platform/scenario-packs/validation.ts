@@ -3,7 +3,7 @@ import { isJsonObject } from "../contracts/json";
 import type {
   ScenarioDefinitionV1,
   ScenarioNodeV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../contracts/scenario-pack";
 import type {
   AuditVariantBankDefinitionV1,
@@ -27,7 +27,7 @@ export interface ScenarioPackValidationOptions {
 export type ScenarioPackValidationResult =
   | {
       readonly isValid: true;
-      readonly pack: ScenarioPackV1;
+      readonly pack: ScenarioPackV2;
       readonly issues: readonly [];
       readonly checkedCount: number;
     }
@@ -42,6 +42,16 @@ const IDENTIFIER = /^[A-Za-z][A-Za-z0-9._:-]*$/u;
 const FIELD_PATH =
   /^(?!(?:.*\.)?(?:__proto__|constructor|prototype)(?:\.|$))[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const IMAGE_MIME_TYPES = new Set([
+  "image/webp",
+  "image/png",
+  "image/jpeg",
+]);
+const IMAGE_PURPOSES = new Set([
+  "STAFF_PORTRAIT",
+  "SCENE_ILLUSTRATION",
+  "EVIDENCE_IMAGE",
+]);
 const ISO_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const FORBIDDEN_EXECUTABLE_KEYS = new Set([
@@ -80,7 +90,7 @@ const ROOT_KEYS = [
   "competencyFrameworks",
   "rubrics",
   "evidenceRules",
-  "portraitAssets",
+  "imageAssets",
   "auditVariantBanks",
   "scenarios",
   "assetHashes",
@@ -381,6 +391,12 @@ class ValidationContext {
     path: string,
   ): void {
     const allowed = new Set(keys);
+    if (
+      typeof record.nodeType === "string" &&
+      NODE_TYPES.has(record.nodeType)
+    ) {
+      allowed.add("image");
+    }
     for (const key of Object.keys(record)) {
       this.check(
         allowed.has(key),
@@ -515,6 +531,48 @@ function validateLocalizedText(
         `must exist in the ${locale} locale catalogue`,
       );
     }
+  }
+}
+
+function validateImageReference(
+  context: ValidationContext,
+  value: unknown,
+  path: string,
+  supportedLocales: readonly string[],
+  imagePurposesByAssetId: ReadonlyMap<string, string>,
+  expectedPurpose: "SCENE_ILLUSTRATION" | "EVIDENCE_IMAGE",
+): void {
+  const reference = context.object(value, path);
+  if (reference === null) return;
+  context.allowedKeys(reference, ["assetId", "alt", "caption"], path);
+  const assetId = context.string(
+    reference.assetId,
+    `${path}.assetId`,
+    { identifier: true },
+  );
+  if (assetId !== null) {
+    context.check(
+      imagePurposesByAssetId.get(assetId) === expectedPurpose,
+      "IMAGE_PURPOSE_MISMATCH",
+      `${path}.assetId`,
+      `must reference a ${expectedPurpose} image asset`,
+    );
+  }
+  if (reference.alt !== undefined) {
+    validateLocalizedText(
+      context,
+      reference.alt,
+      `${path}.alt`,
+      supportedLocales,
+    );
+  }
+  if (reference.caption !== undefined) {
+    validateLocalizedText(
+      context,
+      reference.caption,
+      `${path}.caption`,
+      supportedLocales,
+    );
   }
 }
 
@@ -1186,8 +1244,19 @@ function validateNodeContent(
     string,
     ReadonlySet<string>
   >,
+  imagePurposesByAssetId: ReadonlyMap<string, string>,
 ): void {
   const nodeType = node.nodeType;
+  if (node.image !== undefined) {
+    validateImageReference(
+      context,
+      node.image,
+      `${path}.image`,
+      supportedLocales,
+      imagePurposesByAssetId,
+      "SCENE_ILLUSTRATION",
+    );
+  }
   switch (nodeType) {
     case "BRIEFING":
       context.allowedKeys(
@@ -2571,6 +2640,7 @@ function validateScenarioNodes(
     string,
     ReadonlySet<string>
   >,
+  imagePurposesByAssetId: ReadonlyMap<string, string>,
 ): void {
   const nodes = context.array(scenario.nodes, `${path}.nodes`);
   if (nodes === null) return;
@@ -2648,6 +2718,7 @@ function validateScenarioNodes(
       counterfactualDimensionIds,
       counterfactualMetricIds,
       outcomeCodesByRandomStream,
+      imagePurposesByAssetId,
     );
     const targets = validateTransitions(
       context,
@@ -3064,7 +3135,7 @@ function validateScenario(
   indicatorIds: ReadonlySet<string>,
   rubricIds: ReadonlySet<string>,
   evidenceRuleIds: ReadonlySet<string>,
-  portraitAssetIds: ReadonlySet<string>,
+  imagePurposesByAssetId: ReadonlyMap<string, string>,
 ): void {
   const scenario = context.object(value, path);
   if (scenario === null) return;
@@ -3665,10 +3736,12 @@ function validateScenario(
         { identifier: true },
       );
       context.check(
-        portraitAssetId !== null && portraitAssetIds.has(portraitAssetId),
+        portraitAssetId !== null &&
+          imagePurposesByAssetId.get(portraitAssetId) ===
+            "STAFF_PORTRAIT",
         "UNKNOWN_PORTRAIT_ASSET_REFERENCE",
         `${profilePath}.portraitAssetId`,
-        "must reference a portrait asset in this pack",
+        "must reference a STAFF_PORTRAIT image asset in this pack",
       );
       validateLocalizedText(
         context,
@@ -3884,6 +3957,7 @@ function validateScenario(
           "learnerMetadata",
           "assessmentMetadata",
           "learnerPresentation",
+          "image",
           "content",
         ],
         evidencePath,
@@ -4162,6 +4236,16 @@ function validateScenario(
           );
         }
       }
+      if (evidence.image !== undefined) {
+        validateImageReference(
+          context,
+          evidence.image,
+          `${evidencePath}.image`,
+          supportedLocales,
+          imagePurposesByAssetId,
+          "EVIDENCE_IMAGE",
+        );
+      }
       validateJsonData(
         context,
         evidence.content,
@@ -4252,6 +4336,7 @@ function validateScenario(
     counterfactualDimensionIds,
     counterfactualMetricIds,
     outcomeCodesByRandomStream,
+    imagePurposesByAssetId,
   );
   if (
     scenario.hostedRuntime === undefined &&
@@ -5280,10 +5365,10 @@ function validateHostedRuntime(
 ): void {
   if (scenario.hostedRuntime === undefined) return;
   context.check(
-    schemaVersion === "1.12.0",
+    schemaVersion === "2.0.0",
     "HOSTED_RUNTIME_REQUIRES_CURRENT_SCHEMA",
     `${path}.hostedRuntime`,
-    "requires scenario-pack schema version 1.12.0",
+    "requires scenario-pack schema version 2.0.0",
   );
   const runtime = context.object(
     scenario.hostedRuntime,
@@ -5791,7 +5876,7 @@ function validateAuditVariantBanks(
     for (const [bankIndex, bank] of banks.entries()) {
       try {
         const result = validateAuditVariantBank({
-          pack: pack as unknown as ScenarioPackV1,
+          pack: pack as unknown as ScenarioPackV2,
           bank: bank as unknown as AuditVariantBankDefinitionV1,
         });
         for (const issue of result.issues) {
@@ -5826,10 +5911,10 @@ export function validateScenarioPack(
       context.string(pack.$schema, "$.$schema");
     }
     context.check(
-      pack.schemaVersion === "1.12.0",
+      pack.schemaVersion === "2.0.0",
       "UNSUPPORTED_SCHEMA_VERSION",
       "$.schemaVersion",
-      "must equal 1.12.0",
+      "must equal 2.0.0",
     );
     context.string(pack.packId, "$.packId", { identifier: true });
     context.string(pack.version, "$.version", { semanticVersion: true });
@@ -5928,30 +6013,42 @@ export function validateScenarioPack(
       "$.evidenceRules",
       indicatorIds,
     );
-    const portraitAssetIds = new Set<string>();
-    const portraitAssetHashes = new Map<string, string>();
-    const portraitAssets = context.array(
-      pack.portraitAssets,
-      "$.portraitAssets",
+    const imagePurposesByAssetId = new Map<string, string>();
+    const imageAssetHashes = new Map<string, string>();
+    const imageAssetPaths = new Set<string>();
+    let totalImageBytes = 0;
+    const imageAssets = context.array(
+      pack.imageAssets,
+      "$.imageAssets",
     );
-    if (portraitAssets !== null) {
-      portraitAssets.forEach((assetValue, assetIndex) => {
-        const assetPath = `$.portraitAssets[${String(assetIndex)}]`;
+    if (imageAssets !== null) {
+      context.check(
+        imageAssets.length <= 60,
+        "TOO_MANY_IMAGE_ASSETS",
+        "$.imageAssets",
+        "must contain no more than 60 images",
+      );
+      imageAssets.forEach((assetValue, assetIndex) => {
+        const assetPath = `$.imageAssets[${String(assetIndex)}]`;
         const asset = context.object(assetValue, assetPath);
         if (asset === null) return;
         context.allowedKeys(
           asset,
           [
             "assetId",
+            "purpose",
             "sourceType",
             "licenseOrApprovalReference",
-            "fictionalSubject",
+            "rightsDeclaration",
+            "originalFileName",
             "filePath",
             "sha256",
+            "byteLength",
             "width",
             "height",
-            "format",
-            "developmentPlaceholder",
+            "mimeType",
+            "defaultAlt",
+            "caption",
           ],
           assetPath,
         );
@@ -5962,76 +6059,152 @@ export function validateScenarioPack(
         );
         if (assetId !== null) {
           context.check(
-            !portraitAssetIds.has(assetId),
-            "DUPLICATE_PORTRAIT_ASSET_ID",
+            !imagePurposesByAssetId.has(assetId),
+            "DUPLICATE_IMAGE_ASSET_ID",
             `${assetPath}.assetId`,
             "must be unique within the pack",
           );
-          portraitAssetIds.add(assetId);
+          if (typeof asset.purpose === "string") {
+            imagePurposesByAssetId.set(assetId, asset.purpose);
+          }
         }
+        context.check(
+          typeof asset.purpose === "string" &&
+            IMAGE_PURPOSES.has(asset.purpose),
+          "INVALID_IMAGE_PURPOSE",
+          `${assetPath}.purpose`,
+          "must be STAFF_PORTRAIT, SCENE_ILLUSTRATION, or EVIDENCE_IMAGE",
+        );
         context.check(
           asset.sourceType === "AI_GENERATED" ||
             asset.sourceType === "LICENSED_STOCK" ||
-            asset.sourceType === "ORIGINAL_WITH_RELEASE",
-          "INVALID_PORTRAIT_SOURCE",
+            asset.sourceType === "ORIGINAL_WITH_RELEASE" ||
+            asset.sourceType === "CREATIVE_COMMONS" ||
+            asset.sourceType === "PUBLIC_DOMAIN",
+          "INVALID_IMAGE_SOURCE",
           `${assetPath}.sourceType`,
-          "must use an approved portrait source type",
+          "must use an approved image source type",
         );
         context.string(
           asset.licenseOrApprovalReference,
           `${assetPath}.licenseOrApprovalReference`,
         );
         context.check(
-          asset.fictionalSubject === true,
-          "PORTRAIT_SUBJECT_MUST_BE_FICTIONAL",
-          `${assetPath}.fictionalSubject`,
-          "must explicitly declare a fictional subject",
+          asset.rightsDeclaration === "NO_IDENTIFIABLE_PEOPLE" ||
+            asset.rightsDeclaration === "FICTIONAL_PEOPLE" ||
+            asset.rightsDeclaration === "RELEASED_PEOPLE",
+          "INVALID_IMAGE_RIGHTS_DECLARATION",
+          `${assetPath}.rightsDeclaration`,
+          "must declare how identifiable people are handled",
+        );
+        const originalFileName = context.string(
+          asset.originalFileName,
+          `${assetPath}.originalFileName`,
+        );
+        context.check(
+          originalFileName !== null &&
+            originalFileName.length <= 180 &&
+            !originalFileName.includes("/") &&
+            !originalFileName.includes("\\"),
+          "INVALID_IMAGE_FILE_NAME",
+          `${assetPath}.originalFileName`,
+          "must be a bounded base file name",
         );
         const filePath = context.string(
           asset.filePath,
           `${assetPath}.filePath`,
         );
+        const expectedDirectory =
+          asset.purpose === "STAFF_PORTRAIT"
+            ? "media/staff/"
+            : asset.purpose === "SCENE_ILLUSTRATION"
+              ? "media/scenes/"
+              : asset.purpose === "EVIDENCE_IMAGE"
+                ? "media/evidence/"
+                : "";
         context.check(
           filePath !== null &&
-            filePath.startsWith("media/staff/") &&
+            filePath.startsWith(expectedDirectory) &&
             !filePath.split("/").includes("..") &&
             !filePath.includes("\\") &&
-            !/^[a-z][a-z0-9+.-]*:/iu.test(filePath),
-          "INVALID_PORTRAIT_PATH",
+            !/^[a-z][a-z0-9+.-]*:/iu.test(filePath) &&
+            /\.(?:webp|png|jpe?g)$/iu.test(filePath),
+          "INVALID_IMAGE_PATH",
           `${assetPath}.filePath`,
-          "must be a safe local media/staff path",
+          "must be a safe path in the directory for its image purpose",
         );
+        if (filePath !== null) {
+          context.check(
+            !imageAssetPaths.has(filePath),
+            "DUPLICATE_IMAGE_PATH",
+            `${assetPath}.filePath`,
+            "must be unique within the pack",
+          );
+          imageAssetPaths.add(filePath);
+        }
         const hash = context.string(asset.sha256, `${assetPath}.sha256`);
         context.check(
           hash !== null && SHA256.test(hash),
-          "INVALID_PORTRAIT_HASH",
+          "INVALID_IMAGE_HASH",
           `${assetPath}.sha256`,
           "must be a lowercase SHA-256 digest",
         );
         if (filePath !== null && hash !== null) {
-          portraitAssetHashes.set(filePath, hash);
+          imageAssetHashes.set(filePath, hash);
         }
+        const byteLength = context.number(
+          asset.byteLength,
+          `${assetPath}.byteLength`,
+          { integer: true, minimum: 1, maximum: 5 * 1024 * 1024 },
+        );
+        totalImageBytes += byteLength ?? 0;
         context.number(asset.width, `${assetPath}.width`, {
           integer: true,
-          minimum: 320,
+          minimum: 64,
+          maximum: 8192,
         });
         context.number(asset.height, `${assetPath}.height`, {
           integer: true,
-          minimum: 400,
+          minimum: 64,
+          maximum: 8192,
         });
         context.check(
-          asset.format === "webp",
-          "INVALID_PORTRAIT_FORMAT",
-          `${assetPath}.format`,
-          "must be webp",
+          typeof asset.mimeType === "string" &&
+            IMAGE_MIME_TYPES.has(asset.mimeType),
+          "INVALID_IMAGE_MIME_TYPE",
+          `${assetPath}.mimeType`,
+          "must be image/webp, image/png, or image/jpeg",
         );
         context.check(
-          asset.developmentPlaceholder === false,
-          "DEVELOPMENT_PORTRAIT_FORBIDDEN",
-          `${assetPath}.developmentPlaceholder`,
-          "must be false for repository packs",
+          filePath === null ||
+            (asset.mimeType === "image/webp" && /\.webp$/iu.test(filePath)) ||
+            (asset.mimeType === "image/png" && /\.png$/iu.test(filePath)) ||
+            (asset.mimeType === "image/jpeg" && /\.jpe?g$/iu.test(filePath)),
+          "IMAGE_EXTENSION_MISMATCH",
+          `${assetPath}.mimeType`,
+          "must match the image file extension",
         );
+        validateLocalizedText(
+          context,
+          asset.defaultAlt,
+          `${assetPath}.defaultAlt`,
+          supportedLocales,
+        );
+        if (asset.caption !== undefined) {
+          validateLocalizedText(
+            context,
+            asset.caption,
+            `${assetPath}.caption`,
+            supportedLocales,
+          );
+        }
       });
+      context.check(
+        totalImageBytes <= 25 * 1024 * 1024,
+        "IMAGE_ASSET_BUDGET_EXCEEDED",
+        "$.imageAssets",
+        "must remain within the 25 MiB image budget",
+      );
     }
     const scenarios = context.array(pack.scenarios, "$.scenarios");
     if (scenarios !== null) {
@@ -6053,7 +6226,7 @@ export function validateScenarioPack(
           indicatorIds,
           rubricIds,
           evidenceRuleIds,
-          portraitAssetIds,
+          imagePurposesByAssetId,
         );
         if (isJsonObject(scenarioValue)) {
           const scenarioId =
@@ -6099,13 +6272,19 @@ export function validateScenarioPack(
           `$.assetHashes.${assetPath}`,
           "must be a lowercase SHA-256 digest",
         );
-      }
-      for (const [portraitPath, portraitHash] of portraitAssetHashes) {
         context.check(
-          assetHashes[portraitPath] === portraitHash,
-          "PORTRAIT_ASSET_HASH_MISMATCH",
-          `$.assetHashes.${portraitPath}`,
-          "must contain the exact hash declared by the portrait asset",
+          imageAssetHashes.has(assetPath),
+          "UNDECLARED_ASSET_HASH",
+          `$.assetHashes.${assetPath}`,
+          "must belong to an image declared in imageAssets",
+        );
+      }
+      for (const [imagePath, imageHash] of imageAssetHashes) {
+        context.check(
+          assetHashes[imagePath] === imageHash,
+          "IMAGE_ASSET_HASH_MISMATCH",
+          `$.assetHashes.${imagePath}`,
+          "must contain the exact hash declared by the image asset",
         );
       }
     }
@@ -6121,24 +6300,24 @@ export function validateScenarioPack(
   }
   return {
     isValid: true,
-    pack: value as ScenarioPackV1,
+    pack: value as ScenarioPackV2,
     issues: [],
     checkedCount: context.checkedCount,
   };
 }
 
-export function isScenarioPackV1(value: unknown): value is ScenarioPackV1 {
+export function isScenarioPackV2(value: unknown): value is ScenarioPackV2 {
   return validateScenarioPack(value).isValid;
 }
 
 export function collectCompetencyDefinitions(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly CompetencyFrameworkV1[] {
   return pack.competencyFrameworks;
 }
 
 export function collectScenarioDefinitions(
-  pack: ScenarioPackV1,
+  pack: ScenarioPackV2,
 ): readonly ScenarioDefinitionV1[] {
   return pack.scenarios;
 }

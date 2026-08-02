@@ -8,7 +8,7 @@ import type {
 } from "../config/types";
 import type {
   HostedRunModeConfigurationV1,
-  ScenarioPackV1,
+  ScenarioPackV2,
 } from "../platform/contracts/scenario-pack";
 import type {
   HostedExperienceConfigurationIdentityV2,
@@ -70,8 +70,8 @@ export function resolveHostedTechnicalLabExperience(
  * adapter exposes the laboratory content identity to those APIs while the
  * actual modules remain in TechnicalLabPack and run through the lab engine.
  */
-export const technicalLabHostedPackAdapter: ScenarioPackV1 = {
-  schemaVersion: "1.12.0",
+export const technicalLabHostedPackAdapter: ScenarioPackV2 = {
+  schemaVersion: "2.0.0",
   packId: permissionedFoundationsLabBundle.pack.labPackId,
   version: permissionedFoundationsLabBundle.pack.labPackVersion,
   status: "published",
@@ -92,7 +92,7 @@ export const technicalLabHostedPackAdapter: ScenarioPackV1 = {
   competencyFrameworks: [],
   rubrics: [],
   evidenceRules: [],
-  portraitAssets: [],
+  imageAssets: [],
   auditVariantBanks: [],
   scenarios: [
     {

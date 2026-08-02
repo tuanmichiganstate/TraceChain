@@ -3,7 +3,7 @@ import { FixedClock, SequenceIdGenerator } from "../../domain/simulation/environ
 import { TransactionType } from "../../domain/types/enums";
 import type { RecordCorrectionCommand } from "../../domain/commands/commands";
 import type { RunEventV1 } from "../contracts/run-events";
-import type { ScenarioPackV1 } from "../contracts/scenario-pack";
+import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { CounterfactualBranchEngine } from "../runs/counterfactual-branch";
 import { MemoryCounterfactualRunRepository } from "../runs/counterfactual-repository";
 import {
@@ -51,7 +51,7 @@ const rater: ApplicationPrincipal = {
   roles: ["rater"],
 };
 
-function publishedPack(): ScenarioPackV1 {
+function publishedPack(): ScenarioPackV2 {
   const result = validateScenarioPack(structuredClone(packJson));
   if (!result.isValid) {
     throw new Error("Hosted Stage 3 tests require a valid scenario pack.");

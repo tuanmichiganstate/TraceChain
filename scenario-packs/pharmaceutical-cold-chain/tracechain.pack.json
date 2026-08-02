@@ -1,6 +1,6 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v1.schema.json",
-  "schemaVersion": "1.12.0",
+  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "schemaVersion": "2.0.0",
   "packId": "PACK_PHARMACEUTICAL_COLD_CHAIN_STARTER",
   "version": "1.7.0",
   "status": "draft",
@@ -458,7 +458,7 @@
       "expectedValue": "DECISION_PHARMA_TRANSFER_DISPOSITION"
     }
   ],
-  "portraitAssets": [],
+  "imageAssets": [],
   "auditVariantBanks": [],
   "scenarios": [
     {

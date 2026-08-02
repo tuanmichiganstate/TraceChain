@@ -111,13 +111,19 @@ is durably recorded. Policy statements are likewise withheld until
 consultation. Only inspected evidence and consulted policies may be cited,
 without changing the academic score.
 Instructor process analytics report inspection, consultation, and citation as
-separate evidence. The `/author` route provides a full seven-step no-code
+separate evidence. The `/author` route provides a full eight-step no-code
 Scenario Builder over the canonical pack schema, alongside bounded JSON, YAML,
-or ZIP import, a pharmaceutical cold-chain starter, and a complete Audit
+or complete scenario-bundle ZIP import, a pharmaceutical cold-chain starter,
+and a complete Audit
 case-bank starter. Authors can configure bilingual identity, delivery modes,
 participants and four state layers, policies, evidence, incidents, every
 workflow node type and transition, competencies, rubrics, evidence rules, and
-advanced declarative sections. Its review step runs the complete pack validator
+advanced declarative sections. Its Media step uploads approved WebP, PNG, and
+JPEG assets, records source and rights metadata plus bilingual alternative
+text, and assigns staff, scene, and evidence images without remote URLs.
+Authors can export the manifest and exact media as one deterministic,
+self-contained scenario ZIP for import into another TraceChain authoring
+workspace. Its review step runs the complete pack validator
 locally with exact paths and rule IDs; the server repeats that validator as the
 import and publication enforcement boundary. The workspace also previews roles
 and modes, compares versions, and controls publication and retirement.
@@ -288,7 +294,7 @@ src/
 │   ├── scorm/         API discovery, SCORM 1.2 adapter
 │   └── time/          deterministic scenario clock
 ├── platform/
-│   ├── contracts/     scenario-pack, competency, rubric and hosted-event V1
+│   ├── contracts/     versioned scenario-pack, competency, rubric and event contracts
 │   ├── author/        pack import, draft editing, preview and lifecycle UI
 │   ├── hosted/        incremental coffee orchestration, trusted access and APIs
 │   ├── instructor/    thin assignment, evidence and assessment workspace
