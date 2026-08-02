@@ -33,6 +33,12 @@
       "platformPack.guidedAudit.organization.certifier": "Agricultural Certification Centre",
       "platformPack.guidedAudit.organization.regulator": "Food safety regulator",
       "platformPack.guidedAudit.role.auditor": "Process auditor",
+      "platformPack.guidedAudit.media.scene.alt": "An auditor compares coffee certificates, receiving records, policy documents, and a green-coffee sample.",
+      "platformPack.guidedAudit.media.scene.caption": "Evidence-review workspace for an independent coffee process audit.",
+      "platformPack.guidedAudit.staff.processAuditor.name": "Nguyễn Minh Khoa",
+      "platformPack.guidedAudit.staff.processAuditor.alt": "Portrait of Nguyễn Minh Khoa, a fictional process auditor.",
+      "platformPack.guidedAudit.staff.processAuditor.profile": "Reviews process records independently and documents findings supported by evidence and policy.",
+      "platformPack.guidedAudit.staff.processAuditor.responsibility": "Distinguish control exceptions from legitimate unusual transactions and evidence limitations.",
       "platformPack.guidedAudit.node.briefing.title": "Review the completed coffee process",
       "platformPack.guidedAudit.node.briefing.body": "Inspect the immutable source records, cite evidence and policy, record findings, and issue a scoped audit conclusion.",
       "platformPack.guidedAudit.node.complete.title": "Guided audit complete",
@@ -190,6 +196,12 @@
       "platformPack.guidedAudit.organization.certifier": "Trung tâm Chứng nhận Nông sản",
       "platformPack.guidedAudit.organization.regulator": "Cơ quan quản lý an toàn thực phẩm",
       "platformPack.guidedAudit.role.auditor": "Kiểm toán viên quy trình",
+      "platformPack.guidedAudit.media.scene.alt": "Kiểm toán viên đối chiếu chứng nhận cà phê, biên bản nhận hàng, tài liệu chính sách và mẫu cà phê nhân.",
+      "platformPack.guidedAudit.media.scene.caption": "Không gian rà soát bằng chứng cho cuộc kiểm toán độc lập quy trình cà phê.",
+      "platformPack.guidedAudit.staff.processAuditor.name": "Nguyễn Minh Khoa",
+      "platformPack.guidedAudit.staff.processAuditor.alt": "Chân dung Nguyễn Minh Khoa, kiểm toán viên quy trình hư cấu.",
+      "platformPack.guidedAudit.staff.processAuditor.profile": "Rà soát độc lập hồ sơ quy trình và ghi nhận các phát hiện được bằng chứng cùng chính sách hỗ trợ.",
+      "platformPack.guidedAudit.staff.processAuditor.responsibility": "Phân biệt ngoại lệ kiểm soát với giao dịch bất thường hợp lệ và giới hạn bằng chứng.",
       "platformPack.guidedAudit.node.briefing.title": "Rà soát quy trình cà phê đã hoàn thành",
       "platformPack.guidedAudit.node.briefing.body": "Kiểm tra hồ sơ nguồn bất biến, trích dẫn bằng chứng và chính sách, ghi nhận phát hiện rồi đưa ra kết luận trong phạm vi.",
       "platformPack.guidedAudit.node.complete.title": "Đã hoàn thành kiểm toán có hướng dẫn",
@@ -469,7 +481,45 @@
       "eventType": "AUDIT_CONCLUSION_SUBMITTED"
     }
   ],
-  "imageAssets": [],
+  "imageAssets": [
+    {
+      "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
+      "purpose": "SCENE_ILLUSTRATION",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "rightsDeclaration": "NO_IDENTIFIABLE_PEOPLE",
+      "originalFileName": "audit-evidence-review.webp",
+      "filePath": "media/scenes/audit-evidence-review.webp",
+      "sha256": "18b59723ea5d57ebb2e4172413451ba42de1ccd0643260da62e62e3223c75b7e",
+      "byteLength": 106272,
+      "width": 1600,
+      "height": 900,
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "platformPack.guidedAudit.media.scene.alt"
+      },
+      "caption": {
+        "localizationKey": "platformPack.guidedAudit.media.scene.caption"
+      }
+    },
+    {
+      "assetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
+      "purpose": "STAFF_PORTRAIT",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "process-auditor.webp",
+      "filePath": "media/staff/process-auditor.webp",
+      "sha256": "d7c17ad10cb2109e4a30466cee5365b2443229479b514ed92f0d4cdb3cf5ed56",
+      "byteLength": 26152,
+      "width": 480,
+      "height": 600,
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "platformPack.guidedAudit.staff.processAuditor.alt"
+      }
+    }
+  ],
   "auditVariantBanks": [
     {
       "bankId": "BANK_COFFEE_AUDIT_CHALLENGE_V1",
@@ -563,7 +613,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_A",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "63c71b5fa485a81393a3b0385298c63ef55f939f02bcaea175a2e173454f9047",
+          "contentHash": "ff457cb0b8cbf2bfddbea27e27d892ddb73f0ee577e311f156a5a8f7dc4d6cb7",
           "answerPatternHash": "62a563b1601dd291d14f7a96f2f8feb545ecdd0fba36d6ddd72112b9b63d7790",
           "estimatedMinutes": 30,
           "complexityBand": "INTERMEDIATE"
@@ -576,7 +626,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_B",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "1d6073e09c8219a151d65105d181c86a9fc7f3271c1e55efa670662b88610fa5",
+          "contentHash": "3a4263ba0b0fc159ad4e1d8d31fbbca1669510bb5fc11e5f9f6296414fbb1c9d",
           "answerPatternHash": "f8757ffa5c7c78007f184ef43ad6d3aa59afcf16ffbde0ac2a1edd54a8a6da82",
           "estimatedMinutes": 35,
           "complexityBand": "INTERMEDIATE"
@@ -589,7 +639,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_C",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "dc8f18be298978f2a9b8b2081d7c48c1c2edf43ea49b975b0062dc03cc5e329c",
+          "contentHash": "f9a0bff906fcd01d368d0b6629e3be6115ab09c15cdbe32ce2a98119bc4fc2f4",
           "answerPatternHash": "21e05a9385f6ddf23a610350c0faf4aeeb7808c1d0ace0da3ac23d4529078f6c",
           "estimatedMinutes": 40,
           "complexityBand": "INTERMEDIATE"
@@ -708,7 +758,31 @@
           }
         }
       ],
-      "staffProfiles": [],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_AUDIT_PROCESS_AUDITOR",
+          "roleId": "PROCESS_AUDITOR",
+          "organizationId": "ORG_AUDIT_TEAM",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.name"
+          },
+          "roleTitle": {
+            "localizationKey": "platformPack.guidedAudit.role.auditor"
+          },
+          "portraitAssetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
+          "portraitAlt": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.responsibility"
+          },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        }
+      ],
       "assetTypes": [],
       "initialState": {
         "actualState": {},
@@ -1086,10 +1160,10 @@
       "instructorIncidents": [],
       "counterfactualComparisonDimensions": [],
       "counterfactualConditions": [],
-      "entryNodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+      "entryNodeId": "NODE_AUDIT_CHALLENGE_A_BRIEFING",
       "nodes": [
         {
-          "nodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+          "nodeId": "NODE_AUDIT_CHALLENGE_A_BRIEFING",
           "nodeType": "BRIEFING",
           "title": {
             "localizationKey": "platformPack.auditChallenge.a.title"
@@ -1097,10 +1171,19 @@
           "body": {
             "localizationKey": "platformPack.auditChallenge.a.briefing"
           },
+          "image": {
+            "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
+            "alt": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.alt"
+            },
+            "caption": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.caption"
+            }
+          },
           "transitions": [
             {
-              "transitionId": "TRANSITION_GUIDED_AUDIT_COMPLETE",
-              "toNodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+              "transitionId": "TRANSITION_AUDIT_CHALLENGE_A_COMPLETE",
+              "toNodeId": "NODE_AUDIT_CHALLENGE_A_COMPLETE",
               "when": {
                 "kind": "ALWAYS"
               }
@@ -1108,7 +1191,7 @@
           ]
         },
         {
-          "nodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+          "nodeId": "NODE_AUDIT_CHALLENGE_A_COMPLETE",
           "nodeType": "COMPLETION",
           "title": {
             "localizationKey": "platformPack.auditChallenge.a.complete"
@@ -1789,7 +1872,31 @@
           }
         }
       ],
-      "staffProfiles": [],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_AUDIT_PROCESS_AUDITOR",
+          "roleId": "PROCESS_AUDITOR",
+          "organizationId": "ORG_AUDIT_TEAM",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.name"
+          },
+          "roleTitle": {
+            "localizationKey": "platformPack.guidedAudit.role.auditor"
+          },
+          "portraitAssetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
+          "portraitAlt": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.responsibility"
+          },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        }
+      ],
       "assetTypes": [],
       "initialState": {
         "actualState": {},
@@ -2169,10 +2276,10 @@
       "instructorIncidents": [],
       "counterfactualComparisonDimensions": [],
       "counterfactualConditions": [],
-      "entryNodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
+      "entryNodeId": "NODE_AUDIT_CHALLENGE_B_BRIEFING",
       "nodes": [
         {
-          "nodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
+          "nodeId": "NODE_AUDIT_CHALLENGE_B_BRIEFING",
           "nodeType": "BRIEFING",
           "title": {
             "localizationKey": "platformPack.auditChallenge.b.title"
@@ -2180,10 +2287,19 @@
           "body": {
             "localizationKey": "platformPack.auditChallenge.b.briefing"
           },
+          "image": {
+            "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
+            "alt": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.alt"
+            },
+            "caption": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.caption"
+            }
+          },
           "transitions": [
             {
-              "transitionId": "TRANSITION_PRACTICE_AUDIT_COMPLETE",
-              "toNodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
+              "transitionId": "TRANSITION_AUDIT_CHALLENGE_B_COMPLETE",
+              "toNodeId": "NODE_AUDIT_CHALLENGE_B_COMPLETE",
               "when": {
                 "kind": "ALWAYS"
               }
@@ -2191,7 +2307,7 @@
           ]
         },
         {
-          "nodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
+          "nodeId": "NODE_AUDIT_CHALLENGE_B_COMPLETE",
           "nodeType": "COMPLETION",
           "title": {
             "localizationKey": "platformPack.auditChallenge.b.complete"
@@ -2878,7 +2994,31 @@
           }
         }
       ],
-      "staffProfiles": [],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_AUDIT_PROCESS_AUDITOR",
+          "roleId": "PROCESS_AUDITOR",
+          "organizationId": "ORG_AUDIT_TEAM",
+          "displayName": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.name"
+          },
+          "roleTitle": {
+            "localizationKey": "platformPack.guidedAudit.role.auditor"
+          },
+          "portraitAssetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
+          "portraitAlt": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "platformPack.guidedAudit.staff.processAuditor.responsibility"
+          },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        }
+      ],
       "assetTypes": [],
       "initialState": {
         "actualState": {},
@@ -3258,10 +3398,10 @@
       "instructorIncidents": [],
       "counterfactualComparisonDimensions": [],
       "counterfactualConditions": [],
-      "entryNodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
+      "entryNodeId": "NODE_AUDIT_CHALLENGE_C_BRIEFING",
       "nodes": [
         {
-          "nodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
+          "nodeId": "NODE_AUDIT_CHALLENGE_C_BRIEFING",
           "nodeType": "BRIEFING",
           "title": {
             "localizationKey": "platformPack.auditChallenge.c.title"
@@ -3269,10 +3409,19 @@
           "body": {
             "localizationKey": "platformPack.auditChallenge.c.briefing"
           },
+          "image": {
+            "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
+            "alt": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.alt"
+            },
+            "caption": {
+              "localizationKey": "platformPack.guidedAudit.media.scene.caption"
+            }
+          },
           "transitions": [
             {
-              "transitionId": "TRANSITION_PRACTICE_AUDIT_COMPLETE",
-              "toNodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
+              "transitionId": "TRANSITION_AUDIT_CHALLENGE_C_COMPLETE",
+              "toNodeId": "NODE_AUDIT_CHALLENGE_C_COMPLETE",
               "when": {
                 "kind": "ALWAYS"
               }
@@ -3280,7 +3429,7 @@
           ]
         },
         {
-          "nodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
+          "nodeId": "NODE_AUDIT_CHALLENGE_C_COMPLETE",
           "nodeType": "COMPLETION",
           "title": {
             "localizationKey": "platformPack.auditChallenge.c.complete"
@@ -3864,5 +4013,8 @@
       }
     }
   ],
-  "assetHashes": {}
+  "assetHashes": {
+    "media/scenes/audit-evidence-review.webp": "18b59723ea5d57ebb2e4172413451ba42de1ccd0643260da62e62e3223c75b7e",
+    "media/staff/process-auditor.webp": "d7c17ad10cb2109e4a30466cee5365b2443229479b514ed92f0d4cdb3cf5ed56"
+  }
 }

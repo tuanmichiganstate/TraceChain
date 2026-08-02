@@ -1300,7 +1300,16 @@ export function ScenarioAuthorScreen({
                     count: preview.nodes.length,
                   })}
                 </p>
-                <PreviewWorkflow preview={preview} />
+                <PreviewWorkflow
+                  preview={preview}
+                  specializedRuntimeId={
+                    selected.scenarios.find(
+                      (scenario) =>
+                        scenario.scenarioId === preview.scenarioId &&
+                        scenario.version === preview.scenarioVersion,
+                    )?.hostedRuntime?.runtimeId
+                  }
+                />
                 <EvidenceAssessmentCatalog
                   evidenceDefinitions={
                     preview.evidenceDefinitions
@@ -1497,8 +1506,10 @@ function AuditAuthoringSummary({
 
 function PreviewWorkflow({
   preview,
+  specializedRuntimeId,
 }: {
   readonly preview: ScenarioRolePreviewV1;
+  readonly specializedRuntimeId: string | undefined;
 }): ReactNode {
   const t = useTranslator();
   const nodeById = new Map(
@@ -1548,6 +1559,11 @@ function PreviewWorkflow({
         {t("scenarioAuthor.previewFlowHeading")}
       </h4>
       <p>{t("scenarioAuthor.previewFlowHelp")}</p>
+      {specializedRuntimeId === "tracechain-audit-v1" ? (
+        <p className="notice notice--standalone">
+          {t("scenarioAuthor.previewAuditRuntimeHelp")}
+        </p>
+      ) : null}
       <ol className="scenario-author__preview-node-list">
         {preview.nodes.map((node) => {
           const incoming = incomingByNodeId.get(node.nodeId) ?? [];

@@ -387,7 +387,41 @@ test("completes an authored pharmaceutical decision through the generic runtime 
         },
       },
     ],
-    policyState: [],
+    policyState: [
+      {
+        recordId: "DECISION_RESPONSE_REQUIREMENTS",
+        value: {
+          evidenceCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
+          policyCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
+          confidenceRating: {
+            required: true,
+            minimum: 1,
+            maximum: 5,
+          },
+          adverseEventProbabilityPercent: {
+            required: true,
+            minimum: 0,
+            maximum: 100,
+          },
+        },
+      },
+      {
+        recordId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+        value: {
+          policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+          titleKey: "platformPack.pharmaColdChain.policy.release",
+          consulted: false,
+        },
+      },
+    ],
     workflowState: {
       currentNodeId: "NODE_PHARMA_DECISION",
       completedNodeIds: [
@@ -396,6 +430,7 @@ test("completes an authored pharmaceutical decision through the generic runtime 
       ],
       permittedActionIds: [
         "INSPECT_EVIDENCE",
+        "CONSULT_POLICY",
         "SUBMIT_STRUCTURED_DECISION",
       ],
     },
@@ -447,6 +482,28 @@ test("completes an authored pharmaceutical decision through the generic runtime 
           },
         ],
         justification: { required: true, maximumLength: 600 },
+        structuredResponse: {
+          evidenceCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
+          policyCitations: {
+            required: true,
+            minimumItems: 1,
+            maximumItems: 1,
+          },
+          confidenceRating: {
+            required: true,
+            minimum: 1,
+            maximum: 5,
+          },
+          adverseEventProbabilityPercent: {
+            required: true,
+            minimum: 0,
+            maximum: 100,
+          },
+        },
       },
       evidenceTitles: {
         EVID_PHARMA_SENSOR_SUMMARY: localized(
@@ -454,7 +511,18 @@ test("completes an authored pharmaceutical decision through the generic runtime 
           "Tóm tắt cảm biến nhiệt độ",
         ),
       },
-      policyTitles: {},
+      policyTitles: {
+        POLICY_PHARMA_COLD_CHAIN_RELEASE: localized(
+          "Cold-chain release rule",
+          "Quy tắc xuất hàng chuỗi lạnh",
+        ),
+      },
+      policyReferences: [
+        {
+          policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+          status: "AVAILABLE",
+        },
+      ],
       instructorIncidents: [],
       professionalConsequences: [],
       modeConfiguration,
@@ -479,22 +547,59 @@ test("completes an authored pharmaceutical decision through the generic runtime 
     ],
     workflowState: {
       ...decisionProjection.workflowState,
+      permittedActionIds: [
+        "CONSULT_POLICY",
+        "SUBMIT_STRUCTURED_DECISION",
+      ],
+    },
+  };
+  const consultedProjection = {
+    ...inspectedProjection,
+    version: 6,
+    policyState: inspectedProjection.policyState.map((record) =>
+      record.recordId === "POLICY_PHARMA_COLD_CHAIN_RELEASE"
+        ? {
+            ...record,
+            value: {
+              ...record.value,
+              consulted: true,
+              learnerStatementKey:
+                "platformPack.pharmaColdChain.policy.release.statement",
+            },
+          }
+        : record,
+    ),
+    workflowState: {
+      ...inspectedProjection.workflowState,
       permittedActionIds: ["SUBMIT_STRUCTURED_DECISION"],
+    },
+    presentation: {
+      ...inspectedProjection.presentation,
+      policyReferences: [
+        {
+          policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+          status: "CONSULTED",
+          learnerStatement: localized(
+            "Hold the shipment when a reported temperature excursion remains unresolved.",
+            "Giữ lô hàng khi sai lệch nhiệt độ được báo cáo vẫn chưa được giải quyết.",
+          ),
+        },
+      ],
     },
   };
   const consequenceProjection = {
-    ...inspectedProjection,
-    version: 8,
+    ...consultedProjection,
+    version: 9,
     workflowState: {
       currentNodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
       completedNodeIds: [
-        ...inspectedProjection.workflowState.completedNodeIds,
+        ...consultedProjection.workflowState.completedNodeIds,
         "NODE_PHARMA_DECISION",
       ],
       permittedActionIds: ["ADVANCE_WORKFLOW"],
     },
     presentation: {
-      ...decisionProjection.presentation,
+      ...consultedProjection.presentation,
       currentNode: {
         nodeId: "NODE_PHARMA_CONSEQUENCE_HOLD",
         nodeType: "CONSEQUENCE",
@@ -512,7 +617,7 @@ test("completes an authored pharmaceutical decision through the generic runtime 
   };
   const completedProjection = {
     ...consequenceProjection,
-    version: 11,
+    version: 12,
     workflowState: {
       currentNodeId: "NODE_PHARMA_COMPLETE",
       completedNodeIds: [
@@ -615,7 +720,9 @@ test("completes an authored pharmaceutical decision through the generic runtime 
               ? completedProjection
               : submittedCommand.commandType === "INSPECT_EVIDENCE"
                 ? inspectedProjection
-                : consequenceProjection,
+                : submittedCommand.commandType === "CONSULT_POLICY"
+                  ? consultedProjection
+                  : consequenceProjection,
         },
       });
       return;
@@ -655,6 +762,15 @@ test("completes an authored pharmaceutical decision through the generic runtime 
   });
   await expect(page.getByText("2–12.4°C")).toBeVisible();
   await page
+    .getByRole("button", { name: "Consult Cold-chain release rule" })
+    .click();
+  expect(submittedCommands[1]).toMatchObject({
+    commandType: "CONSULT_POLICY",
+    runId: "RUN_BROWSER_PHARMA",
+    expectedRunVersion: 5,
+    policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+  });
+  await page
     .getByLabel("Shipment action")
     .selectOption("HOLD_AND_INVESTIGATE");
   await page
@@ -665,32 +781,51 @@ test("completes an authored pharmaceutical decision through the generic runtime 
       name: "Submit the current action",
     }),
   });
+  await action
+    .getByRole("checkbox", {
+      name: "Cite Temperature sensor summary",
+    })
+    .check();
+  await action
+    .getByRole("checkbox", { name: "Cite Cold-chain release rule" })
+    .check();
+  await action.getByLabel("Confidence").selectOption("4");
+  await action
+    .getByLabel("Estimated probability of an adverse event (%)")
+    .fill("40");
   await action.getByRole("button", { name: "Submit" }).last().click();
 
-  expect(submittedCommands[1]).toMatchObject({
+  expect(submittedCommands[2]).toMatchObject({
     commandType: "SUBMIT_STRUCTURED_DECISION",
     runId: "RUN_BROWSER_PHARMA",
-    expectedRunVersion: 5,
+    expectedRunVersion: 6,
     decisionId: "DECISION_PHARMA_RELEASE",
     responses: {
       shipmentAction: ["HOLD_AND_INVESTIGATE"],
     },
+    citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+    citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+    confidenceRating: 4,
+    adverseEventProbabilityPercent: 40,
     justification:
       "Hold the shipment while the excursion is investigated.",
   });
   expect(submittedCommands[1]).not.toHaveProperty("actorId");
   expect(submittedCommands[1]).not.toHaveProperty("organizationId");
   expect(submittedCommands[1]).not.toHaveProperty("roleId");
+  expect(submittedCommands[2]).not.toHaveProperty("actorId");
+  expect(submittedCommands[2]).not.toHaveProperty("organizationId");
+  expect(submittedCommands[2]).not.toHaveProperty("roleId");
   await expect(
     page.getByText(
       "Release is paused while the temperature excursion is investigated.",
     ),
   ).toBeVisible();
   await action.getByRole("button", { name: "Continue" }).click();
-  expect(submittedCommands[2]).toMatchObject({
+  expect(submittedCommands[3]).toMatchObject({
     commandType: "ADVANCE_WORKFLOW",
     runId: "RUN_BROWSER_PHARMA",
-    expectedRunVersion: 8,
+    expectedRunVersion: 9,
   });
   await expect(
     page.locator("dd").filter({ hasText: /^Decision recorded$/ }),

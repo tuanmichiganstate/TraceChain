@@ -38,6 +38,12 @@
       "platformPack.pharmaColdChain.organization.distributor": "Healthcare distributor",
       "platformPack.pharmaColdChain.role.quality": "Quality manager",
       "platformPack.pharmaColdChain.role.distribution": "Distribution pharmacist",
+      "platformPack.pharmaColdChain.media.scene.alt": "An insulated medicine shipment and temperature logger prepared for cold-chain review.",
+      "platformPack.pharmaColdChain.media.scene.caption": "Cold-chain review station with the shipment and off-chain temperature logger.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.name": "Phạm Ngọc Lan",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.alt": "Portrait of Phạm Ngọc Lan, a fictional distribution pharmacist.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.profile": "Reviews shipment-condition evidence and coordinates release decisions with the manufacturer.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.responsibility": "Compare custody, temperature, calibration, and stability evidence before distribution.",
       "platformPack.pharmaColdChain.asset.shipment": "Medicine shipment",
       "platformPack.pharmaColdChain.policy.release": "Cold-chain release rule",
       "platformPack.pharmaColdChain.policy.release.statement": "Hold the shipment when a reported temperature excursion remains unresolved; an intact custody record does not establish acceptable storage conditions.",
@@ -162,6 +168,12 @@
       "platformPack.pharmaColdChain.organization.distributor": "Nhà phân phối y tế",
       "platformPack.pharmaColdChain.role.quality": "Quản lý chất lượng",
       "platformPack.pharmaColdChain.role.distribution": "Dược sĩ phân phối",
+      "platformPack.pharmaColdChain.media.scene.alt": "Lô thuốc cách nhiệt và thiết bị ghi nhiệt độ được chuẩn bị để rà soát chuỗi lạnh.",
+      "platformPack.pharmaColdChain.media.scene.caption": "Bàn rà soát chuỗi lạnh với lô hàng và thiết bị ghi nhiệt độ ngoài chuỗi.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.name": "Phạm Ngọc Lan",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.alt": "Chân dung Phạm Ngọc Lan, dược sĩ phân phối hư cấu.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.profile": "Rà soát bằng chứng về tình trạng lô hàng và phối hợp quyết định xuất hàng với nhà sản xuất.",
+      "platformPack.pharmaColdChain.staff.distributionPharmacist.responsibility": "Đối chiếu bằng chứng về chuyển giao, nhiệt độ, hiệu chuẩn và độ ổn định trước khi phân phối.",
       "platformPack.pharmaColdChain.asset.shipment": "Lô thuốc",
       "platformPack.pharmaColdChain.policy.release": "Quy tắc xuất hàng chuỗi lạnh",
       "platformPack.pharmaColdChain.policy.release.statement": "Giữ lô hàng khi sai lệch nhiệt độ được báo cáo vẫn chưa được giải quyết; hồ sơ chuyển giao còn nguyên vẹn không chứng minh điều kiện bảo quản là phù hợp.",
@@ -458,7 +470,45 @@
       "expectedValue": "DECISION_PHARMA_TRANSFER_DISPOSITION"
     }
   ],
-  "imageAssets": [],
+  "imageAssets": [
+    {
+      "assetId": "SCENE_PHARMA_COLD_CHAIN_REVIEW",
+      "purpose": "SCENE_ILLUSTRATION",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "rightsDeclaration": "NO_IDENTIFIABLE_PEOPLE",
+      "originalFileName": "cold-chain-review.webp",
+      "filePath": "media/scenes/cold-chain-review.webp",
+      "sha256": "18a9c4562563682290fb5c0165333c19b2331e8e5c0c303440c20100aafc898a",
+      "byteLength": 64478,
+      "width": 1600,
+      "height": 900,
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "platformPack.pharmaColdChain.media.scene.alt"
+      },
+      "caption": {
+        "localizationKey": "platformPack.pharmaColdChain.media.scene.caption"
+      }
+    },
+    {
+      "assetId": "PORTRAIT_PHARMA_DISTRIBUTION_PHARMACIST",
+      "purpose": "STAFF_PORTRAIT",
+      "sourceType": "AI_GENERATED",
+      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "rightsDeclaration": "FICTIONAL_PEOPLE",
+      "originalFileName": "distribution-pharmacist.webp",
+      "filePath": "media/staff/distribution-pharmacist.webp",
+      "sha256": "d024a1f20282a46aaf49c2fa1e4f4afabff7c1245b39eb80559f6a8260f614b8",
+      "byteLength": 21188,
+      "width": 480,
+      "height": 600,
+      "mimeType": "image/webp",
+      "defaultAlt": {
+        "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.alt"
+      }
+    }
+  ],
   "auditVariantBanks": [],
   "scenarios": [
     {
@@ -582,7 +632,31 @@
           }
         }
       ],
-      "staffProfiles": [],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
+          "roleId": "DISTRIBUTION_PHARMACIST",
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.name"
+          },
+          "roleTitle": {
+            "localizationKey": "platformPack.pharmaColdChain.role.distribution"
+          },
+          "portraitAssetId": "PORTRAIT_PHARMA_DISTRIBUTION_PHARMACIST",
+          "portraitAlt": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.responsibility"
+          },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        }
+      ],
       "assetTypes": [
         {
           "assetTypeId": "MEDICINE_SHIPMENT",
@@ -636,6 +710,7 @@
             "localizationKey": "platformPack.pharmaColdChain.evidence.sensor"
           },
           "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
           "visibleToRoleIds": [
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
@@ -722,6 +797,15 @@
           "body": {
             "localizationKey": "platformPack.pharmaColdChain.node.briefing.body"
           },
+          "image": {
+            "assetId": "SCENE_PHARMA_COLD_CHAIN_REVIEW",
+            "alt": {
+              "localizationKey": "platformPack.pharmaColdChain.media.scene.alt"
+            },
+            "caption": {
+              "localizationKey": "platformPack.pharmaColdChain.media.scene.caption"
+            }
+          },
           "transitions": [
             {
               "transitionId": "TRANSITION_PHARMA_BRIEFING_EVIDENCE",
@@ -789,6 +873,28 @@
           "justification": {
             "required": true,
             "maximumLength": 600
+          },
+          "structuredResponse": {
+            "evidenceCitations": {
+              "required": true,
+              "minimumItems": 1,
+              "maximumItems": 1
+            },
+            "policyCitations": {
+              "required": true,
+              "minimumItems": 1,
+              "maximumItems": 1
+            },
+            "confidenceRating": {
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            "adverseEventProbabilityPercent": {
+              "required": true,
+              "minimum": 0,
+              "maximum": 100
+            }
           },
           "assessment": {
             "decisionItemId": "PHARMA_RELEASE_DECISION",
@@ -1020,7 +1126,31 @@
           }
         }
       ],
-      "staffProfiles": [],
+      "staffProfiles": [
+        {
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
+          "roleId": "DISTRIBUTION_PHARMACIST",
+          "organizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "displayName": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.name"
+          },
+          "roleTitle": {
+            "localizationKey": "platformPack.pharmaColdChain.role.distribution"
+          },
+          "portraitAssetId": "PORTRAIT_PHARMA_DISTRIBUTION_PHARMACIST",
+          "portraitAlt": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.alt"
+          },
+          "shortProfile": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.profile"
+          },
+          "professionalResponsibility": {
+            "localizationKey": "platformPack.pharmaColdChain.staff.distributionPharmacist.responsibility"
+          },
+          "visibility": "LEARNER_VISIBLE",
+          "fictional": true
+        }
+      ],
       "assetTypes": [
         {
           "assetTypeId": "VACCINE_SHIPMENT",
@@ -1093,6 +1223,7 @@
             "localizationKey": "platformPack.pharmaColdChain.evidence.sensor"
           },
           "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
           "visibleToRoleIds": [
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
@@ -1171,6 +1302,7 @@
             "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.custody"
           },
           "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
           "visibleToRoleIds": [
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
@@ -1244,6 +1376,7 @@
             "localizationKey": "platformPack.pharmaColdChain.transfer.evidence.calibration"
           },
           "sourceOrganizationId": "ORG_HEALTHCARE_DISTRIBUTOR",
+          "staffProfileId": "STAFF_PHARMA_DISTRIBUTION_PHARMACIST",
           "visibleToRoleIds": [
             "QUALITY_MANAGER",
             "DISTRIBUTION_PHARMACIST"
@@ -1509,6 +1642,15 @@
           },
           "body": {
             "localizationKey": "platformPack.pharmaColdChain.transfer.node.briefing.body"
+          },
+          "image": {
+            "assetId": "SCENE_PHARMA_COLD_CHAIN_REVIEW",
+            "alt": {
+              "localizationKey": "platformPack.pharmaColdChain.media.scene.alt"
+            },
+            "caption": {
+              "localizationKey": "platformPack.pharmaColdChain.media.scene.caption"
+            }
           },
           "transitions": [
             {
@@ -1982,5 +2124,8 @@
       ]
     }
   ],
-  "assetHashes": {}
+  "assetHashes": {
+    "media/scenes/cold-chain-review.webp": "18a9c4562563682290fb5c0165333c19b2331e8e5c0c303440c20100aafc898a",
+    "media/staff/distribution-pharmacist.webp": "d024a1f20282a46aaf49c2fa1e4f4afabff7c1245b39eb80559f6a8260f614b8"
+  }
 }

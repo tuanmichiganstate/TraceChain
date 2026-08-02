@@ -375,6 +375,19 @@ describe("GenericHostedRunService", () => {
     draft.localizationCatalogs.vi[localizationKey] = "Kiểm tra kho lạnh";
     const sceneHash = "1".repeat(64);
     const evidenceHash = "2".repeat(64);
+    const authoredSceneAsset = draft.imageAssets.find(
+      (asset) => asset.assetId === "SCENE_PHARMA_COLD_CHAIN_REVIEW",
+    );
+    const portraitAsset = draft.imageAssets.find(
+      (asset) =>
+        asset.assetId ===
+        "PORTRAIT_PHARMA_DISTRIBUTION_PHARMACIST",
+    );
+    if (authoredSceneAsset === undefined || portraitAsset === undefined) {
+      throw new Error(
+        "Expected the authored pharmaceutical scene and staff portrait.",
+      );
+    }
     draft.imageAssets = [
       {
         assetId: "IMAGE_COLD_ROOM",
@@ -406,10 +419,14 @@ describe("GenericHostedRunService", () => {
         mimeType: "image/png",
         defaultAlt: { localizationKey },
       },
+      authoredSceneAsset,
+      portraitAsset,
     ];
     draft.assetHashes = {
       "media/scenes/cold-room.png": sceneHash,
       "media/evidence/sensor-screen.png": evidenceHash,
+      [authoredSceneAsset.filePath]: authoredSceneAsset.sha256,
+      [portraitAsset.filePath]: portraitAsset.sha256,
     };
     scenario.nodes[0]!.image = { assetId: "IMAGE_COLD_ROOM" };
     scenario.evidenceItems[0]!.image = {
@@ -519,16 +536,27 @@ describe("GenericHostedRunService", () => {
       expectedRunVersion: advanced.state.version,
       evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
     });
+    const consulted = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_PHARMA_COUNTERFACTUAL",
+      runId: inspected.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+    });
     const original = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_ORIGINAL_PHARMA_COUNTERFACTUAL",
-      runId: inspected.state.runId,
-      expectedRunVersion: inspected.state.version,
+      runId: consulted.state.runId,
+      expectedRunVersion: consulted.state.version,
       decisionId: "DECISION_PHARMA_RELEASE",
       responses: {
         shipmentAction: ["HOLD_AND_INVESTIGATE"],
       },
       justification: "Hold the shipment while the excursion is reviewed.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 40,
     });
     await service.submit(learner, {
       commandType: "ADVANCE_WORKFLOW",
@@ -551,6 +579,10 @@ describe("GenericHostedRunService", () => {
       decisionId: "DECISION_PHARMA_RELEASE",
       justification:
         "Hold the shipment while the excursion is reviewed.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 40,
       responses: {
         shipmentAction: ["HOLD_AND_INVESTIGATE"],
       },
@@ -576,6 +608,10 @@ describe("GenericHostedRunService", () => {
         shipmentAction: ["RELEASE_WITHOUT_REVIEW"],
       },
       justification: "Explore the consequence of releasing immediately.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 2,
+      adverseEventProbabilityPercent: 40,
     });
 
     expect(alternative.state.runId).toBe(
@@ -655,17 +691,35 @@ describe("GenericHostedRunService", () => {
       runId: created.state.runId,
       expectedRunVersion: created.state.version,
     });
+    const inspectedDecisionEvidence = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_FULL_DECISION_EVIDENCE",
+      runId: atDecision.state.runId,
+      expectedRunVersion: atDecision.state.version,
+      evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+    });
+    const consultedDecisionPolicy = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_FULL_DECISION_POLICY",
+      runId: inspectedDecisionEvidence.state.runId,
+      expectedRunVersion: inspectedDecisionEvidence.state.version,
+      policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+    });
     const decided = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_DECIDE_FULL",
-      runId: atDecision.state.runId,
-      expectedRunVersion: atDecision.state.version,
+      runId: consultedDecisionPolicy.state.runId,
+      expectedRunVersion: consultedDecisionPolicy.state.version,
       decisionId: "DECISION_PHARMA_RELEASE",
       responses: {
         shipmentAction: ["HOLD_AND_INVESTIGATE"],
       },
       justification:
         "Hold while the evidence and approval path are reviewed.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 40,
     });
     expect(decided.state.workflowState.currentNodeId).toBe(
       "NODE_FULL_PROPOSAL",
@@ -931,17 +985,28 @@ describe("GenericHostedRunService", () => {
     expect(await store.load(inspected.state.runId)).toHaveLength(
       eventCountAfterInspection,
     );
+    const consulted = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_PHARMA_RELEASE_001",
+      runId: inspected.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+    });
     const decided = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_DECIDE_PHARMA_001",
-      runId: inspected.state.runId,
-      expectedRunVersion: inspected.state.version,
+      runId: consulted.state.runId,
+      expectedRunVersion: consulted.state.version,
       decisionId: "DECISION_PHARMA_RELEASE",
       responses: {
         shipmentAction: ["HOLD_AND_INVESTIGATE"],
       },
       justification:
         "The shipment should remain on hold while the temperature excursion is investigated.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 40,
     });
 
     expect(decided.state.status).toBe("active");
@@ -1050,6 +1115,7 @@ describe("GenericHostedRunService", () => {
       "EVIDENCE_RELEASED",
       "WORKFLOW_ADVANCED",
       "EVIDENCE_INSPECTED",
+      "POLICY_CONSULTED",
       "DECISION_SUBMITTED",
       "COMPETENCY_EVIDENCE_RECORDED",
       "WORKFLOW_ADVANCED",
@@ -1655,39 +1721,68 @@ describe("GenericHostedRunService", () => {
       runId: created.state.runId,
       expectedRunVersion: created.state.version,
     });
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_PHARMA_003",
+      runId: advanced.state.runId,
+      expectedRunVersion: advanced.state.version,
+      evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+    });
+    const consulted = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_PHARMA_003",
+      runId: inspected.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+    });
+    const eventCountBeforeMalformed = (
+      await store.load(created.state.runId)
+    ).length;
 
     await expect(
       service.submit(learner, {
         commandType: "SUBMIT_STRUCTURED_DECISION",
         commandId: "COMMAND_MALFORMED_PHARMA_003",
-        runId: advanced.state.runId,
-        expectedRunVersion: advanced.state.version,
+        runId: consulted.state.runId,
+        expectedRunVersion: consulted.state.version,
         decisionId: "DECISION_PHARMA_RELEASE",
         responses: {
           shipmentAction: "HOLD_AND_INVESTIGATE",
         },
         justification: "Investigate the excursion.",
+        citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+        citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+        confidenceRating: 4,
+        adverseEventProbabilityPercent: 40,
       } as never),
     ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
-    expect(await store.load(created.state.runId)).toHaveLength(4);
+    expect(await store.load(created.state.runId)).toHaveLength(
+      eventCountBeforeMalformed,
+    );
 
     const command = {
       commandType: "SUBMIT_STRUCTURED_DECISION" as const,
       commandId: "COMMAND_DECIDE_PHARMA_003",
-      runId: advanced.state.runId,
-      expectedRunVersion: advanced.state.version,
+      runId: consulted.state.runId,
+      expectedRunVersion: consulted.state.version,
       decisionId: "DECISION_PHARMA_RELEASE",
       responses: {
         shipmentAction: ["HOLD_AND_INVESTIGATE"],
       },
       justification: "Investigate the excursion.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 4,
+      adverseEventProbabilityPercent: 40,
     };
     const decided = await service.submit(learner, command);
     const replayed = await service.submit(learner, command);
 
     expect(replayed.wasIdempotentReplay).toBe(true);
     expect(replayed.state).toEqual(decided.state);
-    expect(await store.load(created.state.runId)).toHaveLength(7);
+    expect(await store.load(created.state.runId)).toHaveLength(
+      decided.state.version,
+    );
   });
 
   it("routes each authored decision option to its own consequence", async () => {
@@ -1705,16 +1800,34 @@ describe("GenericHostedRunService", () => {
       runId: created.state.runId,
       expectedRunVersion: created.state.version,
     });
+    const inspected = await service.submit(learner, {
+      commandType: "INSPECT_EVIDENCE",
+      commandId: "COMMAND_INSPECT_PHARMA_RELEASE",
+      runId: advanced.state.runId,
+      expectedRunVersion: advanced.state.version,
+      evidenceId: "EVID_PHARMA_SENSOR_SUMMARY",
+    });
+    const consulted = await service.submit(learner, {
+      commandType: "CONSULT_POLICY",
+      commandId: "COMMAND_CONSULT_PHARMA_RELEASE",
+      runId: inspected.state.runId,
+      expectedRunVersion: inspected.state.version,
+      policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+    });
     const decided = await service.submit(learner, {
       commandType: "SUBMIT_STRUCTURED_DECISION",
       commandId: "COMMAND_DECIDE_PHARMA_RELEASE",
-      runId: advanced.state.runId,
-      expectedRunVersion: advanced.state.version,
+      runId: consulted.state.runId,
+      expectedRunVersion: consulted.state.version,
       decisionId: "DECISION_PHARMA_RELEASE",
       responses: {
         shipmentAction: ["RELEASE_WITHOUT_REVIEW"],
       },
       justification: "Release the shipment without further review.",
+      citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+      citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+      confidenceRating: 2,
+      adverseEventProbabilityPercent: 40,
     });
 
     expect(decided.state.workflowState.currentNodeId).toBe(

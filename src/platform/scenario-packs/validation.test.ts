@@ -2,6 +2,7 @@ import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.
 import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import practiceAuditPackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
+import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
@@ -405,6 +406,113 @@ describe("scenario-pack validation", () => {
       });
     }
   });
+
+  it("gives each disciplinary and Audit scenario a contextual scene and fictional staff presence", () => {
+    const authoredPacks = [
+      pharmaceuticalPackJson,
+      auditPackJson,
+      practiceAuditPackJson,
+      challengeAuditPackJson,
+    ] as const;
+
+    for (const authoredPack of authoredPacks) {
+      const result = validateScenarioPack(structuredClone(authoredPack));
+      expect(
+        result.isValid,
+        result.isValid ? "" : JSON.stringify(result.issues, null, 2),
+      ).toBe(true);
+      if (!result.isValid) continue;
+
+      expect(
+        result.pack.imageAssets.some(
+          (asset) => asset.purpose === "SCENE_ILLUSTRATION",
+        ),
+      ).toBe(true);
+      for (const scenario of result.pack.scenarios) {
+        const briefing = scenario.nodes.find(
+          (node) => node.nodeType === "BRIEFING",
+        );
+        expect(briefing?.image?.assetId).toBeDefined();
+        expect(
+          scenario.staffProfiles.some(
+            (profile) =>
+              profile.visibility === "LEARNER_VISIBLE" &&
+              profile.fictional &&
+              result.pack.imageAssets.some(
+                (asset) =>
+                  asset.assetId === profile.portraitAssetId &&
+                  asset.purpose === "STAFF_PORTRAIT",
+              ),
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("requires the pharmaceutical starter judgment to cite evidence and policy and quantify uncertainty", () => {
+    const result = validateScenarioPack(
+      structuredClone(pharmaceuticalPackJson),
+    );
+    expect(result.isValid).toBe(true);
+    if (!result.isValid) return;
+    const starter = result.pack.scenarios.find(
+      (scenario) =>
+        scenario.scenarioId === "SCN_PHARMA_COLD_CHAIN_STARTER",
+    );
+    const decision = starter?.nodes.find(
+      (node) => node.nodeType === "DECISION",
+    );
+
+    expect(decision?.structuredResponse).toEqual({
+      evidenceCitations: {
+        required: true,
+        minimumItems: 1,
+        maximumItems: 1,
+      },
+      policyCitations: {
+        required: true,
+        minimumItems: 1,
+        maximumItems: 1,
+      },
+      confidenceRating: {
+        required: true,
+        minimum: 1,
+        maximum: 5,
+      },
+      adverseEventProbabilityPercent: {
+        required: true,
+        minimum: 0,
+        maximum: 100,
+      },
+    });
+  });
+
+  it("keeps every Audit Challenge workflow identity case-specific", () => {
+    const result = validateScenarioPack(
+      structuredClone(challengeAuditPackJson),
+    );
+    expect(result.isValid).toBe(true);
+    if (!result.isValid) return;
+
+    for (const [index, scenario] of result.pack.scenarios.entries()) {
+      const caseCode = String.fromCharCode("A".charCodeAt(0) + index);
+      expect(scenario.entryNodeId).toBe(
+        `NODE_AUDIT_CHALLENGE_${caseCode}_BRIEFING`,
+      );
+      expect(scenario.nodes.map((node) => node.nodeId)).toEqual([
+        `NODE_AUDIT_CHALLENGE_${caseCode}_BRIEFING`,
+        `NODE_AUDIT_CHALLENGE_${caseCode}_COMPLETE`,
+      ]);
+      expect(
+        scenario.nodes.flatMap((node) =>
+          node.transitions.map((transition) => transition.transitionId),
+        ),
+      ).toEqual([
+        `TRANSITION_AUDIT_CHALLENGE_${caseCode}_COMPLETE`,
+      ]);
+    }
+  });
+
   it("validates the bilingual native coffee pack", () => {
     const result = validate(structuredClone(packJson));
 

@@ -1,4 +1,6 @@
 import { strToU8 } from "fflate";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   fireEvent,
   render,
@@ -10,6 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
 import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { createScenarioPackBundle } from "../scenario-packs/scenario-pack-bundle";
@@ -1201,6 +1204,20 @@ describe("scenario author workspace", () => {
   });
 
   it("parses JSON, YAML, and a bounded scenario-pack ZIP as data", () => {
+    const bundleAssets = new Map(
+      pharmaceuticalPackJson.imageAssets.map((asset) => [
+        asset.filePath,
+        new Uint8Array(
+          readFileSync(
+            resolve(
+              process.cwd(),
+              "scenario-packs/pharmaceutical-cold-chain",
+              asset.filePath,
+            ),
+          ),
+        ),
+      ]),
+    );
     expect(
       parseScenarioPackBytes(
         "pack.json",
@@ -1224,12 +1241,12 @@ describe("scenario author workspace", () => {
         "pack.zip",
         createScenarioPackBundle(
           pharmaceuticalPackJson as ScenarioPackV2,
-          new Map(),
+          bundleAssets,
         ),
       ),
     ).toEqual({
       pack: pharmaceuticalPackJson,
-      assets: new Map(),
+      assets: bundleAssets,
     });
   });
 
@@ -1566,7 +1583,7 @@ describe("scenario author workspace", () => {
   });
 
   it("lists lifecycle actions and generates a role-filtered preview", async () => {
-    const pack = structuredClone(packJson) as ScenarioPackV2;
+    const pack = structuredClone(auditPackJson) as ScenarioPackV2;
     const scenario = pack.scenarios[0];
     if (scenario === undefined) throw new Error("Expected scenario.");
     const item = {
@@ -1755,6 +1772,11 @@ describe("scenario author workspace", () => {
     ).toBeInTheDocument();
     expect(
       within(previewSection).getByText("Alternative branches"),
+    ).toBeInTheDocument();
+    expect(
+      within(previewSection).getByText(
+        /This map shows the declarative briefing and completion wrapper/u,
+      ),
     ).toBeInTheDocument();
     expect(
       within(previewSection).getAllByText("Hold for verification"),

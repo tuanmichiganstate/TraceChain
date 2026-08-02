@@ -3190,6 +3190,23 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       false,
     );
 
+    const consulted = await worker.fetch(
+      apiRequest(`/api/v1/runs/${runId}/commands`, {
+        method: "POST",
+        email: "pharma-learner@example.edu",
+        body: {
+          commandType: "CONSULT_POLICY",
+          commandId: "CMD_CONSULT_PHARMA_001",
+          runId,
+          expectedRunVersion: 5,
+          policyId: "POLICY_PHARMA_COLD_CHAIN_RELEASE",
+        },
+      }),
+      env,
+    );
+    assert.equal(consulted.status, 200, await consulted.clone().text());
+    assert.equal((await consulted.json()).projection.version, 6);
+
     const decided = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/commands`, {
         method: "POST",
@@ -3198,20 +3215,24 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           commandType: "SUBMIT_STRUCTURED_DECISION",
           commandId: "CMD_DECIDE_PHARMA_001",
           runId,
-          expectedRunVersion: 5,
+          expectedRunVersion: 6,
           decisionId: "DECISION_PHARMA_RELEASE",
           responses: {
             shipmentAction: ["HOLD_AND_INVESTIGATE"],
           },
           justification:
             "Hold the shipment while the temperature excursion is investigated.",
+          citedEvidenceIds: ["EVID_PHARMA_SENSOR_SUMMARY"],
+          citedPolicyIds: ["POLICY_PHARMA_COLD_CHAIN_RELEASE"],
+          confidenceRating: 4,
+          adverseEventProbabilityPercent: 40,
         },
       }),
       env,
     );
     assert.equal(decided.status, 200, await decided.clone().text());
     const consequenceProjection = (await decided.json()).projection;
-    assert.equal(consequenceProjection.version, 8);
+    assert.equal(consequenceProjection.version, 9);
     assert.equal(
       consequenceProjection.presentation.currentNode.nodeType,
       "CONSEQUENCE",
@@ -3234,27 +3255,27 @@ test("imports and previews a self-localized disciplinary pack", async () => {
           commandType: "ADVANCE_WORKFLOW",
           commandId: "CMD_CONTINUE_PHARMA_001",
           runId,
-          expectedRunVersion: 8,
+          expectedRunVersion: 9,
         },
       }),
       env,
     );
     assert.equal(continued.status, 200, await continued.clone().text());
     const completionProjection = (await continued.json()).projection;
-    assert.equal(completionProjection.version, 11);
+    assert.equal(completionProjection.version, 12);
     assert.equal(
       completionProjection.presentation.currentNode.nodeType,
       "COMPLETION",
     );
 
     const replay = await worker.fetch(
-      apiRequest(`/api/v1/runs/${runId}/replay?sequence=11`, {
+      apiRequest(`/api/v1/runs/${runId}/replay?sequence=12`, {
         email: "pharma-author@example.edu",
       }),
       env,
     );
     assert.equal(replay.status, 200, await replay.clone().text());
-    assert.equal((await replay.json()).replay.totalEventCount, 11);
+    assert.equal((await replay.json()).replay.totalEventCount, 12);
 
     const competency = await worker.fetch(
       apiRequest(`/api/v1/runs/${runId}/competencies`, {

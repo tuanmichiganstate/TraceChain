@@ -8,13 +8,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import pharmaceuticalTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
-import { changeScenarioPack } from "../author/scenario-builder-model";
 import {
   createScenarioPackBundle,
   parseScenarioPackBundle,
   ScenarioPackBundleError,
 } from "./scenario-pack-bundle";
-import { inspectScenarioImage } from "./image-assets";
 
 function zipEntries(
   entries: Readonly<Record<string, Uint8Array>>,
@@ -46,74 +44,46 @@ function zipEntries(
 
 function fixture(): {
   readonly pack: ScenarioPackV2;
-  readonly path: string;
-  readonly bytes: Uint8Array;
+  readonly assets: ReadonlyMap<string, Uint8Array>;
 } {
-  const bytes = new Uint8Array(
-    readFileSync(
-      resolve(
-        process.cwd(),
-        "public/media/staff/producer-manager.webp",
+  const pack = structuredClone(
+    pharmaceuticalTemplate,
+  ) as ScenarioPackV2;
+  const assets = new Map(
+    pack.imageAssets.map((asset) => [
+      asset.filePath,
+      new Uint8Array(
+        readFileSync(
+          resolve(
+            process.cwd(),
+            "scenario-packs/pharmaceutical-cold-chain",
+            asset.filePath,
+          ),
+        ),
       ),
-    ),
+    ]),
   );
-  const inspected = inspectScenarioImage(bytes, "cold-room.webp");
-  const path = "media/scenes/cold-room.webp";
-  const pack = changeScenarioPack(
-    structuredClone(pharmaceuticalTemplate) as ScenarioPackV2,
-    (draft) => {
-      draft.imageAssets = [
-        {
-          assetId: "IMAGE_COLD_ROOM",
-          purpose: "SCENE_ILLUSTRATION",
-          sourceType: "ORIGINAL_WITH_RELEASE",
-          licenseOrApprovalReference: "TEST_FIXTURE",
-          rightsDeclaration: "NO_IDENTIFIABLE_PEOPLE",
-          originalFileName: inspected.originalFileName,
-          filePath: path,
-          sha256: inspected.sha256,
-          byteLength: inspected.byteLength,
-          width: inspected.width,
-          height: inspected.height,
-          mimeType: inspected.mimeType,
-          defaultAlt: draft.manifest.title,
-        },
-      ];
-      draft.assetHashes = { [path]: inspected.sha256 };
-      draft.scenarios[0]!.nodes[0]!.image = {
-        assetId: "IMAGE_COLD_ROOM",
-      };
-    },
-  );
-  return { pack, path, bytes };
+  return { pack, assets };
 }
 
 describe("canonical scenario-pack ZIP", () => {
   it("round-trips one complete pack deterministically", () => {
-    const { pack, path, bytes } = fixture();
-    const first = createScenarioPackBundle(
-      pack,
-      new Map([[path, bytes]]),
-    );
-    const second = createScenarioPackBundle(
-      pack,
-      new Map([[path, bytes]]),
-    );
+    const { pack, assets } = fixture();
+    const first = createScenarioPackBundle(pack, assets);
+    const second = createScenarioPackBundle(pack, assets);
     expect(first).toEqual(second);
     const parsed = parseScenarioPackBundle(first);
     expect(parsed.pack).toEqual(pack);
-    expect(parsed.assets.get(path)).toEqual(bytes);
-    expect([...parsed.assets.keys()]).toEqual([path]);
+    expect(parsed.assets).toEqual(assets);
   });
 
   it("rejects missing, undeclared, and hash-mismatched entries", () => {
-    const { pack, path, bytes } = fixture();
+    const { pack, assets } = fixture();
+    const [path, bytes] = [...assets.entries()][0]!;
     expect(() => createScenarioPackBundle(pack, new Map())).toThrow(
       ScenarioPackBundleError,
     );
-    const valid = unzipSync(
-      createScenarioPackBundle(pack, new Map([[path, bytes]])),
-    );
+    const valid = unzipSync(createScenarioPackBundle(pack, assets));
     expect(() =>
       parseScenarioPackBundle(
         zipEntries({
@@ -130,6 +100,11 @@ describe("canonical scenario-pack ZIP", () => {
         zipEntries({
           "tracechain.pack.json": strToU8(
             `${JSON.stringify(pack)}\n`,
+          ),
+          ...Object.fromEntries(
+            [...assets.entries()].filter(
+              ([assetPath]) => assetPath !== path,
+            ),
           ),
           [path]: tampered,
         }),
