@@ -10,7 +10,15 @@ test.describe("saving and resuming", () => {
    * trips; only a real browser reload proves the application rebuilds itself
    * from what the LMS handed back.
    */
-  test("returns a learner to where they left off, from suspend data alone", async ({ page }) => {
+  test("returns a learner to where they left off, from suspend data alone", async ({
+    page,
+    browserName,
+  }) => {
+    // The two-core Linux WebKit runner has been measured reaching the final
+    // Stage 5 commit at roughly 86 seconds. Keep the ordinary 90-second budget
+    // for every short test, while giving this full replay walkthrough the same
+    // measured allowance as the other long WebKit journeys in this suite.
+    if (browserName === "webkit") test.setTimeout(240_000);
     await installScormApi(page);
     await page.goto("/");
     const activity = new Activity(page);
