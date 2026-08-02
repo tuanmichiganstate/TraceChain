@@ -1146,10 +1146,25 @@ export function HostedLearnerScreen({
     if (loadedProjection.workflowState.permittedActionIds.length > 0) {
       return;
     }
-    const assignmentRefresh = api.loadAssignments().then(
+    const refreshedAssignments = await api.loadAssignments().then(
       (loadedAssignments) => loadedAssignments,
       () => null,
     );
+    if (refreshedAssignments !== null) {
+      setAssignments(refreshedAssignments);
+    }
+    const assignmentForRun = (
+      refreshedAssignments ?? assignments
+    ).find(({ runs }) =>
+      runs.some((run) => run.runId === requestedRunId),
+    );
+    if (
+      assignmentForRun?.assignment.feedbackReleaseStatus ===
+      "withheld"
+    ) {
+      setFeedback("withheld");
+      return;
+    }
     try {
       setFeedback(await api.loadFeedback(requestedRunId));
     } catch (feedbackError) {
@@ -1161,11 +1176,6 @@ export function HostedLearnerScreen({
         return;
       }
       throw feedbackError;
-    } finally {
-      const loadedAssignments = await assignmentRefresh;
-      if (loadedAssignments !== null) {
-        setAssignments(loadedAssignments);
-      }
     }
   }
 

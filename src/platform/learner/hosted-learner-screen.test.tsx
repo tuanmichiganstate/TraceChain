@@ -2112,7 +2112,7 @@ describe("hosted learner workspace", () => {
     expect(api.loadFeedback).not.toHaveBeenCalled();
   });
 
-  it("shows an honest withheld state after a completed run", async () => {
+  it("shows an honest withheld state without requesting unreleased feedback", async () => {
     const completedProjection = {
       ...projection(),
       version: 80,
@@ -2192,9 +2192,7 @@ describe("hosted learner workspace", () => {
       ]),
       startRun: vi.fn(),
       loadRun: vi.fn().mockResolvedValue(completedProjection),
-      loadFeedback: vi.fn().mockRejectedValue(
-        new HostedLearnerApiError("FEEDBACK_NOT_RELEASED"),
-      ),
+      loadFeedback: vi.fn(),
       submit: vi.fn(),
     };
     render(
@@ -2212,7 +2210,7 @@ describe("hosted learner workspace", () => {
         "Instructor feedback has not been released yet.",
       ),
     ).toBeInTheDocument();
-    expect(api.loadFeedback).toHaveBeenCalledWith("RUN_LEARNER_001");
+    expect(api.loadFeedback).not.toHaveBeenCalled();
     expect(api.loadAssignments).toHaveBeenCalledTimes(2);
   });
 
