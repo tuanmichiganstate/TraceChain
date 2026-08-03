@@ -1,5 +1,5 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "$schema": "../../schemas/simuledger-scenario-pack-v2.schema.json",
   "schemaVersion": "2.0.0",
   "packId": "PACK_CHALLENGE_COFFEE_AUDIT",
   "version": "1.0.0",
@@ -13,7 +13,7 @@
       "platformPack.guidedAudit.manifest.title": "Guided coffee process audit",
       "platformPack.guidedAudit.manifest.description": "A bounded audit of certificate, quantity-correction, authorization, and ledger evidence from a completed coffee process.",
       "platformPack.guidedAudit.manifest.purpose": "Develop evidence-linked audit findings without changing the source process or its ledger.",
-      "platformPack.guidedAudit.framework.title": "TraceChain audit competencies",
+      "platformPack.guidedAudit.framework.title": "SimuLedger audit competencies",
       "platformPack.guidedAudit.competency.title": "Evidence-based audit judgment",
       "platformPack.guidedAudit.competency.description": "Evaluate process, ledger, document, and policy evidence to form proportionate audit findings.",
       "platformPack.guidedAudit.indicator.evidence": "Links an audit finding to relevant source evidence and policy.",
@@ -176,7 +176,7 @@
       "platformPack.guidedAudit.manifest.title": "Kiểm toán có hướng dẫn quy trình cà phê",
       "platformPack.guidedAudit.manifest.description": "Một cuộc kiểm toán có giới hạn về chứng nhận, sửa số lượng, thẩm quyền và bằng chứng sổ cái của một quy trình cà phê đã hoàn thành.",
       "platformPack.guidedAudit.manifest.purpose": "Phát triển phát hiện kiểm toán có liên kết bằng chứng mà không thay đổi quy trình nguồn hoặc sổ cái.",
-      "platformPack.guidedAudit.framework.title": "Năng lực kiểm toán TraceChain",
+      "platformPack.guidedAudit.framework.title": "Năng lực kiểm toán SimuLedger",
       "platformPack.guidedAudit.competency.title": "Xét đoán kiểm toán dựa trên bằng chứng",
       "platformPack.guidedAudit.competency.description": "Đánh giá bằng chứng quy trình, sổ cái, tài liệu và chính sách để hình thành phát hiện kiểm toán tương xứng.",
       "platformPack.guidedAudit.indicator.evidence": "Liên kết phát hiện kiểm toán với bằng chứng nguồn và chính sách phù hợp.",
@@ -486,7 +486,7 @@
       "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
       "purpose": "SCENE_ILLUSTRATION",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
       "rightsDeclaration": "NO_IDENTIFIABLE_PEOPLE",
       "originalFileName": "audit-evidence-review.webp",
       "filePath": "media/scenes/audit-evidence-review.webp",
@@ -506,7 +506,7 @@
       "assetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "process-auditor.webp",
       "filePath": "media/staff/process-auditor.webp",
@@ -613,7 +613,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_A",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "ff457cb0b8cbf2bfddbea27e27d892ddb73f0ee577e311f156a5a8f7dc4d6cb7",
+          "contentHash": "297b835ba6e7569e311706d2f124a6bf92c190622a5e31da7101a26bbdd0d67b",
           "answerPatternHash": "62a563b1601dd291d14f7a96f2f8feb545ecdd0fba36d6ddd72112b9b63d7790",
           "estimatedMinutes": 30,
           "complexityBand": "INTERMEDIATE"
@@ -626,7 +626,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_B",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "3a4263ba0b0fc159ad4e1d8d31fbbca1669510bb5fc11e5f9f6296414fbb1c9d",
+          "contentHash": "475cecc970212b96f7eb2df05841a9148969f60559d8453fd448558c8b7b6738",
           "answerPatternHash": "f8757ffa5c7c78007f184ef43ad6d3aa59afcf16ffbde0ac2a1edd54a8a6da82",
           "estimatedMinutes": 35,
           "complexityBand": "INTERMEDIATE"
@@ -639,7 +639,7 @@
           "scenarioVersion": "1.0.0",
           "auditCaseId": "AUDIT_COFFEE_CHALLENGE_C",
           "auditCaseVersion": "1.0.0",
-          "contentHash": "f9a0bff906fcd01d368d0b6629e3be6115ab09c15cdbe32ce2a98119bc4fc2f4",
+          "contentHash": "7cbda5d8f9b4097fc6bb02bb7a69810585ea3419c6d559b50ccae9fbd009de13",
           "answerPatternHash": "21e05a9385f6ddf23a610350c0faf4aeeb7808c1d0ace0da3ac23d4529078f6c",
           "estimatedMinutes": 40,
           "complexityBand": "INTERMEDIATE"
@@ -1209,7 +1209,7 @@
         "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
       ],
       "hostedRuntime": {
-        "runtimeId": "tracechain-audit-v1",
+        "runtimeId": "simuledger-audit-v1",
         "auditCaseId": "AUDIT_COFFEE_CHALLENGE_A"
       },
       "auditCase": {
@@ -2325,7 +2325,7 @@
         "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
       ],
       "hostedRuntime": {
-        "runtimeId": "tracechain-audit-v1",
+        "runtimeId": "simuledger-audit-v1",
         "auditCaseId": "AUDIT_COFFEE_CHALLENGE_B"
       },
       "auditCase": {
@@ -3447,7 +3447,7 @@
         "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
       ],
       "hostedRuntime": {
-        "runtimeId": "tracechain-audit-v1",
+        "runtimeId": "simuledger-audit-v1",
         "auditCaseId": "AUDIT_COFFEE_CHALLENGE_C"
       },
       "auditCase": {

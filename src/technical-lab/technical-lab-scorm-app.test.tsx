@@ -117,7 +117,7 @@ describe("TechnicalLabScormApp", () => {
   it("does not load standalone progress written before the lab-content hash joined the storage identity", async () => {
     const current = runtime();
     localStorage.setItem(
-      `tracechain:${current.configurationHash}:${current.bundle.pack.labPackId}`,
+      `simuledger:${current.configurationHash}:${current.bundle.pack.labPackId}`,
       JSON.stringify({
         encodedState: "TL1.obsolete.payload",
         location: "TL4",
@@ -143,7 +143,7 @@ describe("TechnicalLabScormApp", () => {
   it("offers a local reset instead of LMS instructions for invalid standalone progress", async () => {
     const current = runtime();
     localStorage.setItem(
-      `tracechain:${current.configurationHash}.${technicalLabBundleContentHash(current.bundle)}:${current.bundle.pack.labPackId}`,
+      `simuledger:${current.configurationHash}.${technicalLabBundleContentHash(current.bundle)}:${current.bundle.pack.labPackId}`,
       JSON.stringify({
         encodedState: "TL1.invalid.payload",
         location: "TL4",

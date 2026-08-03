@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import { hashConfiguration } from "../../config/hash";
 import {
@@ -23,7 +23,7 @@ function runtime(): AuditRuntimePackage {
   }
   const pack = publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+    publishedBy: "SIMULEDGER_PACKAGE_GENERATOR",
   }) as ScenarioPackV2;
   const scenario = pack.scenarios[0]!;
   return {
@@ -45,7 +45,7 @@ function challengeRuntime(): AuditRuntimePackage {
   }
   const pack = publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+    publishedBy: "SIMULEDGER_PACKAGE_GENERATOR",
   }) as ScenarioPackV2;
   const variantBank = pack.auditVariantBanks[0]!;
   const representative = variantBank.variants[0]!;

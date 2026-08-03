@@ -34,7 +34,7 @@ function check(description, condition, detail = "") {
  */
 const cacheRoot = join(projectRoot, "node_modules", ".cache");
 mkdirSync(cacheRoot, { recursive: true });
-const temporaryDirectory = mkdtempSync(join(cacheRoot, "tracechain-scenario-"));
+const temporaryDirectory = mkdtempSync(join(cacheRoot, "simuledger-scenario-"));
 const bundlePath = join(temporaryDirectory, "scenario.mjs");
 
 try {

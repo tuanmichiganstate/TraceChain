@@ -12,7 +12,7 @@ deliberately specialized:
 
 - package configuration reserves `technical-lab`, while validation rejects it;
 - the SCORM player routes the nine coffee stages through `ScenarioStageId`;
-- TC3 persistence budgets coffee progress and Stage 3, 5, and 9 journals;
+- SL1 persistence budgets coffee progress and Stage 3, 5, and 9 journals;
 - the score engine implements the coffee 39/61 contract;
 - hosted generic runs render authored professional scenario nodes, not
   interactive technical experiments;
@@ -23,7 +23,7 @@ experiments as fake business transactions would make both models less honest.
 Creating a second configuration, cryptographic implementation, or package
 generator would violate the one-codebase boundary.
 
-TraceChain is still pre-release. Configuration and content contracts may be
+SimuLedger is still pre-release. Configuration and content contracts may be
 upgraded directly; no migration readers or dual-format paths are required.
 
 ## Decisions
@@ -32,7 +32,7 @@ upgraded directly; no migration readers or dual-format paths are required.
 
 Configuration Schema V2, introduced by ADR 0003, is a union:
 
-- business simulation modes use the existing `tc3-v2` compatibility boundary;
+- business simulation modes use the existing `sl1-v1` compatibility boundary;
 - Technical Laboratory uses `tl1-v1`, an exact lab-pack identity, the accepted
   preset, and an ordered module list.
 
@@ -74,7 +74,7 @@ One headless experiment engine will serve hosted and SCORM delivery. Renderers
 submit declarative actions to that engine. Hashing, canonical serialization,
 Ed25519 signing and verification, identity resolution, authorization,
 endorsement evaluation, state-version validation, ledger commitment, clocks,
-and identifiers continue to come from shared TraceChain services.
+and identifiers continue to come from shared SimuLedger services.
 
 ### Use a separate compact wire format behind the same persistence ports
 
@@ -87,7 +87,7 @@ has an authored maximum occurrence count. Package acceptance must calculate
 the actual authored worst case and prove that it remains below the existing
 3,800-character internal ceiling before a learner-facing module is added.
 
-No TC3 migration or compatibility reader will be introduced.
+No SL1 migration or compatibility reader will be introduced.
 
 ### Extend the existing package pipeline only after the runtime is complete
 

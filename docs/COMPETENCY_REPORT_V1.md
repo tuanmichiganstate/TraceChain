@@ -105,5 +105,5 @@ numeric-level distribution alongside the evidence and rating counts.
 
 Configurable multi-observation rules, recency rules, critical-error overrides,
 and cross-scenario competence judgments remain later Phase 4 work. Until those
-authored rules exist, TraceChain reports evidence and ratings rather than a
+authored rules exist, SimuLedger reports evidence and ratings rather than a
 derived competency level.

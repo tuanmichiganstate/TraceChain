@@ -212,7 +212,7 @@ function validateOverlay(value: unknown, context: Context): void {
       "adoptedBy",
       "supportedLocales",
       "title",
-      "traceChainFrameworks",
+      "simuLedgerFrameworks",
       "externalFramework",
       "mappings",
     ],
@@ -310,19 +310,19 @@ function validateOverlay(value: unknown, context: Context): void {
   }
 
   const frameworkReferences = context.array(
-    overlay.traceChainFrameworks,
-    "$.traceChainFrameworks",
+    overlay.simuLedgerFrameworks,
+    "$.simuLedgerFrameworks",
   );
   const frameworkKeys: string[] = [];
   if (frameworkReferences !== null) {
     context.check(
       frameworkReferences.length > 0,
-      "EMPTY_TRACECHAIN_FRAMEWORKS",
-      "$.traceChainFrameworks",
-      "must reference at least one TraceChain framework",
+      "EMPTY_SIMULEDGER_FRAMEWORKS",
+      "$.simuLedgerFrameworks",
+      "must reference at least one SimuLedger framework",
     );
     frameworkReferences.forEach((entry, index) => {
-      const path = `$.traceChainFrameworks[${String(index)}]`;
+      const path = `$.simuLedgerFrameworks[${String(index)}]`;
       const reference = context.object(entry, path);
       if (reference === null) return;
       context.allowedKeys(
@@ -346,8 +346,8 @@ function validateOverlay(value: unknown, context: Context): void {
     });
     context.check(
       new Set(frameworkKeys).size === frameworkKeys.length,
-      "DUPLICATE_TRACECHAIN_FRAMEWORK",
-      "$.traceChainFrameworks",
+      "DUPLICATE_SIMULEDGER_FRAMEWORK",
+      "$.simuLedgerFrameworks",
       "must not repeat a framework version",
     );
   }
@@ -536,7 +536,7 @@ export function curriculumOverlayCompatibilityIssues(
 ): readonly CurriculumOverlayValidationIssue[] {
   const issues: CurriculumOverlayValidationIssue[] = [];
   const referencedFrameworkKeys = new Set(
-    overlay.traceChainFrameworks.map(
+    overlay.simuLedgerFrameworks.map(
       (reference) =>
         `${reference.frameworkId}@${reference.frameworkVersion}`,
     ),
@@ -548,10 +548,10 @@ export function curriculumOverlayCompatibilityIssues(
   );
   if (matchingFrameworks.length !== referencedFrameworkKeys.size) {
     issues.push({
-      code: "TRACECHAIN_FRAMEWORK_VERSION_MISMATCH",
-      path: "$.traceChainFrameworks",
+      code: "SIMULEDGER_FRAMEWORK_VERSION_MISMATCH",
+      path: "$.simuLedgerFrameworks",
       message:
-        "overlay does not match every referenced TraceChain framework version",
+        "overlay does not match every referenced SimuLedger framework version",
     });
   }
   const indicatorIds = new Set(
@@ -564,10 +564,10 @@ export function curriculumOverlayCompatibilityIssues(
   overlay.mappings.forEach((mapping, index) => {
     if (!indicatorIds.has(mapping.indicatorId)) {
       issues.push({
-        code: "UNKNOWN_TRACECHAIN_INDICATOR",
+        code: "UNKNOWN_SIMULEDGER_INDICATOR",
         path: `$.mappings[${String(index)}].indicatorId`,
         message:
-          "must reference an indicator in an exact supported TraceChain framework version",
+          "must reference an indicator in an exact supported SimuLedger framework version",
       });
     }
   });

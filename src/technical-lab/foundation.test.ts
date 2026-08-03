@@ -47,8 +47,8 @@ describe("Technical Laboratory foundation", () => {
     );
     await expect(
       loadRuntimePackage(async (path) => ({
-        ok: path === "./tracechain.config.json",
-        status: path === "./tracechain.config.json" ? 200 : 404,
+        ok: path === "./simuledger.config.json",
+        status: path === "./simuledger.config.json" ? 200 : 404,
         json: async () => embedded,
       })),
     ).rejects.toThrow(

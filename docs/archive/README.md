@@ -10,7 +10,7 @@ evidence. They are not the current implementation contract. Start with
 - [Instructor-ready platform plan](plans/CANONICAL_INSTRUCTOR_READY_PLATFORM_PLAN.md)
 - [Signatures and endorsements plan](plans/CANONICAL_SIGNATURES_AND_ENDORSEMENTS_PLAN.md)
 - [UI/UX authenticity plan](plans/CANONICAL_UI_UX_AUTHENTICITY_IMPROVEMENT_PLAN.md)
-- [UI/UX authenticity review](plans/TraceChain_UI_UX_Authenticity_Review_and_Improvement_Recommendations.md)
+- [UI/UX authenticity review](plans/SimuLedger_UI_UX_Authenticity_Review_and_Improvement_Recommendations.md)
 
 ## Completed phase records
 

@@ -1,5 +1,5 @@
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
-import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
+import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import type {
   ScenarioNodeV1,
   ScenarioPackV2,

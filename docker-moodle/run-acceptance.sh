@@ -10,7 +10,7 @@ active_mode=""
 
 run_as_daemon() {
   "${compose[@]}" exec -T --user daemon \
-    -e TRACECHAIN_SCORM_MODE="$active_mode" \
+    -e SIMULEDGER_SCORM_MODE="$active_mode" \
     moodle /opt/bitnami/php/bin/php "$1"
 }
 
@@ -41,8 +41,8 @@ for _ in $(seq 1 60); do
 done
 curl -fsS -o /dev/null http://localhost:8080/login/index.php
 
-if [ -n "${TRACECHAIN_ACCEPTANCE_FORCE_FAILURE:-}" ]; then
-  echo "--- forcing acceptance failure (TRACECHAIN_ACCEPTANCE_FORCE_FAILURE set) ---"
+if [ -n "${SIMULEDGER_ACCEPTANCE_FORCE_FAILURE:-}" ]; then
+  echo "--- forcing acceptance failure (SIMULEDGER_ACCEPTANCE_FORCE_FAILURE set) ---"
   "${compose[@]}" cp "$here/acceptance-force-failure.php" moodle:/tmp/acceptance.php
 else
   "${compose[@]}" cp "$here/acceptance.php" moodle:/tmp/acceptance.php
@@ -60,4 +60,4 @@ for active_mode in guided practice challenge assessment audit-guided audit-pract
   active_mode=""
 done
 trap - EXIT
-echo "MOODLE ACCEPTANCE PASSED FOR ALL MANAGED TRACECHAIN ACTIVITIES"
+echo "MOODLE ACCEPTANCE PASSED FOR ALL MANAGED SIMULEDGER ACTIVITIES"

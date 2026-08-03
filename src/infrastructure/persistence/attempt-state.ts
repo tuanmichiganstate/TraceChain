@@ -1,9 +1,9 @@
 import type { ScenarioStageId } from "../../domain/types/enums";
 
-/** Maximum value representable by the active compact TC3 decision field. */
+/** Maximum value representable by the active compact SL1 decision field. */
 export const MAX_DECISION_VALUE = 36 ** 3 - 1;
 
-/** Bounded retry count used by scoring and the active TC3 journal. */
+/** Bounded retry count used by scoring and the active SL1 journal. */
 export const MAX_ATTEMPT_COUNT = 36 - 1;
 
 export interface DecisionRecord {
@@ -14,7 +14,7 @@ export interface DecisionRecord {
 /**
  * Reconstructable attempt inputs used by the headless scenario contract.
  *
- * The live SCORM player persists `Tc3AttemptSnapshot`; this smaller shape is
+ * The live SCORM player persists `Sl1AttemptSnapshot`; this smaller shape is
  * retained only as the pure replay input shared by scenario contract tests.
  */
 export interface AttemptSnapshot {

@@ -110,7 +110,7 @@ assignment-scoped research participant ID. Identified and pseudonymous exports
 remain available. Pseudonymization is not anonymization, and the UI and export
 documentation say so.
 
-TraceChain does not manage consent, ethics approval, recruitment, statistical
+SimuLedger does not manage consent, ethics approval, recruitment, statistical
 analysis, or retention enforcement. The metadata must be used only under an
 approved external privacy and research protocol.
 

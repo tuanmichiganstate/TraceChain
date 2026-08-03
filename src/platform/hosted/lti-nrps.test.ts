@@ -28,8 +28,8 @@ const registration: LtiPlatformRegistrationV1 = {
   schemaVersion: "1.0.0",
   registrationId: "MOODLE_DEMO",
   issuer: "https://moodle.example",
-  clientId: "TRACECHAIN_CLIENT",
-  deploymentId: "TRACECHAIN_DEPLOYMENT",
+  clientId: "SIMULEDGER_CLIENT",
+  deploymentId: "SIMULEDGER_DEPLOYMENT",
   authorizationEndpoint:
     "https://moodle.example/mod/lti/auth.php",
   jwksUri: "https://moodle.example/mod/lti/certs.php",
@@ -38,8 +38,8 @@ const registration: LtiPlatformRegistrationV1 = {
 const context: ActiveLtiNrpsContext = {
   registrationId: "MOODLE_DEMO",
   issuer: "https://moodle.example",
-  clientId: "TRACECHAIN_CLIENT",
-  deploymentId: "TRACECHAIN_DEPLOYMENT",
+  clientId: "SIMULEDGER_CLIENT",
+  deploymentId: "SIMULEDGER_DEPLOYMENT",
   contextId: "COURSE_ACCOUNTING_101",
   endpoint: {
     contextMembershipsUrl:
@@ -56,7 +56,7 @@ describe("LTI Names and Role Provisioning Services", () => {
     );
     const privateJwk = {
       ...(await exportJWK(privateKey)),
-      kid: "TRACECHAIN_TOOL_KEY",
+      kid: "SIMULEDGER_TOOL_KEY",
       alg: "RS256",
       use: "sig",
     };
@@ -237,7 +237,7 @@ describe("LTI Names and Role Provisioning Services", () => {
         registration,
         privateJwk: {
           ...(await exportJWK(privateKey)),
-          kid: "TRACECHAIN_TOOL_KEY",
+          kid: "SIMULEDGER_TOOL_KEY",
           alg: "RS256",
           use: "sig",
         },

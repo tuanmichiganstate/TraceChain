@@ -1,4 +1,4 @@
-# TraceChain UI Benchmark Recognition Study Protocol
+# SimuLedger UI Benchmark Recognition Study Protocol
 
 ## Status
 
@@ -15,7 +15,7 @@ preference survey.
 Recruit six participants:
 
 - Three learners, including at least one person new to blockchain
-- Two lecturers who could assign or debrief TraceChain
+- Two lecturers who could assign or debrief SimuLedger
 - One participant who regularly uses keyboard navigation, screen
   magnification, or a screen reader
 

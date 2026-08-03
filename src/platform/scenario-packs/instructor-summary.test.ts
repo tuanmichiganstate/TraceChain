@@ -1,6 +1,6 @@
-import standardCoffeePackJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import guidedAuditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import standardCoffeePackJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
+import guidedAuditPackJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import { allScorableItems } from "../../domain/types/scenario";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import {

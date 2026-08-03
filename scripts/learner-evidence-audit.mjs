@@ -33,10 +33,10 @@ const reportPath = join(
   "LEARNER_EVIDENCE_SUFFICIENCY_AUDIT.md",
 );
 const hostedPackPaths = [
-  "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
-  "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
-  "scenario-packs/guided-coffee-audit/tracechain.pack.json",
-  "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+  "scenario-packs/standard-coffee-stage3/simuledger.pack.json",
+  "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
+  "scenario-packs/guided-coffee-audit/simuledger.pack.json",
+  "scenario-packs/practice-coffee-audit/simuledger.pack.json",
 ];
 const latentCertificateChecks = new Set([
   "INT_CERTIFICATE_STORAGE_CHOICE",
@@ -301,7 +301,7 @@ async function loadScormScenarios(root) {
   const cacheRoot = join(root, "node_modules", ".cache");
   mkdirSync(cacheRoot, { recursive: true });
   const temporaryDirectory = mkdtempSync(
-    join(cacheRoot, "tracechain-evidence-audit-"),
+    join(cacheRoot, "simuledger-evidence-audit-"),
   );
   const bundlePath = join(temporaryDirectory, "audit-entry.mjs");
   try {
@@ -504,7 +504,7 @@ export function renderEvidenceAudit({ contract, resolved }) {
   }
   const findings = contract.findings ?? [];
   const lines = [
-    "# TraceChain learner evidence sufficiency audit",
+    "# SimuLedger learner evidence sufficiency audit",
     "",
     "This report is generated from the compiled SCORM scenarios, all hosted scenario packs, and `docs/content-review/learner-evidence-contract.json`.",
     "",

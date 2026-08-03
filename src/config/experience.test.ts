@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import packJson from "../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import auditPackJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import practiceAuditPackJson from "../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
-import challengeAuditPackJson from "../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
+import auditPackJson from "../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import practiceAuditPackJson from "../../scenario-packs/practice-coffee-audit/simuledger.pack.json";
+import challengeAuditPackJson from "../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import type {
   ScenarioPackV2,
 } from "../platform/contracts/scenario-pack";

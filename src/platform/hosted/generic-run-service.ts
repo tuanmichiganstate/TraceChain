@@ -2734,14 +2734,14 @@ export class GenericHostedRunService {
           );
         }
         const existingTransactions =
-          state.ledgerState.tracechainTransactions;
+          state.ledgerState.simuledgerTransactions;
         if (
           existingTransactions !== undefined &&
           !Array.isArray(existingTransactions)
         ) {
           throw new HostedRunCommandError(
             "PACK_CONTRACT_MISMATCH",
-            "The authored ledger reserves tracechainTransactions for committed transaction records.",
+            "The authored ledger reserves simuledgerTransactions for committed transaction records.",
           );
         }
         return this.updateState(state, event, {
@@ -2751,7 +2751,7 @@ export class GenericHostedRunService {
           },
           ledgerState: {
             ...state.ledgerState,
-            tracechainTransactions: [
+            simuledgerTransactions: [
               ...(existingTransactions ?? []),
               transaction as unknown as JsonObject,
             ],
@@ -3556,12 +3556,12 @@ export class GenericHostedRunService {
     }
     const sourceDecisionHash = sha256Hex(
       canonicalize({
-        domain: "TRACECHAIN_GENERIC_SOURCE_DECISION_V1",
+        domain: "SIMULEDGER_GENERIC_SOURCE_DECISION_V1",
         decision,
       }),
     );
     const proposalContent = {
-      domain: "TRACECHAIN_GENERIC_TRANSACTION_PROPOSAL_V1",
+      domain: "SIMULEDGER_GENERIC_TRANSACTION_PROPOSAL_V1",
       packContentHash: state.packContentHash,
       scenarioId: state.scenarioId,
       scenarioVersion: state.scenarioVersion,
@@ -4012,7 +4012,7 @@ export class GenericHostedRunService {
       modeConfiguration.seedPolicy === "generated"
         ? `generated:${sha256Hex(
             canonicalize({
-              domain: "TRACECHAIN_GENERIC_HOSTED_SEED_V1",
+              domain: "SIMULEDGER_GENERIC_HOSTED_SEED_V1",
               packContentHash: this.packContentHash(),
               assignmentId: request.assignmentId,
               runId: request.runId,

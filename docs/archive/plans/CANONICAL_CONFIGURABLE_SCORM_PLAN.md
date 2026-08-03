@@ -1,14 +1,14 @@
-# TraceChain canonical configurable SCORM plan
+# SimuLedger canonical configurable SCORM plan
 
 Status: approved implementation specification
 Current boundary note: the fixed Challenge A package described below has been
 upgraded to the controlled Challenge bank documented in
 `CONTROLLED_SEEDED_SCENARIO_VARIATION.md`. That document governs current
-Challenge selection, TC3 v2 assignment metadata, and package contents.
+Challenge selection, SL1 v2 assignment metadata, and package contents.
 
 Historical boundary: configurable Guided, Challenge A, and Assessment packages
 
-Pre-release policy: only the current schemas and TC3 state format are
+Pre-release policy: only the current schemas and SL1 state format are
 supported. When a load-bearing contract changes, reset development attempts and
 regenerate packages; do not add migration readers, aliases, fallback adapters,
 or dual-format behavior.
@@ -21,7 +21,7 @@ retroactively expand this completed boundary.
 
 ## Objective
 
-TraceChain evolves from one fixed SCORM activity into a configurable,
+SimuLedger evolves from one fixed SCORM activity into a configurable,
 deterministic decision-making simulation while retaining:
 
 - One application codebase.
@@ -40,7 +40,7 @@ support the business decisions rather than replacing them.
 
 ## Product direction and current boundary
 
-TraceChain remains a guided simulation, not an unrestricted sandbox or
+SimuLedger remains a guided simulation, not an unrestricted sandbox or
 conventional game. The common nine-stage journey guarantees exposure to the
 required concepts, comparable scoring, structured debriefing, and a practical
 classroom duration. Selected decisions now produce persistent, deterministic
@@ -49,7 +49,7 @@ consequences that appear later.
 This implementation boundary delivers only:
 
 1. A future-compatible simulation boundary and deterministic headless replay.
-2. Compact TC3 SCORM persistence.
+2. Compact SL1 SCORM persistence.
 3. Validated external configuration.
 4. Guided and curated Challenge A presets.
 5. One-build CLI package generation.
@@ -96,7 +96,7 @@ identifier generation are injected.
 
 ### Clear LMS ownership
 
-TraceChain owns its internal simulation, decisions, feedback, hints, scoring,
+SimuLedger owns its internal simulation, decisions, feedback, hints, scoring,
 diagnostics, and final report. The LMS owns availability, attempt policy,
 gradebook aggregation, access restrictions, and activity completion policy. A
 package's passing score is configuration-owned and must agree across learner
@@ -112,7 +112,7 @@ without replacing the core.
 ## Target architecture
 
 ```text
-TraceChain
+SimuLedger
   reusable simulation core
     commands and validation
     accepted domain events
@@ -148,11 +148,11 @@ TraceChain
 
 ## Simulation and architecture contracts
 
-TraceChain remains one guided, deterministic coffee supply-chain simulation.
+SimuLedger remains one guided, deterministic coffee supply-chain simulation.
 Guided and challenge packages reuse one application build, simulation core,
 scoring engine, localization system, SCORM adapter, and package generator.
 Package configuration and scenario data remain external runtime files:
-`tracechain.config.json` and `scenario.json`.
+`simuledger.config.json` and `scenario.json`.
 
 The simulation core is independent of React, browser storage, SCORM, and the
 LMS. Learner actions cross the core boundary as commands with trusted
@@ -316,7 +316,7 @@ configuration. It never depends on undocumented defaults, query parameters, or
 learner suspend data for lecturer-owned settings.
 
 ```ts
-interface TraceChainConfiguration {
+interface SimuLedgerConfiguration {
   configurationVersion: string;
   mode: "guided" | "challenge" | "assessment" | "technical-lab";
   scenarioId: string;
@@ -345,7 +345,7 @@ interface TraceChainConfiguration {
 
 Configuration precedence is:
 
-1. A valid embedded `tracechain.config.json`.
+1. A valid embedded `simuledger.config.json`.
 2. Preset values fully resolved during package generation.
 3. Development-only application defaults.
 
@@ -385,9 +385,9 @@ Validation rejects unknown fields and incompatible versions as well as:
 
 The generator and runtime use the same schema and human-readable errors.
 
-## TC3 persistence and replay
+## SL1 persistence and replay
 
-SCORM 1.2 persistence uses a compact TC3 command journal with a 3,800-character
+SCORM 1.2 persistence uses a compact SL1 command journal with a 3,800-character
 internal ceiling and a 3,000-character authored payload budget. The journal
 stores commands and bounded replay inputs, not event objects or independent
 accept/reject flags. Replay under the recorded trusted-context sequence
@@ -413,7 +413,7 @@ ceilings, not estimates:
 | Stage 3 consequential commands | 220 |
 | Stage 5 consequential commands and correction reason | 500 |
 | Stage 9 recall and authorization commands | 220 |
-| Completion flags and TC3 framing | 100 |
+| Completion flags and SL1 framing | 100 |
 
 The section allocation totals 2,840 characters, leaving 160 characters of
 headroom inside the 3,000-character authored budget and 960 inside the
@@ -421,12 +421,12 @@ headroom inside the 3,000-character authored budget and 960 inside the
 every permitted record, all hint and decision slots, and the complete
 240-byte correction reason.
 
-Before an action is exposed as durable, TraceChain builds the prospective
+Before an action is exposed as durable, SimuLedger builds the prospective
 journal, validates and encodes it, confirms its size, writes it, and commits the
 adapter. Runtime overflow is an invariant failure, not a normal learner path.
 Worst-case tests use every permitted record and maximum string length.
 
-Configuration hash and scenario version are exact resume boundaries. TC2 data
+Configuration hash and scenario version are exact resume boundaries. LEGACY2 data
 is unsupported and is never read, overwritten, or cleared. The learner is told
 to exit and start a new LMS attempt; the package does not claim it can create
 one.
@@ -578,7 +578,7 @@ Every package contains:
 imsmanifest.xml
 index.html
 application assets
-tracechain.config.json
+simuledger.config.json
 scenario.json
 build-info.json
 version.json
@@ -612,7 +612,7 @@ src/
     provenance/                trace and recall calculations
     reporting/                 causal diagnostics
   infrastructure/
-    persistence/               TC3 codec and adapter boundaries
+    persistence/               SL1 codec and adapter boundaries
     scorm/                     SCORM 1.2 platform adapter
     hashing/                   canonicalization and real SHA-256
   scenarios/
@@ -656,7 +656,7 @@ governance.
 The work remains one plan, delivered incrementally:
 
 1. Simulation boundary and headless replay.
-2. TC3 persistence and trusted contexts.
+2. SL1 persistence and trusted contexts.
 3. External configuration, presets, and scenario serialization.
 4. Standard-scenario parity.
 5. Consequential decisions and exact scoring.
@@ -699,13 +699,13 @@ this implementation boundary.
 ### Persistence
 
 - Memory and platform persistence obey one interface.
-- TC3 resume reconstructs derived state rather than persisting redundant event
+- SL1 resume reconstructs derived state rather than persisting redundant event
   or ledger objects.
 - Exact configuration and scenario boundaries reject incompatible state.
 - Every string and record count is schema-bounded.
 - Real authored worst cases fit below the 3,800-character internal ceiling.
 - Prospective persistence completes before command state is published.
-- Unsupported pre-TC3 data is never read or rewritten and directs the learner
+- Unsupported pre-SL1 data is never read or rewritten and directs the learner
   to a new LMS attempt.
 
 ### Scoring and hints
@@ -725,7 +725,7 @@ this implementation boundary.
 - Clean outputs are deterministic; dirty release generation fails.
 - Compiled Chromium accessibility, reflow, resume, and SCORM boundary tests
   pass.
-- Moodle parses and deploys the package, round-trips TC3 state, resumes,
+- Moodle parses and deploys the package, round-trips SL1 state, resumes,
   reports score/completion, preserves configured gradebook behavior, respects
   the SCORM 1.2 storage boundary, and cleans up synthetic attempts.
 

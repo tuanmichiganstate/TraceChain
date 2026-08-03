@@ -50,15 +50,15 @@ find_current_package() {
   printf '%s\n' "${matches[0]}"
 }
 
-guided_package="$(find_current_package guided 'TraceChain_Guided_*_NON_RELEASE.zip')"
-practice_package="$(find_current_package practice 'TraceChain_Practice_*_NON_RELEASE.zip')"
-challenge_package="$(find_current_package challenge 'TraceChain_Challenge_*_NON_RELEASE.zip')"
-assessment_package="$(find_current_package assessment 'TraceChain_Assessment_*_NON_RELEASE.zip')"
-audit_guided_package="$(find_current_package audit-guided 'TraceChain_AuditGuided_*_NON_RELEASE.zip')"
-audit_practice_package="$(find_current_package audit-practice 'TraceChain_AuditPractice_*_NON_RELEASE.zip')"
-audit_challenge_package="$(find_current_package audit-challenge 'TraceChain_AuditChallenge_*_NON_RELEASE.zip')"
-audit_assessment_package="$(find_current_package audit-assessment 'TraceChain_AuditAssessment_*_NON_RELEASE.zip')"
-technical_lab_package="$(find_current_package technical-lab 'TraceChain_TechnicalLab_*_NON_RELEASE.zip')"
+guided_package="$(find_current_package guided 'SimuLedger_Guided_*_NON_RELEASE.zip')"
+practice_package="$(find_current_package practice 'SimuLedger_Practice_*_NON_RELEASE.zip')"
+challenge_package="$(find_current_package challenge 'SimuLedger_Challenge_*_NON_RELEASE.zip')"
+assessment_package="$(find_current_package assessment 'SimuLedger_Assessment_*_NON_RELEASE.zip')"
+audit_guided_package="$(find_current_package audit-guided 'SimuLedger_AuditGuided_*_NON_RELEASE.zip')"
+audit_practice_package="$(find_current_package audit-practice 'SimuLedger_AuditPractice_*_NON_RELEASE.zip')"
+audit_challenge_package="$(find_current_package audit-challenge 'SimuLedger_AuditChallenge_*_NON_RELEASE.zip')"
+audit_assessment_package="$(find_current_package audit-assessment 'SimuLedger_AuditAssessment_*_NON_RELEASE.zip')"
+technical_lab_package="$(find_current_package technical-lab 'SimuLedger_TechnicalLab_*_NON_RELEASE.zip')"
 
 "${compose[@]}" up -d
 
@@ -72,7 +72,7 @@ curl -fsS -o /dev/null http://localhost:8080/login/index.php
 # Clear only temporary deployment inputs. Activity content and learner data are
 # reset through Moodle APIs in deploy.php.
 "${compose[@]}" exec -T --user root moodle sh -c \
-  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/TraceChain_AuditChallenge_*_NON_RELEASE.zip /tmp/TraceChain_AuditAssessment_*_NON_RELEASE.zip /tmp/TraceChain_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
+  'rm -f /tmp/SimuLedger_Guided_*_NON_RELEASE.zip /tmp/SimuLedger_Practice_*_NON_RELEASE.zip /tmp/SimuLedger_Challenge_*_NON_RELEASE.zip /tmp/SimuLedger_Assessment_*_NON_RELEASE.zip /tmp/SimuLedger_AuditGuided_*_NON_RELEASE.zip /tmp/SimuLedger_AuditPractice_*_NON_RELEASE.zip /tmp/SimuLedger_AuditChallenge_*_NON_RELEASE.zip /tmp/SimuLedger_AuditAssessment_*_NON_RELEASE.zip /tmp/SimuLedger_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
 "${compose[@]}" cp "$guided_package" "moodle:/tmp/$(basename "$guided_package")"
 "${compose[@]}" cp "$practice_package" "moodle:/tmp/$(basename "$practice_package")"
 "${compose[@]}" cp "$challenge_package" "moodle:/tmp/$(basename "$challenge_package")"
@@ -95,19 +95,19 @@ curl -fsS -o /dev/null http://localhost:8080/login/index.php
   "/tmp/$(basename "$technical_lab_package")" \
   /tmp/deploy.php
 
-echo "--- deploy and reset all TraceChain activities ---"
+echo "--- deploy and reset all SimuLedger activities ---"
 "${compose[@]}" exec -T --user daemon \
-  -e TRACECHAIN_GUIDED_PACKAGE="/tmp/$(basename "$guided_package")" \
-  -e TRACECHAIN_PRACTICE_PACKAGE="/tmp/$(basename "$practice_package")" \
-  -e TRACECHAIN_CHALLENGE_PACKAGE="/tmp/$(basename "$challenge_package")" \
-  -e TRACECHAIN_ASSESSMENT_PACKAGE="/tmp/$(basename "$assessment_package")" \
-  -e TRACECHAIN_AUDIT_GUIDED_PACKAGE="/tmp/$(basename "$audit_guided_package")" \
-  -e TRACECHAIN_AUDIT_PRACTICE_PACKAGE="/tmp/$(basename "$audit_practice_package")" \
-  -e TRACECHAIN_AUDIT_CHALLENGE_PACKAGE="/tmp/$(basename "$audit_challenge_package")" \
-  -e TRACECHAIN_AUDIT_ASSESSMENT_PACKAGE="/tmp/$(basename "$audit_assessment_package")" \
-  -e TRACECHAIN_TECHNICAL_LAB_PACKAGE="/tmp/$(basename "$technical_lab_package")" \
+  -e SIMULEDGER_GUIDED_PACKAGE="/tmp/$(basename "$guided_package")" \
+  -e SIMULEDGER_PRACTICE_PACKAGE="/tmp/$(basename "$practice_package")" \
+  -e SIMULEDGER_CHALLENGE_PACKAGE="/tmp/$(basename "$challenge_package")" \
+  -e SIMULEDGER_ASSESSMENT_PACKAGE="/tmp/$(basename "$assessment_package")" \
+  -e SIMULEDGER_AUDIT_GUIDED_PACKAGE="/tmp/$(basename "$audit_guided_package")" \
+  -e SIMULEDGER_AUDIT_PRACTICE_PACKAGE="/tmp/$(basename "$audit_practice_package")" \
+  -e SIMULEDGER_AUDIT_CHALLENGE_PACKAGE="/tmp/$(basename "$audit_challenge_package")" \
+  -e SIMULEDGER_AUDIT_ASSESSMENT_PACKAGE="/tmp/$(basename "$audit_assessment_package")" \
+  -e SIMULEDGER_TECHNICAL_LAB_PACKAGE="/tmp/$(basename "$technical_lab_package")" \
   moodle /opt/bitnami/php/bin/php /tmp/deploy.php
 
 "${compose[@]}" exec -T --user root moodle sh -c \
-  'rm -f /tmp/TraceChain_Guided_*_NON_RELEASE.zip /tmp/TraceChain_Practice_*_NON_RELEASE.zip /tmp/TraceChain_Challenge_*_NON_RELEASE.zip /tmp/TraceChain_Assessment_*_NON_RELEASE.zip /tmp/TraceChain_AuditGuided_*_NON_RELEASE.zip /tmp/TraceChain_AuditPractice_*_NON_RELEASE.zip /tmp/TraceChain_AuditChallenge_*_NON_RELEASE.zip /tmp/TraceChain_AuditAssessment_*_NON_RELEASE.zip /tmp/TraceChain_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
+  'rm -f /tmp/SimuLedger_Guided_*_NON_RELEASE.zip /tmp/SimuLedger_Practice_*_NON_RELEASE.zip /tmp/SimuLedger_Challenge_*_NON_RELEASE.zip /tmp/SimuLedger_Assessment_*_NON_RELEASE.zip /tmp/SimuLedger_AuditGuided_*_NON_RELEASE.zip /tmp/SimuLedger_AuditPractice_*_NON_RELEASE.zip /tmp/SimuLedger_AuditChallenge_*_NON_RELEASE.zip /tmp/SimuLedger_AuditAssessment_*_NON_RELEASE.zip /tmp/SimuLedger_TechnicalLab_*_NON_RELEASE.zip /tmp/deploy.php'
 echo "--- done: http://localhost:8080 ---"

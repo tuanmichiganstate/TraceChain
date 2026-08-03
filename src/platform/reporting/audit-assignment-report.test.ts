@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import { LECTURER_PRESETS } from "../../config/presets";
 import type { AuditLearnerProjectionV1 } from "../contracts/audit";
 import type { HostedAssignmentReportV1 } from "../contracts/assessment";

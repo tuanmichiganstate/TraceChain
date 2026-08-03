@@ -94,7 +94,7 @@ describe("hosted learner workspace", () => {
 
     expect(
       screen.getByText(
-        /does not identify a TraceChain assignment/,
+        /does not identify a SimuLedger assignment/,
       ),
     ).toBeInTheDocument();
     expect(loadSession).not.toHaveBeenCalled();
@@ -480,7 +480,7 @@ describe("hosted learner workspace", () => {
       <LocaleProvider locale="en">
         <LedgerTransactions
           ledgerState={{
-            tracechainTransactions: [
+            simuledgerTransactions: [
               {
                 proposalId: "PROPOSAL_CARGO_001",
                 proposalType: "DANGEROUS_GOODS_HOLD",
@@ -1245,7 +1245,7 @@ describe("hosted learner workspace", () => {
         technicalLabCryptographicRuntime.endorsementPolicies,
     } as const;
     const runtimeFiles: Readonly<Record<string, unknown>> = {
-      "tracechain.config.json":
+      "simuledger.config.json":
         embedConfiguration(TECHNICAL_LAB_PRESET),
       "technical-lab-pack.json":
         permissionedFoundationsLabBundle,
@@ -2323,7 +2323,7 @@ describe("hosted learner workspace", () => {
           scenarioVersion: "1.7.0",
           frameworks: [
             {
-              frameworkId: "TRACECHAIN_CORE",
+              frameworkId: "SIMULEDGER_CORE",
               frameworkVersion: "1.0.0",
             },
           ],
@@ -2331,16 +2331,16 @@ describe("hosted learner workspace", () => {
             learnerUserId: "USER_LEARNER_001",
             indicators: [
               {
-                frameworkId: "TRACECHAIN_CORE",
+                frameworkId: "SIMULEDGER_CORE",
                 frameworkVersion: "1.0.0",
                 competencyId: "PC2",
                 competencyVersion: "1.0.0",
                 competencyTitleKey:
-                  "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.title",
+                  "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC2.title",
                 indicatorId: "PC2.PI1",
                 indicatorVersion: "1.0.0",
                 indicatorStatementKey:
-                  "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.indicators.PC2.PI1.statement",
+                  "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC2.indicators.PC2.PI1.statement",
                 targetType: "supporting",
                 evidenceCount: 1,
                 latestObservedAt: "2026-07-24T08:10:00.000Z",

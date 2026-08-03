@@ -8,7 +8,7 @@ import {
 } from "../../config/experience";
 import type {
   DecisionPolicy,
-  TraceChainExperienceConfigurationV2,
+  SimuLedgerExperienceConfigurationV2,
 } from "../../config/types";
 import type {
   HostedRunModeConfigurationV1,
@@ -23,7 +23,7 @@ import { modeConfigurationFor } from "./mode-configuration";
 
 export interface HostedExperienceConfigurationIdentityV2 {
   readonly configuration:
-    TraceChainExperienceConfigurationV2;
+    SimuLedgerExperienceConfigurationV2;
   readonly configurationHash: string;
 }
 
@@ -76,7 +76,7 @@ export function resolveHostedExperienceConfiguration(options: {
     HostedRunModeConfigurationV1;
   readonly locale?: "vi" | "en";
 }): HostedExperienceConfigurationIdentityV2 {
-  if (options.scenario.hostedRuntime?.runtimeId === "tracechain-audit-v1") {
+  if (options.scenario.hostedRuntime?.runtimeId === "simuledger-audit-v1") {
     const auditCase = options.scenario.auditCase;
     const supportProfile = auditCase?.supportProfiles[0];
     const presetId =
@@ -113,7 +113,7 @@ export function resolveHostedExperienceConfiguration(options: {
           ? "LIMITED"
           : "ENABLED"
         : "DISABLED";
-    const configuration: TraceChainExperienceConfigurationV2 = {
+    const configuration: SimuLedgerExperienceConfigurationV2 = {
       configurationSchemaVersion: "2",
       presetId: `hosted-${presetId}`,
       ...dimensions,
@@ -226,7 +226,7 @@ export function resolveHostedExperienceConfigurationFromPolicy(options: {
         ? "LIMITED"
         : "ENABLED"
       : "DISABLED";
-  const configuration: TraceChainExperienceConfigurationV2 = {
+  const configuration: SimuLedgerExperienceConfigurationV2 = {
     configurationSchemaVersion: "2",
     presetId: `hosted-${runtimeConfiguration.mode}`,
     ...dimensions,
@@ -358,7 +358,7 @@ export function assertHostedExperienceIdentity(options: {
   readonly expected?: HostedExperienceConfigurationIdentityV2;
 }): asserts options is {
   readonly configuration:
-    TraceChainExperienceConfigurationV2;
+    SimuLedgerExperienceConfigurationV2;
   readonly configurationHash: string;
   readonly expected?:
     HostedExperienceConfigurationIdentityV2;

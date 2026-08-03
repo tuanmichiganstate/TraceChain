@@ -83,7 +83,7 @@ export const coffeeRuntime: ScenarioRuntimeDefinition = {
       OrganizationId.REGULATOR,
       "REGULATORY_AUDITOR",
     ),
-    // Append-only because TC3 persists trusted contexts by positional index.
+    // Append-only because SL1 persists trusted contexts by positional index.
     context(
       "CTX_UNRECOGNIZED_CERTIFIER",
       ActorId.UNRECOGNIZED_CERTIFICATION_OFFICER,

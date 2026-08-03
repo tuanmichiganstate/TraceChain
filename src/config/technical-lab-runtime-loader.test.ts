@@ -21,7 +21,7 @@ function files(): Readonly<Record<string, unknown>> {
       technicalLabCryptographicRuntime.endorsementPolicies,
   } as const;
   return {
-    "./tracechain.config.json":
+    "./simuledger.config.json":
       embedConfiguration(TECHNICAL_LAB_PRESET),
     "./technical-lab-pack.json":
       permissionedFoundationsLabBundle,

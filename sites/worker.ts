@@ -258,10 +258,10 @@ interface WorkerEnvironment {
   readonly ASSETS: AssetBinding;
   readonly DB: D1DatabaseLike;
   readonly ARTIFACTS: R2BucketLike;
-  readonly TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS?: string;
-  readonly TRACECHAIN_LTI_REGISTRATIONS_JSON?: string;
-  readonly TRACECHAIN_LTI_TOOL_JWKS_JSON?: string;
-  readonly TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON?: string;
+  readonly SIMULEDGER_BOOTSTRAP_ADMIN_EMAILS?: string;
+  readonly SIMULEDGER_LTI_REGISTRATIONS_JSON?: string;
+  readonly SIMULEDGER_LTI_TOOL_JWKS_JSON?: string;
+  readonly SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON?: string;
 }
 
 const securityHeaders = {
@@ -297,7 +297,7 @@ function runnableHostedModeProfiles(
       );
       const experience =
         scenario.hostedRuntime?.runtimeId ===
-        "tracechain-technical-lab-v1"
+        "simuledger-technical-lab-v1"
           ? resolveHostedTechnicalLabExperience(locale)
           : resolveHostedExperienceConfiguration({
               packId: pack.packId,
@@ -753,7 +753,7 @@ function ltiErrorResponse(
 ): Response {
   const code = ltiErrorCode(error);
   if (code === null) {
-    console.error("TraceChain LTI failure", error);
+    console.error("SimuLedger LTI failure", error);
     return jsonResponse(500, {
       error: { code: "LTI_INTERNAL_ERROR" },
     });
@@ -809,12 +809,12 @@ async function ltiResponse(
     url.pathname === "/api/lti/v1/jwks"
   ) {
     const jwks = parseToolPublicJwks(
-      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+      environment.SIMULEDGER_LTI_TOOL_JWKS_JSON,
     );
     return jsonResponse(200, { keys: jwks.keys });
   }
   const registrations = parseLtiPlatformRegistrations(
-    environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+    environment.SIMULEDGER_LTI_REGISTRATIONS_JSON,
   );
   const clock = new SystemUtcClock();
   const repository = new D1LtiAuthenticationRepository(
@@ -1016,10 +1016,10 @@ async function ltiResponse(
       );
     }
     const toolJwks = parseToolPublicJwks(
-      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+      environment.SIMULEDGER_LTI_TOOL_JWKS_JSON,
     );
     const privateJwk = parseToolPrivateJwk(
-      environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      environment.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON,
       toolJwks,
     );
     const completedAt = clock.now();
@@ -1140,10 +1140,10 @@ async function ltiResponse(
       );
     }
     const publicJwks = parseToolPublicJwks(
-      environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+      environment.SIMULEDGER_LTI_TOOL_JWKS_JSON,
     );
     const privateJwk = parseToolPrivateJwk(
-      environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      environment.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON,
       publicJwks,
     );
     const snapshot = await fetchLtiNrpsRoster({
@@ -1335,7 +1335,7 @@ function errorResponse(error: unknown): Response {
       error: { code: error.code },
     });
   }
-  console.error("TraceChain hosted API failure", error);
+  console.error("SimuLedger hosted API failure", error);
   return jsonResponse(500, {
     error: {
       code: "INTERNAL_SERVER_ERROR",
@@ -1551,7 +1551,7 @@ async function enforceLtiCourseRequestScope(options: {
   ) {
     throw new HostedAuthorizationError(
       "RUN_ACCESS_DENIED",
-      "The Moodle learner launch is bound to another TraceChain assignment.",
+      "The Moodle learner launch is bound to another SimuLedger assignment.",
     );
   }
   const assignment = await new D1AssignmentRepository(
@@ -1804,7 +1804,7 @@ async function deliverCompletedRunToLtiAgs(options: {
       return { status: "failed", attemptCount: 0 };
     }
     const registration = parseLtiPlatformRegistrations(
-      options.environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+      options.environment.SIMULEDGER_LTI_REGISTRATIONS_JSON,
     ).find(
       (candidate) =>
         candidate.registrationId === context.registrationId,
@@ -1813,10 +1813,10 @@ async function deliverCompletedRunToLtiAgs(options: {
       return { status: "failed", attemptCount: 0 };
     }
     const publicJwks = parseToolPublicJwks(
-      options.environment.TRACECHAIN_LTI_TOOL_JWKS_JSON,
+      options.environment.SIMULEDGER_LTI_TOOL_JWKS_JSON,
     );
     const privateJwk = parseToolPrivateJwk(
-      options.environment.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON,
+      options.environment.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON,
       publicJwks,
     );
     const delivery = await deliverLtiAgsScore({
@@ -1842,7 +1842,7 @@ async function deliverCompletedRunToLtiAgs(options: {
     };
   } catch (error) {
     console.error(
-      "TraceChain LTI AGS delivery failed",
+      "SimuLedger LTI AGS delivery failed",
       error instanceof Error ? error.name : "UnknownError",
     );
     return { status: "failed", attemptCount: 0 };
@@ -2120,7 +2120,7 @@ async function apiResponse(
     sessionToken === null
       ? []
       : parseLtiPlatformRegistrations(
-          environment.TRACECHAIN_LTI_REGISTRATIONS_JSON,
+          environment.SIMULEDGER_LTI_REGISTRATIONS_JSON,
         );
   let principal: ApplicationPrincipal | null =
     authorizeLtiSessionPrincipal(
@@ -2154,7 +2154,7 @@ async function apiResponse(
           database: environment.DB,
           verifiedEmail,
           configuredEmailAllowlist:
-            environment.TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS,
+            environment.SIMULEDGER_BOOTSTRAP_ADMIN_EMAILS,
           clock,
         }))
       ) {
@@ -3264,7 +3264,7 @@ async function apiResponse(
           runtimeConfiguration: resolvedRuntimeConfiguration,
           experience:
             scenario.hostedRuntime?.runtimeId ===
-            "tracechain-technical-lab-v1"
+            "simuledger-technical-lab-v1"
               ? resolveHostedTechnicalLabExperience(locale)
               : resolveHostedExperienceConfiguration({
                   packId: publishedPack.packId,
@@ -3537,7 +3537,7 @@ async function apiResponse(
       : "en";
     const expectedExperience =
       scenario.hostedRuntime?.runtimeId ===
-      "tracechain-technical-lab-v1"
+      "simuledger-technical-lab-v1"
         ? resolveHostedTechnicalLabExperience(locale)
         : resolveHostedExperienceConfiguration({
             packId: pack.packId,
@@ -4275,7 +4275,7 @@ async function apiResponse(
     const report: AssignmentCounterfactualReportV1 = {
       schemaVersion: "1.0.0",
       reportType:
-        "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
+        "SIMULEDGER_ASSIGNMENT_COUNTERFACTUAL_REPORT",
       assignmentId: counterfactualReportAssignmentId,
       generatedAt: clock.now(),
       summary:

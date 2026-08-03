@@ -28,7 +28,7 @@ describe("application access administration", () => {
 
     expect(
       await screen.findByText(
-        "Your TraceChain account does not have administrator permission.",
+        "Your SimuLedger account does not have administrator permission.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -51,7 +51,7 @@ describe("application access administration", () => {
 
     expect(
       await screen.findByText(
-        "Administrator access could not be verified. Sign in through the hosted TraceChain site and try again.",
+        "Administrator access could not be verified. Sign in through the hosted SimuLedger site and try again.",
       ),
     ).toBeInTheDocument();
     expect(

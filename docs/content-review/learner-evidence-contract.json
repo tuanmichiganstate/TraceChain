@@ -32,7 +32,7 @@
       "roleVisibility": "DECISION_ROLE",
       "locations": [
         "src/features/stages/anchor-certificate-stage.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "stage.anchorCertificate.documentHeading",
@@ -50,7 +50,7 @@
       "locations": [
         "src/features/stages/anchor-certificate-stage.tsx",
         "src/scenarios/coffee-traceability/organizations.ts",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "stage.anchorCertificate.registry.heading",
@@ -82,7 +82,7 @@
       "roleVisibility": "DECISION_ROLE",
       "locations": [
         "src/features/stages/ship-and-monitor-stage.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "check.custodyScope.question",
@@ -111,7 +111,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json",
         "src/platform/learner/hosted-learner-screen.tsx"
       ],
       "localeKeys": [
@@ -158,7 +158,7 @@
       "roleVisibility": "DECISION_ROLE",
       "locations": [
         "src/features/stages/transform-batch-stage.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "check.transformationProvenance.question"
@@ -188,7 +188,7 @@
       "roleVisibility": "ALL_LEARNERS",
       "locations": [
         "src/features/stages/verify-and-tamper-stage.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "stage.verifyAndTamper.tamperIntro"
@@ -235,7 +235,7 @@
       "roleVisibility": "DECISION_ROLE",
       "locations": [
         "src/features/stages/recall-and-debrief-stage.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "stage.recallAndDebrief.instruction",
@@ -251,7 +251,7 @@
       "locations": [
         "src/features/stages/recall-and-debrief-stage.tsx",
         "src/scenarios/coffee-traceability/runtime.ts",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "stage.recallAndDebrief.activeOrganizationLabel",
@@ -280,7 +280,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         "src/platform/hosted/generic-run-service.ts"
       ],
       "localeKeys": [
@@ -296,7 +296,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         "src/platform/hosted/generic-run-service.ts"
       ],
       "localeKeys": [
@@ -313,7 +313,7 @@
       "locations": [
         "src/components/endorsed-transaction-action.tsx",
         "src/platform/learner/hosted-learner-screen.tsx",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "localeKeys": [
         "endorsement.policyHeading",
@@ -358,7 +358,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "scenario-packs/guided-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-run-service.ts",
         "src/platform/audit/hosted-audit-workspace.tsx"
       ],
@@ -377,7 +377,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "scenario-packs/guided-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-run-service.ts",
         "src/platform/audit/hosted-audit-workspace.tsx",
         "src/locales/en.json",
@@ -395,7 +395,7 @@
       "timing": "PRE_SUBMISSION",
       "roleVisibility": "DECISION_ROLE",
       "locations": [
-        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "scenario-packs/practice-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-run-service.ts",
         "src/platform/audit/hosted-audit-workspace.tsx"
       ],
@@ -519,7 +519,7 @@
       ],
       "answerAuthority": [
         "src/scenarios/coffee-traceability/knowledge-checks.ts",
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "result": "PASS"
     },
@@ -556,7 +556,7 @@
         "SRC_RECEIPT_AND_OWNERSHIP_TERMS"
       ],
       "answerAuthority": [
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json",
         "src/platform/hosted/stage3-run-service.ts"
       ],
       "result": "PASS"
@@ -614,7 +614,7 @@
         "SRC_TRANSFORMATION_STATE"
       ],
       "answerAuthority": [
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json",
         "src/platform/hosted/stage3-run-service.ts"
       ],
       "result": "PASS"
@@ -654,7 +654,7 @@
         "SRC_TAMPER_TASK"
       ],
       "answerAuthority": [
-        "scenario-packs/standard-coffee-stage3/tracechain.pack.json"
+        "scenario-packs/standard-coffee-stage3/simuledger.pack.json"
       ],
       "result": "PASS"
     },
@@ -779,7 +779,7 @@
         "SRC_PHARMA_SENSOR"
       ],
       "answerAuthority": [
-        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         "src/platform/hosted/generic-run-service.ts"
       ],
       "result": "PASS"
@@ -798,7 +798,7 @@
         "SRC_PHARMA_SENSOR"
       ],
       "answerAuthority": [
-        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         "src/platform/hosted/generic-run-service.ts"
       ],
       "result": "PASS"
@@ -817,7 +817,7 @@
         "SRC_PHARMA_INVESTIGATION"
       ],
       "answerAuthority": [
-        "scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         "src/platform/hosted/generic-run-service.ts"
       ],
       "result": "PASS"
@@ -922,7 +922,7 @@
         "SRC_GUIDED_AUDIT_CASE_EVIDENCE"
       ],
       "answerAuthority": [
-        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "scenario-packs/guided-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-scoring.ts",
         "src/platform/audit/audit-run-service.ts"
       ],
@@ -956,7 +956,7 @@
         "SRC_GUIDED_AUDIT_WORKPAPER"
       ],
       "answerAuthority": [
-        "scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "scenario-packs/guided-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-scoring.ts",
         "src/platform/audit/audit-run-service.ts"
       ],
@@ -993,7 +993,7 @@
         "SRC_PRACTICE_AUDIT_CASE_EVIDENCE"
       ],
       "answerAuthority": [
-        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "scenario-packs/practice-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-scoring.ts",
         "src/platform/audit/audit-run-service.ts"
       ],
@@ -1027,7 +1027,7 @@
         "SRC_GUIDED_AUDIT_WORKPAPER"
       ],
       "answerAuthority": [
-        "scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "scenario-packs/practice-coffee-audit/simuledger.pack.json",
         "src/platform/audit/audit-scoring.ts",
         "src/platform/audit/audit-run-service.ts"
       ],

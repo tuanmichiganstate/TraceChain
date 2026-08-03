@@ -9,8 +9,8 @@ import {
   type PlatformInitializationResult,
   type PlatformInteraction,
 } from "../infrastructure/scorm/learning-platform-adapter";
-import { decodeTc3Attempt } from "../infrastructure/persistence/tc3-codec";
-import { tc3CodecSchema } from "../domain/simulation/command-journal";
+import { decodeSl1Attempt } from "../infrastructure/persistence/sl1-codec";
+import { sl1CodecSchema } from "../domain/simulation/command-journal";
 import { challengeAScenario } from "../scenarios/challenge-a/scenario";
 import { challengeVariantBank } from "../scenarios/challenge-a/variant-bank";
 import { coffeeScenario } from "../scenarios/coffee-traceability/scenario";
@@ -103,9 +103,9 @@ describe("runtime attempt initialization", () => {
       ]?.scenario,
     );
 
-    const snapshot = decodeTc3Attempt(
+    const snapshot = decodeSl1Attempt(
       adapter.stored as string,
-      tc3CodecSchema({
+      sl1CodecSchema({
         configuration: CHALLENGE_PRESET,
         configurationHash: hashConfiguration(CHALLENGE_PRESET),
         scenario: initialized.scenario,

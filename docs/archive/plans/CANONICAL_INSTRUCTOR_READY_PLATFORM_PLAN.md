@@ -1,15 +1,15 @@
-# TraceChain Instructor-Ready Configurable Platform Refactor and Implementation Plan
+# SimuLedger Instructor-Ready Configurable Platform Refactor and Implementation Plan
 
 ## Active pre-release upgrade policy
 
-TraceChain has no student or production data to preserve. Upgrade every active
+SimuLedger has no student or production data to preserve. Upgrade every active
 contract directly, reset development data and generated packages, and maintain
 one current implementation. Do not add backfills, compatibility adapters, dual
 formats, or old-version readers.
 
 ## 1. Instructions to the coding agent
 
-Refactor the existing TraceChain application into a configurable, domain-agnostic platform for blockchain-enabled business simulations. Preserve the current working functionality and existing technology stack wherever reasonable. Do not perform a full rewrite unless the repository audit shows that incremental refactoring is impractical.
+Refactor the existing SimuLedger application into a configurable, domain-agnostic platform for blockchain-enabled business simulations. Preserve the current working functionality and existing technology stack wherever reasonable. Do not perform a full rewrite unless the repository audit shows that incremental refactoring is impractical.
 
 Before writing production code:
 
@@ -62,7 +62,7 @@ The graphical package builder belongs inside the instructor portal and must call
 
 ## 2. Product objective
 
-TraceChain should become a configurable simulation platform in which learners:
+SimuLedger should become a configurable simulation platform in which learners:
 
 - participate in multi-organization business processes;
 - inspect blockchain and non-blockchain evidence;
@@ -1168,7 +1168,7 @@ Do not store learner-visible text directly in core business logic.
 - instructor reviews and scores a response;
 - competency evidence links to the correct events;
 - a published scenario version remains unchanged after a new version is created;
-- the current TraceChain scenario remains playable through its native runtime profile.
+- the current SimuLedger scenario remains playable through its native runtime profile.
 
 ### Scenario validation tests
 
@@ -1185,7 +1185,7 @@ Create a test runner that can simulate all declared branches and flag:
 
 ---
 
-## 29. Direct upgrade of the current TraceChain application
+## 29. Direct upgrade of the current SimuLedger application
 
 1. Inventory the current stages, roles, assets, decisions, ledger functions, scoring, and stored data.
 2. Define the current scenario pack representing the coffee simulation.
@@ -1393,7 +1393,7 @@ The refactor is successful when all of the following are true:
 - Instructors can create assignments and generate validated SCORM packages through the graphical builder.
 - Scenario authors can import, validate, preview, version, publish, and retire scenario packs.
 - Hosted learner runs remain individual; no collaborative team workflow is required.
-- The existing TraceChain coffee experience works through the new engine.
+- The existing SimuLedger coffee experience works through the new engine.
 - Automated tests cover the critical state, permission, randomization, scoring, versioning, and replay behavior.
 
 ---
@@ -1427,7 +1427,7 @@ Start with the following concrete sequence:
 4. Publish a versioned JSON Schema for scenario packs.
 5. Build a command-line or admin validation tool for scenario packs.
 6. Create the append-only run-event store and role-filtered state projection.
-7. Convert one existing TraceChain stage into the new schema as a vertical slice.
+7. Convert one existing SimuLedger stage into the new schema as a vertical slice.
 8. Add the evidence workspace and structured decision submission for that stage.
 9. Add one policy check and one simulated blockchain transaction lifecycle.
 10. Add event replay and a basic instructor timeline.

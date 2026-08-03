@@ -4,12 +4,12 @@ import { GUIDED_PRESET } from "../../config/presets";
 import { hashConfiguration } from "../../config/hash";
 import type {
   CompactCommandJournalEntry,
-  Tc3AttemptSnapshot,
-} from "../../infrastructure/persistence/tc3-codec";
+  Sl1AttemptSnapshot,
+} from "../../infrastructure/persistence/sl1-codec";
 import {
-  decodeTc3Attempt,
-  encodeTc3Attempt,
-} from "../../infrastructure/persistence/tc3-codec";
+  decodeSl1Attempt,
+  encodeSl1Attempt,
+} from "../../infrastructure/persistence/sl1-codec";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type { RecallBatchCommand } from "../commands/commands";
 import { buildCausalReport } from "../reporting/causal-report";
@@ -27,7 +27,7 @@ import {
 import {
   contextIndex,
   JournalOpcode,
-  tc3CodecSchema,
+  sl1CodecSchema,
 } from "./command-journal";
 import { replayCommandJournal } from "./replay-journal";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
@@ -71,8 +71,8 @@ function contextIndexById(
 
 function snapshot(
   journal: readonly CompactCommandJournalEntry[],
-  decisions: Tc3AttemptSnapshot["decisions"],
-): Tc3AttemptSnapshot {
+  decisions: Sl1AttemptSnapshot["decisions"],
+): Sl1AttemptSnapshot {
   return {
     sessionId: "SES_REPLAY_TEST",
     currentStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
@@ -442,15 +442,15 @@ describe("deterministic consequential-command replay", () => {
         values: [],
       },
     ];
-    const schema = tc3CodecSchema({
+    const schema = sl1CodecSchema({
       configuration: signatureOnlyConfiguration,
       configurationHash: hashConfiguration(
         signatureOnlyConfiguration,
       ),
       scenario: coffeeScenario,
     });
-    const persisted = decodeTc3Attempt(
-      encodeTc3Attempt(snapshot(journal, {}), schema),
+    const persisted = decodeSl1Attempt(
+      encodeSl1Attempt(snapshot(journal, {}), schema),
       schema,
     );
     const replayed = await replayCommandJournal({

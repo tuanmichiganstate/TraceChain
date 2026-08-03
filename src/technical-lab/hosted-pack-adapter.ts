@@ -155,7 +155,7 @@ export const technicalLabHostedPackAdapter: ScenarioPackV2 = {
       rubricIds: [],
       evidenceRuleIds: [],
       hostedRuntime: {
-        runtimeId: "tracechain-technical-lab-v1",
+        runtimeId: "simuledger-technical-lab-v1",
         labPackId:
           permissionedFoundationsLabBundle.pack.labPackId,
         labPackVersion:

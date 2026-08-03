@@ -53,7 +53,7 @@ const deferredPromisePatterns = [
 
 const cacheRoot = join(projectRoot, "node_modules", ".cache");
 mkdirSync(cacheRoot, { recursive: true });
-const temporaryDirectory = mkdtempSync(join(cacheRoot, "tracechain-contract-"));
+const temporaryDirectory = mkdtempSync(join(cacheRoot, "simuledger-contract-"));
 const bundlePath = join(temporaryDirectory, "scenario-contract.mjs");
 
 try {

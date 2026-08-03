@@ -1,4 +1,4 @@
-# TraceChain pilot execution record V1
+# SimuLedger pilot execution record V1
 
 This record separates repository readiness from evidence that requires real
 participants, instructors, subject experts, or assistive-technology users. It

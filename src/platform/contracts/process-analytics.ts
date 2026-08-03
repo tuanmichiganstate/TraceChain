@@ -45,11 +45,11 @@ export interface ProcessAnalyticsRunV1 {
 export interface AssignmentProcessAnalyticsV1 {
   readonly schemaVersion: "1.2.0";
   readonly reportType:
-    "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS";
+    "SIMULEDGER_ASSIGNMENT_PROCESS_ANALYTICS";
   readonly interpretation:
     "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE";
   readonly ruleVersion:
-    "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0";
+    "SIMULEDGER_PROCESS_ANALYTICS_V1@1.2.0";
   readonly assignmentId: string;
   readonly packId: string;
   readonly packVersion: string;

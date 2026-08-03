@@ -103,7 +103,7 @@ UTF-8. `TextEncoder`, unlike `crypto.subtle`, has no secure-context requirement.
 The capability spike imported one fixed Ed25519 key, signed one message,
 verified it, rejected a modified message and compared repeated signature bytes.
 Native Web Crypto did not pass the repository's existing WebKit and Mobile
-Safari projects reliably, so TraceChain uses pinned
+Safari projects reliably, so SimuLedger uses pinned
 `@noble/ed25519@3.1.0` behind `SignatureProvider` in every environment. There
 is no browser-specific algorithm switch.
 

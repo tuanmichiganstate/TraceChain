@@ -2,7 +2,7 @@ import {
   DatabaseSync,
   type SQLInputValue,
 } from "node:sqlite";
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import { schemaStatements } from "../../../db/schema";
 import { FixedClock } from "../../domain/simulation/environment";
 import {
@@ -403,10 +403,10 @@ describe("D1 instructor-platform foundation", () => {
         "USER_ADMIN_001",
       );
       const repository = new D1ApplicationPrincipalRepository(database);
-      const request = new Request("https://tracechain.example/api/v1/session", {
+      const request = new Request("https://simuledger.example/api/v1/session", {
         headers: {
           "oai-authenticated-user-email": "instructor@example.EDU",
-          "x-tracechain-role": "administrator",
+          "x-simuledger-role": "administrator",
         },
       });
 
@@ -419,7 +419,7 @@ describe("D1 instructor-platform foundation", () => {
       });
       await expect(
         resolveAuthenticatedPrincipal(
-          new Request("https://tracechain.example/api/v1/session"),
+          new Request("https://simuledger.example/api/v1/session"),
           repository,
         ),
       ).rejects.toMatchObject({
@@ -427,7 +427,7 @@ describe("D1 instructor-platform foundation", () => {
       });
       await expect(
         resolveAuthenticatedPrincipal(
-          new Request("https://tracechain.example/api/v1/session", {
+          new Request("https://simuledger.example/api/v1/session", {
             headers: {
               "oai-authenticated-user-email": "unknown@example.edu",
             },

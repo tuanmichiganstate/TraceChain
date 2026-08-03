@@ -18,7 +18,7 @@ describe("transactional simulation persistence", () => {
       snapshot: { value: 1 },
       encode: () => {
         order.push("encode");
-        return "TC3.payload.checksum";
+        return "SL1.payload.checksum";
       },
       persistence,
       publish: () => {
@@ -33,7 +33,7 @@ describe("transactional simulation persistence", () => {
     await expect(
       persistBeforePublish({
         snapshot: { value: 1 },
-        encode: () => "TC3.payload.checksum",
+        encode: () => "SL1.payload.checksum",
         persistence: {
           load: async () => null,
           persistAndCommit: async () => {
@@ -50,8 +50,8 @@ describe("transactional simulation persistence", () => {
 
   it("memory persistence implements the same durable interface", async () => {
     const persistence = new MemorySimulationPersistence();
-    await persistence.persistAndCommit("TC3.one.hash");
-    expect(await persistence.load()).toBe("TC3.one.hash");
-    expect(persistence.writeHistory).toEqual(["TC3.one.hash"]);
+    await persistence.persistAndCommit("SL1.one.hash");
+    expect(await persistence.load()).toBe("SL1.one.hash");
+    expect(persistence.writeHistory).toEqual(["SL1.one.hash"]);
   });
 });

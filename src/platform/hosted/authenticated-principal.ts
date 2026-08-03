@@ -42,7 +42,7 @@ export async function resolveAuthenticatedPrincipal(
   if (principal === null) {
     throw new AuthenticatedPrincipalError(
       "APPLICATION_ACCESS_NOT_PROVISIONED",
-      "The authenticated user has no active TraceChain role.",
+      "The authenticated user has no active SimuLedger role.",
     );
   }
   return principal;

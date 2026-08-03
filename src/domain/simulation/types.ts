@@ -250,7 +250,7 @@ export interface SimulationRuntimeState {
     Record<string, PendingTransactionProposal>
   >;
   /**
-   * Runtime idempotency cache. TC3 persists the compact command journal and
+   * Runtime idempotency cache. SL1 persists the compact command journal and
    * rebuilds this index during replay rather than serializing event objects.
    */
   readonly outcomesByCommandId: Readonly<Record<string, ProcessedCommandOutcome>>;

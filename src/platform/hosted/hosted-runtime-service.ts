@@ -297,7 +297,7 @@ export function createHostedRuntimeService(options: {
   if (runtimeKind === "technical-lab-v1") {
     const profile = scenario.hostedRuntime;
     if (
-      profile?.runtimeId !== "tracechain-technical-lab-v1" ||
+      profile?.runtimeId !== "simuledger-technical-lab-v1" ||
       profile.labPackId !== options.pack.packId ||
       profile.labPackVersion !== options.pack.version
     ) {

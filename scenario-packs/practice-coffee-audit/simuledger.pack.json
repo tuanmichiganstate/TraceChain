@@ -1,8 +1,8 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "$schema": "../../schemas/simuledger-scenario-pack-v2.schema.json",
   "schemaVersion": "2.0.0",
-  "packId": "PACK_GUIDED_COFFEE_AUDIT",
-  "version": "2.0.0",
+  "packId": "PACK_PRACTICE_COFFEE_AUDIT",
+  "version": "1.0.0",
   "status": "draft",
   "supportedLocales": [
     "en",
@@ -13,7 +13,7 @@
       "platformPack.guidedAudit.manifest.title": "Guided coffee process audit",
       "platformPack.guidedAudit.manifest.description": "A bounded audit of certificate, quantity-correction, authorization, and ledger evidence from a completed coffee process.",
       "platformPack.guidedAudit.manifest.purpose": "Develop evidence-linked audit findings without changing the source process or its ledger.",
-      "platformPack.guidedAudit.framework.title": "TraceChain audit competencies",
+      "platformPack.guidedAudit.framework.title": "SimuLedger audit competencies",
       "platformPack.guidedAudit.competency.title": "Evidence-based audit judgment",
       "platformPack.guidedAudit.competency.description": "Evaluate process, ledger, document, and policy evidence to form proportionate audit findings.",
       "platformPack.guidedAudit.indicator.evidence": "Links an audit finding to relevant source evidence and policy.",
@@ -34,7 +34,7 @@
       "platformPack.guidedAudit.organization.regulator": "Food safety regulator",
       "platformPack.guidedAudit.role.auditor": "Process auditor",
       "platformPack.guidedAudit.media.scene.alt": "An auditor compares coffee certificates, receiving records, policy documents, and a green-coffee sample.",
-      "platformPack.guidedAudit.media.scene.caption": "Evidence-review workspace for the completed coffee process audit.",
+      "platformPack.guidedAudit.media.scene.caption": "Evidence-review workspace for an independent coffee process audit.",
       "platformPack.guidedAudit.staff.processAuditor.name": "Nguyễn Minh Khoa",
       "platformPack.guidedAudit.staff.processAuditor.alt": "Portrait of Nguyễn Minh Khoa, a fictional process auditor.",
       "platformPack.guidedAudit.staff.processAuditor.profile": "Reviews process records independently and documents findings supported by evidence and policy.",
@@ -63,9 +63,6 @@
       "platformPack.guidedAudit.recommend.document": "Require a documented discrepancy investigation before correction",
       "platformPack.guidedAudit.recommend.handoff": "Require regulator handoff before recall commitment",
       "platformPack.guidedAudit.recommend.none": "Do not raise a finding; retain the evidence as reviewed",
-      "platformPack.guidedAudit.hint.certificate": "Start with the certificate dates, then compare issuer recognition and authorization.",
-      "platformPack.guidedAudit.hint.correction": "Separate the append-only correction from the missing investigation record.",
-      "platformPack.guidedAudit.hint.recall": "Compare the rejected recall attempt with the later authorized commitment.",
       "platformPack.guidedAudit.conclusion.effective": "Controls operated effectively",
       "platformPack.guidedAudit.conclusion.qualified": "Controls operated with material exceptions",
       "platformPack.guidedAudit.conclusion.adverse": "Controls did not operate effectively",
@@ -101,13 +98,56 @@
       "platformPack.guidedAudit.finding.authorization.explanation": "The rejected attempt did not enter the ledger, but it is evidence that the recall control was invoked before the regulator handoff.",
       "platformPack.guidedAudit.decoy.correction": "The original quantity remained in history and both producer and processor endorsed the correction. This unusual change is a legitimate append-only transaction, not a ledger-integrity failure.",
       "platformPack.guidedAudit.decoy.delay": "A delay is unusual, but the available evidence does not show loss, contamination, or policy breach. Record it as an evidence limitation rather than an unsupported finding.",
-      "platformPack.guidedAudit.feedback.unsupported": "The selected category and entity pair is not supported as a finding by the evidence available in this audit scope."
+      "platformPack.guidedAudit.feedback.unsupported": "The selected category and entity pair is not supported as a finding by the evidence available in this audit scope.",
+      "platformPack.practiceAudit.manifest.title": "Practice coffee process audit",
+      "platformPack.practiceAudit.manifest.description": "A concise evidence-led audit of certificate authorization, custody endorsement, and correction-proposal controls.",
+      "platformPack.practiceAudit.manifest.purpose": "Practise independent control testing with on-request hints and append-only workpaper amendments.",
+      "platformPack.practiceAudit.scenario.title": "Practice coffee controls audit",
+      "platformPack.practiceAudit.organization.transporter": "Viet Coffee Logistics",
+      "platformPack.practiceAudit.node.briefing.title": "Plan and perform the practice audit",
+      "platformPack.practiceAudit.node.briefing.body": "Review the scope, inspect the records without anomaly markers, support each finding with evidence and policy, and issue a conclusion.",
+      "platformPack.practiceAudit.node.complete.title": "Practice audit complete",
+      "platformPack.practiceAudit.objective": "Assess whether certificate authorization, custody endorsement, and quantity-correction proposal controls operated as intended.",
+      "platformPack.practiceAudit.scope": "Certificate, custody-transfer, and quantity-correction controls for BAT_GREEN_COFFEE_204",
+      "platformPack.practiceAudit.evidence.certificate": "Certificate signature and issuer record",
+      "platformPack.practiceAudit.evidence.registry": "Organization authorization registry",
+      "platformPack.practiceAudit.evidence.custody": "Custody-transfer commitment evidence",
+      "platformPack.practiceAudit.evidence.receipt": "Receiving report for the transferred lot",
+      "platformPack.practiceAudit.evidence.correctionA": "Processor correction proposal",
+      "platformPack.practiceAudit.evidence.correctionB": "Producer endorsement statement",
+      "platformPack.practiceAudit.evidence.recall": "Authorized emergency recall record",
+      "platformPack.practiceAudit.evidence.variance": "Documented handling-variance note",
+      "platformPack.practiceAudit.record.certificate": "Quality-certificate submission record",
+      "platformPack.practiceAudit.record.custody": "Custody-transfer commitment attempt",
+      "platformPack.practiceAudit.record.receipt": "Processor receipt recorded after physical handoff",
+      "platformPack.practiceAudit.record.correctionA": "Processor proposed an append-only quantity correction",
+      "platformPack.practiceAudit.record.correctionB": "Producer correction-endorsement statement",
+      "platformPack.practiceAudit.record.recall": "Regulator committed an authorized emergency recall",
+      "platformPack.practiceAudit.record.variance": "Handling-variance note",
+      "platformPack.practiceAudit.root.authorization": "Signer authorization was not checked before submission",
+      "platformPack.practiceAudit.root.receiver": "Receiver acceptance was not obtained before recording transfer",
+      "platformPack.practiceAudit.root.proposal": "Organizations approved different proposal contents",
+      "platformPack.practiceAudit.recommend.authorizedCertifier": "Require an authorized certifier before certificate submission",
+      "platformPack.practiceAudit.recommend.receiver": "Require receiver endorsement before custody transfer",
+      "platformPack.practiceAudit.recommend.proposal": "Create one revised proposal and collect matching endorsements",
+      "platformPack.practiceAudit.hint.authorization": "Compare what the signer is allowed to do with the action shown in the certificate record.",
+      "platformPack.practiceAudit.hint.custody": "Check whether both parties approved the same custody transfer before commitment was attempted.",
+      "platformPack.practiceAudit.hint.proposal": "Compare the proposal digests and corrected quantities in both endorsement records.",
+      "platformPack.practiceAudit.finding.certificate.title": "Certificate action used an unauthorized signer",
+      "platformPack.practiceAudit.finding.certificate.explanation": "The transporter signature is cryptographically valid and the organization is recognized, but the registry does not authorize the transporter to issue quality certificates.",
+      "platformPack.practiceAudit.finding.custody.title": "Custody transfer was attempted without receiver endorsement",
+      "platformPack.practiceAudit.finding.custody.explanation": "The sender endorsed release, but no receiving-custodian endorsement existed. The attempt remained in audit history and did not enter the ledger.",
+      "platformPack.practiceAudit.finding.correction.title": "Correction endorsements referred to different proposals",
+      "platformPack.practiceAudit.finding.correction.explanation": "Both signatures verify individually, but the processor and producer signed different proposal digests, so the endorsement policy was not satisfied.",
+      "platformPack.practiceAudit.decoy.recall": "The regulator used the authorized role and the emergency-recall record is supported by policy. It is a legitimate control action.",
+      "platformPack.practiceAudit.decoy.variance": "The 25 kg variance is within the authored tolerance and has a documented handling explanation. The available evidence does not support a finding.",
+      "platformPack.practiceAudit.feedback.unsupported": "The selected category and entity pair is not supported as a finding by the evidence in this practice scope."
     },
     "vi": {
       "platformPack.guidedAudit.manifest.title": "Kiểm toán có hướng dẫn quy trình cà phê",
       "platformPack.guidedAudit.manifest.description": "Một cuộc kiểm toán có giới hạn về chứng nhận, sửa số lượng, thẩm quyền và bằng chứng sổ cái của một quy trình cà phê đã hoàn thành.",
       "platformPack.guidedAudit.manifest.purpose": "Phát triển phát hiện kiểm toán có liên kết bằng chứng mà không thay đổi quy trình nguồn hoặc sổ cái.",
-      "platformPack.guidedAudit.framework.title": "Năng lực kiểm toán TraceChain",
+      "platformPack.guidedAudit.framework.title": "Năng lực kiểm toán SimuLedger",
       "platformPack.guidedAudit.competency.title": "Xét đoán kiểm toán dựa trên bằng chứng",
       "platformPack.guidedAudit.competency.description": "Đánh giá bằng chứng quy trình, sổ cái, tài liệu và chính sách để hình thành phát hiện kiểm toán tương xứng.",
       "platformPack.guidedAudit.indicator.evidence": "Liên kết phát hiện kiểm toán với bằng chứng nguồn và chính sách phù hợp.",
@@ -128,7 +168,7 @@
       "platformPack.guidedAudit.organization.regulator": "Cơ quan quản lý an toàn thực phẩm",
       "platformPack.guidedAudit.role.auditor": "Kiểm toán viên quy trình",
       "platformPack.guidedAudit.media.scene.alt": "Kiểm toán viên đối chiếu chứng nhận cà phê, biên bản nhận hàng, tài liệu chính sách và mẫu cà phê nhân.",
-      "platformPack.guidedAudit.media.scene.caption": "Không gian rà soát bằng chứng cho cuộc kiểm toán quy trình cà phê đã hoàn thành.",
+      "platformPack.guidedAudit.media.scene.caption": "Không gian rà soát bằng chứng cho cuộc kiểm toán độc lập quy trình cà phê.",
       "platformPack.guidedAudit.staff.processAuditor.name": "Nguyễn Minh Khoa",
       "platformPack.guidedAudit.staff.processAuditor.alt": "Chân dung Nguyễn Minh Khoa, kiểm toán viên quy trình hư cấu.",
       "platformPack.guidedAudit.staff.processAuditor.profile": "Rà soát độc lập hồ sơ quy trình và ghi nhận các phát hiện được bằng chứng cùng chính sách hỗ trợ.",
@@ -157,9 +197,6 @@
       "platformPack.guidedAudit.recommend.document": "Yêu cầu ghi nhận điều tra chênh lệch trước khi sửa",
       "platformPack.guidedAudit.recommend.handoff": "Yêu cầu bàn giao cho cơ quan quản lý trước khi cam kết thu hồi",
       "platformPack.guidedAudit.recommend.none": "Không nêu phát hiện; lưu lại bằng chứng đã rà soát",
-      "platformPack.guidedAudit.hint.certificate": "Hãy bắt đầu từ các ngày trên chứng nhận, rồi đối chiếu sự công nhận và thẩm quyền của đơn vị cấp.",
-      "platformPack.guidedAudit.hint.correction": "Hãy tách giao dịch sửa chỉ ghi thêm khỏi tài liệu điều tra còn thiếu.",
-      "platformPack.guidedAudit.hint.recall": "Hãy so sánh lần thử thu hồi bị từ chối với giao dịch có thẩm quyền sau đó.",
       "platformPack.guidedAudit.conclusion.effective": "Các kiểm soát vận hành hiệu quả",
       "platformPack.guidedAudit.conclusion.qualified": "Các kiểm soát vận hành nhưng có ngoại lệ trọng yếu",
       "platformPack.guidedAudit.conclusion.adverse": "Các kiểm soát không vận hành hiệu quả",
@@ -195,19 +232,62 @@
       "platformPack.guidedAudit.finding.authorization.explanation": "Lần thử bị từ chối không vào sổ cái, nhưng là bằng chứng rằng kiểm soát thu hồi được kích hoạt trước khi bàn giao cho cơ quan quản lý.",
       "platformPack.guidedAudit.decoy.correction": "Số lượng ban đầu vẫn còn trong lịch sử và cả nhà sản xuất lẫn đơn vị chế biến đã xác nhận bản sửa. Thay đổi bất thường này là giao dịch chỉ ghi thêm hợp lệ, không phải lỗi toàn vẹn sổ cái.",
       "platformPack.guidedAudit.decoy.delay": "Chậm trễ là bất thường, nhưng bằng chứng hiện có không cho thấy tổn thất, nhiễm bẩn hay vi phạm chính sách. Hãy ghi đây là giới hạn bằng chứng thay vì nêu một phát hiện không được hỗ trợ.",
-      "platformPack.guidedAudit.feedback.unsupported": "Cặp nhóm phát hiện và đối tượng đã chọn không được bằng chứng trong phạm vi kiểm toán này hỗ trợ."
+      "platformPack.guidedAudit.feedback.unsupported": "Cặp nhóm phát hiện và đối tượng đã chọn không được bằng chứng trong phạm vi kiểm toán này hỗ trợ.",
+      "platformPack.practiceAudit.manifest.title": "Kiểm toán thực hành quy trình cà phê",
+      "platformPack.practiceAudit.manifest.description": "Cuộc kiểm toán ngắn, dựa trên bằng chứng về thẩm quyền chứng nhận, xác nhận lưu giữ và kiểm soát đề xuất sửa số lượng.",
+      "platformPack.practiceAudit.manifest.purpose": "Thực hành kiểm tra kiểm soát độc lập với gợi ý theo yêu cầu và sửa hồ sơ theo nguyên tắc chỉ ghi thêm.",
+      "platformPack.practiceAudit.scenario.title": "Kiểm toán thực hành kiểm soát cà phê",
+      "platformPack.practiceAudit.organization.transporter": "Đơn vị Vận chuyển Cà phê Việt",
+      "platformPack.practiceAudit.node.briefing.title": "Lập kế hoạch và thực hiện kiểm toán thực hành",
+      "platformPack.practiceAudit.node.briefing.body": "Rà soát phạm vi, kiểm tra hồ sơ không có dấu hiệu chỉ sẵn bất thường, hỗ trợ từng phát hiện bằng bằng chứng và chính sách rồi đưa ra kết luận.",
+      "platformPack.practiceAudit.node.complete.title": "Đã hoàn thành kiểm toán thực hành",
+      "platformPack.practiceAudit.objective": "Đánh giá liệu các kiểm soát về thẩm quyền chứng nhận, xác nhận chuyển giao lưu giữ và đề xuất sửa số lượng có vận hành đúng hay không.",
+      "platformPack.practiceAudit.scope": "Kiểm soát chứng nhận, chuyển giao lưu giữ và sửa số lượng đối với BAT_GREEN_COFFEE_204",
+      "platformPack.practiceAudit.evidence.certificate": "Hồ sơ chữ ký chứng nhận và đơn vị cấp",
+      "platformPack.practiceAudit.evidence.registry": "Sổ đăng ký thẩm quyền tổ chức",
+      "platformPack.practiceAudit.evidence.custody": "Bằng chứng về lần thử cam kết chuyển giao lưu giữ",
+      "platformPack.practiceAudit.evidence.receipt": "Biên bản nhận lô đã chuyển giao",
+      "platformPack.practiceAudit.evidence.correctionA": "Đề xuất sửa của đơn vị chế biến",
+      "platformPack.practiceAudit.evidence.correctionB": "Tuyên bố xác nhận của nhà sản xuất",
+      "platformPack.practiceAudit.evidence.recall": "Hồ sơ thu hồi khẩn cấp có thẩm quyền",
+      "platformPack.practiceAudit.evidence.variance": "Ghi chú chênh lệch xử lý có tài liệu",
+      "platformPack.practiceAudit.record.certificate": "Hồ sơ gửi chứng nhận chất lượng",
+      "platformPack.practiceAudit.record.custody": "Lần thử cam kết chuyển giao lưu giữ",
+      "platformPack.practiceAudit.record.receipt": "Đơn vị chế biến ghi nhận sau khi bàn giao vật lý",
+      "platformPack.practiceAudit.record.correctionA": "Đơn vị chế biến đề xuất sửa số lượng theo nguyên tắc chỉ ghi thêm",
+      "platformPack.practiceAudit.record.correctionB": "Tuyên bố xác nhận sửa của nhà sản xuất",
+      "platformPack.practiceAudit.record.recall": "Cơ quan quản lý cam kết thu hồi khẩn cấp có thẩm quyền",
+      "platformPack.practiceAudit.record.variance": "Ghi chú chênh lệch xử lý",
+      "platformPack.practiceAudit.root.authorization": "Chưa kiểm tra thẩm quyền của bên ký trước khi gửi",
+      "platformPack.practiceAudit.root.receiver": "Chưa nhận xác nhận của bên nhận trước khi ghi chuyển giao",
+      "platformPack.practiceAudit.root.proposal": "Các tổ chức đã phê duyệt nội dung đề xuất khác nhau",
+      "platformPack.practiceAudit.recommend.authorizedCertifier": "Yêu cầu đơn vị chứng nhận có thẩm quyền trước khi gửi chứng nhận",
+      "platformPack.practiceAudit.recommend.receiver": "Yêu cầu bên nhận xác nhận trước khi chuyển giao lưu giữ",
+      "platformPack.practiceAudit.recommend.proposal": "Tạo một đề xuất sửa mới và thu thập các xác nhận khớp nhau",
+      "platformPack.practiceAudit.hint.authorization": "Hãy đối chiếu hành động bên ký được phép thực hiện với hành động trong hồ sơ chứng nhận.",
+      "platformPack.practiceAudit.hint.custody": "Hãy kiểm tra liệu cả hai bên đã phê duyệt cùng một chuyển giao lưu giữ trước khi thử cam kết hay chưa.",
+      "platformPack.practiceAudit.hint.proposal": "Hãy so sánh hàm băm đề xuất và số lượng sửa trong hai hồ sơ xác nhận.",
+      "platformPack.practiceAudit.finding.certificate.title": "Hành động chứng nhận dùng bên ký không có thẩm quyền",
+      "platformPack.practiceAudit.finding.certificate.explanation": "Chữ ký của đơn vị vận chuyển hợp lệ về mật mã và tổ chức được công nhận, nhưng sổ đăng ký không cho phép đơn vị này cấp chứng nhận chất lượng.",
+      "platformPack.practiceAudit.finding.custody.title": "Đã thử chuyển giao lưu giữ khi thiếu xác nhận của bên nhận",
+      "platformPack.practiceAudit.finding.custody.explanation": "Bên gửi đã xác nhận bàn giao nhưng chưa có xác nhận của bên nhận lưu giữ. Lần thử được giữ trong lịch sử kiểm toán và không vào sổ cái.",
+      "platformPack.practiceAudit.finding.correction.title": "Các xác nhận sửa tham chiếu hai đề xuất khác nhau",
+      "platformPack.practiceAudit.finding.correction.explanation": "Từng chữ ký đều xác minh được, nhưng đơn vị chế biến và nhà sản xuất đã ký hai hàm băm đề xuất khác nhau nên chính sách xác nhận chưa được đáp ứng.",
+      "platformPack.practiceAudit.decoy.recall": "Cơ quan quản lý dùng đúng vai trò có thẩm quyền và hồ sơ thu hồi khẩn cấp được chính sách hỗ trợ. Đây là hành động kiểm soát hợp lệ.",
+      "platformPack.practiceAudit.decoy.variance": "Chênh lệch 25 kg nằm trong ngưỡng đã quy định và có giải thích xử lý bằng tài liệu. Bằng chứng hiện có không hỗ trợ nêu phát hiện.",
+      "platformPack.practiceAudit.feedback.unsupported": "Cặp nhóm phát hiện và đối tượng đã chọn không được bằng chứng trong phạm vi thực hành này hỗ trợ."
     }
   },
   "manifest": {
     "title": {
-      "localizationKey": "platformPack.guidedAudit.manifest.title"
+      "localizationKey": "platformPack.practiceAudit.manifest.title"
     },
     "description": {
-      "localizationKey": "platformPack.guidedAudit.manifest.description"
+      "localizationKey": "platformPack.practiceAudit.manifest.description"
     },
     "domain": "coffee_audit",
     "educationalPurpose": {
-      "localizationKey": "platformPack.guidedAudit.manifest.purpose"
+      "localizationKey": "platformPack.practiceAudit.manifest.purpose"
     }
   },
   "competencyFrameworks": [
@@ -348,7 +428,7 @@
       "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
       "purpose": "SCENE_ILLUSTRATION",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
       "rightsDeclaration": "NO_IDENTIFIABLE_PEOPLE",
       "originalFileName": "audit-evidence-review.webp",
       "filePath": "media/scenes/audit-evidence-review.webp",
@@ -368,7 +448,7 @@
       "assetId": "PORTRAIT_AUDIT_PROCESS_AUDITOR",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-08-02",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "process-auditor.webp",
       "filePath": "media/staff/process-auditor.webp",
@@ -385,18 +465,18 @@
   "auditVariantBanks": [],
   "scenarios": [
     {
-      "scenarioId": "SCN_GUIDED_COFFEE_AUDIT",
-      "version": "2.0.0",
+      "scenarioId": "SCN_PRACTICE_COFFEE_AUDIT",
+      "version": "1.0.0",
       "status": "draft",
       "title": {
-        "localizationKey": "platformPack.guidedAudit.scenario.title"
+        "localizationKey": "platformPack.practiceAudit.scenario.title"
       },
       "supportedModes": [
-        "tutorial"
+        "standard"
       ],
       "modeConfigurations": [
         {
-          "mode": "tutorial",
+          "mode": "standard",
           "allowHints": true,
           "allowRetry": true,
           "allowBacktracking": true,
@@ -406,15 +486,15 @@
           "seedPolicy": "supplied",
           "allowCommunication": false,
           "allowEvidenceRequests": true,
-          "outcomeModelId": "OUTCOME_GUIDED_AUDIT",
+          "outcomeModelId": "OUTCOME_PRACTICE_AUDIT",
           "forcedOutcomeCode": "FIXED_SOURCE_PROCESS"
         }
       ],
       "outcomeModels": [
         {
-          "outcomeModelId": "OUTCOME_GUIDED_AUDIT",
+          "outcomeModelId": "OUTCOME_PRACTICE_AUDIT",
           "distribution": "weighted-categorical",
-          "randomStreamId": "STREAM_GUIDED_AUDIT",
+          "randomStreamId": "STREAM_PRACTICE_AUDIT",
           "outcomes": [
             {
               "outcomeCode": "FIXED_SOURCE_PROCESS",
@@ -467,6 +547,12 @@
           "organizationId": "ORG_REGULATOR",
           "displayName": {
             "localizationKey": "platformPack.guidedAudit.organization.regulator"
+          }
+        },
+        {
+          "organizationId": "ORG_TRANSPORTER",
+          "displayName": {
+            "localizationKey": "platformPack.practiceAudit.organization.transporter"
           }
         }
       ],
@@ -576,17 +662,17 @@
       "evidenceItems": [
         {
           "evidenceId": "EVID_AUD_CERTIFICATE",
-          "evidenceType": "CERTIFICATE_RECORD",
+          "evidenceType": "SIGNATURE_VERIFICATION",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.certificate"
+            "localizationKey": "platformPack.practiceAudit.evidence.certificate"
           },
-          "sourceOrganizationId": "ORG_CERTIFICATION_BODY",
+          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
           "visibleToRoleIds": [
             "PROCESS_AUDITOR"
           ],
           "learnerMetadata": {
-            "ownerOrganizationId": "ORG_CERTIFICATION_BODY",
-            "signatureStatus": "NOT_APPLICABLE",
+            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
+            "signatureStatus": "VALID",
             "ledgerStatus": "OFF_CHAIN",
             "completeness": "COMPLETE",
             "access": {
@@ -600,23 +686,23 @@
             "reliability": "RELIABLE",
             "contentStatus": "ACCURATE",
             "limitationCodes": [
-              "CERTIFICATE_CONTENT_REQUIRES_POLICY_REVIEW"
+              "SIGNATURE_DOES_NOT_PROVE_AUTHORIZATION_OR_TRUTH"
             ],
             "hiddenConditionReferences": []
           },
           "content": {
-            "certificateId": "CERT_001",
-            "issuedAt": "2025-01-15T03:00:00.000Z",
-            "expiresAt": "2026-01-10T03:00:00.000Z",
-            "reviewedAt": "2026-01-15T03:00:00.000Z",
-            "lotDisposition": "CONTINUE"
+            "certificateId": "CERT_204",
+            "signerOrganizationId": "ORG_TRANSPORTER",
+            "signatureValid": true,
+            "signerRecognized": true,
+            "action": "ISSUE_CERTIFICATE"
           }
         },
         {
           "evidenceId": "EVID_AUD_CERTIFIER_REGISTRY",
           "evidenceType": "ORGANIZATION_REGISTRY",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.registry"
+            "localizationKey": "platformPack.practiceAudit.evidence.registry"
           },
           "sourceOrganizationId": "ORG_REGULATOR",
           "visibleToRoleIds": [
@@ -643,10 +729,10 @@
             "hiddenConditionReferences": []
           },
           "content": {
-            "organizationId": "ORG_CERTIFICATION_BODY",
+            "organizationId": "ORG_TRANSPORTER",
             "recognized": true,
             "authorizedActions": [
-              "ISSUE_CERTIFICATE"
+              "TRANSFER_CUSTODY"
             ]
           }
         },
@@ -654,7 +740,7 @@
           "evidenceId": "EVID_AUD_RECEIPT",
           "evidenceType": "RECEIVING_REPORT",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.receipt"
+            "localizationKey": "platformPack.practiceAudit.evidence.receipt"
           },
           "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
           "visibleToRoleIds": [
@@ -682,15 +768,16 @@
           },
           "content": {
             "declaredQuantityKg": 1000,
-            "receivedQuantityKg": 100,
-            "investigationReference": null
+            "receivedQuantityKg": 975,
+            "receivedAt": "2026-01-17T03:00:00.000Z",
+            "custodyAcceptedPhysically": true
           }
         },
         {
           "evidenceId": "EVID_AUD_CORRECTION",
-          "evidenceType": "LEDGER_TRANSACTION",
+          "evidenceType": "TRANSACTION_PROPOSAL",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.correction"
+            "localizationKey": "platformPack.practiceAudit.evidence.correctionA"
           },
           "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
           "visibleToRoleIds": [
@@ -698,48 +785,7 @@
           ],
           "learnerMetadata": {
             "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
-            "signatureStatus": "NOT_APPLICABLE",
-            "ledgerStatus": "FULL_RECORD_ON_LEDGER",
-            "completeness": "COMPLETE",
-            "access": {
-              "classification": "ROLE_RESTRICTED",
-              "acquisitionMode": "AVAILABLE",
-              "delayMinutes": 0,
-              "costUnits": 0
-            }
-          },
-          "assessmentMetadata": {
-            "reliability": "RELIABLE",
-            "contentStatus": "ACCURATE",
-            "limitationCodes": [
-              "LEDGER_INTEGRITY_DOES_NOT_PROVE_SOURCE_TRUTH"
-            ],
-            "hiddenConditionReferences": []
-          },
-          "content": {
-            "transactionId": "TX_CORRECTION_001",
-            "originalQuantityKg": 1000,
-            "correctedQuantityKg": 100,
-            "appendOnly": true,
-            "endorsers": [
-              "ORG_PRODUCER_COOP",
-              "ORG_COFFEE_PROCESSOR"
-            ]
-          }
-        },
-        {
-          "evidenceId": "EVID_AUD_RECALL_ATTEMPT",
-          "evidenceType": "ATTEMPT_AUDIT",
-          "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.recallAttempt"
-          },
-          "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
-          "visibleToRoleIds": [
-            "PROCESS_AUDITOR"
-          ],
-          "learnerMetadata": {
-            "ownerOrganizationId": "ORG_COFFEE_PROCESSOR",
-            "signatureStatus": "NOT_APPLICABLE",
+            "signatureStatus": "NOT_CHECKED",
             "ledgerStatus": "OFF_CHAIN",
             "completeness": "COMPLETE",
             "access": {
@@ -753,22 +799,62 @@
             "reliability": "RELIABLE",
             "contentStatus": "ACCURATE",
             "limitationCodes": [
-              "REJECTED_ATTEMPT_IS_NOT_LEDGER_STATE"
+              "PROPOSAL_IS_NOT_COMMITTED_STATE"
             ],
             "hiddenConditionReferences": []
           },
           "content": {
-            "attemptId": "ATTEMPT_RECALL_001",
-            "activeRoleId": "PROCESSING_MANAGER",
-            "accepted": false,
-            "ledgerMutation": false
+            "proposalId": "PROPOSAL_CORRECTION_204_A",
+            "proposalDigest": "7dd4f75afbaea27173fbcfd2dcf81966608a47639ba7b697d5112b101c74433a",
+            "originalQuantityKg": 1000,
+            "correctedQuantityKg": 975,
+            "appendOnly": true,
+            "signedBy": "ORG_COFFEE_PROCESSOR"
+          }
+        },
+        {
+          "evidenceId": "EVID_AUD_CORRECTION_ENDORSEMENT",
+          "evidenceType": "ENDORSEMENT_STATEMENT",
+          "title": {
+            "localizationKey": "platformPack.practiceAudit.evidence.correctionB"
+          },
+          "sourceOrganizationId": "ORG_PRODUCER_COOP",
+          "visibleToRoleIds": [
+            "PROCESS_AUDITOR"
+          ],
+          "learnerMetadata": {
+            "ownerOrganizationId": "ORG_PRODUCER_COOP",
+            "signatureStatus": "VALID",
+            "ledgerStatus": "OFF_CHAIN",
+            "completeness": "COMPLETE",
+            "access": {
+              "classification": "ROLE_RESTRICTED",
+              "acquisitionMode": "AVAILABLE",
+              "delayMinutes": 0,
+              "costUnits": 0
+            }
+          },
+          "assessmentMetadata": {
+            "reliability": "RELIABLE",
+            "contentStatus": "ACCURATE",
+            "limitationCodes": [
+              "ENDORSEMENT_DOES_NOT_PROVE_SOURCE_TRUTH"
+            ],
+            "hiddenConditionReferences": []
+          },
+          "content": {
+            "proposalId": "PROPOSAL_CORRECTION_204_B",
+            "proposalDigest": "43f0e5b91a043e675c089b41a140b00ff07eca05878a780fb2132a22eabfbef1",
+            "correctedQuantityKg": 970,
+            "signatureValid": true,
+            "signedBy": "ORG_PRODUCER_COOP"
           }
         },
         {
           "evidenceId": "EVID_AUD_RECALL_COMMIT",
           "evidenceType": "LEDGER_TRANSACTION",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.recallCommit"
+            "localizationKey": "platformPack.practiceAudit.evidence.recall"
           },
           "sourceOrganizationId": "ORG_REGULATOR",
           "visibleToRoleIds": [
@@ -795,11 +881,11 @@
             "hiddenConditionReferences": []
           },
           "content": {
-            "transactionId": "TX_RECALL_001",
+            "transactionId": "TX_RECALL_204",
             "activeRoleId": "REGULATORY_AUDITOR",
             "accepted": true,
             "scope": [
-              "BAT_PACKAGED_COFFEE_001"
+              "BAT_PACKAGED_COFFEE_204"
             ]
           }
         },
@@ -807,7 +893,7 @@
           "evidenceId": "EVID_AUD_CUSTODY",
           "evidenceType": "ENDORSEMENT_SUMMARY",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.custody"
+            "localizationKey": "platformPack.practiceAudit.evidence.custody"
           },
           "sourceOrganizationId": "ORG_PRODUCER_COOP",
           "visibleToRoleIds": [
@@ -834,17 +920,19 @@
             "hiddenConditionReferences": []
           },
           "content": {
-            "transactionId": "TX_CUSTODY_001",
+            "proposalId": "PROPOSAL_CUSTODY_204",
             "senderEndorsed": true,
-            "receiverEndorsed": true,
+            "receiverEndorsed": false,
+            "commitRejected": true,
+            "ledgerMutation": false,
             "stateVersionValid": true
           }
         },
         {
           "evidenceId": "EVID_AUD_TRANSIT",
-          "evidenceType": "PROCESS_NOTE",
+          "evidenceType": "VARIANCE_NOTE",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.evidence.transit"
+            "localizationKey": "platformPack.practiceAudit.evidence.variance"
           },
           "sourceOrganizationId": "ORG_COFFEE_PROCESSOR",
           "visibleToRoleIds": [
@@ -871,26 +959,26 @@
             "hiddenConditionReferences": []
           },
           "content": {
-            "delayHours": 3,
-            "lossConfirmed": false,
-            "contaminationConfirmed": false,
-            "policyBreachConfirmed": false
+            "varianceKg": 25,
+            "allowedToleranceKg": 30,
+            "explanationCode": "PACKAGING_SAMPLE_AND_HANDLING",
+            "documented": true
           }
         }
       ],
       "instructorIncidents": [],
       "counterfactualComparisonDimensions": [],
       "counterfactualConditions": [],
-      "entryNodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+      "entryNodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
       "nodes": [
         {
-          "nodeId": "NODE_GUIDED_AUDIT_BRIEFING",
+          "nodeId": "NODE_PRACTICE_AUDIT_BRIEFING",
           "nodeType": "BRIEFING",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.node.briefing.title"
+            "localizationKey": "platformPack.practiceAudit.node.briefing.title"
           },
           "body": {
-            "localizationKey": "platformPack.guidedAudit.node.briefing.body"
+            "localizationKey": "platformPack.practiceAudit.node.briefing.body"
           },
           "image": {
             "assetId": "SCENE_AUDIT_EVIDENCE_REVIEW",
@@ -903,8 +991,8 @@
           },
           "transitions": [
             {
-              "transitionId": "TRANSITION_GUIDED_AUDIT_COMPLETE",
-              "toNodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+              "transitionId": "TRANSITION_PRACTICE_AUDIT_COMPLETE",
+              "toNodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
               "when": {
                 "kind": "ALWAYS"
               }
@@ -912,12 +1000,12 @@
           ]
         },
         {
-          "nodeId": "NODE_GUIDED_AUDIT_COMPLETE",
+          "nodeId": "NODE_PRACTICE_AUDIT_COMPLETE",
           "nodeType": "COMPLETION",
           "title": {
-            "localizationKey": "platformPack.guidedAudit.node.complete.title"
+            "localizationKey": "platformPack.practiceAudit.node.complete.title"
           },
-          "outcomeCode": "GUIDED_AUDIT_COMPLETED",
+          "outcomeCode": "PRACTICE_AUDIT_COMPLETED",
           "transitions": []
         }
       ],
@@ -930,21 +1018,21 @@
         "EVIDENCE_RULE_GUIDED_AUDIT_CONCLUSION"
       ],
       "hostedRuntime": {
-        "runtimeId": "tracechain-audit-v1",
-        "auditCaseId": "AUDIT_COFFEE_CONTROLS_001"
+        "runtimeId": "simuledger-audit-v1",
+        "auditCaseId": "AUDIT_COFFEE_CONTROLS_PRACTICE_001"
       },
       "auditCase": {
         "schemaVersion": "3.0.0",
-        "auditCaseId": "AUDIT_COFFEE_CONTROLS_001",
-        "version": "2.0.0",
-        "sourceProcessId": "COFFEE_PROCESS_COMPLETED_001",
+        "auditCaseId": "AUDIT_COFFEE_CONTROLS_PRACTICE_001",
+        "version": "1.0.0",
+        "sourceProcessId": "COFFEE_PROCESS_COMPLETED_PRACTICE_001",
         "sourceProcessVersion": "1.0.0",
         "auditObjective": {
-          "localizationKey": "platformPack.guidedAudit.objective"
+          "localizationKey": "platformPack.practiceAudit.objective"
         },
         "scope": {
           "title": {
-            "localizationKey": "platformPack.guidedAudit.scope"
+            "localizationKey": "platformPack.practiceAudit.scope"
           },
           "periodStart": "2026-01-15T03:00:00.000Z",
           "periodEnd": "2026-01-22T03:00:00.000Z",
@@ -952,7 +1040,8 @@
             "ORG_PRODUCER_COOP",
             "ORG_COFFEE_PROCESSOR",
             "ORG_CERTIFICATION_BODY",
-            "ORG_REGULATOR"
+            "ORG_REGULATOR",
+            "ORG_TRANSPORTER"
           ],
           "entityIds": [
             "ENTITY_LOT_CERTIFICATE",
@@ -1035,21 +1124,21 @@
         ],
         "rootCauses": [
           {
-            "choiceId": "ROOT_EXPIRY_REVIEW",
+            "choiceId": "ROOT_AUTHORIZATION_REVIEW",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.root.expiryReview"
+              "localizationKey": "platformPack.practiceAudit.root.authorization"
             }
           },
           {
-            "choiceId": "ROOT_DOCUMENTATION_GAP",
+            "choiceId": "ROOT_RECEIVER_ENDORSEMENT",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.root.documentationGap"
+              "localizationKey": "platformPack.practiceAudit.root.receiver"
             }
           },
           {
-            "choiceId": "ROOT_ROLE_CONTROL",
+            "choiceId": "ROOT_PROPOSAL_CONTROL",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.root.roleControl"
+              "localizationKey": "platformPack.practiceAudit.root.proposal"
             }
           },
           {
@@ -1061,21 +1150,21 @@
         ],
         "recommendations": [
           {
-            "choiceId": "REC_HOLD_FOR_VALIDATION",
+            "choiceId": "REC_REQUIRE_AUTHORIZED_CERTIFIER",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.recommend.hold"
+              "localizationKey": "platformPack.practiceAudit.recommend.authorizedCertifier"
             }
           },
           {
-            "choiceId": "REC_REQUIRE_INVESTIGATION",
+            "choiceId": "REC_REQUIRE_RECEIVER_ENDORSEMENT",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.recommend.document"
+              "localizationKey": "platformPack.practiceAudit.recommend.receiver"
             }
           },
           {
-            "choiceId": "REC_REQUIRE_ROLE_HANDOFF",
+            "choiceId": "REC_RECREATE_MATCHING_PROPOSAL",
             "label": {
-              "localizationKey": "platformPack.guidedAudit.recommend.handoff"
+              "localizationKey": "platformPack.practiceAudit.recommend.proposal"
             }
           },
           {
@@ -1087,21 +1176,21 @@
         ],
         "hints": [
           {
-            "hintId": "HINT_CERTIFICATE_REVIEW",
+            "hintId": "HINT_AUTHORIZATION_COMPARISON",
             "text": {
-              "localizationKey": "platformPack.guidedAudit.hint.certificate"
+              "localizationKey": "platformPack.practiceAudit.hint.authorization"
             }
           },
           {
-            "hintId": "HINT_CORRECTION_REVIEW",
+            "hintId": "HINT_CUSTODY_ENDORSEMENT",
             "text": {
-              "localizationKey": "platformPack.guidedAudit.hint.correction"
+              "localizationKey": "platformPack.practiceAudit.hint.custody"
             }
           },
           {
-            "hintId": "HINT_RECALL_REVIEW",
+            "hintId": "HINT_PROPOSAL_DIGEST",
             "text": {
-              "localizationKey": "platformPack.guidedAudit.hint.recall"
+              "localizationKey": "platformPack.practiceAudit.hint.proposal"
             }
           }
         ],
@@ -1134,13 +1223,13 @@
         "expectedConclusionCategory": "QUALIFIED",
         "sourceRecords": [
           {
-            "sourceRecordId": "DOC_CERTIFICATE_001",
+            "sourceRecordId": "DOC_CERTIFICATE_204",
             "recordKind": "SOURCE_DOCUMENT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.certificate"
+              "localizationKey": "platformPack.practiceAudit.record.certificate"
             },
             "occurredAt": "2026-01-15T03:00:00.000Z",
-            "organizationId": "ORG_CERTIFICATION_BODY",
+            "organizationId": "ORG_TRANSPORTER",
             "entityIds": [
               "ENTITY_LOT_CERTIFICATE"
             ],
@@ -1152,16 +1241,17 @@
               "POL_CERTIFICATE_ACCEPTANCE"
             ],
             "details": {
-              "documentId": "CERT_001",
-              "expired": true,
-              "lotContinued": true
+              "documentId": "CERT_204",
+              "signatureValid": true,
+              "signerRecognized": true,
+              "signerAuthorized": false
             }
           },
           {
-            "sourceRecordId": "TX_CUSTODY_001",
-            "recordKind": "LEDGER_TRANSACTION",
+            "sourceRecordId": "TX_CUSTODY_204",
+            "recordKind": "ATTEMPT_AUDIT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.custody"
+              "localizationKey": "platformPack.practiceAudit.record.custody"
             },
             "occurredAt": "2026-01-16T03:00:00.000Z",
             "organizationId": "ORG_PRODUCER_COOP",
@@ -1175,16 +1265,18 @@
               "POL_CUSTODY_ENDORSEMENT"
             ],
             "details": {
-              "transactionType": "TRANSFER_CUSTODY",
+              "attemptedTransactionType": "TRANSFER_CUSTODY",
               "senderEndorsed": true,
-              "receiverEndorsed": true
+              "receiverEndorsed": false,
+              "accepted": false,
+              "ledgerMutation": false
             }
           },
           {
-            "sourceRecordId": "DOC_RECEIPT_001",
+            "sourceRecordId": "DOC_RECEIPT_204",
             "recordKind": "SOURCE_DOCUMENT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.receipt"
+              "localizationKey": "platformPack.practiceAudit.record.receipt"
             },
             "occurredAt": "2026-01-17T03:00:00.000Z",
             "organizationId": "ORG_COFFEE_PROCESSOR",
@@ -1199,15 +1291,15 @@
             ],
             "details": {
               "declaredQuantityKg": 1000,
-              "receivedQuantityKg": 100,
-              "investigationReference": null
+              "receivedQuantityKg": 975,
+              "physicalReceiptConfirmed": true
             }
           },
           {
-            "sourceRecordId": "TX_CORRECTION_001",
-            "recordKind": "LEDGER_TRANSACTION",
+            "sourceRecordId": "PROPOSAL_CORRECTION_204_A",
+            "recordKind": "PROCESS_EVENT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.correction"
+              "localizationKey": "platformPack.practiceAudit.record.correctionA"
             },
             "occurredAt": "2026-01-17T04:00:00.000Z",
             "organizationId": "ORG_COFFEE_PROCESSOR",
@@ -1221,41 +1313,42 @@
               "POL_QUANTITY_CORRECTION"
             ],
             "details": {
-              "transactionType": "CORRECT_RECORD",
+              "eventType": "CORRECTION_PROPOSAL_CREATED",
               "appendOnly": true,
               "previousValueKg": 1000,
-              "correctedValueKg": 100
+              "correctedValueKg": 975,
+              "proposalDigest": "7dd4f75afbaea27173fbcfd2dcf81966608a47639ba7b697d5112b101c74433a"
             }
           },
           {
-            "sourceRecordId": "ATTEMPT_RECALL_001",
-            "recordKind": "ATTEMPT_AUDIT",
+            "sourceRecordId": "ENDORSEMENT_CORRECTION_204_B",
+            "recordKind": "PROCESS_EVENT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.recallAttempt"
+              "localizationKey": "platformPack.practiceAudit.record.correctionB"
             },
             "occurredAt": "2026-01-21T03:00:00.000Z",
-            "organizationId": "ORG_COFFEE_PROCESSOR",
+            "organizationId": "ORG_PRODUCER_COOP",
             "entityIds": [
-              "ENTITY_RECALL_PROCESS"
+              "ENTITY_QUANTITY_CORRECTION"
             ],
             "evidenceIds": [
-              "EVID_AUD_RECALL_ATTEMPT"
+              "EVID_AUD_CORRECTION_ENDORSEMENT"
             ],
             "policyIds": [
-              "POL_RECALL_AUTHORIZATION"
+              "POL_QUANTITY_CORRECTION"
             ],
             "details": {
-              "attemptType": "INITIATE_RECALL",
-              "accepted": false,
-              "ledgerMutation": false,
-              "failureRuleId": "RULE_ROLE_NOT_AUTHORIZED"
+              "eventType": "CORRECTION_PROPOSAL_ENDORSED",
+              "signatureValid": true,
+              "correctedValueKg": 970,
+              "proposalDigest": "43f0e5b91a043e675c089b41a140b00ff07eca05878a780fb2132a22eabfbef1"
             }
           },
           {
-            "sourceRecordId": "TX_RECALL_001",
+            "sourceRecordId": "TX_RECALL_204",
             "recordKind": "LEDGER_TRANSACTION",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.recallCommit"
+              "localizationKey": "platformPack.practiceAudit.record.recall"
             },
             "occurredAt": "2026-01-21T04:00:00.000Z",
             "organizationId": "ORG_REGULATOR",
@@ -1275,23 +1368,24 @@
             }
           },
           {
-            "sourceRecordId": "NOTE_TRANSIT_DELAY_001",
+            "sourceRecordId": "NOTE_VARIANCE_204",
             "recordKind": "PROCESS_EVENT",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.record.delay"
+              "localizationKey": "platformPack.practiceAudit.record.variance"
             },
             "occurredAt": "2026-01-16T09:00:00.000Z",
             "organizationId": "ORG_COFFEE_PROCESSOR",
             "entityIds": [
-              "ENTITY_TRANSIT_DELAY"
+              "ENTITY_QUANTITY_RECEIPT"
             ],
             "evidenceIds": [
               "EVID_AUD_TRANSIT"
             ],
             "policyIds": [],
             "details": {
-              "delayHours": 3,
-              "confirmedLoss": false
+              "varianceKg": 25,
+              "allowedToleranceKg": 30,
+              "documented": true
             }
           }
         ],
@@ -1300,7 +1394,7 @@
           "EVID_AUD_CERTIFIER_REGISTRY",
           "EVID_AUD_RECEIPT",
           "EVID_AUD_CORRECTION",
-          "EVID_AUD_RECALL_ATTEMPT",
+          "EVID_AUD_CORRECTION_ENDORSEMENT",
           "EVID_AUD_RECALL_COMMIT",
           "EVID_AUD_CUSTODY",
           "EVID_AUD_TRANSIT"
@@ -1313,14 +1407,14 @@
         ],
         "findingDefinitions": [
           {
-            "findingDefinitionId": "FINDING_EXPIRED_CERTIFICATE",
+            "findingDefinitionId": "FINDING_UNAUTHORIZED_CERTIFICATE_SIGNER",
             "categoryId": "CATEGORY_CERTIFICATE_CONTROL",
             "entityId": "ENTITY_LOT_CERTIFICATE",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.finding.certificate.title"
+              "localizationKey": "platformPack.practiceAudit.finding.certificate.title"
             },
             "explanation": {
-              "localizationKey": "platformPack.guidedAudit.finding.certificate.explanation"
+              "localizationKey": "platformPack.practiceAudit.finding.certificate.explanation"
             },
             "requiredEvidenceIds": [
               "EVID_AUD_CERTIFICATE",
@@ -1332,10 +1426,10 @@
             "expectedSeverity": "HIGH",
             "expectedMateriality": "MATERIAL",
             "acceptableRootCauseCodes": [
-              "ROOT_EXPIRY_REVIEW"
+              "ROOT_AUTHORIZATION_REVIEW"
             ],
             "acceptableRecommendationCodes": [
-              "REC_HOLD_FOR_VALIDATION"
+              "REC_REQUIRE_AUTHORIZED_CERTIFIER"
             ],
             "competencyIndicatorIds": [
               "AUDIT_JUDGMENT.EVIDENCE",
@@ -1343,29 +1437,29 @@
             ]
           },
           {
-            "findingDefinitionId": "FINDING_MISSING_INVESTIGATION",
-            "categoryId": "CATEGORY_DOCUMENTATION_CONTROL",
-            "entityId": "ENTITY_QUANTITY_RECEIPT",
+            "findingDefinitionId": "FINDING_MISSING_RECEIVER_ENDORSEMENT",
+            "categoryId": "CATEGORY_AUTHORIZATION_CONTROL",
+            "entityId": "ENTITY_CUSTODY_TRANSFER",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.finding.documentation.title"
+              "localizationKey": "platformPack.practiceAudit.finding.custody.title"
             },
             "explanation": {
-              "localizationKey": "platformPack.guidedAudit.finding.documentation.explanation"
+              "localizationKey": "platformPack.practiceAudit.finding.custody.explanation"
             },
             "requiredEvidenceIds": [
-              "EVID_AUD_RECEIPT",
-              "EVID_AUD_CORRECTION"
+              "EVID_AUD_CUSTODY",
+              "EVID_AUD_RECEIPT"
             ],
             "applicablePolicyIds": [
-              "POL_QUANTITY_CORRECTION"
+              "POL_CUSTODY_ENDORSEMENT"
             ],
             "expectedSeverity": "MODERATE",
             "expectedMateriality": "MATERIAL",
             "acceptableRootCauseCodes": [
-              "ROOT_DOCUMENTATION_GAP"
+              "ROOT_RECEIVER_ENDORSEMENT"
             ],
             "acceptableRecommendationCodes": [
-              "REC_REQUIRE_INVESTIGATION"
+              "REC_REQUIRE_RECEIVER_ENDORSEMENT"
             ],
             "competencyIndicatorIds": [
               "AUDIT_JUDGMENT.EVIDENCE",
@@ -1373,29 +1467,29 @@
             ]
           },
           {
-            "findingDefinitionId": "FINDING_UNAUTHORIZED_RECALL_ATTEMPT",
-            "categoryId": "CATEGORY_AUTHORIZATION_CONTROL",
-            "entityId": "ENTITY_RECALL_PROCESS",
+            "findingDefinitionId": "FINDING_CORRECTION_PROPOSAL_MISMATCH",
+            "categoryId": "CATEGORY_LEDGER_INTEGRITY",
+            "entityId": "ENTITY_QUANTITY_CORRECTION",
             "title": {
-              "localizationKey": "platformPack.guidedAudit.finding.authorization.title"
+              "localizationKey": "platformPack.practiceAudit.finding.correction.title"
             },
             "explanation": {
-              "localizationKey": "platformPack.guidedAudit.finding.authorization.explanation"
+              "localizationKey": "platformPack.practiceAudit.finding.correction.explanation"
             },
             "requiredEvidenceIds": [
-              "EVID_AUD_RECALL_ATTEMPT",
-              "EVID_AUD_RECALL_COMMIT"
+              "EVID_AUD_CORRECTION",
+              "EVID_AUD_CORRECTION_ENDORSEMENT"
             ],
             "applicablePolicyIds": [
-              "POL_RECALL_AUTHORIZATION"
+              "POL_QUANTITY_CORRECTION"
             ],
-            "expectedSeverity": "MODERATE",
-            "expectedMateriality": "NON_MATERIAL",
+            "expectedSeverity": "HIGH",
+            "expectedMateriality": "MATERIAL",
             "acceptableRootCauseCodes": [
-              "ROOT_ROLE_CONTROL"
+              "ROOT_PROPOSAL_CONTROL"
             ],
             "acceptableRecommendationCodes": [
-              "REC_REQUIRE_ROLE_HANDOFF"
+              "REC_RECREATE_MATCHING_PROPOSAL"
             ],
             "competencyIndicatorIds": [
               "AUDIT_JUDGMENT.EVIDENCE",
@@ -1405,19 +1499,19 @@
         ],
         "decoyDefinitions": [
           {
-            "decoyDefinitionId": "DECOY_VALID_APPEND_ONLY_CORRECTION",
-            "categoryId": "CATEGORY_LEDGER_INTEGRITY",
-            "entityId": "ENTITY_QUANTITY_CORRECTION",
+            "decoyDefinitionId": "DECOY_AUTHORIZED_EMERGENCY_RECALL",
+            "categoryId": "CATEGORY_AUTHORIZATION_CONTROL",
+            "entityId": "ENTITY_RECALL_PROCESS",
             "explanation": {
-              "localizationKey": "platformPack.guidedAudit.decoy.correction"
+              "localizationKey": "platformPack.practiceAudit.decoy.recall"
             }
           },
           {
-            "decoyDefinitionId": "DECOY_UNSUPPORTED_TRANSIT_DELAY",
+            "decoyDefinitionId": "DECOY_DOCUMENTED_HANDLING_VARIANCE",
             "categoryId": "CATEGORY_BUSINESS_ANOMALY",
-            "entityId": "ENTITY_TRANSIT_DELAY",
+            "entityId": "ENTITY_QUANTITY_RECEIPT",
             "explanation": {
-              "localizationKey": "platformPack.guidedAudit.decoy.delay"
+              "localizationKey": "platformPack.practiceAudit.decoy.variance"
             }
           }
         ],
@@ -1458,7 +1552,7 @@
           ]
         },
         "supportProfiles": [
-          "GUIDED"
+          "PRACTICE"
         ],
         "inputLimits": {
           "maximumDrafts": 1,

@@ -20,8 +20,8 @@ import type {
 import type { LearnerInteraction } from "../../domain/types/scoring";
 import type {
   CompactCommandJournalEntry,
-  Tc3AttemptSnapshot,
-} from "../../infrastructure/persistence/tc3-codec";
+  Sl1AttemptSnapshot,
+} from "../../infrastructure/persistence/sl1-codec";
 import {
   createSimulationRuntimeState,
 } from "../../domain/simulation/command-handler";
@@ -130,7 +130,7 @@ export type SessionAction =
     }
   | {
       type: "RESUME";
-      snapshot: Tc3AttemptSnapshot;
+      snapshot: Sl1AttemptSnapshot;
       simulation: SimulationRuntimeState;
       lastTransactionId: string | null;
     }
@@ -301,10 +301,10 @@ export function stageNumber(stageId: ScenarioStageId): number {
   return SCENARIO_STAGE_ORDER.indexOf(stageId) + 1;
 }
 
-export function toTc3AttemptSnapshot(
+export function toSl1AttemptSnapshot(
   state: SessionState,
   isPassed: boolean,
-): Tc3AttemptSnapshot {
+): Sl1AttemptSnapshot {
   return {
     sessionId: state.sessionId,
     currentStageId: state.currentStageId,

@@ -1,4 +1,4 @@
-# TraceChain Guided SCORM: Annotated Instructor Walkthrough
+# SimuLedger Guided SCORM: Annotated Instructor Walkthrough
 
 > **Instructor copy — contains the complete answer path and final report.**
 >
@@ -7,14 +7,14 @@
 
 ## 1. What this document records
 
-This walkthrough was produced by completing the deployed **TraceChain Guided**
+This walkthrough was produced by completing the deployed **SimuLedger Guided**
 SCORM activity in the local Moodle demo, not by reconstructing screens from
 source code. Every screenshot and value below came from one continuous Moodle
 attempt completed on 28 July 2026.
 
 | Run property | Observed value |
 |---|---|
-| Moodle activity | TraceChain Guided |
+| Moodle activity | SimuLedger Guided |
 | Preset | Guided |
 | Locale | Vietnamese |
 | Scenario | `SCN_COFFEE_001@2.3.0` |
@@ -53,7 +53,7 @@ The document supports four practical uses:
 
 The case is intentionally business-first. A learner is not asked to handle
 private keys, choose an algorithm, mine a block, or operate a node. The learner
-makes supply-chain and governance decisions; TraceChain exposes the technical
+makes supply-chain and governance decisions; SimuLedger exposes the technical
 evidence needed to understand why a decision is accepted or rejected.
 
 ## 3. The conceptual model behind the screens
@@ -287,7 +287,7 @@ worth 0 points.
 ### Theory to emphasize
 
 “Garbage in, garbage out” still applies. A tamper-evident record of a false
-claim is still a false claim. TraceChain therefore treats source documents,
+claim is still a false claim. SimuLedger therefore treats source documents,
 role authority, sensor evidence, physical measurements, and investigation as
 part of the decision rather than treating the ledger as an oracle of truth.
 
@@ -1093,7 +1093,7 @@ Run summary:
 - Screenshots were cropped only to remove empty browser canvas; their visible UI
   content was not redrawn or synthesized.
 - The only browser console error was a Moodle theme request for
-  `theme/yui_image.php?.../arrows.png` returning 404. No TraceChain application
+  `theme/yui_image.php?.../arrows.png` returning 404. No SimuLedger application
   error was observed during the complete attempt.
 - The directory contains 63 screenshots, including intermediate states not all
   embedded in this narrative.

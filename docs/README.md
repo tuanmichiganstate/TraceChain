@@ -1,4 +1,4 @@
-# TraceChain documentation
+# SimuLedger documentation
 
 This index separates current implementation documentation from active human
 validation and historical delivery records.

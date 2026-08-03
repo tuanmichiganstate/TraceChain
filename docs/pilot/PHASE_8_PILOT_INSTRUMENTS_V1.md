@@ -1,4 +1,4 @@
-# TraceChain Phase 8 pilot instruments V1
+# SimuLedger Phase 8 pilot instruments V1
 
 **Instrument version:** 1.0.0
 
@@ -328,7 +328,7 @@ naturalness.
 
 - Use assignment-scoped pseudonyms unless identified data are necessary and
   approved.
-- Keep consent and identity linkage outside TraceChain exports.
+- Keep consent and identity linkage outside SimuLedger exports.
 - Never commit participant responses or identifiers to this repository.
 - Preserve exact configuration, pack, scenario, policy, rubric, bank, variant,
   seed, and source-commit identities.

@@ -1,5 +1,5 @@
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import en from "../../locales/en.json";
 import vi from "../../locales/vi.json";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";

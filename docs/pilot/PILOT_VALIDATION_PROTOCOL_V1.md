@@ -1,4 +1,4 @@
-# TraceChain pilot and validation protocol V1
+# SimuLedger pilot and validation protocol V1
 
 **Protocol version:** 1.0.0
 
@@ -28,7 +28,7 @@ collection.
 
 ## 1. Purpose
 
-This protocol evaluates whether TraceChain improves defensible professional
+This protocol evaluates whether SimuLedger improves defensible professional
 decision-making and whether instructors can operate the platform without
 developer assistance.
 
@@ -62,7 +62,7 @@ Recruit separate, clearly identified groups where practical:
 
 - learners with no prior blockchain study;
 - learners with prior blockchain study;
-- lecturers who did not build TraceChain;
+- lecturers who did not build SimuLedger;
 - a scenario author from another discipline;
 - screen-reader and keyboard-only users;
 - Vietnamese subject-matter reviewers;

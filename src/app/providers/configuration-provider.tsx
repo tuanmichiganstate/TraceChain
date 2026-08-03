@@ -2,13 +2,13 @@ import { createContext, useContext, type ReactNode } from "react";
 import {
   isBusinessSimulationConfiguration,
   type BusinessSimulationConfiguration,
-  type TraceChainConfiguration,
+  type SimuLedgerConfiguration,
 } from "../../config/types";
 import type { CryptographicRuntime } from "../../crypto/signatures/types";
 import type { ScenarioVariantBank } from "../../domain/scenario/variant-bank";
 
 interface ConfigurationContextValue {
-  readonly configuration: TraceChainConfiguration;
+  readonly configuration: SimuLedgerConfiguration;
   readonly configurationHash: string;
   readonly cryptographicRuntime: CryptographicRuntime | null;
   readonly variantBank: ScenarioVariantBank | null;
@@ -74,11 +74,11 @@ export function useOptionalConfiguration():
 }
 
 /** Top-level runtime dispatch may inspect either configuration variant. */
-export function useTraceChainConfiguration(): ConfigurationContextValue {
+export function useSimuLedgerConfiguration(): ConfigurationContextValue {
   const value = useContext(ConfigurationContext);
   if (value === null) {
     throw new Error(
-      "useTraceChainConfiguration must be used inside ConfigurationProvider",
+      "useSimuLedgerConfiguration must be used inside ConfigurationProvider",
     );
   }
   return value;

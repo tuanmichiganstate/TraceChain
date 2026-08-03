@@ -1,8 +1,8 @@
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
-import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import practiceAuditPackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
-import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
+import auditPackJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import practiceAuditPackJson from "../../../scenario-packs/practice-coffee-audit/simuledger.pack.json";
+import challengeAuditPackJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import { coffeeCryptographicRuntime } from "../../scenarios/coffee-traceability/cryptographic-runtime";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import en from "../../locales/en.json";
@@ -1470,7 +1470,7 @@ describe("scenario-pack validation", () => {
     if (
       scenario === undefined ||
       runtime === undefined ||
-      runtime.runtimeId !== "tracechain-coffee-v2"
+      runtime.runtimeId !== "simuledger-coffee-v2"
     ) return;
 
     expect(runtime.domainScenarioId).toBe(coffeeScenario.scenarioId);

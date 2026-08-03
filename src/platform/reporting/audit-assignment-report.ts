@@ -62,7 +62,7 @@ export interface AuditAssignmentRunReportV1 {
 
 export interface AuditAssignmentReportV1 {
   readonly schemaVersion: "1.0.0";
-  readonly reportType: "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT";
+  readonly reportType: "SIMULEDGER_AUDIT_ASSIGNMENT_REPORT";
   readonly assignmentId: string;
   readonly packId: string;
   readonly packVersion: string;
@@ -389,7 +389,7 @@ export function createAuditAssignmentReport(options: {
   const assignment = options.assignmentReport.assignment;
   return {
     schemaVersion: "1.0.0",
-    reportType: "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
+    reportType: "SIMULEDGER_AUDIT_ASSIGNMENT_REPORT",
     assignmentId: assignment.assignmentId,
     packId: assignment.packId,
     packVersion: assignment.packVersion,

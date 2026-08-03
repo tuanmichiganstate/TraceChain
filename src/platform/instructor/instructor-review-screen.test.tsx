@@ -33,7 +33,7 @@ const publishedCoffeeOption: HostedAssignmentScenarioOptionV1 = {
     "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title",
   labelsByLocale: {
     en: {
-      packTitle: "TraceChain coffee evidence and custody",
+      packTitle: "SimuLedger coffee evidence and custody",
       scenarioTitle: "Conflicting certificate evidence",
       description:
         "Investigate evidence and make accountable coffee supply-chain decisions.",
@@ -211,7 +211,7 @@ describe("instructor review screen", () => {
           report={{
             schemaVersion: "1.0.0",
             reportType:
-              "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT",
+              "SIMULEDGER_TECHNICAL_LAB_ASSIGNMENT_REPORT",
             assignmentId: "ASSIGNMENT_LAB_001",
             labPackId:
               "LAB_PERMISSIONED_BLOCKCHAIN_FOUNDATIONS",
@@ -337,8 +337,8 @@ describe("instructor review screen", () => {
           provider: "lti-1.3",
           launchType: "resource-link",
           issuer: "https://moodle.example",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_ACCOUNTING_101",
           resourceLinkId: "RESOURCE_INSTRUCTOR",
           contextTitle: "Accounting 101",
@@ -361,7 +361,7 @@ describe("instructor review screen", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "Manage TraceChain activities",
+        name: "Manage SimuLedger activities",
       }),
     ).toBeInTheDocument();
     expect(
@@ -405,8 +405,8 @@ describe("instructor review screen", () => {
           provider: "lti-1.3",
           launchType: "resource-link",
           issuer: "http://localhost:8080",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_DEMO_001",
           resourceLinkId: "RESOURCE_TECHNICAL_LAB",
         },
@@ -421,12 +421,12 @@ describe("instructor review screen", () => {
 
     expect(
       await screen.findByText(
-        "Moodle launched this activity with instructor permissions for assignment LTI_DEMO_TECHLAB_20260728, so TraceChain opened the instructor workspace. To test the learner activity, launch it from a Moodle account enrolled only as a student.",
+        "Moodle launched this activity with instructor permissions for assignment LTI_DEMO_TECHLAB_20260728, so SimuLedger opened the instructor workspace. To test the learner activity, launch it from a Moodle account enrolled only as a student.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This Moodle address is local to your computer. The hosted TraceChain server cannot contact it to synchronize the roster. Use already provisioned learners, or expose Moodle through an HTTPS address reachable by the hosted server.",
+        "This Moodle address is local to your computer. The hosted SimuLedger server cannot contact it to synchronize the roster. Use already provisioned learners, or expose Moodle through an HTTPS address reachable by the hosted server.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -473,8 +473,8 @@ describe("instructor review screen", () => {
           provider: "lti-1.3",
           launchType: "deep-linking",
           issuer: "https://moodle.example",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_ACCOUNTING_101",
           contextTitle: "Accounting 101",
         },
@@ -495,7 +495,7 @@ describe("instructor review screen", () => {
 
       expect(
         await screen.findByRole("heading", {
-          name: "Choose a TraceChain assignment",
+          name: "Choose a SimuLedger assignment",
         }),
       ).toBeInTheDocument();
       expect(
@@ -574,8 +574,8 @@ describe("instructor review screen", () => {
           provider: "lti-1.3",
           launchType: "resource-link",
           issuer: "https://moodle.example",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_ACCOUNTING_101",
           resourceLinkId: "RESOURCE_INSTRUCTOR",
         },
@@ -665,8 +665,8 @@ describe("instructor review screen", () => {
           provider: "lti-1.3",
           launchType: "resource-link",
           issuer: "https://moodle.example",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_ACCOUNTING_101",
           resourceLinkId: "RESOURCE_INSTRUCTOR",
         },
@@ -704,8 +704,8 @@ describe("instructor review screen", () => {
       jobId: "JOB_SCORM_ASSESSMENT_001",
       presetId: "assessment",
       status: "completed",
-      title: "TraceChain Assessment",
-      filename: "TraceChain_Assessment_StandardCoffee_vi_v2.2.0.zip",
+      title: "SimuLedger Assessment",
+      filename: "SimuLedger_Assessment_StandardCoffee_vi_v2.2.0.zip",
       sha256: "a".repeat(64),
       sizeBytes: 1234,
       release: true,
@@ -1179,7 +1179,7 @@ describe("instructor review screen", () => {
         scenarioVersion: "2.2.0",
         frameworks: [
           {
-            frameworkId: "TRACECHAIN_CORE",
+            frameworkId: "SIMULEDGER_CORE",
             frameworkVersion: "1.0.0",
           },
         ],
@@ -1188,7 +1188,7 @@ describe("instructor review screen", () => {
             learnerUserId: "USER_LEARNER_001",
             indicators: [
               {
-                frameworkId: "TRACECHAIN_CORE",
+                frameworkId: "SIMULEDGER_CORE",
                 frameworkVersion: "1.0.0",
                 competencyId: "BC3",
                 competencyVersion: "1.0.0",
@@ -1229,7 +1229,7 @@ describe("instructor review screen", () => {
         ],
         classIndicators: [
           {
-            frameworkId: "TRACECHAIN_CORE",
+            frameworkId: "SIMULEDGER_CORE",
             frameworkVersion: "1.0.0",
             competencyId: "BC3",
             competencyVersion: "1.0.0",
@@ -1257,13 +1257,13 @@ describe("instructor review screen", () => {
         scenarioVersion: "1.1.0",
         competencyFrameworks: [
           {
-            frameworkId: "TRACECHAIN_CORE",
+            frameworkId: "SIMULEDGER_CORE",
             frameworkVersion: "1.0.0",
           },
         ],
         competencyIndicators: [
           {
-            frameworkId: "TRACECHAIN_CORE",
+            frameworkId: "SIMULEDGER_CORE",
             frameworkVersion: "1.0.0",
             competencyId: "BC3",
             competencyVersion: "1.0.0",
@@ -1280,22 +1280,22 @@ describe("instructor review screen", () => {
             overlayVersion: "1.0.0",
             status: "ADOPTED",
             owner: {
-              ownerId: "TRACECHAIN_DEMO_COURSE",
+              ownerId: "SIMULEDGER_DEMO_COURSE",
               ownerType: "COURSE",
               displayName: {
                 valuesByLocale: {
-                  en: "TraceChain demonstration course",
-                  vi: "Học phần minh họa TraceChain",
+                  en: "SimuLedger demonstration course",
+                  vi: "Học phần minh họa SimuLedger",
                 },
               },
             },
             educationalDemoOnly: true,
             effectiveFrom: "2026-07-26",
             adoptedAt: "2026-07-26T00:00:00.000Z",
-            adoptedBy: "TRACECHAIN_DEMO_PRODUCT_OWNER",
-            traceChainFrameworks: [
+            adoptedBy: "SIMULEDGER_DEMO_PRODUCT_OWNER",
+            simuLedgerFrameworks: [
               {
-                frameworkId: "TRACECHAIN_CORE",
+                frameworkId: "SIMULEDGER_CORE",
                 frameworkVersion: "1.0.0",
               },
             ],
@@ -1307,7 +1307,7 @@ describe("instructor review screen", () => {
                 title:
                   "Pharmaceutical cold-chain course-outcome overlay",
                 ownerDisplayName:
-                  "TraceChain demonstration course",
+                  "SimuLedger demonstration course",
                 externalFrameworkTitle:
                   "Pilot pharmaceutical course outcomes",
                 outcomeTitles: {
@@ -1319,7 +1319,7 @@ describe("instructor review screen", () => {
                 title:
                   "Bảng đối chiếu chuẩn đầu ra học phần cho chuỗi lạnh dược phẩm",
                 ownerDisplayName:
-                  "Học phần minh họa TraceChain",
+                  "Học phần minh họa SimuLedger",
                 externalFrameworkTitle:
                   "Chuẩn đầu ra học phần dược phẩm thí điểm",
                 outcomeTitles: {
@@ -1383,11 +1383,11 @@ describe("instructor review screen", () => {
       loadAssignmentProcessAnalytics: vi.fn().mockResolvedValue({
         schemaVersion: "1.2.0",
         reportType:
-          "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+          "SIMULEDGER_ASSIGNMENT_PROCESS_ANALYTICS",
         interpretation:
           "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
         ruleVersion:
-          "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
+          "SIMULEDGER_PROCESS_ANALYTICS_V1@1.2.0",
         assignmentId: "ASSIGNMENT_EXPORT_001",
         packId: "PACK_STANDARD_COFFEE_STAGE3",
         packVersion: "1.4.0",
@@ -1498,7 +1498,7 @@ describe("instructor review screen", () => {
       }),
       loadAssignmentAuditReport: vi.fn().mockResolvedValue({
         schemaVersion: "1.0.0",
-        reportType: "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
+        reportType: "SIMULEDGER_AUDIT_ASSIGNMENT_REPORT",
         assignmentId: "ASSIGNMENT_EXPORT_001",
         packId: "PACK_COFFEE_AUDIT_CHALLENGE",
         packVersion: "1.0.0",
@@ -1876,7 +1876,7 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
     expect(
       report.getByText(
-        "Owned and adopted by TraceChain demonstration course (COURSE)",
+        "Owned and adopted by SimuLedger demonstration course (COURSE)",
       ),
     ).toBeInTheDocument();
     const curriculumOutcome = report
@@ -2362,7 +2362,7 @@ describe("instructor review screen", () => {
 
     expect(
       await screen.findByText(
-        "Your TraceChain account does not have an instructor, rater, or administrator role.",
+        "Your SimuLedger account does not have an instructor, rater, or administrator role.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Run ID")).not.toBeInTheDocument();
@@ -2433,7 +2433,7 @@ describe("instructor review screen", () => {
                   analytics: {
                     schemaVersion: "1.0.0",
                     reportType:
-                      "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+                      "SIMULEDGER_ASSIGNMENT_PROCESS_ANALYTICS",
                     runs: [],
                   },
                 }

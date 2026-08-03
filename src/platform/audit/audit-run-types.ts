@@ -1,4 +1,4 @@
-import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
+import type { SimuLedgerExperienceConfigurationV2 } from "../../config/types";
 import type { TrustedExecutionContext } from "../../domain/simulation/types";
 import type {
   AuditConclusionSubmissionV1,
@@ -34,7 +34,7 @@ export interface AuditHostedRunStateV1 {
   readonly variantAssignment?: AuditVariantAssignmentV1;
   readonly modeConfiguration: HostedRunModeConfigurationV1;
   readonly experienceConfiguration:
-    TraceChainExperienceConfigurationV2;
+    SimuLedgerExperienceConfigurationV2;
   readonly experienceConfigurationHash: string;
   readonly activeTrustedContext: TrustedExecutionContext;
   readonly version: number;

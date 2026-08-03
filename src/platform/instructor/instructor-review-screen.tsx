@@ -221,7 +221,7 @@ type FetchLike = (
 ) => Promise<Response>;
 
 const LTI_DEEP_LINK_SESSION_STORAGE_KEY =
-  "tracechain.lti.deep-link-session";
+  "simuledger.lti.deep-link-session";
 const LTI_SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,256}$/u;
 
 function boundedLtiSessionToken(value: string | null): string | null {
@@ -3650,7 +3650,7 @@ function AssignmentReport({
                   <a
                     className="button button--secondary"
                     href={`/api/v1/assignments/${encodeURIComponent(report.assignment.assignmentId)}/counterfactual-report`}
-                    download={`TraceChain_${report.assignment.assignmentId}_counterfactual_report_v1.json`}
+                    download={`SimuLedger_${report.assignment.assignmentId}_counterfactual_report_v1.json`}
                   >
                     {t(
                       "instructorReview.counterfactual.reportJson",
@@ -3922,7 +3922,7 @@ export function ClassTechnicalLabReport({
       <a
         className="button button--secondary"
         href={`/api/v1/assignments/${encodeURIComponent(report.assignmentId)}/technical-lab-report`}
-        download={`TraceChain_${report.assignmentId}_technical_lab_report_v1.json`}
+        download={`SimuLedger_${report.assignmentId}_technical_lab_report_v1.json`}
       >
         {t("instructorReview.technicalLab.export")}
       </a>

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tracechain.example/schemas/tracechain-scenario-pack-v2.schema.json",
-  "title": "TraceChain Scenario Pack V2",
-  "description": "Portable, declarative scenario-pack envelope for TraceChain hosted and SCORM delivery.",
+  "$id": "https://simuledger.example/schemas/simuledger-scenario-pack-v2.schema.json",
+  "title": "SimuLedger Scenario Pack V2",
+  "description": "Portable, declarative scenario-pack envelope for SimuLedger hosted and SCORM delivery.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -1379,7 +1379,7 @@
             "actionBindings"
           ],
           "properties": {
-            "runtimeId": { "const": "tracechain-coffee-v2" },
+            "runtimeId": { "const": "simuledger-coffee-v2" },
             "domainScenarioId": { "$ref": "#/$defs/identifier" },
             "domainScenarioVersion": { "$ref": "#/$defs/version" },
             "entryStageId": { "$ref": "#/$defs/identifier" },
@@ -1394,7 +1394,7 @@
           "additionalProperties": false,
           "required": ["runtimeId", "auditCaseId"],
           "properties": {
-            "runtimeId": { "const": "tracechain-audit-v1" },
+            "runtimeId": { "const": "simuledger-audit-v1" },
             "auditCaseId": { "$ref": "#/$defs/identifier" }
           }
         }

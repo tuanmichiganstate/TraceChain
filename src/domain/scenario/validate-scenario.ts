@@ -434,32 +434,32 @@ export function validateScenario(scenario: ScenarioDefinition): ScenarioValidati
   check(
     journalLimits.maximumStage3Mitigations <= 3,
     "runtime.journalLimits.maximumStage3Mitigations",
-    "Stage 3 mitigation count must remain within the authored TC3 budget",
+    "Stage 3 mitigation count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.maximumStage5Mitigations <= 2,
     "runtime.journalLimits.maximumStage5Mitigations",
-    "Stage 5 mitigation count must remain within the authored TC3 budget",
+    "Stage 5 mitigation count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.maximumStage9Handoffs <= 2,
     "runtime.journalLimits.maximumStage9Handoffs",
-    "Stage 9 handoff count must remain within the authored TC3 budget",
+    "Stage 9 handoff count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.maximumStage9Resubmissions <= 1,
     "runtime.journalLimits.maximumStage9Resubmissions",
-    "Stage 9 resubmission count must remain within the authored TC3 budget",
+    "Stage 9 resubmission count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.maximumEndorsementHandoffs <= 2,
     "runtime.journalLimits.maximumEndorsementHandoffs",
-    "Endorsement handoff count must remain within the authored TC3 budget",
+    "Endorsement handoff count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.maximumEndorsementDeclines <= 2,
     "runtime.journalLimits.maximumEndorsementDeclines",
-    "Endorsement decline count must remain within the authored TC3 budget",
+    "Endorsement decline count must remain within the authored SL1 budget",
   );
   check(
     journalLimits.correctionReasonMaximumUtf8Bytes > 0 &&

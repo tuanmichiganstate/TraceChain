@@ -1,8 +1,8 @@
 import type { BusinessSimulationConfiguration } from "../../config/types";
 import type {
   CompactCommandJournalEntry,
-  Tc3AttemptSnapshot,
-} from "../../infrastructure/persistence/tc3-codec";
+  Sl1AttemptSnapshot,
+} from "../../infrastructure/persistence/sl1-codec";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
   IncompatibleAttemptError,
@@ -235,7 +235,7 @@ function sealPending(
 }
 
 export async function replayCommandJournal(options: {
-  readonly snapshot: Tc3AttemptSnapshot;
+  readonly snapshot: Sl1AttemptSnapshot;
   readonly initialDomain: DomainState;
   readonly scenario: ScenarioDefinition;
   readonly configuration: BusinessSimulationConfiguration;

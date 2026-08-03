@@ -1,4 +1,4 @@
-# TraceChain Guided SCORM: Hướng dẫn có chú giải dành cho giảng viên
+# SimuLedger Guided SCORM: Hướng dẫn có chú giải dành cho giảng viên
 
 > **Bản dành cho giảng viên — tiết lộ toàn bộ đáp án và báo cáo cuối.**
 >
@@ -8,14 +8,14 @@
 
 ## 1. Tài liệu này ghi lại điều gì?
 
-Hướng dẫn này được tạo bằng cách hoàn thành hoạt động **TraceChain Guided**
+Hướng dẫn này được tạo bằng cách hoàn thành hoạt động **SimuLedger Guided**
 SCORM đã triển khai trên Moodle demo cục bộ. Các màn hình không được dựng lại từ
 mã nguồn. Mọi ảnh chụp và giá trị dưới đây đều đến từ một lượt học Moodle liên
 tục, hoàn thành ngày 28 tháng 7 năm 2026.
 
 | Thuộc tính của lượt học | Giá trị quan sát được |
 |---|---|
-| Hoạt động Moodle | TraceChain Guided |
+| Hoạt động Moodle | SimuLedger Guided |
 | Cấu hình định sẵn | Guided |
 | Ngôn ngữ | Tiếng Việt |
 | Kịch bản | `SCN_COFFEE_001@2.3.0` |
@@ -54,7 +54,7 @@ Tài liệu hỗ trợ bốn mục đích thực tế:
 
 Tình huống đặt quyết định nghiệp vụ ở vị trí trung tâm. Người học không phải
 quản lý khóa riêng, chọn thuật toán, đào khối hay vận hành nút mạng. Người học
-đưa ra quyết định về chuỗi cung ứng và quản trị; TraceChain hiển thị bằng chứng
+đưa ra quyết định về chuỗi cung ứng và quản trị; SimuLedger hiển thị bằng chứng
 kỹ thuật cần thiết để hiểu tại sao một quyết định được chấp nhận hoặc từ chối.
 
 ## 3. Mô hình khái niệm phía sau các màn hình
@@ -289,7 +289,7 @@ giá trị 0 điểm.
 
 Nguyên tắc “dữ liệu rác vào thì kết quả rác ra” vẫn đúng. Một bản ghi có thể
 phát hiện sửa đổi nhưng chứa tuyên bố sai thì vẫn là tuyên bố sai. Vì vậy,
-TraceChain xem tài liệu nguồn, thẩm quyền vai trò, dữ liệu cảm biến, đo lường vật
+SimuLedger xem tài liệu nguồn, thẩm quyền vai trò, dữ liệu cảm biến, đo lường vật
 lý và điều tra là một phần của quyết định, thay vì coi sổ cái như nguồn chân lý.
 
 ### Câu hỏi thảo luận
@@ -1097,6 +1097,6 @@ Tóm tắt lượt học:
   thấy không được vẽ lại hoặc tổng hợp.
 - Lỗi duy nhất trong bảng điều khiển trình duyệt là yêu cầu giao diện Moodle
   `theme/yui_image.php?.../arrows.png` trả về 404. Không quan sát thấy lỗi ứng
-  dụng TraceChain trong toàn bộ lượt học.
+  dụng SimuLedger trong toàn bộ lượt học.
 - Thư mục có 63 ảnh chụp, bao gồm một số trạng thái trung gian không được nhúng
   hết vào phần trình bày chính.

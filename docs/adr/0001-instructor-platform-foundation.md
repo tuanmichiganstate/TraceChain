@@ -10,7 +10,7 @@ from claiming that capability before its acceptance gate was met.
 
 ## Context
 
-The instructor-ready roadmap expands TraceChain from portable learner packages
+The instructor-ready roadmap expands SimuLedger from portable learner packages
 to a hosted, authenticated, server-authoritative platform. The repository audit
 found a mature browser/SCORM simulation core, no application backend or
 database, and an existing Cloudflare Sites project.
@@ -46,7 +46,7 @@ generic implementation merely to satisfy a folder structure.
 delivery modes. Hosted runs add `tutorial`, `standard`, `sandbox`, and
 `configured` behavior as a separate configuration field.
 
-This avoids reinterpreting existing package configuration and TC3 state.
+This avoids reinterpreting existing package configuration and SL1 state.
 
 ### Treat the server as authoritative only for hosted runs
 
@@ -64,7 +64,7 @@ endorsement Increment B remains a Phase 3 prerequisite.
 
 The hosted architecture uses deployment-provided authenticated identity or an
 institutional managed identity provider. Application-role authorization is
-server-side. TraceChain will not implement password storage.
+server-side. SimuLedger will not implement password storage.
 
 ## Consequences
 

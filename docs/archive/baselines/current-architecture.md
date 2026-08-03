@@ -19,7 +19,7 @@ file remains a fixed record of the earlier hosted-platform baseline.
 
 ## Product surfaces
 
-TraceChain currently has three delivery surfaces and no application backend:
+SimuLedger currently has three delivery surfaces and no application backend:
 
 1. A React learner application built by Vite.
 2. Portable Guided, Challenge, and Assessment SCORM 1.2 packages generated from
@@ -40,7 +40,7 @@ React presentation
   -> pure command validation and domain events
   -> SimulatedLedger
   -> deterministic reducer, hashing, scoring and reporting
-  -> compact TC3 journal
+  -> compact SL1 journal
   -> SimulationPersistence
        -> LearningPlatformPersistenceBridge -> SCORM 1.2
        -> MemorySimulationPersistence       -> headless tests
@@ -97,7 +97,7 @@ correctly keeps `endorsementPolicies` disabled.
 - scoring and ledger configuration;
 - trusted contexts, role handoffs, command templates, and journal limits.
 
-`TraceChainConfiguration` externalizes package mode, scenario identity and
+`SimuLedgerConfiguration` externalizes package mode, scenario identity and
 seed, feedback, hints, locale, technical features, and scoring. Guided,
 Challenge, and Assessment packages use the same static application files with
 different runtime JSON.
@@ -142,7 +142,7 @@ rewrite.
 
 Current authoritative state depends on delivery:
 
-- SCORM: the LMS persists a compact TC3 journal.
+- SCORM: the LMS persists a compact SL1 journal.
 - Standalone: browser local storage persists the same compact state.
 - Headless tests: memory persistence.
 

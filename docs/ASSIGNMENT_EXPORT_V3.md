@@ -38,10 +38,10 @@ GET /api/v1/assignments/{assignmentId}/export.csv?identity=pseudonymous
 Both responses use `Cache-Control: no-store` and an attachment filename:
 
 ```text
-TraceChain_{assignmentId}_evidence_v3.json
-TraceChain_{assignmentId}_evidence_v3.csv
-TraceChain_{assignmentId}_pseudonymous_evidence_v3.json
-TraceChain_{assignmentId}_pseudonymous_evidence_v3.csv
+SimuLedger_{assignmentId}_evidence_v3.json
+SimuLedger_{assignmentId}_evidence_v3.csv
+SimuLedger_{assignmentId}_pseudonymous_evidence_v3.json
+SimuLedger_{assignmentId}_pseudonymous_evidence_v3.csv
 ```
 
 ## JSON contract
@@ -50,7 +50,7 @@ The JSON document has:
 
 ```text
 schemaVersion       3.0.0
-exportType          TRACECHAIN_ASSIGNMENT_EVIDENCE
+exportType          SIMULEDGER_ASSIGNMENT_EVIDENCE
 identityMode        identified or pseudonymous
 researchMetadata    null or bounded controlled-study metadata
 generatedAt         UTC export timestamp
@@ -119,7 +119,7 @@ different content versions.
 The CSV layout identifier is:
 
 ```text
-TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V3
+SIMULEDGER_ASSIGNMENT_EVIDENCE_FLAT_V3
 ```
 
 CSV uses RFC 4180 quoting and CRLF line endings. It is one normalized table so
@@ -218,7 +218,7 @@ the event-derived `activity` object.
   the authored condition, random-assignment record reference, fixed seed,
   consent-status reference, optional pre/post-test linkage references,
   blinded-rater flag, intervention version, and retention-policy reference.
-- Those references are identifiers only. TraceChain does not manage consent,
+- Those references are identifiers only. SimuLedger does not manage consent,
   ethics review, recruitment, retention enforcement, or statistical analysis.
 - Pseudonymization is not anonymization. Run content, timestamps, decisions,
   and other evidence may still permit re-identification and must be handled as

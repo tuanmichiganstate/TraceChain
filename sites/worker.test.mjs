@@ -22,7 +22,7 @@ import {
 import { unzipSync } from "fflate";
 
 const buildDirectory = await mkdtemp(
-  join(tmpdir(), "tracechain-worker-test-"),
+  join(tmpdir(), "simuledger-worker-test-"),
 );
 const workerOutput = join(buildDirectory, "worker.mjs");
 await build({
@@ -41,7 +41,7 @@ after(async () => {
   await rm(buildDirectory, { recursive: true, force: true });
 });
 
-const appShell = "<!doctype html><title>TraceChain</title>";
+const appShell = "<!doctype html><title>SimuLedger</title>";
 const disabledCounterfactualReplay = {
   enabled: false,
   allowedDecisionNodeIds: [],
@@ -412,7 +412,7 @@ function apiRequest(pathname, options = {}) {
     email,
     method = "GET",
   } = options;
-  return new Request(`https://tracechain.example${pathname}`, {
+  return new Request(`https://simuledger.example${pathname}`, {
     method,
     headers: {
       ...(email === undefined
@@ -422,7 +422,7 @@ function apiRequest(pathname, options = {}) {
         ? {}
         : {
             "content-type": "application/json",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -459,7 +459,7 @@ async function standardCoffeePack() {
   return JSON.parse(
     await readFile(
       new URL(
-        "../scenario-packs/standard-coffee-stage3/tracechain.pack.json",
+        "../scenario-packs/standard-coffee-stage3/simuledger.pack.json",
         import.meta.url,
       ),
       "utf8",
@@ -471,7 +471,7 @@ async function pharmaceuticalColdChainPack() {
   return JSON.parse(
     await readFile(
       new URL(
-        "../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json",
+        "../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json",
         import.meta.url,
       ),
       "utf8",
@@ -483,7 +483,7 @@ async function guidedCoffeeAuditPack() {
   return JSON.parse(
     await readFile(
       new URL(
-        "../scenario-packs/guided-coffee-audit/tracechain.pack.json",
+        "../scenario-packs/guided-coffee-audit/simuledger.pack.json",
         import.meta.url,
       ),
       "utf8",
@@ -495,7 +495,7 @@ async function practiceCoffeeAuditPack() {
   return JSON.parse(
     await readFile(
       new URL(
-        "../scenario-packs/practice-coffee-audit/tracechain.pack.json",
+        "../scenario-packs/practice-coffee-audit/simuledger.pack.json",
         import.meta.url,
       ),
       "utf8",
@@ -506,7 +506,7 @@ async function practiceCoffeeAuditPack() {
 test("serves the application shell at the root without relying on Accept", async () => {
   const { env, requestedPaths } = createAssetEnvironment();
   const response = await worker.fetch(
-    new Request("https://tracechain.example/", {
+    new Request("https://simuledger.example/", {
       headers: { accept: "*/*" },
     }),
     env,
@@ -531,7 +531,7 @@ test("serves the application shell for browser navigation routes", async () => {
       { redirectNavigationToRoot: true },
     );
     const response = await worker.fetch(
-      new Request(`https://tracechain.example${pathname}`, {
+      new Request(`https://simuledger.example${pathname}`, {
         headers: { accept: "text/html,application/xhtml+xml" },
       }),
       env,
@@ -546,7 +546,7 @@ test("serves the application shell for browser navigation routes", async () => {
 test("preserves a missing-asset response for non-navigation requests", async () => {
   const { env, requestedPaths } = createAssetEnvironment();
   const response = await worker.fetch(
-    new Request("https://tracechain.example/missing.js", {
+    new Request("https://simuledger.example/missing.js", {
       headers: { accept: "application/javascript" },
     }),
     env,
@@ -560,7 +560,7 @@ test("requires deployment authentication for hosted API routes", async () => {
   const { env } = createAssetEnvironment();
   env.DB = createPrincipalDatabase([]);
   const response = await worker.fetch(
-    new Request("https://tracechain.example/api/v1/session"),
+    new Request("https://simuledger.example/api/v1/session"),
     env,
   );
 
@@ -588,10 +588,10 @@ test("returns only server-provisioned application roles", async () => {
     },
   ]);
   const response = await worker.fetch(
-    new Request("https://tracechain.example/api/v1/session", {
+    new Request("https://simuledger.example/api/v1/session", {
       headers: {
         "oai-authenticated-user-email": "Instructor@example.edu",
-        "x-tracechain-role": "administrator",
+        "x-simuledger-role": "administrator",
       },
     }),
     env,
@@ -609,8 +609,8 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
   const database = new SqliteD1Database();
   const { env } = createAssetEnvironment();
   const issuer = "https://moodle.example";
-  const clientId = "TRACECHAIN_CLIENT";
-  const deploymentId = "TRACECHAIN_DEPLOYMENT";
+  const clientId = "SIMULEDGER_CLIENT";
+  const deploymentId = "SIMULEDGER_DEPLOYMENT";
   const { publicKey, privateKey } = await generateKeyPair("RS256", {
     extractable: true,
   });
@@ -627,7 +627,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     use: "sig",
   };
   env.DB = database;
-  env.TRACECHAIN_LTI_REGISTRATIONS_JSON = JSON.stringify([
+  env.SIMULEDGER_LTI_REGISTRATIONS_JSON = JSON.stringify([
     {
       registrationId: "MOODLE_DEMO",
       issuer,
@@ -638,14 +638,14 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       tokenEndpoint: `${issuer}/mod/lti/token.php`,
       platformJwks: { keys: [publicJwk] },
       scenarioAuthorResourceLinkIds: [
-        "RESOURCE_TRACECHAIN_AUTHOR",
+        "RESOURCE_SIMULEDGER_AUTHOR",
       ],
     },
   ]);
-  env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
+  env.SIMULEDGER_LTI_TOOL_JWKS_JSON = JSON.stringify({
     keys: [publicJwk],
   });
-  env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+  env.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON =
     JSON.stringify(privateJwk);
 
   async function initiateLogin() {
@@ -653,14 +653,14 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       iss: issuer,
       login_hint: "LOGIN_HINT",
       target_link_uri:
-        "https://tracechain.example/api/lti/v1/launch",
+        "https://simuledger.example/api/lti/v1/launch",
       client_id: clientId,
       lti_deployment_id: deploymentId,
       lti_message_hint: "MESSAGE_HINT",
     });
     const response = await worker.fetch(
       new Request(
-        `https://tracechain.example/api/lti/v1/login?${parameters.toString()}`,
+        `https://simuledger.example/api/lti/v1/login?${parameters.toString()}`,
       ),
       env,
     );
@@ -688,7 +688,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor",
     ],
     contextId = "COURSE_ACCOUNTING_101",
-    resourceLinkId = "RESOURCE_TRACECHAIN_INSTRUCTOR",
+    resourceLinkId = "RESOURCE_SIMULEDGER_INSTRUCTOR",
     custom,
     subject = "MOODLE_USER_42",
     email = "instructor@example.edu",
@@ -753,7 +753,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       .sign(signingKey);
     const form = new URLSearchParams({ id_token: idToken, state });
     return worker.fetch(
-      new Request("https://tracechain.example/api/lti/v1/launch", {
+      new Request("https://simuledger.example/api/lti/v1/launch", {
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
@@ -766,7 +766,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
 
   try {
     const keyset = await worker.fetch(
-      new Request("https://tracechain.example/api/lti/v1/jwks"),
+      new Request("https://simuledger.example/api/lti/v1/jwks"),
       env,
     );
     assert.equal(keyset.status, 200);
@@ -789,10 +789,10 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     const cookie = launched.headers
       .get("set-cookie")
       .split(";")[0];
-    assert.match(cookie, /^__Host-tracechain-lti=/u);
+    assert.match(cookie, /^__Host-simuledger-lti=/u);
 
     const session = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie },
       }),
       env,
@@ -822,7 +822,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     const authorLogin = await initiateLogin();
     const authorLaunch = await launch({
       ...authorLogin,
-      resourceLinkId: "RESOURCE_TRACECHAIN_AUTHOR",
+      resourceLinkId: "RESOURCE_SIMULEDGER_AUTHOR",
       subject: "MOODLE_AUTHOR_42",
       email: "author@example.edu",
       name: "Scenario author",
@@ -840,7 +840,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       .get("set-cookie")
       .split(";")[0];
     const authorSession = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie: authorCookie },
       }),
       env,
@@ -855,7 +855,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       ["scenario-author"],
     );
     const authorCatalog = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/scenario-packs", {
+      new Request("https://simuledger.example/api/v1/scenario-packs", {
         headers: { cookie: authorCookie },
       }),
       env,
@@ -870,7 +870,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "/api/v1/admin/users",
     ]) {
       const forbidden = await worker.fetch(
-        new Request(`https://tracechain.example${forbiddenPath}`, {
+        new Request(`https://simuledger.example${forbiddenPath}`, {
           headers: { cookie: authorCookie },
         }),
         env,
@@ -892,7 +892,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       resourceLinkId: "RESOURCE_NOT_APPROVED_FOR_AUTHORING",
       subject: "MOODLE_INSTRUCTOR_CUSTOM_CLAIM",
       custom: {
-        tracechain_workspace: "scenario-author",
+        simuledger_workspace: "scenario-author",
       },
     });
     assert.equal(
@@ -903,7 +903,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       .get("set-cookie")
       .split(";")[0];
     const unapprovedAuthorSession = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie: unapprovedAuthorCookie },
       }),
       env,
@@ -991,13 +991,13 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       };
       const synchronized = await worker.fetch(
         new Request(
-          "https://tracechain.example/api/lti/v1/nrps/sync",
+          "https://simuledger.example/api/lti/v1/nrps/sync",
           {
             method: "POST",
             headers: {
               cookie,
               "content-type": "application/json",
-              origin: "https://tracechain.example",
+              origin: "https://simuledger.example",
             },
             body: JSON.stringify({
               syncId: "LTI_NRPS_SYNC_WORKER_001",
@@ -1038,7 +1038,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
 
       const synchronizedLearners = await worker.fetch(
         new Request(
-          "https://tracechain.example/api/v1/assignment-learners",
+          "https://simuledger.example/api/v1/assignment-learners",
           { headers: { cookie } },
         ),
         env,
@@ -1069,13 +1069,13 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       };
       const replayedSync = await worker.fetch(
         new Request(
-          "https://tracechain.example/api/lti/v1/nrps/sync",
+          "https://simuledger.example/api/lti/v1/nrps/sync",
           {
             method: "POST",
             headers: {
               cookie,
               "content-type": "application/json",
-              origin: "https://tracechain.example",
+              origin: "https://simuledger.example",
             },
             body: JSON.stringify({
               syncId: "LTI_NRPS_SYNC_WORKER_001",
@@ -1165,7 +1165,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "Same course",
       ...assignmentArguments,
       "COURSE_ACCOUNTING_101",
-      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "RESOURCE_SIMULEDGER_INSTRUCTOR",
       "2026-07-26T08:00:00.000Z",
       sessionBody.userId,
     );
@@ -1175,18 +1175,18 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "Other course",
       ...assignmentArguments,
       "COURSE_ACCOUNTING_202",
-      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "RESOURCE_SIMULEDGER_INSTRUCTOR",
       "2026-07-26T08:00:00.000Z",
       sessionBody.userId,
     );
 
     const emptyRosterAssignment = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/assignments", {
+      new Request("https://simuledger.example/api/v1/assignments", {
         method: "POST",
         headers: {
           cookie,
           "content-type": "application/json",
-          origin: "https://tracechain.example",
+          origin: "https://simuledger.example",
         },
         body: JSON.stringify({
           commandId: "COMMAND_LTI_EMPTY_ROSTER",
@@ -1216,12 +1216,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     );
     assert.ok(nrpsActiveUserId);
     const synchronizedRosterAssignment = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/assignments", {
+      new Request("https://simuledger.example/api/v1/assignments", {
         method: "POST",
         headers: {
           cookie,
           "content-type": "application/json",
-          origin: "https://tracechain.example",
+          origin: "https://simuledger.example",
         },
         body: JSON.stringify({
           commandId: "COMMAND_LTI_SYNCHRONIZED_ROSTER",
@@ -1277,12 +1277,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
         sessionBody.userId,
       );
     const outsideCourseAssignment = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/assignments", {
+      new Request("https://simuledger.example/api/v1/assignments", {
         method: "POST",
         headers: {
           cookie,
           "content-type": "application/json",
-          origin: "https://tracechain.example",
+          origin: "https://simuledger.example",
         },
         body: JSON.stringify({
           commandId: "COMMAND_LTI_OUTSIDE_COURSE",
@@ -1309,7 +1309,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
 
     const sameCourse = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_SAME_COURSE",
+        "https://simuledger.example/api/v1/assignments/ASSIGNMENT_SAME_COURSE",
         { headers: { cookie } },
       ),
       env,
@@ -1317,7 +1317,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     assert.equal(sameCourse.status, 200, await sameCourse.clone().text());
     const otherCourse = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_OTHER_COURSE",
+        "https://simuledger.example/api/v1/assignments/ASSIGNMENT_OTHER_COURSE",
         { headers: { cookie } },
       ),
       env,
@@ -1328,12 +1328,12 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       "RUN_ACCESS_DENIED",
     );
     const unscopedRun = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/runs", {
+      new Request("https://simuledger.example/api/v1/runs", {
         method: "POST",
         headers: {
           cookie,
           "content-type": "application/json",
-          origin: "https://tracechain.example",
+          origin: "https://simuledger.example",
         },
         body: "{}",
       }),
@@ -1360,9 +1360,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
-      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER",
+      resourceLinkId: "RESOURCE_SIMULEDGER_LEARNER",
       custom: {
-        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+        simuledger_assignment_id: "ASSIGNMENT_SAME_COURSE",
       },
       subject: "MOODLE_LEARNER_77",
       email: "learner@example.edu",
@@ -1378,7 +1378,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     assert.equal(learnerLaunch.status, 303);
     const learnerLocation = new URL(
       learnerLaunch.headers.get("location"),
-      "https://tracechain.example",
+      "https://simuledger.example",
     );
     assert.equal(learnerLocation.pathname, "/learner");
     assert.equal(
@@ -1393,7 +1393,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       .get("set-cookie")
       .split(";")[0];
     const learnerSession = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie: learnerCookie },
       }),
       env,
@@ -1407,7 +1407,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     );
     assert.equal(
       learnerSessionBody.learningContext.resourceLinkId,
-      "RESOURCE_TRACECHAIN_LEARNER",
+      "RESOURCE_SIMULEDGER_LEARNER",
     );
     assert.deepEqual(
       {
@@ -1446,7 +1446,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
 
     const learnerAssignments = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/learner/assignments",
+        "https://simuledger.example/api/v1/learner/assignments",
         { headers: { cookie: learnerCookie } },
       ),
       env,
@@ -1469,9 +1469,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
-      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER",
+      resourceLinkId: "RESOURCE_SIMULEDGER_LEARNER",
       custom: {
-        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+        simuledger_assignment_id: "ASSIGNMENT_SAME_COURSE",
       },
       subject: "MOODLE_LEARNER_77",
       email: "learner@example.edu",
@@ -1482,7 +1482,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       .get("set-cookie")
       .split(";")[0];
     const repeatedLearnerSession = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie: repeatedLearnerCookie },
       }),
       env,
@@ -1509,13 +1509,13 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
 
     const wrongAssignment = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/assignments/ASSIGNMENT_LTI_EMPTY_ROSTER/start-run",
+        "https://simuledger.example/api/v1/assignments/ASSIGNMENT_LTI_EMPTY_ROSTER/start-run",
         {
           method: "POST",
           headers: {
             cookie: learnerCookie,
             "content-type": "application/json",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: JSON.stringify({
             commandId: "COMMAND_WRONG_ASSIGNMENT",
@@ -1537,7 +1537,7 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
-      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_MISSING",
+      resourceLinkId: "RESOURCE_SIMULEDGER_LEARNER_MISSING",
       subject: "MOODLE_LEARNER_78",
       email: "learner-78@example.edu",
       name: "Course learner 78",
@@ -1558,9 +1558,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
-      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_CROSS_COURSE",
+      resourceLinkId: "RESOURCE_SIMULEDGER_LEARNER_CROSS_COURSE",
       custom: {
-        tracechain_assignment_id: "ASSIGNMENT_OTHER_COURSE",
+        simuledger_assignment_id: "ASSIGNMENT_OTHER_COURSE",
       },
       subject: "MOODLE_LEARNER_79",
       email: "learner-79@example.edu",
@@ -1592,9 +1592,9 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
       roles: [
         "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner",
       ],
-      resourceLinkId: "RESOURCE_TRACECHAIN_LEARNER_UNSAFE_AGS",
+      resourceLinkId: "RESOURCE_SIMULEDGER_LEARNER_UNSAFE_AGS",
       custom: {
-        tracechain_assignment_id: "ASSIGNMENT_SAME_COURSE",
+        simuledger_assignment_id: "ASSIGNMENT_SAME_COURSE",
       },
       subject: "MOODLE_LEARNER_UNSAFE_AGS",
       agsEndpoint: {
@@ -1667,18 +1667,18 @@ test("accepts one-use Moodle LTI 1.3 instructor launches and scopes assignments 
     );
 
     const logout = await worker.fetch(
-      new Request("https://tracechain.example/api/lti/v1/logout", {
+      new Request("https://simuledger.example/api/lti/v1/logout", {
         method: "POST",
         headers: {
           cookie,
-          origin: "https://tracechain.example",
+          origin: "https://simuledger.example",
         },
       }),
       env,
     );
     assert.equal(logout.status, 204);
     const expiredSession = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: { cookie },
       }),
       env,
@@ -1693,8 +1693,8 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
   const database = new SqliteD1Database();
   const { env } = createAssetEnvironment();
   const issuer = "https://moodle.example";
-  const clientId = "TRACECHAIN_CLIENT";
-  const deploymentId = "TRACECHAIN_DEPLOYMENT";
+  const clientId = "SIMULEDGER_CLIENT";
+  const deploymentId = "SIMULEDGER_DEPLOYMENT";
   const { publicKey: platformPublicKey, privateKey: platformPrivateKey } =
     await generateKeyPair("RS256", { extractable: true });
   const {
@@ -1710,17 +1710,17 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
   const toolPublicJwk = {
     ...(await exportJWK(toolPublicKey)),
     alg: "RS256",
-    kid: "TRACECHAIN_SIGNING_KEY",
+    kid: "SIMULEDGER_SIGNING_KEY",
     use: "sig",
   };
   const toolPrivateJwk = {
     ...(await exportJWK(toolPrivateKey)),
     alg: "RS256",
-    kid: "TRACECHAIN_SIGNING_KEY",
+    kid: "SIMULEDGER_SIGNING_KEY",
     use: "sig",
   };
   env.DB = database;
-  env.TRACECHAIN_LTI_REGISTRATIONS_JSON = JSON.stringify([
+  env.SIMULEDGER_LTI_REGISTRATIONS_JSON = JSON.stringify([
     {
       registrationId: "MOODLE_DEMO",
       issuer,
@@ -1732,10 +1732,10 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       platformJwks: { keys: [platformPublicJwk] },
     },
   ]);
-  env.TRACECHAIN_LTI_TOOL_JWKS_JSON = JSON.stringify({
+  env.SIMULEDGER_LTI_TOOL_JWKS_JSON = JSON.stringify({
     keys: [toolPublicJwk],
   });
-  env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+  env.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON =
     JSON.stringify(toolPrivateJwk);
 
   async function initiateLogin() {
@@ -1743,14 +1743,14 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       iss: issuer,
       login_hint: "LOGIN_HINT",
       target_link_uri:
-        "https://tracechain.example/api/lti/v1/launch",
+        "https://simuledger.example/api/lti/v1/launch",
       client_id: clientId,
       lti_deployment_id: deploymentId,
       lti_message_hint: "DEEP_LINK_MESSAGE_HINT",
     });
     const response = await worker.fetch(
       new Request(
-        `https://tracechain.example/api/lti/v1/login?${parameters.toString()}`,
+        `https://simuledger.example/api/lti/v1/login?${parameters.toString()}`,
       ),
       env,
     );
@@ -1810,7 +1810,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       .setExpirationTime(now + 120)
       .sign(platformPrivateKey);
     return worker.fetch(
-      new Request("https://tracechain.example/api/lti/v1/launch", {
+      new Request("https://simuledger.example/api/lti/v1/launch", {
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
@@ -1827,7 +1827,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     assert.equal(launch.status, 303, await launch.clone().text());
     const launchLocation = new URL(
       launch.headers.get("location"),
-      "https://tracechain.example",
+      "https://simuledger.example",
     );
     assert.equal(
       `${launchLocation.pathname}${launchLocation.search}`,
@@ -1839,7 +1839,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
     assert.match(deepLinkToken, /^[A-Za-z0-9_-]{32,256}$/u);
 
     const session = await worker.fetch(
-      new Request("https://tracechain.example/api/v1/session", {
+      new Request("https://simuledger.example/api/v1/session", {
         headers: {
           authorization: `Bearer ${deepLinkToken}`,
         },
@@ -1923,7 +1923,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       "Certificate evidence case",
       ...sharedArguments,
       "COURSE_ACCOUNTING_101",
-      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "RESOURCE_SIMULEDGER_INSTRUCTOR",
       "active",
       "2026-07-28T08:00:00.000Z",
       sessionBody.userId,
@@ -1934,14 +1934,14 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       "Other course",
       ...sharedArguments,
       "COURSE_ACCOUNTING_202",
-      "RESOURCE_TRACECHAIN_INSTRUCTOR",
+      "RESOURCE_SIMULEDGER_INSTRUCTOR",
       "active",
       "2026-07-28T08:00:00.000Z",
       sessionBody.userId,
     );
     const choices = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/assignments",
+        "https://simuledger.example/api/lti/v1/deep-links/assignments",
         {
           headers: {
             authorization: `Bearer ${deepLinkToken}`,
@@ -1960,12 +1960,12 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
 
     const crossCourseSelection = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/response",
+        "https://simuledger.example/api/lti/v1/deep-links/response",
         {
           method: "POST",
           headers: {
             "content-type": "application/x-www-form-urlencoded",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_OTHER_COURSE",
@@ -1983,7 +1983,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
 
     const regularInstructorApi = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/assignment-options",
+        "https://simuledger.example/api/v1/assignment-options",
         {
           headers: {
             authorization: `Bearer ${deepLinkToken}`,
@@ -2000,12 +2000,12 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
 
     const response = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/response",
+        "https://simuledger.example/api/lti/v1/deep-links/response",
         {
           method: "POST",
           headers: {
             "content-type": "application/x-www-form-urlencoded",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_DEEP_LINK",
@@ -2056,9 +2056,9 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
         {
           type: "ltiResourceLink",
           title: "Certificate evidence case",
-          url: "https://tracechain.example/api/lti/v1/launch",
+          url: "https://simuledger.example/api/lti/v1/launch",
           custom: {
-            tracechain_assignment_id: "ASSIGNMENT_DEEP_LINK",
+            simuledger_assignment_id: "ASSIGNMENT_DEEP_LINK",
           },
           presentation: {
             documentTarget: "window",
@@ -2067,7 +2067,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
             scoreMaximum: 100,
             label: "Certificate evidence case",
             resourceId: "ASSIGNMENT_DEEP_LINK",
-            tag: "tracechain-final-score",
+            tag: "simuledger-final-score",
             gradesReleased: true,
           },
         },
@@ -2081,15 +2081,15 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
          WHERE assignment_id = 'ASSIGNMENT_DEEP_LINK'`,
       )
       .run();
-    env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON = undefined;
+    env.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON = undefined;
     const repeatedResponse = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/response",
+        "https://simuledger.example/api/lti/v1/deep-links/response",
         {
           method: "POST",
           headers: {
             "content-type": "application/x-www-form-urlencoded",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_DEEP_LINK",
@@ -2106,7 +2106,7 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       )?.[1],
       jwt,
     );
-    env.TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON =
+    env.SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON =
       JSON.stringify(toolPrivateJwk);
 
     const noLineItemLogin = await initiateLogin();
@@ -2119,13 +2119,13 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       .split(";")[0];
     const noLineItemResponse = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/response",
+        "https://simuledger.example/api/lti/v1/deep-links/response",
         {
           method: "POST",
           headers: {
             cookie: noLineItemCookie,
             "content-type": "application/x-www-form-urlencoded",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: new URLSearchParams({
             assignment_id: "ASSIGNMENT_DEEP_LINK",
@@ -2162,13 +2162,13 @@ test("returns one course-scoped assignment through a signed LTI Deep Linking res
       .split(";")[0];
     const cancelResponse = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/lti/v1/deep-links/response",
+        "https://simuledger.example/api/lti/v1/deep-links/response",
         {
           method: "POST",
           headers: {
             cookie: cancelCookie,
             "content-type": "application/x-www-form-urlencoded",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: new URLSearchParams({ cancel: "1" }),
         },
@@ -2218,7 +2218,7 @@ test("rejects cross-origin state-changing API requests before authorization", as
   env.DB = createPrincipalDatabase([]);
   const response = await worker.fetch(
     new Request(
-      "https://tracechain.example/api/v1/assignments/ASSIGNMENT_001/start-run",
+      "https://simuledger.example/api/v1/assignments/ASSIGNMENT_001/start-run",
       {
       method: "POST",
       headers: {
@@ -2243,7 +2243,7 @@ test("bootstraps only a server-allowlisted administrator into an empty D1 databa
   const database = new SqliteD1Database();
   const { env } = createAssetEnvironment();
   env.DB = database;
-  env.TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS = "owner@example.edu";
+  env.SIMULEDGER_BOOTSTRAP_ADMIN_EMAILS = "owner@example.edu";
   try {
     const response = await worker.fetch(
       apiRequest("/api/v1/session", {
@@ -2493,14 +2493,14 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     );
     const uploadedImage = await worker.fetch(
       new Request(
-        "https://tracechain.example/api/v1/scenario-assets" +
+        "https://simuledger.example/api/v1/scenario-assets" +
           "?fileName=producer-manager.webp&purpose=STAFF_PORTRAIT",
         {
           method: "POST",
           headers: {
             "content-type": "image/webp",
             "oai-authenticated-user-email": "author@example.edu",
-            origin: "https://tracechain.example",
+            origin: "https://simuledger.example",
           },
           body: uploadedImageBytes,
         },
@@ -2572,19 +2572,19 @@ test("supports validated immutable scenario-pack authoring lifecycle", async () 
     assert.equal(bundle.status, 200, await bundle.clone().text());
     assert.match(
       bundle.headers.get("content-disposition") ?? "",
-      /TraceChain_.*\.zip/u,
+      /SimuLedger_.*\.zip/u,
     );
     const bundleEntries = unzipSync(
       new Uint8Array(await bundle.arrayBuffer()),
     );
     assert.deepEqual(
       Object.keys(bundleEntries).sort(),
-      ["tracechain.pack.json", ...Object.keys(pack.assetHashes)].sort(),
+      ["simuledger.pack.json", ...Object.keys(pack.assetHashes)].sort(),
     );
     assert.equal(
       JSON.parse(
         new TextDecoder().decode(
-          bundleEntries["tracechain.pack.json"],
+          bundleEntries["simuledger.pack.json"],
         ),
       ).schemaVersion,
       "2.0.0",
@@ -3340,7 +3340,7 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       );
     assert.equal(
       curriculumCrosswalk.owner.ownerId,
-      "TRACECHAIN_DEMO_COURSE",
+      "SIMULEDGER_DEMO_COURSE",
     );
     assert.equal(
       curriculumCrosswalk.labelsByLocale.vi
@@ -3402,7 +3402,7 @@ test("imports and previews a self-localized disciplinary pack", async () => {
       curriculumCrosswalkDownload.headers.get(
         "content-disposition",
       ),
-      'attachment; filename="TraceChain_ASSIGNMENT_PHARMA_001_curriculum_overlay_v2.json"',
+      'attachment; filename="SimuLedger_ASSIGNMENT_PHARMA_001_curriculum_overlay_v2.json"',
     );
 
     const learnerCurriculumCrosswalk = await worker.fetch(
@@ -3556,8 +3556,8 @@ test("creates idempotent authenticated SCORM package jobs from generator artifac
     contentPackVersion: "2.3.0",
     scoringBlueprintId: "SCORING_COFFEE_100",
     scoringBlueprintVersion: "1.0.0",
-    title: "TraceChain Assessment",
-    filename: "TraceChain_Assessment_NON_RELEASE.zip",
+    title: "SimuLedger Assessment",
+    filename: "SimuLedger_Assessment_NON_RELEASE.zip",
     downloadPath: `/scorm-packages/${sha256}.zip`,
     sha256,
     sizeBytes: packageBytes.byteLength,
@@ -4813,7 +4813,7 @@ test("creates and resumes the built-in Technical Laboratory through hosted D1 AP
     ).technicalLabReport;
     assert.equal(
       technicalLabReport.reportType,
-      "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT",
+      "SIMULEDGER_TECHNICAL_LAB_ASSIGNMENT_REPORT",
     );
     assert.equal(technicalLabReport.summary.runCount, 1);
     assert.equal(technicalLabReport.summary.completedRunCount, 0);
@@ -4990,7 +4990,7 @@ test("runs the fixed Guided Audit through published assignment, D1, and replay A
     const auditReport = (await classAuditReport.json()).auditReport;
     assert.equal(
       auditReport.reportType,
-      "TRACECHAIN_AUDIT_ASSIGNMENT_REPORT",
+      "SIMULEDGER_AUDIT_ASSIGNMENT_REPORT",
     );
     assert.equal(auditReport.reviewOnly, true);
     assert.equal(auditReport.officialScoresUnchanged, true);
@@ -6657,13 +6657,13 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       counterfactualJsonExport.headers.get("content-disposition"),
-      `attachment; filename="TraceChain_${branchRunId}_counterfactual_v1.json"`,
+      `attachment; filename="SimuLedger_${branchRunId}_counterfactual_v1.json"`,
     );
     const counterfactualExport =
       await counterfactualJsonExport.json();
     assert.equal(
       counterfactualExport.exportType,
-      "TRACECHAIN_COUNTERFACTUAL_COMPARISON",
+      "SIMULEDGER_COUNTERFACTUAL_COMPARISON",
     );
     assert.equal(
       counterfactualExport.metadata.branchRunId,
@@ -6812,7 +6812,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
       (await counterfactualReportResponse.json()).report;
     assert.equal(
       counterfactualReport.reportType,
-      "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT",
+      "SIMULEDGER_ASSIGNMENT_COUNTERFACTUAL_REPORT",
     );
     assert.equal(counterfactualReport.branches.length, 2);
     assert.equal(counterfactualReport.summary.totalBranches, 2);
@@ -7354,7 +7354,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.deepEqual(assignmentCompetencies.frameworks, [
       {
-        frameworkId: "TRACECHAIN_CORE",
+        frameworkId: "SIMULEDGER_CORE",
         frameworkVersion: "1.0.0",
       },
     ]);
@@ -7419,14 +7419,14 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       jsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v3.json"',
+      'attachment; filename="SimuLedger_ASSIGNMENT_SITE_001_evidence_v3.json"',
     );
     const exportedEvidence = await jsonExport.json();
     assert.equal(exportedEvidence.schemaVersion, "3.0.0");
     assert.equal(exportedEvidence.dataDictionary.schemaVersion, "3.0.0");
     assert.equal(
       exportedEvidence.exportType,
-      "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+      "SIMULEDGER_ASSIGNMENT_EVIDENCE",
     );
     assert.equal(exportedEvidence.identityMode, "identified");
     assert.equal(
@@ -7516,7 +7516,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousJsonExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.json"',
+      'attachment; filename="SimuLedger_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.json"',
     );
     const pseudonymousJsonText =
       await pseudonymousJsonExport.text();
@@ -7550,7 +7550,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       pseudonymousCsvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.csv"',
+      'attachment; filename="SimuLedger_ASSIGNMENT_SITE_001_pseudonymous_evidence_v3.csv"',
     );
     const pseudonymousCsvText = await pseudonymousCsvExport.text();
     assert.doesNotMatch(
@@ -7592,7 +7592,7 @@ test("persists and replays the authenticated Stage 3 through 9 coffee path in D1
     );
     assert.equal(
       csvExport.headers.get("content-disposition"),
-      'attachment; filename="TraceChain_ASSIGNMENT_SITE_001_evidence_v3.csv"',
+      'attachment; filename="SimuLedger_ASSIGNMENT_SITE_001_evidence_v3.csv"',
     );
     const exportedCsv = await csvExport.text();
     assert.match(

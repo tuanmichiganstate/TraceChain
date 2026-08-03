@@ -253,7 +253,7 @@ function projectOverlay(
     effectiveFrom: overlay.effectiveFrom,
     adoptedAt: overlay.adoptedAt,
     adoptedBy: overlay.adoptedBy,
-    traceChainFrameworks: overlay.traceChainFrameworks,
+    simuLedgerFrameworks: overlay.simuLedgerFrameworks,
     externalFrameworkId: overlay.externalFramework.frameworkId,
     externalFrameworkVersion: overlay.externalFramework.version,
     labelsByLocale: overlayLabels(overlay),
@@ -415,5 +415,5 @@ export function assignmentCurriculumCrosswalkFilename(
     /[^A-Za-z0-9._-]/gu,
     "_",
   );
-  return `TraceChain_${safeAssignmentId}_curriculum_overlay_v2.json`;
+  return `SimuLedger_${safeAssignmentId}_curriculum_overlay_v2.json`;
 }

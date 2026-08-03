@@ -24,7 +24,7 @@ test.beforeAll(async () => {
     ],
     bundle: true,
     format: "iife",
-    globalName: "TraceChainEd25519",
+    globalName: "SimuLedgerEd25519",
     platform: "browser",
     target: "safari15",
     write: false,
@@ -55,7 +55,7 @@ test("the selected Ed25519 provider signs and verifies identically", async ({ pa
     };
     const Provider = (
       window as typeof window & {
-        TraceChainEd25519: {
+        SimuLedgerEd25519: {
           NobleEd25519Provider: new () => {
             sign(
               key: { algorithm: "Ed25519"; pkcs8Base64Url: string },
@@ -69,7 +69,7 @@ test("the selected Ed25519 provider signs and verifies identically", async ({ pa
           };
         };
       }
-    ).TraceChainEd25519.NobleEd25519Provider;
+    ).SimuLedgerEd25519.NobleEd25519Provider;
     const provider = new Provider();
     const privateKey = {
       algorithm: "Ed25519" as const,

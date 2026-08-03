@@ -27,8 +27,8 @@ test("locale parity rejects keys missing from either language", () => {
 });
 
 test("two generations from the same sources are byte-identical", async () => {
-  const first = mkdtempSync(join(tmpdir(), "tracechain-review-first-"));
-  const second = mkdtempSync(join(tmpdir(), "tracechain-review-second-"));
+  const first = mkdtempSync(join(tmpdir(), "simuledger-review-first-"));
+  const second = mkdtempSync(join(tmpdir(), "simuledger-review-second-"));
   const sourceCommit = "0123456789abcdef0123456789abcdef01234567";
   try {
     await generateContentReview({ projectRoot, outputDirectory: first, sourceCommit });
@@ -39,7 +39,7 @@ test("two generations from the same sources are byte-identical", async () => {
       assert.deepEqual(readFileSync(join(first, fileName)), readFileSync(join(second, fileName)));
     }
     const document = new JSDOM(
-      readFileSync(join(first, "tracechain-content-review.html"), "utf8"),
+      readFileSync(join(first, "simuledger-content-review.html"), "utf8"),
     ).window.document;
     const expectedLocaleCount = parseFlatStringCatalog(
       readFileSync(join(projectRoot, "src/locales/vi.json"), "utf8"),

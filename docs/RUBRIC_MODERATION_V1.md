@@ -1,6 +1,6 @@
 # Rubric moderation V1
 
-TraceChain stores instructor score resolution separately from both the learner
+SimuLedger stores instructor score resolution separately from both the learner
 simulation score and the append-only manual-rating history.
 
 ## Contract

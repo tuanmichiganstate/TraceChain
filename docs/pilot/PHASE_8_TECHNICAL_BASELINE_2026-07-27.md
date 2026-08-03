@@ -1,4 +1,4 @@
-# TraceChain Phase 8 technical baseline
+# SimuLedger Phase 8 technical baseline
 
 **Recorded:** 2026-07-27
 
@@ -18,7 +18,7 @@ assistive-technology accessibility.
 | Field | Result |
 |---|---|
 | Sites version | 32 |
-| Production URL | `https://tracechain-simulation.tuan-michiganstate.chatgpt.site` |
+| Production URL | Historical deployment retained in the Sites version record; a new SimuLedger URL had not yet been assigned |
 | Application source | Exact tree of `81ba70c8ccdacc6a73300d4a414ca02a514dd91b` |
 | HTTP check | 200 |
 | Authenticated representative-user acceptance | Pending human pilot |
@@ -46,8 +46,8 @@ replace the GitHub source identity.
 | Browser projects | Chromium, Firefox, WebKit, Mobile Safari |
 | GitHub Actions | Passed on the exact source commit |
 
-GitHub Actions evidence:
-`https://github.com/tuanmichiganstate/TraceChain/actions/runs/30266244531`
+GitHub Actions evidence: workflow run `30266244531` in the source repository
+identified by the commit above.
 
 Routine CI ran quality, Chromium, and Firefox. The exact commit also passed the
 complete four-project matrix locally. The documented skips are existing

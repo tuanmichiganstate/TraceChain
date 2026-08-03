@@ -199,7 +199,7 @@ describe("assignment evidence export", () => {
 
     expect(exported).toMatchObject({
       schemaVersion: "3.0.0",
-      exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+      exportType: "SIMULEDGER_ASSIGNMENT_EVIDENCE",
       identityMode: "identified",
       generatedAt: "2026-07-24T09:00:00.000Z",
       assignment: {

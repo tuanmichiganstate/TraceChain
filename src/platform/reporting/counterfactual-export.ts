@@ -40,7 +40,7 @@ export function createCounterfactualComparisonExport(options: {
   }
   return {
     schemaVersion: "1.0.0",
-    exportType: "TRACECHAIN_COUNTERFACTUAL_COMPARISON",
+    exportType: "SIMULEDGER_COUNTERFACTUAL_COMPARISON",
     generatedAt: options.generatedAt,
     metadata: structuredClone(options.metadata),
     comparison: structuredClone(options.comparison),
@@ -219,5 +219,5 @@ export function counterfactualComparisonFilename(
     /[^A-Za-z0-9._-]/gu,
     "_",
   );
-  return `TraceChain_${safeBranchRunId}_counterfactual_v1.${extension}`;
+  return `SimuLedger_${safeBranchRunId}_counterfactual_v1.${extension}`;
 }

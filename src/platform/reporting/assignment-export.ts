@@ -30,7 +30,7 @@ export class AssignmentExportError extends Error {
 
 const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
   schemaVersion: "3.0.0",
-  csvLayout: "TRACECHAIN_ASSIGNMENT_EVIDENCE_FLAT_V3",
+  csvLayout: "SIMULEDGER_ASSIGNMENT_EVIDENCE_FLAT_V3",
   datasets: [
     {
       id: "assignment",
@@ -246,7 +246,7 @@ const DATA_DICTIONARY: AssignmentExportDataDictionaryV1 = {
           name: "eventType",
           type: "string",
           required: true,
-          description: "Versioned TraceChain platform event type.",
+          description: "Versioned SimuLedger platform event type.",
         },
         {
           name: "payload",
@@ -342,7 +342,7 @@ function learnerPseudonym(
   learnerUserId: string,
 ): string {
   return `LEARNER_${sha256Hex(
-    `TRACECHAIN_ASSIGNMENT_EXPORT_V1\u0000${assignmentId}\u0000${learnerUserId}`,
+    `SIMULEDGER_ASSIGNMENT_EXPORT_V1\u0000${assignmentId}\u0000${learnerUserId}`,
   )
     .slice(0, 24)
     .toUpperCase()}`;
@@ -544,7 +544,7 @@ export function createAssignmentEvidenceExport(
 
   return {
     schemaVersion: "3.0.0",
-    exportType: "TRACECHAIN_ASSIGNMENT_EVIDENCE",
+    exportType: "SIMULEDGER_ASSIGNMENT_EVIDENCE",
     identityMode,
     researchMetadata:
       assignment.research.enabled
@@ -871,5 +871,5 @@ export function assignmentEvidenceFilename(
   );
   const identityLabel =
     identityMode === "pseudonymous" ? "_pseudonymous" : "";
-  return `TraceChain_${safeAssignmentId}${identityLabel}_evidence_v3.${extension}`;
+  return `SimuLedger_${safeAssignmentId}${identityLabel}_evidence_v3.${extension}`;
 }

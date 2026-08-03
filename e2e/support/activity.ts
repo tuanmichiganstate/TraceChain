@@ -13,14 +13,14 @@ export class Activity {
   constructor(private readonly page: Page) {}
 
   /**
-   * Per-stage timing, printed only when TRACECHAIN_E2E_TIMING is set.
+   * Per-stage timing, printed only when SIMULEDGER_E2E_TIMING is set.
    *
    * Off by default so the suite stays quiet and deterministic; on, it turns the
    * walkthrough into a profile that says which stage consumed the budget rather
    * than only that the test timed out. It reads the clock, never sleeps, so it
    * changes no behaviour.
    */
-  private readonly timingEnabled = Boolean(process.env["TRACECHAIN_E2E_TIMING"]);
+  private readonly timingEnabled = Boolean(process.env["SIMULEDGER_E2E_TIMING"]);
   private lastMark = Date.now();
 
   private mark(label: string): void {

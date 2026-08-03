@@ -161,7 +161,7 @@ export class CoffeeHostedDomainRuntime {
     const hostedScenario = pack.scenarios.find(
       (scenario) =>
         scenario.hostedRuntime?.runtimeId ===
-          "tracechain-coffee-v2" &&
+          "simuledger-coffee-v2" &&
         scenario.hostedRuntime.entryStageId ===
           "STG_03_ANCHOR_CERTIFICATE",
     );

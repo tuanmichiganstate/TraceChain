@@ -2232,9 +2232,9 @@ export function LedgerTransactions({
     ? ledgerState.transactions
     : [];
   const genericTransactions = Array.isArray(
-    ledgerState.tracechainTransactions,
+    ledgerState.simuledgerTransactions,
   )
-    ? ledgerState.tracechainTransactions
+    ? ledgerState.simuledgerTransactions
     : [];
   const transactions = [
     ...nativeTransactions,

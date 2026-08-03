@@ -1,4 +1,4 @@
-import packJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import packJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import {
   FixedClock,
   SequenceIdGenerator,
@@ -839,7 +839,7 @@ describe("GenericHostedRunService", () => {
         "The decision needs both the evidence review and the authorized approval.",
     });
     expect(completed.state.ledgerState).toMatchObject({
-      tracechainTransactions: [
+      simuledgerTransactions: [
         expect.objectContaining({
           proposalType: "COLD_CHAIN_DISPOSITION",
           policyId: expect.any(String),

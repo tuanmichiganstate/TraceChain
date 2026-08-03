@@ -1,11 +1,11 @@
-# TraceChain staff portrait asset briefs
+# SimuLedger staff portrait asset briefs
 
 ## Asset policy
 
 All seven portraits are original AI-generated fictional subjects created for
-TraceChain on 26 July 2026. They do not imitate or depict a named real person,
+SimuLedger on 26 July 2026. They do not imitate or depict a named real person,
 contain no company logo, and are approved for this educational repository under
-`TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26`.
+`SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26`.
 
 Runtime derivatives are 480 × 600 WebP files with a consistent documentary
 editorial treatment: Vietnamese supply-chain professionals, natural

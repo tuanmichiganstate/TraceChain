@@ -273,7 +273,7 @@ export class AuditHostedRunService {
     if (
       scenario === undefined ||
       scenario.hostedRuntime?.runtimeId !==
-        "tracechain-audit-v1" ||
+        "simuledger-audit-v1" ||
       scenario.auditCase === undefined ||
       scenario.hostedRuntime.auditCaseId !==
         scenario.auditCase.auditCaseId

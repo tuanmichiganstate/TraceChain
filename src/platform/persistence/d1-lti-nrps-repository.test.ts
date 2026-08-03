@@ -122,8 +122,8 @@ class SqliteD1Database implements D1DatabaseLike {
 const context: ActiveLtiNrpsContext = {
   registrationId: "MOODLE_DEMO",
   issuer: "https://moodle.example",
-  clientId: "TRACECHAIN_CLIENT",
-  deploymentId: "TRACECHAIN_DEPLOYMENT",
+  clientId: "SIMULEDGER_CLIENT",
+  deploymentId: "SIMULEDGER_DEPLOYMENT",
   contextId: "COURSE_ACCOUNTING_101",
   endpoint: {
     contextMembershipsUrl:

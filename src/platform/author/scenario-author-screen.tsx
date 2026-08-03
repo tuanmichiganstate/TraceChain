@@ -1,6 +1,6 @@
 import { JSON_SCHEMA, load as loadYaml } from "js-yaml";
-import auditPackTemplate from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
-import pharmaceuticalPackTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import auditPackTemplate from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
+import pharmaceuticalPackTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import {
   useEffect,
   useMemo,
@@ -53,7 +53,7 @@ interface StoredAuthorDraftV2 {
 }
 
 function authorDraftStorageKey(userId: string): string {
-  return `tracechain.scenario-author.draft.v2:${userId}`;
+  return `simuledger.scenario-author.draft.v2:${userId}`;
 }
 
 function parseStoredAuthorDraft(
@@ -571,7 +571,7 @@ export function ScenarioAuthorScreen({
         setSession(loaded);
         try {
           window.localStorage.removeItem(
-            `tracechain.scenario-author.draft.v1:${loaded.userId}`,
+            `simuledger.scenario-author.draft.v1:${loaded.userId}`,
           );
           const storageKey = authorDraftStorageKey(loaded.userId);
           const raw = window.localStorage.getItem(storageKey);
@@ -1562,7 +1562,7 @@ function PreviewWorkflow({
         {t("scenarioAuthor.previewFlowHeading")}
       </h4>
       <p>{t("scenarioAuthor.previewFlowHelp")}</p>
-      {specializedRuntimeId === "tracechain-audit-v1" ? (
+      {specializedRuntimeId === "simuledger-audit-v1" ? (
         <p className="notice notice--standalone">
           {t("scenarioAuthor.previewAuditRuntimeHelp")}
         </p>

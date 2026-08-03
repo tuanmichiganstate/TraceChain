@@ -1,5 +1,5 @@
 {
-  "$schema": "../../schemas/tracechain-scenario-pack-v2.schema.json",
+  "$schema": "../../schemas/simuledger-scenario-pack-v2.schema.json",
   "schemaVersion": "2.0.0",
   "packId": "PACK_STANDARD_COFFEE_STAGE3",
   "version": "1.11.0",
@@ -23,28 +23,28 @@
   "competencyFrameworks": [
     {
       "schemaVersion": "1.0.0",
-      "frameworkId": "TRACECHAIN_CORE",
+      "frameworkId": "SIMULEDGER_CORE",
       "version": "1.0.0",
       "status": "draft",
       "title": {
-        "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.title"
+        "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.title"
       },
       "competencies": [
         {
           "competencyId": "BC1",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC1.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC1.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC1.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC1.description"
           },
           "indicators": [
             {
               "indicatorId": "BC1.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC1.indicators.BC1.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC1.indicators.BC1.PI1.statement"
               }
             }
           ]
@@ -53,17 +53,17 @@
           "competencyId": "BC2",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC2.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC2.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC2.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC2.description"
           },
           "indicators": [
             {
               "indicatorId": "BC2.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC2.indicators.BC2.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC2.indicators.BC2.PI1.statement"
               }
             }
           ]
@@ -72,17 +72,17 @@
           "competencyId": "BC3",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC3.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC3.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC3.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC3.description"
           },
           "indicators": [
             {
               "indicatorId": "BC3.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC3.indicators.BC3.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC3.indicators.BC3.PI1.statement"
               }
             }
           ]
@@ -91,17 +91,17 @@
           "competencyId": "BC4",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC4.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC4.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC4.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC4.description"
           },
           "indicators": [
             {
               "indicatorId": "BC4.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC4.indicators.BC4.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC4.indicators.BC4.PI1.statement"
               }
             }
           ]
@@ -110,17 +110,17 @@
           "competencyId": "BC5",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC5.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC5.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC5.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC5.description"
           },
           "indicators": [
             {
               "indicatorId": "BC5.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC5.indicators.BC5.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC5.indicators.BC5.PI1.statement"
               }
             }
           ]
@@ -129,38 +129,38 @@
           "competencyId": "BC6",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.description"
           },
           "indicators": [
             {
               "indicatorId": "BC6.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.indicators.BC6.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.indicators.BC6.PI1.statement"
               }
             },
             {
               "indicatorId": "BC6.PI2",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.indicators.BC6.PI2.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.indicators.BC6.PI2.statement"
               }
             },
             {
               "indicatorId": "BC6.PI3",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.indicators.BC6.PI3.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.indicators.BC6.PI3.statement"
               }
             },
             {
               "indicatorId": "BC6.PI4",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC6.indicators.BC6.PI4.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC6.indicators.BC6.PI4.statement"
               }
             }
           ]
@@ -169,17 +169,17 @@
           "competencyId": "BC7",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC7.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC7.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC7.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC7.description"
           },
           "indicators": [
             {
               "indicatorId": "BC7.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC7.indicators.BC7.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC7.indicators.BC7.PI1.statement"
               }
             }
           ]
@@ -188,17 +188,17 @@
           "competencyId": "BC8",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC8.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC8.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC8.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC8.description"
           },
           "indicators": [
             {
               "indicatorId": "BC8.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.BC8.indicators.BC8.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.BC8.indicators.BC8.PI1.statement"
               }
             }
           ]
@@ -207,17 +207,17 @@
           "competencyId": "PC1",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC1.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC1.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC1.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC1.description"
           },
           "indicators": [
             {
               "indicatorId": "PC1.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC1.indicators.PC1.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC1.indicators.PC1.PI1.statement"
               }
             }
           ]
@@ -226,17 +226,17 @@
           "competencyId": "PC2",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC2.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC2.description"
           },
           "indicators": [
             {
               "indicatorId": "PC2.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC2.indicators.PC2.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC2.indicators.PC2.PI1.statement"
               }
             }
           ]
@@ -245,17 +245,17 @@
           "competencyId": "PC3",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC3.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC3.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC3.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC3.description"
           },
           "indicators": [
             {
               "indicatorId": "PC3.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC3.indicators.PC3.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC3.indicators.PC3.PI1.statement"
               }
             }
           ]
@@ -264,17 +264,17 @@
           "competencyId": "PC4",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC4.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC4.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC4.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC4.description"
           },
           "indicators": [
             {
               "indicatorId": "PC4.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC4.indicators.PC4.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC4.indicators.PC4.PI1.statement"
               }
             }
           ]
@@ -283,17 +283,17 @@
           "competencyId": "PC5",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC5.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC5.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC5.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC5.description"
           },
           "indicators": [
             {
               "indicatorId": "PC5.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC5.indicators.PC5.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC5.indicators.PC5.PI1.statement"
               }
             }
           ]
@@ -302,17 +302,17 @@
           "competencyId": "PC6",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC6.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC6.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC6.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC6.description"
           },
           "indicators": [
             {
               "indicatorId": "PC6.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC6.indicators.PC6.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC6.indicators.PC6.PI1.statement"
               }
             }
           ]
@@ -321,17 +321,17 @@
           "competencyId": "PC7",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC7.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC7.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC7.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC7.description"
           },
           "indicators": [
             {
               "indicatorId": "PC7.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC7.indicators.PC7.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC7.indicators.PC7.PI1.statement"
               }
             }
           ]
@@ -340,17 +340,17 @@
           "competencyId": "PC8",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC8.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC8.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC8.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC8.description"
           },
           "indicators": [
             {
               "indicatorId": "PC8.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC8.indicators.PC8.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC8.indicators.PC8.PI1.statement"
               }
             }
           ]
@@ -359,17 +359,17 @@
           "competencyId": "PC9",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC9.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC9.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC9.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC9.description"
           },
           "indicators": [
             {
               "indicatorId": "PC9.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC9.indicators.PC9.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC9.indicators.PC9.PI1.statement"
               }
             }
           ]
@@ -378,17 +378,17 @@
           "competencyId": "PC10",
           "version": "1.0.0",
           "title": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC10.title"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC10.title"
           },
           "description": {
-            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC10.description"
+            "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC10.description"
           },
           "indicators": [
             {
               "indicatorId": "PC10.PI1",
               "version": "1.0.0",
               "statement": {
-                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.TRACECHAIN_CORE.competencies.PC10.indicators.PC10.PI1.statement"
+                "localizationKey": "platformPack.standardCoffeeStage3.competencyFrameworks.SIMULEDGER_CORE.competencies.PC10.indicators.PC10.PI1.statement"
               }
             }
           ]
@@ -682,7 +682,7 @@
       "assetId": "PORTRAIT_PRODUCER_MANAGER",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "producer-manager.webp",
       "filePath": "media/staff/producer-manager.webp",
@@ -699,7 +699,7 @@
       "assetId": "PORTRAIT_CERTIFICATION_OFFICER",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "certification-officer.webp",
       "filePath": "media/staff/certification-officer.webp",
@@ -716,7 +716,7 @@
       "assetId": "PORTRAIT_LOGISTICS_COORDINATOR",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "logistics-coordinator.webp",
       "filePath": "media/staff/logistics-coordinator.webp",
@@ -733,7 +733,7 @@
       "assetId": "PORTRAIT_PROCESSING_MANAGER",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "processing-manager.webp",
       "filePath": "media/staff/processing-manager.webp",
@@ -750,7 +750,7 @@
       "assetId": "PORTRAIT_SHIPPING_CLERK",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "shipping-clerk.webp",
       "filePath": "media/staff/shipping-clerk.webp",
@@ -767,7 +767,7 @@
       "assetId": "PORTRAIT_RETAIL_MANAGER",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "retail-manager.webp",
       "filePath": "media/staff/retail-manager.webp",
@@ -784,7 +784,7 @@
       "assetId": "PORTRAIT_REGULATORY_AUDITOR",
       "purpose": "STAFF_PORTRAIT",
       "sourceType": "AI_GENERATED",
-      "licenseOrApprovalReference": "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
+      "licenseOrApprovalReference": "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26",
       "rightsDeclaration": "FICTIONAL_PEOPLE",
       "originalFileName": "regulatory-auditor.webp",
       "filePath": "media/staff/regulatory-auditor.webp",
@@ -1288,7 +1288,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_ISSUE_CERTIFICATE.statement"
           },
           "configuration": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainPolicyId": "AUTH_ISSUE_CERTIFICATE"
           }
         },
@@ -1302,7 +1302,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CUSTODY_SENDER_AND_RECEIVER.statement"
           },
           "configuration": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainPolicyId": "ENDORSE_CUSTODY_SENDER_AND_RECEIVER"
           }
         },
@@ -1316,7 +1316,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.POLICY_DISCREPANCY_DECISION.statement"
           },
           "configuration": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainPolicyId": "POLICY_DISCREPANCY_DECISION"
           }
         },
@@ -1330,7 +1330,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR.statement"
           },
           "configuration": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainPolicyId": "ENDORSE_CORRECTION_PRODUCER_AND_PROCESSOR"
           }
         },
@@ -1344,7 +1344,7 @@
             "localizationKey": "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.policies.AUTH_RECALL.statement"
           },
           "configuration": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainPolicyId": "AUTH_RECALL"
           }
         }
@@ -1383,7 +1383,7 @@
             "hiddenConditionReferences": []
           },
           "content": {
-            "runtimeId": "tracechain-coffee-v2",
+            "runtimeId": "simuledger-coffee-v2",
             "domainDocumentRole": "qualityCertificateAnchorId",
             "assetId": "BAT_GREEN_COFFEE_001",
             "certificateContentStatus": "VALID",
@@ -3403,7 +3403,7 @@
         "RULE_BLOCKCHAIN_SUITABILITY_RECOGNIZED"
       ],
       "hostedRuntime": {
-        "runtimeId": "tracechain-coffee-v2",
+        "runtimeId": "simuledger-coffee-v2",
         "domainScenarioId": "SCN_COFFEE_001",
         "domainScenarioVersion": "2.3.0",
         "entryStageId": "STG_03_ANCHOR_CERTIFICATE",

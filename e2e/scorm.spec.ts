@@ -323,7 +323,7 @@ test.describe("a relaunch in review mode", () => {
 
 test.describe("suspend data that no longer decodes", () => {
   test("offers recovery instead of silently starting over", async ({ page }) => {
-    const corrupted = "TC2.61r.0021.0.0.deadbeef";
+    const corrupted = "LEGACY2.61r.0021.0.0.deadbeef";
     await installScormApi(page, {
       initialValues: { "cmi.suspend_data": corrupted, "cmi.core.entry": "resume" },
     });
@@ -332,7 +332,7 @@ test.describe("suspend data that no longer decodes", () => {
     await expect(page.getByRole("heading", { name: "Không khôi phục được tiến độ" })).toBeVisible();
     await expect(page.getByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Bắt đầu lại hoạt động" })).toHaveCount(0);
-    // TraceChain cannot create a new LMS attempt or destructively clear this
+    // SimuLedger cannot create a new LMS attempt or destructively clear this
     // one from inside the package.
     expect(await peek(page, "cmi.suspend_data")).toBe(corrupted);
   });
@@ -341,7 +341,7 @@ test.describe("suspend data that no longer decodes", () => {
 test.describe("an invalid embedded package configuration", () => {
   test("shows the localized failure screen instead of starting", async ({ page }) => {
     await installScormApi(page);
-    await page.route("**/tracechain.config.json", async (route) => {
+    await page.route("**/simuledger.config.json", async (route) => {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
@@ -354,7 +354,7 @@ test.describe("an invalid embedded package configuration", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Không thể khởi động gói TraceChain này",
+        name: "Không thể khởi động gói SimuLedger này",
       }),
     ).toBeVisible();
     await expect(

@@ -82,7 +82,7 @@ export async function createDeepLinkResponseJwt(options: {
             title: options.assignment.title,
             url: options.launchUrl,
             custom: {
-              tracechain_assignment_id:
+              simuledger_assignment_id:
                 options.assignment.assignmentId,
             },
             presentation: {
@@ -95,7 +95,7 @@ export async function createDeepLinkResponseJwt(options: {
                     label: options.assignment.title,
                     resourceId:
                       options.assignment.assignmentId,
-                    tag: "tracechain-final-score",
+                    tag: "simuledger-final-score",
                     gradesReleased: true,
                   },
                 }

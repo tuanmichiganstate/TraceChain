@@ -642,7 +642,7 @@ describe("the whole activity in the browser", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "TraceChain Thử thách",
+        name: "SimuLedger Thử thách",
       }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Bắt đầu mô phỏng" }));

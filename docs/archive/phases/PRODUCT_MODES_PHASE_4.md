@@ -22,7 +22,7 @@ It does not add another database aggregate or a parallel transaction engine.
 
 ## Runtime boundary
 
-Scenario-pack V1.7 adds the `tracechain-audit-v1` hosted runtime. The runtime
+Scenario-pack V1.7 adds the `simuledger-audit-v1` hosted runtime. The runtime
 loads one immutable authored source process and maintains a separate
 append-only workpaper history.
 
@@ -49,7 +49,7 @@ version and ordered event sequence.
 
 ## Guided coffee-control case
 
-`scenario-packs/guided-coffee-audit/tracechain.pack.json` defines one fixed
+`scenario-packs/guided-coffee-audit/simuledger.pack.json` defines one fixed
 Guided case. It includes three authored findings:
 
 1. an expired certificate was accepted;
@@ -117,7 +117,7 @@ Scenario-pack validation checks:
 - exact scoring total and pass score; and
 - bilingual localization coverage.
 
-TraceChain is pre-release, so the active pack contract was upgraded directly
+SimuLedger is pre-release, so the active pack contract was upgraded directly
 from 1.6.0 to 1.7.0. There is no migration reader or compatibility alias.
 
 ## Deliberate Phase 4 boundary

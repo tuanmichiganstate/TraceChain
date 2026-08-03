@@ -147,13 +147,13 @@ export function parseLtiPlatformRegistrations(
     return [];
   }
   if (configuration.length > 64 * 1024) {
-    invalid("TRACECHAIN_LTI_REGISTRATIONS_JSON exceeds its size limit.");
+    invalid("SIMULEDGER_LTI_REGISTRATIONS_JSON exceeds its size limit.");
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(configuration);
   } catch {
-    invalid("TRACECHAIN_LTI_REGISTRATIONS_JSON is not valid JSON.");
+    invalid("SIMULEDGER_LTI_REGISTRATIONS_JSON is not valid JSON.");
   }
   if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > 16) {
     invalid("LTI configuration must contain 1 to 16 registrations.");
@@ -247,14 +247,14 @@ export function parseToolPublicJwks(
   if (configuration === undefined || configuration.trim().length === 0) {
     throw new LtiRegistrationError(
       "LTI_REGISTRATION_CONFIGURATION_INVALID",
-      "TRACECHAIN_LTI_TOOL_JWKS_JSON is required for the LTI keyset endpoint.",
+      "SIMULEDGER_LTI_TOOL_JWKS_JSON is required for the LTI keyset endpoint.",
     );
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(configuration);
   } catch {
-    invalid("TRACECHAIN_LTI_TOOL_JWKS_JSON is not valid JSON.");
+    invalid("SIMULEDGER_LTI_TOOL_JWKS_JSON is not valid JSON.");
   }
   return parsePublicJwks(parsed, "toolJwks");
 }
@@ -266,17 +266,17 @@ export function parseToolPrivateJwk(
   if (configuration === undefined || configuration.trim().length === 0) {
     throw new LtiRegistrationError(
       "LTI_REGISTRATION_CONFIGURATION_INVALID",
-      "TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is required for LTI service signing.",
+      "SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON is required for LTI service signing.",
     );
   }
   if (configuration.length > 32 * 1024) {
-    invalid("TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON exceeds its size limit.");
+    invalid("SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON exceeds its size limit.");
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(configuration);
   } catch {
-    invalid("TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON is not valid JSON.");
+    invalid("SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON is not valid JSON.");
   }
   const key = record(parsed, "toolPrivateJwk");
   const requiredMembers = [

@@ -556,7 +556,7 @@ export interface HostedRuntimeActionBindingV1 {
 }
 
 export interface CoffeeHostedRuntimeProfileV1 {
-  readonly runtimeId: "tracechain-coffee-v2";
+  readonly runtimeId: "simuledger-coffee-v2";
   readonly domainScenarioId: string;
   readonly domainScenarioVersion: string;
   readonly entryStageId: string;
@@ -564,12 +564,12 @@ export interface CoffeeHostedRuntimeProfileV1 {
 }
 
 export interface AuditHostedRuntimeProfileV1 {
-  readonly runtimeId: "tracechain-audit-v1";
+  readonly runtimeId: "simuledger-audit-v1";
   readonly auditCaseId: string;
 }
 
 export interface TechnicalLabHostedRuntimeProfileV1 {
-  readonly runtimeId: "tracechain-technical-lab-v1";
+  readonly runtimeId: "simuledger-technical-lab-v1";
   readonly labPackId: string;
   readonly labPackVersion: string;
 }

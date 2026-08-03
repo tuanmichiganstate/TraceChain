@@ -18,7 +18,7 @@ function repositoryPackPaths(directory) {
     .flatMap((entry) => {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) return repositoryPackPaths(path);
-      return entry.isFile() && entry.name === "tracechain.pack.json"
+      return entry.isFile() && entry.name === "simuledger.pack.json"
         ? [path]
         : [];
     })
@@ -39,7 +39,7 @@ const packPaths = requestedPaths.map((requestedPath) =>
 const cacheRoot = join(projectRoot, "node_modules", ".cache");
 mkdirSync(cacheRoot, { recursive: true });
 const temporaryDirectory = mkdtempSync(
-  join(cacheRoot, "tracechain-platform-pack-"),
+  join(cacheRoot, "simuledger-platform-pack-"),
 );
 const bundlePath = join(temporaryDirectory, "validator.mjs");
 let failed = false;

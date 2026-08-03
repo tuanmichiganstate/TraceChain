@@ -85,7 +85,7 @@ For the Technical Laboratory activity:
 
 **If resume fails, capture `cmi.suspend_data` before doing anything else** —
 Moodle admins can read it from the SCORM report, or `?debug=true` shows the
-decode error. Current Operations saves start with `TC3.`, Audit saves with
+decode error. Current Operations saves start with `SL1.`, Audit saves with
 `TA1.`, and Technical Laboratory saves with `TL1.`; each remains inside its
 authored budget. Obsolete development formats are unsupported and never read or
 cleared: the recovery screen instructs the learner to exit and begin a new LMS

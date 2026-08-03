@@ -2,7 +2,7 @@
 /**
  * Deploy all current Operations, Audit, and Technical Laboratory packages.
  *
- * The first run adopts the existing TraceChain activity as Guided and
+ * The first run adopts the existing SimuLedger activity as Guided and
  * duplicates it for the other managed presets. Later runs find all activities
  * by their stable names. Every deployment clears attempts, grades, and
  * completion state before replacing all packages.
@@ -18,15 +18,15 @@ require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/completionlib.php');
 
-const TRACECHAIN_ACTIVITY_GUIDED = 'TraceChain Guided';
-const TRACECHAIN_ACTIVITY_PRACTICE = 'TraceChain Practice';
-const TRACECHAIN_ACTIVITY_CHALLENGE = 'TraceChain Challenge';
-const TRACECHAIN_ACTIVITY_ASSESSMENT = 'TraceChain Assessment';
-const TRACECHAIN_ACTIVITY_AUDIT_GUIDED = 'TraceChain Audit Guided';
-const TRACECHAIN_ACTIVITY_AUDIT_PRACTICE = 'TraceChain Audit Practice';
-const TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE = 'TraceChain Audit Challenge';
-const TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT = 'TraceChain Audit Assessment';
-const TRACECHAIN_ACTIVITY_TECHNICAL_LAB = 'TraceChain Technical Laboratory';
+const SIMULEDGER_ACTIVITY_GUIDED = 'SimuLedger Guided';
+const SIMULEDGER_ACTIVITY_PRACTICE = 'SimuLedger Practice';
+const SIMULEDGER_ACTIVITY_CHALLENGE = 'SimuLedger Challenge';
+const SIMULEDGER_ACTIVITY_ASSESSMENT = 'SimuLedger Assessment';
+const SIMULEDGER_ACTIVITY_AUDIT_GUIDED = 'SimuLedger Audit Guided';
+const SIMULEDGER_ACTIVITY_AUDIT_PRACTICE = 'SimuLedger Audit Practice';
+const SIMULEDGER_ACTIVITY_AUDIT_CHALLENGE = 'SimuLedger Audit Challenge';
+const SIMULEDGER_ACTIVITY_AUDIT_ASSESSMENT = 'SimuLedger Audit Assessment';
+const SIMULEDGER_ACTIVITY_TECHNICAL_LAB = 'SimuLedger Technical Laboratory';
 
 function fail(string $message): void {
     fwrite(STDERR, "deploy: $message\n");
@@ -66,55 +66,55 @@ function ensure_managed_activities(): array {
 
     $guided = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_GUIDED],
+        ['name' => SIMULEDGER_ACTIVITY_GUIDED],
         '*',
         IGNORE_MISSING
     );
     $challenge = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_CHALLENGE],
+        ['name' => SIMULEDGER_ACTIVITY_CHALLENGE],
         '*',
         IGNORE_MISSING
     );
     $practice = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_PRACTICE],
+        ['name' => SIMULEDGER_ACTIVITY_PRACTICE],
         '*',
         IGNORE_MISSING
     );
     $assessment = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_ASSESSMENT],
+        ['name' => SIMULEDGER_ACTIVITY_ASSESSMENT],
         '*',
         IGNORE_MISSING
     );
     $auditguided = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_AUDIT_GUIDED],
+        ['name' => SIMULEDGER_ACTIVITY_AUDIT_GUIDED],
         '*',
         IGNORE_MISSING
     );
     $auditpractice = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_AUDIT_PRACTICE],
+        ['name' => SIMULEDGER_ACTIVITY_AUDIT_PRACTICE],
         '*',
         IGNORE_MISSING
     );
     $auditchallenge = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE],
+        ['name' => SIMULEDGER_ACTIVITY_AUDIT_CHALLENGE],
         '*',
         IGNORE_MISSING
     );
     $auditassessment = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT],
+        ['name' => SIMULEDGER_ACTIVITY_AUDIT_ASSESSMENT],
         '*',
         IGNORE_MISSING
     );
     $technicallab = $DB->get_record(
         'scorm',
-        ['name' => TRACECHAIN_ACTIVITY_TECHNICAL_LAB],
+        ['name' => SIMULEDGER_ACTIVITY_TECHNICAL_LAB],
         '*',
         IGNORE_MISSING
     );
@@ -123,24 +123,24 @@ function ensure_managed_activities(): array {
         $candidates = [];
         foreach ($DB->get_records('scorm', [], 'id ASC') as $candidate) {
             if (
-                $candidate->name !== TRACECHAIN_ACTIVITY_CHALLENGE &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_PRACTICE &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_ASSESSMENT &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_GUIDED &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_PRACTICE &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT &&
-                $candidate->name !== TRACECHAIN_ACTIVITY_TECHNICAL_LAB
+                $candidate->name !== SIMULEDGER_ACTIVITY_CHALLENGE &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_PRACTICE &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_ASSESSMENT &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_AUDIT_GUIDED &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_AUDIT_PRACTICE &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_AUDIT_CHALLENGE &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_AUDIT_ASSESSMENT &&
+                $candidate->name !== SIMULEDGER_ACTIVITY_TECHNICAL_LAB
             ) {
                 $candidates[] = $candidate;
             }
         }
         if (count($candidates) !== 1) {
             fail(
-                'could not identify one existing TraceChain activity to adopt as Guided'
+                'could not identify one existing SimuLedger activity to adopt as Guided'
             );
         }
-        $guided = rename_activity($candidates[0], TRACECHAIN_ACTIVITY_GUIDED);
+        $guided = rename_activity($candidates[0], SIMULEDGER_ACTIVITY_GUIDED);
         $guidedcm = get_coursemodule_from_instance(
             'scorm',
             $guided->id,
@@ -148,7 +148,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "adopted:  cmid={$guidedcm->id} as \"".TRACECHAIN_ACTIVITY_GUIDED."\"\n";
+        echo "adopted:  cmid={$guidedcm->id} as \"".SIMULEDGER_ACTIVITY_GUIDED."\"\n";
     }
 
     if ($practice === false) {
@@ -172,7 +172,7 @@ function ensure_managed_activities(): array {
         );
         $practice = rename_activity(
             $practice,
-            TRACECHAIN_ACTIVITY_PRACTICE
+            SIMULEDGER_ACTIVITY_PRACTICE
         );
         $practicecm = get_coursemodule_from_instance(
             'scorm',
@@ -181,7 +181,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$practicecm->id} as \"".TRACECHAIN_ACTIVITY_PRACTICE."\"\n";
+        echo "created:  cmid={$practicecm->id} as \"".SIMULEDGER_ACTIVITY_PRACTICE."\"\n";
     }
 
     if ($challenge === false) {
@@ -205,7 +205,7 @@ function ensure_managed_activities(): array {
         );
         $challenge = rename_activity(
             $challenge,
-            TRACECHAIN_ACTIVITY_CHALLENGE
+            SIMULEDGER_ACTIVITY_CHALLENGE
         );
         $challengecm = get_coursemodule_from_instance(
             'scorm',
@@ -214,7 +214,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$challengecm->id} as \"".TRACECHAIN_ACTIVITY_CHALLENGE."\"\n";
+        echo "created:  cmid={$challengecm->id} as \"".SIMULEDGER_ACTIVITY_CHALLENGE."\"\n";
     }
 
     if ($assessment === false) {
@@ -238,7 +238,7 @@ function ensure_managed_activities(): array {
         );
         $assessment = rename_activity(
             $assessment,
-            TRACECHAIN_ACTIVITY_ASSESSMENT
+            SIMULEDGER_ACTIVITY_ASSESSMENT
         );
         $assessmentcm = get_coursemodule_from_instance(
             'scorm',
@@ -247,7 +247,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$assessmentcm->id} as \"".TRACECHAIN_ACTIVITY_ASSESSMENT."\"\n";
+        echo "created:  cmid={$assessmentcm->id} as \"".SIMULEDGER_ACTIVITY_ASSESSMENT."\"\n";
     }
 
     if ($auditguided === false) {
@@ -271,7 +271,7 @@ function ensure_managed_activities(): array {
         );
         $auditguided = rename_activity(
             $auditguided,
-            TRACECHAIN_ACTIVITY_AUDIT_GUIDED
+            SIMULEDGER_ACTIVITY_AUDIT_GUIDED
         );
         $auditguidedcm = get_coursemodule_from_instance(
             'scorm',
@@ -280,7 +280,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$auditguidedcm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_GUIDED."\"\n";
+        echo "created:  cmid={$auditguidedcm->id} as \"".SIMULEDGER_ACTIVITY_AUDIT_GUIDED."\"\n";
     }
 
     if ($auditpractice === false) {
@@ -304,7 +304,7 @@ function ensure_managed_activities(): array {
         );
         $auditpractice = rename_activity(
             $auditpractice,
-            TRACECHAIN_ACTIVITY_AUDIT_PRACTICE
+            SIMULEDGER_ACTIVITY_AUDIT_PRACTICE
         );
         $auditpracticecm = get_coursemodule_from_instance(
             'scorm',
@@ -313,7 +313,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$auditpracticecm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_PRACTICE."\"\n";
+        echo "created:  cmid={$auditpracticecm->id} as \"".SIMULEDGER_ACTIVITY_AUDIT_PRACTICE."\"\n";
     }
 
     if ($auditchallenge === false) {
@@ -337,7 +337,7 @@ function ensure_managed_activities(): array {
         );
         $auditchallenge = rename_activity(
             $auditchallenge,
-            TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE
+            SIMULEDGER_ACTIVITY_AUDIT_CHALLENGE
         );
         $auditchallengecm = get_coursemodule_from_instance(
             'scorm',
@@ -346,7 +346,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$auditchallengecm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_CHALLENGE."\"\n";
+        echo "created:  cmid={$auditchallengecm->id} as \"".SIMULEDGER_ACTIVITY_AUDIT_CHALLENGE."\"\n";
     }
 
     if ($auditassessment === false) {
@@ -370,7 +370,7 @@ function ensure_managed_activities(): array {
         );
         $auditassessment = rename_activity(
             $auditassessment,
-            TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT
+            SIMULEDGER_ACTIVITY_AUDIT_ASSESSMENT
         );
         $auditassessmentcm = get_coursemodule_from_instance(
             'scorm',
@@ -379,7 +379,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$auditassessmentcm->id} as \"".TRACECHAIN_ACTIVITY_AUDIT_ASSESSMENT."\"\n";
+        echo "created:  cmid={$auditassessmentcm->id} as \"".SIMULEDGER_ACTIVITY_AUDIT_ASSESSMENT."\"\n";
     }
 
     if ($technicallab === false) {
@@ -403,7 +403,7 @@ function ensure_managed_activities(): array {
         );
         $technicallab = rename_activity(
             $technicallab,
-            TRACECHAIN_ACTIVITY_TECHNICAL_LAB
+            SIMULEDGER_ACTIVITY_TECHNICAL_LAB
         );
         $technicallabcm = get_coursemodule_from_instance(
             'scorm',
@@ -412,7 +412,7 @@ function ensure_managed_activities(): array {
             false,
             MUST_EXIST
         );
-        echo "created:  cmid={$technicallabcm->id} as \"".TRACECHAIN_ACTIVITY_TECHNICAL_LAB."\"\n";
+        echo "created:  cmid={$technicallabcm->id} as \"".SIMULEDGER_ACTIVITY_TECHNICAL_LAB."\"\n";
     }
 
     if (
@@ -425,7 +425,7 @@ function ensure_managed_activities(): array {
         (int)$guided->course !== (int)$auditassessment->course ||
         (int)$guided->course !== (int)$technicallab->course
     ) {
-        fail('Managed TraceChain activities must be in the same course');
+        fail('Managed SimuLedger activities must be in the same course');
     }
 
     return [
@@ -590,15 +590,15 @@ function deploy_package(object $scorm, string $zip): void {
 \core\session\manager::set_user(get_admin());
 
 $packages = [
-    'guided' => package_from_environment('TRACECHAIN_GUIDED_PACKAGE'),
-    'practice' => package_from_environment('TRACECHAIN_PRACTICE_PACKAGE'),
-    'challenge' => package_from_environment('TRACECHAIN_CHALLENGE_PACKAGE'),
-    'assessment' => package_from_environment('TRACECHAIN_ASSESSMENT_PACKAGE'),
-    'audit-guided' => package_from_environment('TRACECHAIN_AUDIT_GUIDED_PACKAGE'),
-    'audit-practice' => package_from_environment('TRACECHAIN_AUDIT_PRACTICE_PACKAGE'),
-    'audit-challenge' => package_from_environment('TRACECHAIN_AUDIT_CHALLENGE_PACKAGE'),
-    'audit-assessment' => package_from_environment('TRACECHAIN_AUDIT_ASSESSMENT_PACKAGE'),
-    'technical-lab' => package_from_environment('TRACECHAIN_TECHNICAL_LAB_PACKAGE'),
+    'guided' => package_from_environment('SIMULEDGER_GUIDED_PACKAGE'),
+    'practice' => package_from_environment('SIMULEDGER_PRACTICE_PACKAGE'),
+    'challenge' => package_from_environment('SIMULEDGER_CHALLENGE_PACKAGE'),
+    'assessment' => package_from_environment('SIMULEDGER_ASSESSMENT_PACKAGE'),
+    'audit-guided' => package_from_environment('SIMULEDGER_AUDIT_GUIDED_PACKAGE'),
+    'audit-practice' => package_from_environment('SIMULEDGER_AUDIT_PRACTICE_PACKAGE'),
+    'audit-challenge' => package_from_environment('SIMULEDGER_AUDIT_CHALLENGE_PACKAGE'),
+    'audit-assessment' => package_from_environment('SIMULEDGER_AUDIT_ASSESSMENT_PACKAGE'),
+    'technical-lab' => package_from_environment('SIMULEDGER_TECHNICAL_LAB_PACKAGE'),
 ];
 $activities = ensure_managed_activities();
 

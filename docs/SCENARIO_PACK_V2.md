@@ -1,11 +1,11 @@
-# TraceChain scenario-pack V2
+# SimuLedger scenario-pack V2
 
 The V2 scenario-pack format is the active contract for the hosted
 instructor platform. It does not replace the existing `ScenarioDefinition`,
 SCORM runtime, or coffee business rules.
 
 The normative machine-readable schema is
-`schemas/tracechain-scenario-pack-v2.schema.json`. Runtime validation adds
+`schemas/simuledger-scenario-pack-v2.schema.json`. Runtime validation adds
 cross-reference, localization, graph-reachability, runtime-profile, and
 executable-content checks that JSON Schema alone cannot express.
 
@@ -14,11 +14,11 @@ executable-content checks that JSON Schema alone cannot express.
 The repository packs are:
 
 ```text
-scenario-packs/standard-coffee-stage3/tracechain.pack.json
-scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json
-scenario-packs/guided-coffee-audit/tracechain.pack.json
-scenario-packs/practice-coffee-audit/tracechain.pack.json
-scenario-packs/challenge-coffee-audit/tracechain.pack.json
+scenario-packs/standard-coffee-stage3/simuledger.pack.json
+scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json
+scenario-packs/guided-coffee-audit/simuledger.pack.json
+scenario-packs/practice-coffee-audit/simuledger.pack.json
+scenario-packs/challenge-coffee-audit/simuledger.pack.json
 ```
 
 Validate it with:
@@ -115,7 +115,7 @@ JavaScript application bundle.
 The portable hosted-platform bundle is a ZIP with this canonical inventory:
 
 ```text
-tracechain.pack.json
+simuledger.pack.json
 media/staff/...
 media/scenes/...
 media/evidence/...
@@ -321,7 +321,7 @@ the 39/61 operational/knowledge split.
 
 The Audit contract remains part of V2 without creating a second
 application or transaction system. A scenario selects
-`tracechain-audit-v1` and references one bounded `auditCase`.
+`simuledger-audit-v1` and references one bounded `auditCase`.
 
 The case owns an immutable source process, role-visible evidence and policies,
 authored true findings, defensible decoys, supported conclusion categories,
@@ -361,11 +361,11 @@ high-stakes equivalence.
 ## Curriculum ownership boundary
 
 V2 keeps institution-, program-, and course-owned curriculum mappings out of
-the scenario-pack contract. Packs continue to own stable TraceChain
+the scenario-pack contract. Packs continue to own stable SimuLedger
 competencies, performance indicators, and observable evidence definitions.
 
 External outcome mappings are independent `2.0.0` curriculum overlays. They
-reference exact TraceChain framework versions and must be explicitly adopted
+reference exact SimuLedger framework versions and must be explicitly adopted
 by their institution, program, or course owner before reporting uses them.
 Scenario-pack validation rejects the former `curriculumCrosswalks` property and
 older pack schemas; there is no migration adapter.
@@ -400,7 +400,7 @@ consequence, feedback, and completion nodes. Its native runtime profile points
 to:
 
 ```text
-runtime: tracechain-coffee-v2
+runtime: simuledger-coffee-v2
 scenario: SCN_COFFEE_001@2.3.0
 stage: STG_03_ANCHOR_CERTIFICATE
 ```
@@ -496,7 +496,7 @@ communications, named stochastic outcomes, and reflections are append-only
 replay evidence; none is silently treated as a ledger mutation or
 cryptographic signature. Business consequences appear in the run, while
 authored feedback remains unavailable until the assignment's feedback release.
-SCORM continues to use the current compact deterministic TC3 journal.
+SCORM continues to use the current compact deterministic SL1 journal.
 
 The hosted counterfactual workflow is available for completed source runs at
 authored decision and condition points. A decision branch submits a real

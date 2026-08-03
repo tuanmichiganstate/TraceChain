@@ -9,7 +9,7 @@ import type {
   OutcomeStrategy,
   RetryPolicy,
   SupportProfile,
-  TraceChainExperienceConfigurationV2,
+  SimuLedgerExperienceConfigurationV2,
 } from "./types";
 
 export type CurrentExperiencePresetId =
@@ -257,7 +257,7 @@ const ALLOWED_COMBINATIONS = new Set([
 
 export function isAllowedExperienceCombination(
   value: Pick<
-    TraceChainExperienceConfigurationV2,
+    SimuLedgerExperienceConfigurationV2,
     | "activityType"
     | "supportProfile"
     | "deliveryPurpose"
@@ -275,7 +275,7 @@ export function isAllowedExperienceCombination(
 }
 
 export function experienceConfigurationHash(
-  configuration: TraceChainExperienceConfigurationV2,
+  configuration: SimuLedgerExperienceConfigurationV2,
 ): string {
   return sha256Hex(canonicalize(configuration));
 }
@@ -779,11 +779,11 @@ export function validateExperienceConfiguration(
 
 export function assertValidExperienceConfiguration(
   value: unknown,
-): asserts value is TraceChainExperienceConfigurationV2 {
+): asserts value is SimuLedgerExperienceConfigurationV2 {
   const issues = validateExperienceConfiguration(value);
   if (issues.length > 0) {
     throw new Error(
-      `TraceChain experience configuration is invalid:\n${issues
+      `SimuLedger experience configuration is invalid:\n${issues
         .map((entry) => `  ${entry.path}: ${entry.message}`)
         .join("\n")}`,
     );

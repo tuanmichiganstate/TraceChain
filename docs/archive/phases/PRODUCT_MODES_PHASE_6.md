@@ -18,7 +18,7 @@ It delivers:
 - review-only calibration summaries.
 
 The bank is deliberately marked `DRAFT`. It is ready for expert review and
-pilot calibration, but TraceChain does not claim that it is already suitable
+pilot calibration, but SimuLedger does not claim that it is already suitable
 for consequential high-stakes use.
 
 ## Direct schema upgrade

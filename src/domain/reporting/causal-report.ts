@@ -1,4 +1,4 @@
-import type { CompactCommandJournalEntry } from "../../infrastructure/persistence/tc3-codec";
+import type { CompactCommandJournalEntry } from "../../infrastructure/persistence/sl1-codec";
 import {
   assessRecallSelection,
   calculateRecallScope,

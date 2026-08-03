@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import packJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   allocateHostedAuditVariant,

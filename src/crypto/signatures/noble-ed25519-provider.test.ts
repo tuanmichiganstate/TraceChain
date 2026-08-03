@@ -39,7 +39,7 @@ describe("NobleEd25519Provider", () => {
 
   it("rejects modified messages, modified signatures, and the wrong public key", async () => {
     const provider = new NobleEd25519Provider();
-    const message = new TextEncoder().encode("TraceChain");
+    const message = new TextEncoder().encode("SimuLedger");
     const signature = await provider.sign(privateKey, message);
     const modifiedSignature = signature.slice();
     modifiedSignature[0] = (modifiedSignature[0] as number) ^ 1;
@@ -52,7 +52,7 @@ describe("NobleEd25519Provider", () => {
     await expect(
       provider.verify(
         publicKey,
-        new TextEncoder().encode("TraceChain!"),
+        new TextEncoder().encode("SimuLedger!"),
         signature,
       ),
     ).resolves.toBe(false);

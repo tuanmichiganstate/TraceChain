@@ -1123,7 +1123,7 @@ test("creates an assignment from the published hosted scenario library", async (
       "platformPack.standardCoffeeStage3.scenarios.SCN_COFFEE_STAGE3_FOUNDATION.title",
     labelsByLocale: {
       en: {
-        packTitle: "TraceChain coffee evidence and custody",
+        packTitle: "SimuLedger coffee evidence and custody",
         scenarioTitle: "Conflicting certificate evidence",
         description:
           "Investigate evidence and make accountable coffee supply-chain decisions.",
@@ -1590,7 +1590,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
                 learnerUserId: "USER_MONITOR_LEARNER",
                 indicators: [
                   {
-                    frameworkId: "TRACECHAIN_CORE",
+                    frameworkId: "SIMULEDGER_CORE",
                     frameworkVersion: "1.0.0",
                     competencyId: "BC3",
                     competencyVersion: "1.0.0",
@@ -1631,7 +1631,7 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
             ],
             classIndicators: [
               {
-                frameworkId: "TRACECHAIN_CORE",
+                frameworkId: "SIMULEDGER_CORE",
                 frameworkVersion: "1.0.0",
                 competencyId: "BC3",
                 competencyVersion: "1.0.0",
@@ -1684,11 +1684,11 @@ test("refreshes replay-derived instructor status without hidden outcomes", async
           analytics: {
             schemaVersion: "1.2.0",
             reportType:
-              "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+              "SIMULEDGER_ASSIGNMENT_PROCESS_ANALYTICS",
             interpretation:
               "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
             ruleVersion:
-              "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
+              "SIMULEDGER_PROCESS_ANALYTICS_V1@1.2.0",
             assignmentId,
             packId: assignment.packId,
             packVersion: assignment.packVersion,

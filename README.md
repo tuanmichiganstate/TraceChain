@@ -1,4 +1,4 @@
-# TraceChain
+# SimuLedger
 
 A simulated permissioned blockchain for teaching supply-chain traceability,
 delivered as a self-contained SCORM 1.2 package for Moodle.
@@ -22,7 +22,7 @@ mining. The interface says so on every screen.
 
 Version 2 implements the complete nine-stage activity as configurable Guided,
 curated Practice, and Challenge-bank packages, including atomic consequential decisions,
-trusted role handoff, append-only correction, deterministic TC3 replay, and a
+trusted role handoff, append-only correction, deterministic SL1 replay, and a
 causal final report. Genuine Ed25519 proposal and endorsement signatures,
 scenario-authored authorization, and constrained endorsement-policy evaluation
 are integrated into custody transfer and append-only quantity correction.
@@ -122,7 +122,7 @@ advanced declarative sections. Its Media step uploads approved WebP, PNG, and
 JPEG assets, records source and rights metadata plus bilingual alternative
 text, and assigns staff, scene, and evidence images without remote URLs.
 Authors can export the manifest and exact media as one deterministic,
-self-contained scenario ZIP for import into another TraceChain authoring
+self-contained scenario ZIP for import into another SimuLedger authoring
 workspace. Its review step runs the complete pack validator
 locally with exact paths and rule IDs; the server repeats that validator as the
 import and publication enforcement boundary. The workspace also previews roles
@@ -130,7 +130,7 @@ and modes, compares versions, and controls publication and retirement.
 The `/admin` route provisions
 application users, replaces server-owned roles, and disables or reactivates
 access through idempotent audited commands. Deployment authentication and
-course management remain outside TraceChain. Administrators can review the
+course management remain outside SimuLedger. Administrators can review the
 latest 100 append-only access changes without editing that history. Assignment
 reports now provide stable JSON and CSV evidence exports with exact content
 versions, complete event streams, authoritative event-span timing, rating
@@ -174,7 +174,7 @@ captures reflection, and provides role-filtered branch and assignment
 analytics exports. The
 hosted work does not alter the current SCORM activity.
 The hosted instructor, Scenario Author, and learner workspaces support bounded
-LTI 1.3 Core resource-link launches from Moodle. TraceChain verifies the
+LTI 1.3 Core resource-link launches from Moodle. SimuLedger verifies the
 signed Moodle launch, scopes records to the verified course context, and binds
 a learner session to the single assignment named by the signed activity custom
 claim. Ordinary links provision exactly the verified instructor or learner
@@ -245,16 +245,16 @@ npm run verify:scorm
 ```
 
 Strict release generation produces
-`TraceChain_Guided_StandardCoffee_vi_v2.3.0.zip`,
-`TraceChain_Practice_PracticeCase_vi_v1.0.0.zip`,
-`TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
-`TraceChain_Assessment_StandardCoffee_vi_v2.3.0.zip`,
-`TraceChain_AuditGuided_GuidedCoffeeAudit_vi_v2.0.0.zip`, and
-`TraceChain_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`, plus the
+`SimuLedger_Guided_StandardCoffee_vi_v2.3.0.zip`,
+`SimuLedger_Practice_PracticeCase_vi_v1.0.0.zip`,
+`SimuLedger_Challenge_ChallengeBank_vi_v2.0.0.zip`, plus
+`SimuLedger_Assessment_StandardCoffee_vi_v2.3.0.zip`,
+`SimuLedger_AuditGuided_GuidedCoffeeAudit_vi_v2.0.0.zip`, and
+`SimuLedger_AuditPractice_PracticeCoffeeAudit_vi_v1.0.0.zip`, plus the
 calibration-candidate
-`TraceChain_AuditChallenge_ChallengeCoffeeAuditBank_vi_v1.0.0.zip` and
-`TraceChain_AuditAssessment_ChallengeCoffeeAuditBank_vi_v1.0.0.zip`, plus
-`TraceChain_TechnicalLab_PermissionedBlockchainFoundations_vi_v1.0.0.zip`.
+`SimuLedger_AuditChallenge_ChallengeCoffeeAuditBank_vi_v1.0.0.zip` and
+`SimuLedger_AuditAssessment_ChallengeCoffeeAuditBank_vi_v1.0.0.zip`, plus
+`SimuLedger_TechnicalLab_PermissionedBlockchainFoundations_vi_v1.0.0.zip`.
 The local command
 appends `_NON_RELEASE` to every archive name. The Docker demo selects the
 current nine archives by their embedded build metadata, deploys them into
@@ -338,7 +338,7 @@ schemas/               published versioned JSON Schemas
 | `npm run validate:locales` | Key parity, placeholders, no stray Vietnamese in source |
 | `npm run validate:scenario` | Schema consistency plus executable cross-layer contracts |
 | `npm run validate:platform-pack [-- <pack.json> …]` | Validate declarative platform packs with path-specific diagnostics |
-| `npm run validate:curriculum-overlays` | Validate independently owned curriculum overlays and exact TraceChain framework references |
+| `npm run validate:curriculum-overlays` | Validate independently owned curriculum overlays and exact SimuLedger framework references |
 | `npm run generate:content-review` | Deterministically rebuild the bilingual review pack |
 | `npm run verify:content-review` | Regenerate temporarily and compare the review pack byte-for-byte |
 | `npm run package:scorm -- --preset …` | Strict clean-tree release generator |
@@ -376,6 +376,6 @@ The most frequently used references are:
   keys are validated as immutable pack content.
 - **No student identity may reach the ledger** — not an asset, transaction,
   block, hash, or suspend-data value.
-- **`cmi.suspend_data` is capped at 4096 characters.** TC3 enforces a
+- **`cmi.suspend_data` is capped at 4096 characters.** SL1 enforces a
   3,000-character authored budget and 3,800-character internal ceiling against
   the actual worst case of both scenarios.

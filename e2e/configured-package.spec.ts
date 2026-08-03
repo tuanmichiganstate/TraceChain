@@ -19,8 +19,8 @@ import { coffeeScenario } from "../src/scenarios/coffee-traceability/scenario";
 import { sha256Hex } from "../src/infrastructure/hashing/sha256";
 import { ScenarioStageId } from "../src/domain/types/enums";
 import { selectVariantAssignment } from "../src/domain/scenario/variant-bank";
-import { tc3CodecSchema } from "../src/domain/simulation/command-journal";
-import { encodeTc3Attempt } from "../src/infrastructure/persistence/tc3-codec";
+import { sl1CodecSchema } from "../src/domain/simulation/command-journal";
+import { encodeSl1Attempt } from "../src/infrastructure/persistence/sl1-codec";
 import {
   publishScenarioPack,
 } from "../src/platform/scenario-packs/publication";
@@ -31,7 +31,7 @@ import {
 const practiceAuditPackJson: unknown = JSON.parse(
   readFileSync(
     new URL(
-      "../scenario-packs/practice-coffee-audit/tracechain.pack.json",
+      "../scenario-packs/practice-coffee-audit/simuledger.pack.json",
       import.meta.url,
     ),
     "utf8",
@@ -40,7 +40,7 @@ const practiceAuditPackJson: unknown = JSON.parse(
 const challengeAuditPackJson: unknown = JSON.parse(
   readFileSync(
     new URL(
-      "../scenario-packs/challenge-coffee-audit/tracechain.pack.json",
+      "../scenario-packs/challenge-coffee-audit/simuledger.pack.json",
       import.meta.url,
     ),
     "utf8",
@@ -60,7 +60,7 @@ function publishedPracticeAuditPack() {
   }
   return publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_BROWSER_ACCEPTANCE",
+    publishedBy: "SIMULEDGER_BROWSER_ACCEPTANCE",
   });
 }
 
@@ -77,13 +77,13 @@ function publishedChallengeAuditPack() {
   }
   return publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_BROWSER_ACCEPTANCE",
+    publishedBy: "SIMULEDGER_BROWSER_ACCEPTANCE",
   });
 }
 
 async function installPracticeAuditRuntime(page: Page): Promise<void> {
   const pack = publishedPracticeAuditPack();
-  await page.route("**/tracechain.config.json", async (route) => {
+  await page.route("**/simuledger.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(embedConfiguration(AUDIT_PRACTICE_PRESET)),
@@ -139,7 +139,7 @@ async function installAuditBankRuntime(
       return nativeGetRandomValues(values);
     }) as Crypto["getRandomValues"];
   });
-  await page.route("**/tracechain.config.json", async (route) => {
+  await page.route("**/simuledger.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(embedConfiguration(configuration)),
@@ -183,7 +183,7 @@ async function installChallengeRuntime(page: Page): Promise<void> {
       __variantSeedDraws?: number;
     };
     const drawCountStorageKey =
-      "__tracechain_variant_seed_draw_count__";
+      "__simuledger_variant_seed_draw_count__";
     target.__variantSeedDraws = Number.parseInt(
       globalThis.sessionStorage.getItem(drawCountStorageKey) ?? "0",
       10,
@@ -204,13 +204,13 @@ async function installChallengeRuntime(page: Page): Promise<void> {
           values as unknown as {
             fill(value: number): unknown;
           }
-        ).fill(0);
+        ).fill(6);
         return values;
       }
       return nativeGetRandomValues(values);
     }) as Crypto["getRandomValues"];
   });
-  await page.route("**/tracechain.config.json", async (route) => {
+  await page.route("**/simuledger.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(embedConfiguration(CHALLENGE_PRESET)),
@@ -274,7 +274,7 @@ async function installChallengeRuntime(page: Page): Promise<void> {
 }
 
 async function installAssessmentRuntime(page: Page): Promise<void> {
-  await page.route("**/tracechain.config.json", async (route) => {
+  await page.route("**/simuledger.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(embedConfiguration(ASSESSMENT_PRESET)),
@@ -311,7 +311,7 @@ async function installPracticeRuntime(page: Page): Promise<void> {
     scenarioVersion: practiceAScenario.scenarioVersion,
     assets: practiceAScenario.portraitAssets,
   };
-  await page.route("**/tracechain.config.json", async (route) => {
+  await page.route("**/simuledger.config.json", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(embedConfiguration(PRACTICE_PRESET)),
@@ -577,10 +577,10 @@ test("loads an assigned Challenge case and preserves mitigation history through 
   const activity = new Activity(page);
 
   await expect(
-    page.getByRole("heading", { name: "TraceChain Thử thách A" }),
+    page.getByRole("heading", { name: "SimuLedger Thử thách A" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "TraceChain Thử thách" }),
+    page.getByRole("heading", { name: "SimuLedger Thử thách" }),
   ).toBeVisible();
   await expect(page.getByText("CH-01", { exact: true })).toBeVisible();
   await expect
@@ -816,7 +816,7 @@ test("restores a persisted Challenge assignment without drawing another case", a
   if (selectedScenario === undefined) {
     throw new Error("The test assignment must resolve to a scenario");
   }
-  const encoded = encodeTc3Attempt(
+  const encoded = encodeSl1Attempt(
     {
       sessionId: "SES_000001",
       currentStageId: ScenarioStageId.ORIENTATION,
@@ -828,7 +828,7 @@ test("restores a persisted Challenge assignment without drawing another case", a
       isPassed: false,
       variantAssignment: assignment,
     },
-    tc3CodecSchema({
+    sl1CodecSchema({
       configuration: CHALLENGE_PRESET,
       configurationHash: hashConfiguration(CHALLENGE_PRESET),
       scenario: selectedScenario,

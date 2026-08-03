@@ -58,7 +58,7 @@ async function completeStageOne(user: ReturnType<typeof userEvent.setup>): Promi
   await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 }
 
-describe("TraceChain end to end, stages 1 to 2", () => {
+describe("SimuLedger end to end, stages 1 to 2", () => {
   let api: MockScorm12Api;
   let uninstall: () => void;
 
@@ -158,7 +158,7 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     const suspendData = api.peek("cmi.suspend_data");
     expect(suspendData).not.toBe("");
     expect(suspendData.length).toBeLessThanOrEqual(3_800);
-    expect(suspendData.startsWith("TC3.")).toBe(true);
+    expect(suspendData.startsWith("SL1.")).toBe(true);
 
     // The raw stage identifier, not a translated label (section 21.6).
     expect(api.peek("cmi.core.lesson_location")).toMatch(/^STG_0\d_[A-Z_]+$/);
@@ -209,11 +209,11 @@ describe("TraceChain end to end, stages 1 to 2", () => {
   it("resets unsupported browser progress outside an LMS", async () => {
     const user = userEvent.setup();
     uninstall();
-    const storageKey = `tracechain:${APP_VERSION}:${coffeeScenario.scenarioId}`;
+    const storageKey = `simuledger:${APP_VERSION}:${coffeeScenario.scenarioId}`;
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
-        encodedState: "TC2.61r.0021.0.0.deadbeef",
+        encodedState: "LEGACY2.61r.0021.0.0.deadbeef",
         location: "STG_03_ANCHOR_CERTIFICATE",
         score: null,
         status: "incomplete",
@@ -235,13 +235,13 @@ describe("TraceChain end to end, stages 1 to 2", () => {
     expect(
       await screen.findByRole("heading", { name: /Bước 1 – Làm quen với mạng blockchain/ }),
     ).toBeInTheDocument();
-    expect(window.localStorage.getItem(storageKey) ?? "").not.toContain("TC2.");
+    expect(window.localStorage.getItem(storageKey) ?? "").not.toContain("LEGACY2.");
   });
 
   it("recovers rather than crashing when stored state is corrupt", async () => {
     uninstall();
     const corrupt = new MockScorm12Api({
-      initialValues: { "cmi.suspend_data": "TC1.corrupted.data.0.0.deadbeef" },
+      initialValues: { "cmi.suspend_data": "LEGACY1.corrupted.data.0.0.deadbeef" },
     });
     uninstall = installMockScormApi(corrupt);
 

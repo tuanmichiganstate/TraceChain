@@ -29,12 +29,12 @@ const overlayPaths = matchingFiles(
 );
 const packPaths = matchingFiles(
   join(projectRoot, "scenario-packs"),
-  "tracechain.pack.json",
+  "simuledger.pack.json",
 );
 const cacheRoot = join(projectRoot, "node_modules", ".cache");
 mkdirSync(cacheRoot, { recursive: true });
 const temporaryDirectory = mkdtempSync(
-  join(cacheRoot, "tracechain-curriculum-overlay-"),
+  join(cacheRoot, "simuledger-curriculum-overlay-"),
 );
 const bundlePath = join(temporaryDirectory, "validator.mjs");
 let failed = false;
@@ -92,7 +92,7 @@ try {
     if (compatible.length === 0) {
       failed = true;
       console.error(
-        `${overlayPath}: no repository pack provides every exact TraceChain framework version.`,
+        `${overlayPath}: no repository pack provides every exact SimuLedger framework version.`,
       );
       continue;
     }

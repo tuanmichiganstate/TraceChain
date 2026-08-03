@@ -5,11 +5,11 @@ import {
   MemorySimulationPersistence,
 } from "../../infrastructure/persistence/simulation-persistence";
 import {
-  decodeTc3Attempt,
-  encodeTc3Attempt,
+  decodeSl1Attempt,
+  encodeSl1Attempt,
   type CompactCommandJournalEntry,
-  type Tc3AttemptSnapshot,
-} from "../../infrastructure/persistence/tc3-codec";
+  type Sl1AttemptSnapshot,
+} from "../../infrastructure/persistence/sl1-codec";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import type {
   RecallBatchCommand,
@@ -39,7 +39,7 @@ import {
   endorsedProposalJournalEntry,
   endorsementWorkflowJournalEntry,
   JournalOpcode,
-  tc3CodecSchema,
+  sl1CodecSchema,
 } from "./command-journal";
 import {
   compactCertificateDecision,
@@ -312,7 +312,7 @@ function flawlessJournal(): readonly CompactCommandJournalEntry[] {
 describe("future-portable headless attempt", () => {
   it("loads, persists, replays, scores, and reports through reusable services only", async () => {
     const decisions = flawlessDecisions();
-    const snapshot: Tc3AttemptSnapshot = {
+    const snapshot: Sl1AttemptSnapshot = {
       sessionId: "SES_HEADLESS_000001",
       currentStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
       completedStageIds: SCENARIO_STAGE_ORDER,
@@ -322,16 +322,16 @@ describe("future-portable headless attempt", () => {
       isCompleted: true,
       isPassed: true,
     };
-    const schema = tc3CodecSchema({
+    const schema = sl1CodecSchema({
       configuration,
       configurationHash,
       scenario,
     });
     const persistence = new MemorySimulationPersistence();
-    await persistence.persistAndCommit(encodeTc3Attempt(snapshot, schema));
+    await persistence.persistAndCommit(encodeSl1Attempt(snapshot, schema));
     const stored = await persistence.load();
     if (stored === null) throw new Error("Headless session was not persisted");
-    const restored = decodeTc3Attempt(stored, schema);
+    const restored = decodeSl1Attempt(stored, schema);
     const initialDomain = applyScenarioSeed(
       scenario,
       sha256Hex,

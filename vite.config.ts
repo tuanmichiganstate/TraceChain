@@ -28,7 +28,7 @@ const developmentMediaManifest = {
 };
 const developmentMediaManifestSource = `${JSON.stringify(developmentMediaManifest, null, 2)}\n`;
 const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
-  "tracechain.config.json": `${JSON.stringify(embedConfiguration(GUIDED_PRESET), null, 2)}\n`,
+  "simuledger.config.json": `${JSON.stringify(embedConfiguration(GUIDED_PRESET), null, 2)}\n`,
   "scenario.json": developmentScenarioSource,
   "media-manifest.json": developmentMediaManifestSource,
   ...cryptographicRuntimeFiles,
@@ -69,7 +69,7 @@ const DEVELOPMENT_RUNTIME_FILES: Readonly<Record<string, string>> = {
 
 function runtimeFilesPlugin(): Plugin {
   return {
-    name: "tracechain-runtime-files",
+    name: "simuledger-runtime-files",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const name = request.url?.replace(/^\/+/, "").split("?")[0] ?? "";

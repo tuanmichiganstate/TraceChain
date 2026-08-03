@@ -16,7 +16,7 @@ import { build } from "esbuild";
 
 export const GENERATOR_VERSION = "1.0.0";
 export const FORMAT_VERSION = "1";
-export const ARTIFACT_FILENAME = "tracechain-content-review.html";
+export const ARTIFACT_FILENAME = "simuledger-content-review.html";
 export const MANIFEST_FILENAME = "MANIFEST.md";
 
 const DEFAULT_PROJECT_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -134,7 +134,7 @@ export function assertCatalogParity(vi, en) {
 async function loadScenario(projectRoot) {
   const cacheRoot = join(projectRoot, "node_modules", ".cache");
   mkdirSync(cacheRoot, { recursive: true });
-  const temporaryDirectory = mkdtempSync(join(cacheRoot, "tracechain-review-"));
+  const temporaryDirectory = mkdtempSync(join(cacheRoot, "simuledger-review-"));
   const bundlePath = join(temporaryDirectory, "content-review.mjs");
   try {
     await build({
@@ -285,8 +285,8 @@ function renderHtml({ keys, vi, en, scenarioModel, sourceCommit, sourceDigest })
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Toàn bộ chuỗi ngôn ngữ tiếng Việt dành cho rà soát nội dung TraceChain.">
-<title>Rà soát nội dung TraceChain</title>
+<meta name="description" content="Toàn bộ chuỗi ngôn ngữ tiếng Việt dành cho rà soát nội dung SimuLedger.">
+<title>Rà soát nội dung SimuLedger</title>
 <style>
 :root{color-scheme:light dark;--ink:#172033;--muted:#5b6475;--page:#f4f6fa;--panel:#fff;--line:#d8deea;--brand:#28306f;--soft:#edf0fa;--good:#08664f;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--body:"Be Vietnam Pro","Segoe UI",system-ui,sans-serif}
 @media(prefers-color-scheme:dark){:root{--ink:#edf0fa;--muted:#aeb6c8;--page:#111522;--panel:#1a2030;--line:#343d51;--brand:#b8c0ff;--soft:#242c41;--good:#75d8ba}}
@@ -299,7 +299,7 @@ function renderHtml({ keys, vi, en, scenarioModel, sourceCommit, sourceDigest })
 <nav aria-label="Nhóm chuỗi ngôn ngữ"><h2>Mục lục</h2><ol>${navigation}</ol></nav>
 <main id="main">
 <header>
-  <h1>Rà soát nội dung TraceChain</h1>
+  <h1>Rà soát nội dung SimuLedger</h1>
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">

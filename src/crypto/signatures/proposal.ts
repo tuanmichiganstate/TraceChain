@@ -23,7 +23,7 @@ export function createTransactionProposal(options: {
 }): TransactionProposalV1 {
   const { command } = options;
   return {
-    domain: "TRACECHAIN_TRANSACTION_PROPOSAL_V1",
+    domain: "SIMULEDGER_TRANSACTION_PROPOSAL_V1",
     configurationHash: options.configurationHash,
     scenarioId: options.scenarioId,
     scenarioVersion: options.scenarioVersion,
@@ -50,7 +50,7 @@ export function signatureStatement(options: {
   readonly purpose?: SignatureStatementV1["purpose"];
 }): SignatureStatementV1 {
   return {
-    domain: "TRACECHAIN_SIGNATURE_V1",
+    domain: "SIMULEDGER_SIGNATURE_V1",
     purpose: options.purpose ?? "PROPOSAL_SUBMISSION",
     proposalDigest: options.proposalDigest,
     sessionId: options.sessionId,

@@ -146,7 +146,7 @@ describe("Scorm12Adapter", () => {
 
     it("reports a resumed attempt from cmi.core.entry", async () => {
       const resumed = new MockScorm12Api({
-        initialValues: { "cmi.core.entry": "resume", "cmi.suspend_data": "TC1.100.0000.0.0.abc" },
+        initialValues: { "cmi.core.entry": "resume", "cmi.suspend_data": "LEGACY1.100.0000.0.0.abc" },
       });
       const adapter = makeAdapter(resumed);
       await adapter.initialize();
@@ -158,7 +158,7 @@ describe("Scorm12Adapter", () => {
     it("round-trips encoded state through suspend_data", async () => {
       const adapter = makeAdapter();
       await adapter.initialize();
-      const encoded = "TC1.81ff.0031002.5.3.a1b2c3d4";
+      const encoded = "LEGACY1.81ff.0031002.5.3.a1b2c3d4";
 
       await adapter.saveAttemptState(encoded);
       await adapter.commit();
@@ -258,7 +258,7 @@ describe("Scorm12Adapter", () => {
 
       await adapter.setScore(0);
       await adapter.setCompletion(CompletionStatus.INCOMPLETE);
-      await adapter.saveAttemptState("TC1.000.0000.0.0.deadbeef");
+      await adapter.saveAttemptState("LEGACY1.000.0000.0.0.deadbeef");
 
       expect(review.peek("cmi.core.score.raw")).toBe("88");
       expect(review.peek("cmi.core.lesson_status")).toBe("passed");
@@ -277,11 +277,11 @@ describe("Scorm12Adapter", () => {
 
     it("still allows a review-mode learner to load and read their attempt", async () => {
       const review = new MockScorm12Api({
-        initialValues: { "cmi.core.lesson_mode": "review", "cmi.suspend_data": "TC1.abc" },
+        initialValues: { "cmi.core.lesson_mode": "review", "cmi.suspend_data": "LEGACY1.abc" },
       });
       const adapter = makeAdapter(review);
       await adapter.initialize();
-      expect(await adapter.loadAttemptState()).toBe("TC1.abc");
+      expect(await adapter.loadAttemptState()).toBe("LEGACY1.abc");
     });
   });
 
@@ -337,7 +337,7 @@ describe("Scorm12Adapter", () => {
     it("never writes the learner name or identifier into stored state", async () => {
       const adapter = makeAdapter();
       await adapter.initialize();
-      await adapter.saveAttemptState("TC1.100.0000.0.0.abcd1234");
+      await adapter.saveAttemptState("LEGACY1.100.0000.0.0.abcd1234");
 
       const suspendWrites = api.writeLog
         .filter((entry) => entry.element === "cmi.suspend_data")

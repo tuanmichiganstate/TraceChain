@@ -92,7 +92,7 @@ export interface CryptographicRuntime {
 }
 
 export interface TransactionProposalV1 {
-  readonly domain: "TRACECHAIN_TRANSACTION_PROPOSAL_V1";
+  readonly domain: "SIMULEDGER_TRANSACTION_PROPOSAL_V1";
   readonly configurationHash: string;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
@@ -107,7 +107,7 @@ export interface TransactionProposalV1 {
 export type SignaturePurpose = "PROPOSAL_SUBMISSION" | "ENDORSEMENT";
 
 export interface SignatureStatementV1 {
-  readonly domain: "TRACECHAIN_SIGNATURE_V1";
+  readonly domain: "SIMULEDGER_SIGNATURE_V1";
   readonly purpose: SignaturePurpose;
   readonly proposalDigest: string;
   readonly sessionId: string;
@@ -175,7 +175,7 @@ export interface EndorsementRecord {
   readonly signature: SignatureEnvelope;
   readonly endorsedAt: string;
   /**
-   * Derived during live execution and deterministic replay. TC3 stores the
+   * Derived during live execution and deterministic replay. SL1 stores the
    * compact action and trusted context, never this redundant evidence object.
    */
   readonly verification: SignatureTrustEvidence;

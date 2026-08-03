@@ -1,23 +1,23 @@
 {
-  "$schema": "../schemas/tracechain-curriculum-overlay-v2.schema.json",
+  "$schema": "../schemas/simuledger-curriculum-overlay-v2.schema.json",
   "schemaVersion": "2.0.0",
   "overlayId": "OVERLAY_PHARMA_PILOT_COURSE",
   "version": "1.0.0",
   "status": "ADOPTED",
   "owner": {
-    "ownerId": "TRACECHAIN_DEMO_COURSE",
+    "ownerId": "SIMULEDGER_DEMO_COURSE",
     "ownerType": "COURSE",
     "displayName": {
       "valuesByLocale": {
-        "en": "TraceChain demonstration course",
-        "vi": "Học phần minh họa TraceChain"
+        "en": "SimuLedger demonstration course",
+        "vi": "Học phần minh họa SimuLedger"
       }
     }
   },
   "educationalDemoOnly": true,
   "effectiveFrom": "2026-07-26",
   "adoptedAt": "2026-07-26T00:00:00.000Z",
-  "adoptedBy": "TRACECHAIN_DEMO_PRODUCT_OWNER",
+  "adoptedBy": "SIMULEDGER_DEMO_PRODUCT_OWNER",
   "supportedLocales": [
     "en",
     "vi"
@@ -28,7 +28,7 @@
       "vi": "Bảng đối chiếu chuẩn đầu ra học phần cho chuỗi lạnh dược phẩm"
     }
   },
-  "traceChainFrameworks": [
+  "simuLedgerFrameworks": [
     {
       "frameworkId": "PHARMA_COLD_CHAIN",
       "frameworkVersion": "1.2.0"

@@ -530,7 +530,7 @@ describe("scenario validation catches authoring mistakes", () => {
     expect(errorMessages(broken)).toMatch(/CREATE_BATCH.*matching scenario-controlled command context/);
   });
 
-  it("rejects journal limits that exceed the authored TC3 budget", () => {
+  it("rejects journal limits that exceed the authored SL1 budget", () => {
     const broken = withScenario((draft) => ({
       ...draft,
       runtime: {

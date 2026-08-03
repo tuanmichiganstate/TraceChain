@@ -1,5 +1,5 @@
-import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import challengePackJson from "../../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import {
   FixedClock,
   SequenceIdGenerator,

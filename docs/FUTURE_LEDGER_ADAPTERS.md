@@ -1,6 +1,6 @@
 # Future ledger adapters
 
-TraceChain's ledger is reachable only through one interface,
+SimuLedger's ledger is reachable only through one interface,
 `src/domain/ledger/ledger-adapter.ts`. This document records what that buys and
 what it costs, so a later tier can be built without re-deriving the reasoning.
 
@@ -92,7 +92,7 @@ Against a real Hyperledger Fabric network.
 
 **Maps almost directly**
 
-| TraceChain | Fabric |
+| SimuLedger | Fabric |
 |---|---|
 | Organization | MSP |
 | Actor | Certificate identity |

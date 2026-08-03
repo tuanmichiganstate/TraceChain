@@ -112,7 +112,7 @@ Verification yields distinct facts:
 
 None proves the source business claim is true. The key pairs, identity registry
 and certificate-issuance story are inspectable educational fixtures, not
-production PKI. TC3 stores only bounded replay inputs; signatures and the
+production PKI. SL1 stores only bounded replay inputs; signatures and the
 resulting evidence are regenerated rather than persisted.
 
 ## Validation

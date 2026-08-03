@@ -522,7 +522,7 @@ export class D1LtiAuthenticationRepository {
       if (existing.status !== "active") {
         throw new LtiAuthenticationRepositoryError(
           "LTI_IDENTITY_DISABLED",
-          "The linked TraceChain identity is disabled.",
+          "The linked SimuLedger identity is disabled.",
           recoveryPath,
         );
       }

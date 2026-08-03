@@ -5,7 +5,7 @@ Date: 27 July 2026
 
 ## Context
 
-TraceChain previously used two unrelated concepts called a mode:
+SimuLedger previously used two unrelated concepts called a mode:
 
 - SCORM package presets selected `guided`, `challenge`, `assessment`, or
   `technical-lab`; and
@@ -27,7 +27,7 @@ deliveryPurpose
 outcomeStrategy
 ```
 
-TraceChain is still in pre-release development. Repository policy requires
+SimuLedger is still in pre-release development. Repository policy requires
 direct contract upgrades and development-data resets rather than migration
 readers or dual-format compatibility code.
 
@@ -35,7 +35,7 @@ readers or dual-format compatibility code.
 
 ### Use one channel-neutral Configuration Schema V2
 
-`TraceChainExperienceConfigurationV2` is the shared contract for hosted and
+`SimuLedgerExperienceConfigurationV2` is the shared contract for hosted and
 SCORM delivery. Besides the four product dimensions, it resolves:
 
 - exact content identity;
@@ -46,7 +46,7 @@ SCORM delivery. Besides the four product dimensions, it resolves:
 - locale.
 
 Business-simulation and Technical Laboratory package configurations extend
-this shared contract with their runtime-specific fields. The existing `tc3-v2`
+this shared contract with their runtime-specific fields. The existing `sl1-v1`
 and `tl1-v1` compatibility boundaries continue to distinguish their compact
 runtime journals; they are not product-mode fields.
 

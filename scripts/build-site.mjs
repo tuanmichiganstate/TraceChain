@@ -148,7 +148,7 @@ const technicalLabRuntimeDirectory = join(
 );
 await mkdir(technicalLabRuntimeDirectory, { recursive: true });
 for (const fileName of [
-  "tracechain.config.json",
+  "simuledger.config.json",
   "technical-lab-pack.json",
   "build-info.json",
   "identity-registry.json",

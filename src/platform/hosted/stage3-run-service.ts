@@ -5165,7 +5165,7 @@ export class HostedStage3RunService {
       modeConfiguration.seedPolicy === "generated"
         ? `generated:${sha256Hex(
             canonicalize({
-              domain: "TRACECHAIN_HOSTED_SCENARIO_SEED_V1",
+              domain: "SIMULEDGER_HOSTED_SCENARIO_SEED_V1",
               packContentHash: this.packContentHash(),
               assignmentId: request.assignmentId,
               runId: request.runId,
@@ -5210,7 +5210,7 @@ export class HostedStage3RunService {
     const scenario = this.pack.scenarios.find(
       (candidate) =>
         candidate.hostedRuntime?.runtimeId ===
-          "tracechain-coffee-v2" &&
+          "simuledger-coffee-v2" &&
         candidate.hostedRuntime.entryStageId ===
           "STG_03_ANCHOR_CERTIFICATE",
     );

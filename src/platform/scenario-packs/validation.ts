@@ -5375,7 +5375,7 @@ function validateHostedRuntime(
     `${path}.hostedRuntime`,
   );
   if (runtime === null) return;
-  if (runtime.runtimeId === "tracechain-audit-v1") {
+  if (runtime.runtimeId === "simuledger-audit-v1") {
     context.allowedKeys(
       runtime,
       ["runtimeId", "auditCaseId"],
@@ -5412,7 +5412,7 @@ function validateHostedRuntime(
     `${path}.hostedRuntime`,
   );
   context.check(
-    runtime.runtimeId === "tracechain-coffee-v2",
+    runtime.runtimeId === "simuledger-coffee-v2",
     "UNKNOWN_HOSTED_RUNTIME",
     `${path}.hostedRuntime.runtimeId`,
     "must name a registered native runtime",

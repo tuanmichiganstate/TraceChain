@@ -1,4 +1,4 @@
-# TraceChain post-platform baseline record V1
+# SimuLedger post-platform baseline record V1
 
 **Record status:** Immutable technical pilot candidate; human acceptance
 pending.

@@ -1,10 +1,10 @@
-# TraceChain post-platform learning roadmap
+# SimuLedger post-platform learning roadmap
 
 **Status:** Canonical product guidance after the instructor-ready platform.
 
 ## Purpose
 
-TraceChain has reached the instructor-ready single-learner boundary. The hosted
+SimuLedger has reached the instructor-ready single-learner boundary. The hosted
 platform supports authenticated application roles, exact-version assignments,
 server-authoritative runs, evidence-linked decisions, replay, rubric ratings,
 competency evidence, deterministic exports, scenario-pack authoring, graphical
@@ -249,7 +249,7 @@ scenario. It must introduce at least one genuinely new:
 - causal consequence pattern.
 
 It must reuse the generic engine without pharmaceutical-specific core logic.
-Only after several reviewed packs exist should TraceChain add an external pack
+Only after several reviewed packs exist should SimuLedger add an external pack
 registry, institutional sharing workflow, or marketplace.
 
 ### Exit gate
@@ -268,11 +268,11 @@ The transfer case is complete only when:
 
 ## Priority 3: add a curriculum crosswalk overlay
 
-Crosswalks map stable TraceChain performance indicators to versioned external
+Crosswalks map stable SimuLedger performance indicators to versioned external
 outcomes:
 
 ```text
-TraceChain performance indicator
+SimuLedger performance indicator
   -> course learning outcome
   -> program performance indicator
   -> optional DACUM task, graduate attribute, or accreditation outcome
@@ -282,8 +282,8 @@ TraceChain performance indicator
 
 Scenario packs own:
 
-- stable TraceChain competencies;
-- TraceChain performance indicators;
+- stable SimuLedger competencies;
+- SimuLedger performance indicators;
 - observable evidence definitions; and
 - authoritative internal competency targets.
 
@@ -299,19 +299,19 @@ Institutions, programs, or courses own:
 - institutional reporting rules.
 
 External curriculum mappings are therefore separate, versioned institutional or
-program overlays. They reference stable TraceChain indicator IDs but remain
+program overlays. They reference stable SimuLedger indicator IDs but remain
 independent from scenario-pack versions.
 
 A scenario pack may include non-authoritative suggested mappings, but an
 institution must explicitly adopt, revise, or reject them before curriculum
-reporting uses them. DACUM mapping may remain maintained outside TraceChain and
+reporting uses them. DACUM mapping may remain maintained outside SimuLedger and
 be imported when needed.
 
 ### Crosswalk requirements
 
 - every overlay has an owner, version, status, effective date, and supported
   framework version;
-- mappings reference stable TraceChain indicator IDs;
+- mappings reference stable SimuLedger indicator IDs;
 - every external outcome has a localized title and explicit type;
 - mappings distinguish primary, supporting, and contextual alignment;
 - reports preserve scenario, competency, evidence, framework, and crosswalk
@@ -408,7 +408,7 @@ Possible first scope:
 
 - institutional OIDC or LMS launch;
 - roster synchronization;
-- deep linking to a specific TraceChain assignment;
+- deep linking to a specific SimuLedger assignment;
 - grade and completion return;
 - stable scenario and assignment identification;
 - retry and error handling; and

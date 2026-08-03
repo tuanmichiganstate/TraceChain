@@ -7,7 +7,7 @@
  * only and must never reach the learner.
  */
 
-export abstract class TraceChainError extends Error {
+export abstract class SimuLedgerError extends Error {
   abstract readonly messageKey: string;
 
   constructor(message: string) {
@@ -16,23 +16,23 @@ export abstract class TraceChainError extends Error {
   }
 }
 
-export class DomainValidationError extends TraceChainError {
+export class DomainValidationError extends SimuLedgerError {
   readonly messageKey = "errors.domainValidation";
 }
 
-export class LedgerIntegrityError extends TraceChainError {
+export class LedgerIntegrityError extends SimuLedgerError {
   readonly messageKey = "errors.ledgerIntegrity";
 }
 
-export class ScenarioConfigurationError extends TraceChainError {
+export class ScenarioConfigurationError extends SimuLedgerError {
   readonly messageKey = "errors.scenarioConfiguration";
 }
 
-export class PersistenceError extends TraceChainError {
+export class PersistenceError extends SimuLedgerError {
   readonly messageKey = "errors.persistence";
 }
 
-export class ScormCommunicationError extends TraceChainError {
+export class ScormCommunicationError extends SimuLedgerError {
   readonly messageKey = "errors.scormCommunication";
 
   constructor(
@@ -44,7 +44,7 @@ export class ScormCommunicationError extends TraceChainError {
   }
 }
 
-export class UnsupportedStateVersionError extends TraceChainError {
+export class UnsupportedStateVersionError extends SimuLedgerError {
   readonly messageKey = "errors.unsupportedStateVersion";
 
   constructor(
@@ -56,6 +56,6 @@ export class UnsupportedStateVersionError extends TraceChainError {
 }
 
 /** A valid attempt belongs to another resolved package or scenario version. */
-export class IncompatibleAttemptError extends TraceChainError {
+export class IncompatibleAttemptError extends SimuLedgerError {
   readonly messageKey = "errors.incompatibleAttempt";
 }

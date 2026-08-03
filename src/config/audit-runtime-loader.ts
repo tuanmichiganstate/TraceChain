@@ -22,7 +22,7 @@ import {
 import { hashConfiguration } from "./hash";
 import type {
   AuditSimulationConfiguration,
-  EmbeddedTraceChainConfiguration,
+  EmbeddedSimuLedgerConfiguration,
 } from "./types";
 import { isAuditSimulationConfiguration } from "./types";
 import { assertValidConfiguration } from "./validation";
@@ -39,7 +39,7 @@ export interface AuditRuntimePackage {
 
 function isEmbeddedConfiguration(
   value: unknown,
-): value is EmbeddedTraceChainConfiguration {
+): value is EmbeddedSimuLedgerConfiguration {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -66,13 +66,13 @@ export async function loadAuditRuntimePackage(
 ): Promise<AuditRuntimePackage> {
   const [configurationFile, packFile, buildInformationFile] =
     await Promise.all([
-      loadJson(fetcher, "./tracechain.config.json"),
+      loadJson(fetcher, "./simuledger.config.json"),
       loadJson(fetcher, "./audit-scenario-pack.json"),
       loadJson(fetcher, "./build-info.json"),
     ]);
   if (!isEmbeddedConfiguration(configurationFile)) {
     throw new ScenarioConfigurationError(
-      "tracechain.config.json has an invalid envelope",
+      "simuledger.config.json has an invalid envelope",
     );
   }
   assertValidConfiguration(configurationFile.configuration);
@@ -162,7 +162,7 @@ export async function loadAuditRuntimePackage(
     (representativeVariant === undefined &&
       (auditCase.auditCaseId !== configuration.auditCaseId ||
         auditCase.version !== configuration.auditCaseVersion)) ||
-    scenario.hostedRuntime?.runtimeId !== "tracechain-audit-v1" ||
+    scenario.hostedRuntime?.runtimeId !== "simuledger-audit-v1" ||
     scenario.hostedRuntime.auditCaseId !== auditCase.auditCaseId
   ) {
     throw new IncompatibleAttemptError(

@@ -159,7 +159,7 @@ describe("assignment process analytics", () => {
       schemaVersion: "1.2.0",
       interpretation:
         "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-      ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
+      ruleVersion: "SIMULEDGER_PROCESS_ANALYTICS_V1@1.2.0",
       summary: {
         evidenceRequestCounts: {
           EVIDENCE_STABILITY_ASSESSMENT: 1,

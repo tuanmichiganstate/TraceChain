@@ -23,8 +23,8 @@ import type { BusinessSimulationConfiguration } from "../../config/types";
 import type {
   CompactCommandJournalEntry,
   JournalOpcodeDefinition,
-  Tc3CodecSchema,
-} from "../../infrastructure/persistence/tc3-codec";
+  Sl1CodecSchema,
+} from "../../infrastructure/persistence/sl1-codec";
 import { runtimeCommand, trustedContext } from "../scenario/runtime";
 import { MAX_ATTEMPT_COUNT } from "../../infrastructure/persistence/attempt-state";
 import type { ScenarioVariantBank } from "../scenario/variant-bank";
@@ -113,7 +113,7 @@ export function commandJournalDefinitions(
     ),
     // One historical attempt may already have been rejected before the
     // custody handoff. The UI now gates that ordering mistake, while this
-    // second bounded slot lets an existing TC3 attempt recover and commit.
+    // second bounded slot lets an existing SL1 attempt recover and commit.
     definition(JournalOpcode.RECORD_TRANSPORT, "baseline", 2),
     definition(JournalOpcode.RECEIVE_BATCH, "baseline", 1),
     definition(JournalOpcode.PURCHASE_ON_RECEIPT, "baseline", 1),
@@ -189,12 +189,12 @@ export function commandJournalDefinitions(
   ];
 }
 
-export function tc3CodecSchema(options: {
+export function sl1CodecSchema(options: {
   readonly configuration: BusinessSimulationConfiguration;
   readonly configurationHash: string;
   readonly scenario: ScenarioDefinition;
   readonly variantBank?: ScenarioVariantBank;
-}): Tc3CodecSchema {
+}): Sl1CodecSchema {
   return {
     configurationHash: options.configurationHash,
     scenarioId: options.scenario.scenarioId,

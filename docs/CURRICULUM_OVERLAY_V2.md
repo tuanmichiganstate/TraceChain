@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The curriculum-overlay layer connects TraceChain's versioned performance
+The curriculum-overlay layer connects SimuLedger's versioned performance
 indicators to institution-, program-, or course-owned outcomes without changing
 simulation scoring or claiming that one activity proves mastery.
 
-The overlay is not scenario content. Scenario packs own TraceChain
+The overlay is not scenario content. Scenario packs own SimuLedger
 competencies, indicators, and observable evidence definitions. A separate
 adopting authority owns the external mapping, its approval status, and its
 effective date.
@@ -17,7 +17,7 @@ Scenario-pack schema `1.9.0` contains no `curriculumCrosswalks` property.
 Curriculum overlays use their own schema:
 
 ```text
-schemas/tracechain-curriculum-overlay-v2.schema.json
+schemas/simuledger-curriculum-overlay-v2.schema.json
 ```
 
 Every overlay declares:
@@ -28,15 +28,15 @@ institution, program, or course owner
 draft, adopted, or retired status
 effective date
 adoption authority and timestamp
-exact TraceChain framework versions
+exact SimuLedger framework versions
 external framework identity and version
 self-localized external outcomes
-TraceChain indicator -> external outcome mappings
+SimuLedger indicator -> external outcome mappings
 primary, supporting, or contextual alignment
 ```
 
 Only explicitly adopted overlays appear in assignment reporting. An adopted
-overlay must match the exact TraceChain framework versions supplied by the
+overlay must match the exact SimuLedger framework versions supplied by the
 assignment's immutable scenario pack. A newer overlay or scenario pack is not
 substituted for historical evidence.
 
@@ -57,8 +57,8 @@ The validator rejects:
 - missing English or Vietnamese values declared by the overlay;
 - unknown or duplicate external outcomes;
 - external outcomes with no mapping;
-- unknown TraceChain indicators;
-- TraceChain framework-version mismatches;
+- unknown SimuLedger indicators;
+- SimuLedger framework-version mismatches;
 - duplicate mapping relationships;
 - empty frameworks or overlays; and
 - unsupported outcome or alignment values.
@@ -136,7 +136,7 @@ program-owned and demonstrates primary, supporting, and contextual
 relationships to two program outcomes.
 
 These files do not claim adoption by a real institution. Their owners are
-`TRACECHAIN_DEMO_COURSE` and `TRACECHAIN_DEMO_PROGRAM`, and
+`SIMULEDGER_DEMO_COURSE` and `SIMULEDGER_DEMO_PROGRAM`, and
 `educationalDemoOnly` is true.
 
 ## Current boundary
@@ -145,7 +145,7 @@ Implemented:
 
 - typed overlay and report contracts;
 - standalone JSON Schema and runtime validation;
-- exact TraceChain framework compatibility checks;
+- exact SimuLedger framework compatibility checks;
 - one adopted demonstration course overlay;
 - one adopted demonstration program overlay;
 - deterministic observation-linked evidence projection;

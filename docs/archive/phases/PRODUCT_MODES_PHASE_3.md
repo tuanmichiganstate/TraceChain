@@ -84,7 +84,7 @@ is validated against that split. Existing scorable item identifiers, hint
 targets, item ceilings, mitigation ceilings, and append-only correction
 behavior are unchanged.
 
-No persistence schema or migration reader was added. The TC3 compact journal
+No persistence schema or migration reader was added. The SL1 compact journal
 stores the resolved configuration identity and deterministic Practice variant
 assignment, while commands, audit outcomes, events, score, and report remain
 replay-derived. The authored worst-case Practice path is included in the
@@ -104,7 +104,7 @@ assessment
 The Practice artifact is:
 
 ```text
-TraceChain_Practice_PracticeCase_vi_v1.0.0.zip
+SimuLedger_Practice_PracticeCase_vi_v1.0.0.zip
 ```
 
 Dirty development builds use the established `_NON_RELEASE` suffix. All four
@@ -127,7 +127,7 @@ Automated coverage includes:
 - Practice scenario and variant-bank validation;
 - deterministic configuration and scenario hashing;
 - exact 100-point and 39/61 scoring contract;
-- authored TC3 worst-case size and section budgets;
+- authored SL1 worst-case size and section budgets;
 - independent Practice runtime loading;
 - immediate Practice feedback and optional support disclosure;
 - locale parity and scenario contracts;
@@ -141,7 +141,7 @@ human or environment gates and must not be inferred from local automation.
 
 ## Upgrade policy
 
-TraceChain remains pre-release. Phase 3 upgrades the active preset, schema,
+SimuLedger remains pre-release. Phase 3 upgrades the active preset, schema,
 fresh-install database, package, and validation contracts directly. It adds no
 legacy aliases, migration readers, fallback package formats, or dual behavior.
 

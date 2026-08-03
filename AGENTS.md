@@ -1,4 +1,4 @@
-# Working on TraceChain
+# Working on SimuLedger
 
 Orientation is in `README.md` — what this is, the layout, the scripts, and the
 constraints that break learner data if ignored. Read it first. This file covers
@@ -24,7 +24,7 @@ code of the pager, not the gate. Run it, then check `$?`.
 
 ## Pre-release upgrade policy
 
-TraceChain is not deployed to students yet. Do not preserve backward
+SimuLedger is not deployed to students yet. Do not preserve backward
 compatibility for development-only application state, scenario packs, SCORM
 packages, local browser data, Moodle attempts, or hosted database contents.
 Upgrade the active schemas and implementations directly, regenerate artifacts,
@@ -65,8 +65,8 @@ without that the browser keeps serving the previous build and your change looks
 like it silently failed. It verifies every zip entry against what landed in the
 content area, so a half-extracted package fails loudly.
 
-The command manages separate `TraceChain Guided`, `TraceChain Challenge`, and
-`TraceChain Assessment` activities. It resets attempts, grades, and completion
+The command manages separate `SimuLedger Guided`, `SimuLedger Challenge`, and
+`SimuLedger Assessment` activities. It resets attempts, grades, and completion
 state for all three before replacing their packages.
 
 Any PHP run inside the container must use `--user daemon`. Root leaves

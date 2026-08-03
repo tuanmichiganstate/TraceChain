@@ -2,7 +2,7 @@ import type {
   AuditSimulationConfiguration,
   BusinessSimulationConfiguration,
   TechnicalLabConfiguration,
-  TraceChainConfiguration,
+  SimuLedgerConfiguration,
 } from "./types";
 import { FIRST_TECHNICAL_LAB_MODULE_IDS } from "../technical-lab/contracts";
 import {
@@ -26,7 +26,7 @@ export type LecturerPresetId =
 
 const COMMON = {
   configurationSchemaVersion: "2",
-  applicationCompatibilityVersion: "tc3-v2",
+  applicationCompatibilityVersion: "sl1-v1",
   technicalFeatures: {
     hashInspection: true,
     digitalSignatures: true,
@@ -83,7 +83,7 @@ export const GUIDED_PRESET: BusinessSimulationConfiguration = {
   ),
   delivery: {
     channel: "SCORM",
-    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    persistencePolicyId: "SL1_COMPACT_JOURNAL",
     attemptPolicyId: "LMS_MANAGED",
   },
   scenarioId: "SCN_COFFEE_001",
@@ -127,7 +127,7 @@ export const PRACTICE_PRESET: BusinessSimulationConfiguration = {
   ),
   delivery: {
     channel: "SCORM",
-    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    persistencePolicyId: "SL1_COMPACT_JOURNAL",
     attemptPolicyId: "LMS_MANAGED",
   },
   scenarioId: "SCN_COFFEE_PRACTICE",
@@ -174,7 +174,7 @@ export const CHALLENGE_PRESET: BusinessSimulationConfiguration = {
   ),
   delivery: {
     channel: "SCORM",
-    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    persistencePolicyId: "SL1_COMPACT_JOURNAL",
     attemptPolicyId: "LMS_MANAGED",
   },
   scenarioId: "SCN_COFFEE_CHALLENGE",
@@ -223,7 +223,7 @@ export const ASSESSMENT_PRESET: BusinessSimulationConfiguration = {
   },
   delivery: {
     channel: "SCORM",
-    persistencePolicyId: "TC3_COMPACT_JOURNAL",
+    persistencePolicyId: "SL1_COMPACT_JOURNAL",
     attemptPolicyId: "LMS_MANAGED",
   },
   scenarioId: "SCN_COFFEE_001",
@@ -497,7 +497,7 @@ export const TECHNICAL_LAB_PRESET: TechnicalLabConfiguration = {
 };
 
 export const LECTURER_PRESETS: Readonly<
-  Record<LecturerPresetId, TraceChainConfiguration>
+  Record<LecturerPresetId, SimuLedgerConfiguration>
 > = {
   guided: GUIDED_PRESET,
   practice: PRACTICE_PRESET,
@@ -512,6 +512,6 @@ export const LECTURER_PRESETS: Readonly<
 
 export function resolvePreset(
   presetId: LecturerPresetId,
-): TraceChainConfiguration {
+): SimuLedgerConfiguration {
   return structuredClone(LECTURER_PRESETS[presetId]);
 }

@@ -1,4 +1,4 @@
-# TraceChain implementation plan: real digital signatures, authorization, and endorsement policies
+# SimuLedger implementation plan: real digital signatures, authorization, and endorsement policies
 
 Status: approved follow-on implementation specification
 Implementation state: Increments A and B complete; all acceptance gates are
@@ -7,11 +7,11 @@ Prerequisite: the configurable Guided and Challenge simulation boundary remains
 the foundation for this work
 
 This plan implements genuine digital signing, signature verification,
-authorization, and endorsement-policy evaluation in TraceChain.
+authorization, and endorsement-policy evaluation in SimuLedger.
 
 It extends the existing configurable Guided and Challenge simulation
 architecture. It does not replace the current command/event model,
-deterministic replay, TC3 journal, scenario engine, package generator, scoring
+deterministic replay, SL1 journal, scenario engine, package generator, scoring
 engine, or accepted-event versus audit-event separation.
 
 Implement this work in two gated increments:
@@ -86,7 +86,7 @@ Retain these current boundaries:
   ledger.
 - State changes become visible only after prospective journal encoding and
   durable persistence succeed.
-- TC3 stores compact replay inputs rather than redundant derived state.
+- SL1 stores compact replay inputs rather than redundant derived state.
 - The same journal and scenario inputs must reproduce the same state, hashes,
   verification evidence, scores, consequences, and report.
 - The application must remain operable without React or SCORM in headless
@@ -261,7 +261,7 @@ Define a proposal model equivalent to:
 
 ```ts
 interface TransactionProposalV1 {
-  readonly domain: "TRACECHAIN_TRANSACTION_PROPOSAL_V1";
+  readonly domain: "SIMULEDGER_TRANSACTION_PROPOSAL_V1";
 
   readonly configurationHash: string;
   readonly scenarioId: string;
@@ -308,7 +308,7 @@ digest.
 
 ```ts
 interface SignatureStatementV1 {
-  readonly domain: "TRACECHAIN_SIGNATURE_V1";
+  readonly domain: "SIMULEDGER_SIGNATURE_V1";
   readonly purpose:
     | "PROPOSAL_SUBMISSION"
     | "ENDORSEMENT";
@@ -360,7 +360,7 @@ Do not use a valid signature as proof of authorization.
 
 ## 8. Deterministic replay and compact persistence
 
-Do not store redundant signature bytes in TC3 if they can be regenerated
+Do not store redundant signature bytes in SL1 if they can be regenerated
 exactly from:
 
 - Command journal.
@@ -389,7 +389,7 @@ On replay, regenerate:
 - Endorsement-policy results.
 - Technical evidence model.
 
-Add a worst-case TC3 size test with every permitted signature and endorsement
+Add a worst-case SL1 size test with every permitted signature and endorsement
 action.
 
 The complete authored Guided and Challenge paths must remain below the current
@@ -465,7 +465,7 @@ Recommended flow:
 7. Endorsement evaluator runs when applicable.
 8. Existing state-version and business validation runs.
 9. Accepted or audit events are produced prospectively.
-10. Prospective TC3 journal is encoded and persisted.
+10. Prospective SL1 journal is encoded and persisted.
 11. Only after persistence succeeds is the UI state published.
 ```
 
@@ -731,7 +731,7 @@ Complete all of the following before endorsement work begins:
 - Stage 3 UI is complete.
 - Stage 9 authorization flow is complete.
 - Stage 8 optional tamper inspection is complete.
-- TC3 replay reproduces signature evidence exactly.
+- SL1 replay reproduces signature evidence exactly.
 - Worst-case suspend data remains within the current limit.
 - Guided and Challenge packages pass browser and Moodle acceptance.
 - Existing behavior remains unchanged when `digitalSignatures` is disabled.
@@ -747,7 +747,7 @@ Increment A gate record:
   platform-specific skips across Chromium, Firefox, WebKit, and Mobile Safari.
 - Guided and Challenge A each passed a real Moodle new-attempt,
   mid-signature-resume, authorization-handoff, final-report, completion, score,
-  and gradebook walkthrough. Their completed TC3 payloads were 1,041 and 1,096
+  and gradebook walkthrough. Their completed SL1 payloads were 1,041 and 1,096
   characters.
 - The authored worst cases, which fill every permitted journal entry and
   bounded text field, are 1,980 characters for Guided and 1,985 for Challenge
@@ -945,7 +945,7 @@ Requirements:
 
 ## 23. Single-learner role handoff
 
-TraceChain remains a single-learner SCORM simulation.
+SimuLedger remains a single-learner SCORM simulation.
 
 The learner sequentially acts for different organizations.
 
@@ -1338,7 +1338,7 @@ For Guided and Challenge packages:
 11. Integrate Stage 9.
 12. Add optional Stage 8 tamper verification.
 13. Add independent evidence verifier.
-14. Extend TC3 replay and size tests.
+14. Extend SL1 replay and size tests.
 15. Extend package verification.
 16. Run full quality, browser, SCORM, and Moodle gates.
 
@@ -1357,7 +1357,7 @@ Stop if any gate is red.
 9. Add stale endorsed-proposal behavior.
 10. Add compact policy-progress UI.
 11. Extend causal report.
-12. Extend TC3 replay and size tests.
+12. Extend SL1 replay and size tests.
 13. Extend package verification.
 14. Run full quality, browser, SCORM, and Moodle gates.
 
@@ -1453,7 +1453,7 @@ Report:
 9. Endorsement policy model.
 10. Custody-transfer policy behavior.
 11. Quantity-correction policy behavior.
-12. TC3 persistence and size impact.
+12. SL1 persistence and size impact.
 13. Independent verification results.
 14. Scoring confirmation.
 15. Guided package results.

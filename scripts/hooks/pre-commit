@@ -12,9 +12,9 @@ if [ -n "$SKIP_QUALITY_GATE" ]; then
   exit 0
 fi
 echo "pre-commit: running npm run quality ..."
-if ! npm run quality --silent > /tmp/tracechain-precommit.log 2>&1; then
+if ! npm run quality --silent > /tmp/simuledger-precommit.log 2>&1; then
   echo "pre-commit: QUALITY GATE FAILED — commit refused."
-  tail -20 /tmp/tracechain-precommit.log
+  tail -20 /tmp/simuledger-precommit.log
   exit 1
 fi
 echo "pre-commit: quality gate green."

@@ -91,7 +91,7 @@ allowing new disciplinary authoring packs to be self-contained.
 
 ## Image authoring
 
-The Media step accepts bounded WebP, PNG, and JPEG uploads. TraceChain inspects
+The Media step accepts bounded WebP, PNG, and JPEG uploads. SimuLedger inspects
 the actual bytes, derives the SHA-256 digest, dimensions, byte length, MIME
 type, and content-addressed package path, and stores the bytes outside the
 JavaScript bundle. The author must select the image purpose and source type,
@@ -121,7 +121,7 @@ rather than mutating an existing historical run.
 
 ## Starter pack
 
-`scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json` is a
+`scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json` is a
 self-contained, fully validated disciplinary pack. Its starter proves:
 
 - a disciplinary competency namespace (`PHARMA.COLD_CHAIN`);
@@ -164,7 +164,7 @@ configuration, deterministic outcome model, decision schema, evidence rule,
 and rubric references. Consequences are shown as part of the run; authored
 feedback follows the assignment's existing instructor-release boundary. The
 complete coffee journey still uses its registered native
-`tracechain-coffee-v2` runtime profile.
+`simuledger-coffee-v2` runtime profile.
 
 Every supported hosted mode is resolved into its complete experience
 configuration during author validation and again before publication. In
@@ -210,7 +210,7 @@ silently changes ledger state.
 
 A JSON or YAML import is a manifest-only authoring input and is limited to
 2 MiB. A ZIP import is a canonical scenario bundle: it contains exactly one
-root `tracechain.pack.json` plus every byte named by `assetHashes`. A bundle is
+root `simuledger.pack.json` plus every byte named by `assetHashes`. A bundle is
 limited to 30 MiB compressed and expanded, each image to 5 MiB, the image
 collection to 25 MiB, and the pack to 60 images. Paths are relative, bounded,
 and cannot contain parent traversal, absolute paths, schemes, or backslashes.
@@ -231,7 +231,7 @@ hash and makes that exact version immutable. Retirement changes repository
 metadata only; existing assignments and replay retain the original content.
 
 The scenario-bundle ZIP is hosted-platform content, not a SCORM package. It is
-ready to import into another TraceChain Scenario Author workspace. SCORM
+ready to import into another SimuLedger Scenario Author workspace. SCORM
 generation remains a separate packaging workflow.
 
 ## Repository validation
@@ -241,5 +241,5 @@ npm run validate:platform-pack
 ```
 
 With no arguments, the command recursively validates every
-`scenario-packs/**/tracechain.pack.json`. A path may be supplied to validate
+`scenario-packs/**/simuledger.pack.json`. A path may be supplied to validate
 one candidate.

@@ -1,4 +1,4 @@
-# A clean local Moodle for demoing TraceChain and verifying the SCORM
+# A clean local Moodle for demoing SimuLedger and verifying the SCORM
 # integration, independent of the MAMP install.
 #
 # The MAMP Moodle at localhost:8888 has a broken SCORM player: its own
@@ -50,9 +50,9 @@ services:
       MOODLE_DATABASE_USER: bn_moodle
       MOODLE_DATABASE_PASSWORD: moodlepass
       MOODLE_USERNAME: admin
-      MOODLE_PASSWORD: TraceChainDemo1!
+      MOODLE_PASSWORD: SimuLedgerDemo1!
       MOODLE_EMAIL: admin@example.com
-      MOODLE_SITE_NAME: TraceChain demo
+      MOODLE_SITE_NAME: SimuLedger demo
       # Bitnami rewrites wwwroot from this on first boot.
       MOODLE_HOST: localhost:8080
       ALLOW_EMPTY_PASSWORD: "no"

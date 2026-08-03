@@ -63,7 +63,7 @@ export interface TechnicalLabRunReportV1 {
 export interface TechnicalLabAssignmentReportV1 {
   readonly schemaVersion: "1.0.0";
   readonly reportType:
-    "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT";
+    "SIMULEDGER_TECHNICAL_LAB_ASSIGNMENT_REPORT";
   readonly assignmentId: string;
   readonly labPackId: string;
   readonly labPackVersion: string;
@@ -246,7 +246,7 @@ export function createTechnicalLabAssignmentReport(options: {
   }
   return {
     schemaVersion: "1.0.0",
-    reportType: "TRACECHAIN_TECHNICAL_LAB_ASSIGNMENT_REPORT",
+    reportType: "SIMULEDGER_TECHNICAL_LAB_ASSIGNMENT_REPORT",
     assignmentId:
       options.assignmentReport.assignment.assignmentId,
     labPackId:

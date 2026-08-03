@@ -14,7 +14,7 @@ curated case with different identifiers, quantities, evidence, incident causes,
 and recall structures. It is not an exam-security mechanism. A technically
 capable learner can inspect the static files in a SCORM package.
 
-TraceChain does not generate case facts independently at runtime. Every
+SimuLedger does not generate case facts independently at runtime. Every
 selectable case is a complete authored `ScenarioDefinition` that passes the
 same domain, replay, scoring, localization, and completion contracts.
 
@@ -85,10 +85,10 @@ facts or answer order.
 Challenge startup is transactional:
 
 1. Initialize the SCORM adapter, or the standalone adapter when SCORM is absent.
-2. Load TC3.
+2. Load SL1.
 3. If the attempt has no assignment, generate the attempt seed.
 4. Select the case and construct compact assignment metadata.
-5. Encode a prospective TC3 snapshot.
+5. Encode a prospective SL1 snapshot.
 6. Save and commit that snapshot.
 7. Only then mount the scenario and learner interface.
 
@@ -96,9 +96,9 @@ If the save fails, the selected case is not published to the learner. On resume,
 the compact seed and index reconstruct the assignment and are checked against
 the exact bank before scenario rendering.
 
-## TC3 contract
+## SL1 contract
 
-TC3 now has 12 positional fields. The last field is either `null` for a fixed
+SL1 now has 12 positional fields. The last field is either `null` for a fixed
 scenario or:
 
 ```text
@@ -109,11 +109,11 @@ Bank ID, bank version, variant ID, variant version, content hash, case
 reference, and selection algorithm are reconstructed from the immutable bank.
 They are not redundantly persisted.
 
-Bank packages reject TC3 without an assignment. Fixed packages reject TC3 with
+Bank packages reject SL1 without an assignment. Fixed packages reject SL1 with
 one. This is a direct pre-release schema upgrade; there is no migration reader
 or compatibility alias.
 
-The assignment is included in the documented TC3 metadata budget. Actual
+The assignment is included in the documented SL1 metadata budget. Actual
 worst-case Guided and Challenge journals must stay below the 3,800-character
 internal ceiling.
 
@@ -123,7 +123,7 @@ The shared JavaScript and CSS application build contains no selected case.
 Challenge packages add external runtime data:
 
 ```text
-tracechain.config.json
+simuledger.config.json
 scenario.json
 scenario-variant-bank.json
 build-info.json
@@ -147,7 +147,7 @@ The SCORM verifier checks:
 The release Challenge filename is:
 
 ```text
-TraceChain_Challenge_ChallengeBank_vi_v2.0.0.zip
+SimuLedger_Challenge_ChallengeBank_vi_v2.0.0.zip
 ```
 
 Dirty development output adds `_NON_RELEASE`.
@@ -172,7 +172,7 @@ The executable checks cover:
 - three distinct consequential answer patterns;
 - complete headless transaction paths for all three cases;
 - persist-before-render and no redraw on resume;
-- TC3 worst-case size with real assignment metadata;
+- SL1 worst-case size with real assignment metadata;
 - runtime bank and build-metadata hash verification;
 - full Challenge browser flow and assigned-case resume;
 - external bank packaging and shared static application bytes.
@@ -195,7 +195,7 @@ formal variable Assessment package is released.
 ## Hosted integration boundary
 
 The hosted coffee application does not currently execute a packaged
-`ScenarioDefinition`. Its native `tracechain-coffee-v2` runtime uses a separate
+`ScenarioDefinition`. Its native `simuledger-coffee-v2` runtime uses a separate
 two-value `Stage3CaseVariant` outcome (`authorized-certifier` or
 `unauthorized-transporter`) selected through a published hosted scenario pack.
 That outcome changes the certificate submitter, but it does not represent the

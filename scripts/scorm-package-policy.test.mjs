@@ -31,18 +31,18 @@ test("--allow-dirty always marks output as non-release", () => {
 
 test("non-release archives carry an unambiguous filename suffix", () => {
   assert.equal(
-    classifyPackageFileName("TraceChain_Guided_vi_v2.1.0.zip", false),
-    "TraceChain_Guided_vi_v2.1.0_NON_RELEASE.zip",
+    classifyPackageFileName("SimuLedger_Guided_vi_v2.1.0.zip", false),
+    "SimuLedger_Guided_vi_v2.1.0_NON_RELEASE.zip",
   );
   assert.equal(
-    classifyPackageFileName("TraceChain_Guided_vi_v2.1.0.zip", true),
-    "TraceChain_Guided_vi_v2.1.0.zip",
+    classifyPackageFileName("SimuLedger_Guided_vi_v2.1.0.zip", true),
+    "SimuLedger_Guided_vi_v2.1.0.zip",
   );
 });
 
 test("package filename classification rejects non-ZIP names", () => {
   assert.throws(
-    () => classifyPackageFileName("TraceChain_Guided_vi_v2.1.0", false),
+    () => classifyPackageFileName("SimuLedger_Guided_vi_v2.1.0", false),
     /end in \.zip/u,
   );
 });

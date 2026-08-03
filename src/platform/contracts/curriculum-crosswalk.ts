@@ -74,7 +74,7 @@ export interface CurriculumCrosswalkOverlayV2 {
   readonly adoptedBy?: string;
   readonly supportedLocales: readonly string[];
   readonly title: CurriculumLocalizedValuesV2;
-  readonly traceChainFrameworks:
+  readonly simuLedgerFrameworks:
     readonly CompetencyFrameworkReferenceV1[];
   readonly externalFramework: ExternalCurriculumFrameworkV2;
   readonly mappings: readonly CurriculumIndicatorMappingV2[];
@@ -128,7 +128,7 @@ export interface AssignmentCurriculumOverlayV2 {
   readonly effectiveFrom: string;
   readonly adoptedAt: string;
   readonly adoptedBy: string;
-  readonly traceChainFrameworks:
+  readonly simuLedgerFrameworks:
     readonly CompetencyFrameworkReferenceV1[];
   readonly externalFrameworkId: string;
   readonly externalFrameworkVersion: string;

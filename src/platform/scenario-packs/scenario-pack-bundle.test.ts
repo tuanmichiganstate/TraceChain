@@ -6,7 +6,7 @@ import {
 } from "fflate";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import pharmaceuticalTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import pharmaceuticalTemplate from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   createScenarioPackBundle,
@@ -98,7 +98,7 @@ describe("canonical scenario-pack ZIP", () => {
     expect(() =>
       parseScenarioPackBundle(
         zipEntries({
-          "tracechain.pack.json": strToU8(
+          "simuledger.pack.json": strToU8(
             `${JSON.stringify(pack)}\n`,
           ),
           ...Object.fromEntries(

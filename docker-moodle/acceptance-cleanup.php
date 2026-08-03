@@ -5,20 +5,20 @@ require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/gradelib.php');
 
-$mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
+$mode = getenv('SIMULEDGER_SCORM_MODE') ?: 'guided';
 $activitynames = [
-    'guided' => 'TraceChain Guided',
-    'practice' => 'TraceChain Practice',
-    'challenge' => 'TraceChain Challenge',
-    'assessment' => 'TraceChain Assessment',
-    'audit-guided' => 'TraceChain Audit Guided',
-    'audit-practice' => 'TraceChain Audit Practice',
-    'audit-challenge' => 'TraceChain Audit Challenge',
-    'audit-assessment' => 'TraceChain Audit Assessment',
-    'technical-lab' => 'TraceChain Technical Laboratory',
+    'guided' => 'SimuLedger Guided',
+    'practice' => 'SimuLedger Practice',
+    'challenge' => 'SimuLedger Challenge',
+    'assessment' => 'SimuLedger Assessment',
+    'audit-guided' => 'SimuLedger Audit Guided',
+    'audit-practice' => 'SimuLedger Audit Practice',
+    'audit-challenge' => 'SimuLedger Audit Challenge',
+    'audit-assessment' => 'SimuLedger Audit Assessment',
+    'technical-lab' => 'SimuLedger Technical Laboratory',
 ];
 if (!isset($activitynames[$mode])) {
-    throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
+    throw new RuntimeException("unknown SIMULEDGER_SCORM_MODE: $mode");
 }
 $scorm = $DB->get_record(
     'scorm',

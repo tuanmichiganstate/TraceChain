@@ -2,7 +2,7 @@ import {
   isAllowedExperienceCombination,
   resolveProductDimensions,
 } from "./experience";
-import type { TraceChainConfiguration } from "./types";
+import type { SimuLedgerConfiguration } from "./types";
 
 export interface ConfigurationValidationIssue {
   readonly path: string;
@@ -762,7 +762,7 @@ function validateBusinessConfiguration(
   value: Record<string, unknown>,
   issue: (path: string, message: string) => void,
 ): void {
-  if (value.applicationCompatibilityVersion !== "tc3-v2") {
+  if (value.applicationCompatibilityVersion !== "sl1-v1") {
     issue(
       "applicationCompatibilityVersion",
       "is not compatible with the business-simulation player",
@@ -1231,11 +1231,11 @@ export function validateConfiguration(
 
 export function assertValidConfiguration(
   value: unknown,
-): asserts value is TraceChainConfiguration {
+): asserts value is SimuLedgerConfiguration {
   const result = validateConfiguration(value);
   if (!result.isValid) {
     throw new Error(
-      `TraceChain configuration is invalid:\n${result.issues
+      `SimuLedger configuration is invalid:\n${result.issues
         .map((entry) => `  ${entry.path}: ${entry.message}`)
         .join("\n")}`,
     );

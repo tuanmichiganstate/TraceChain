@@ -36,7 +36,7 @@ export class StandalonePersistenceAdapter implements LearningPlatformAdapter {
   constructor(options: { appVersion: string; scenarioId: string; storage?: Storage | null }) {
     // Keyed by version and scenario so an older build's state is never
     // misinterpreted by a newer one.
-    this.storageKey = `tracechain:${options.appVersion}:${options.scenarioId}`;
+    this.storageKey = `simuledger:${options.appVersion}:${options.scenarioId}`;
     this.storage = options.storage !== undefined ? options.storage : safeLocalStorage();
   }
 
@@ -165,7 +165,7 @@ export class StandalonePersistenceAdapter implements LearningPlatformAdapter {
 function safeLocalStorage(): Storage | null {
   try {
     // Safari private browsing throws on access rather than on write.
-    const probe = "__tracechain_probe__";
+    const probe = "__simuledger_probe__";
     globalThis.localStorage.setItem(probe, "1");
     globalThis.localStorage.removeItem(probe);
     return globalThis.localStorage;

@@ -1,10 +1,10 @@
-# TraceChain UI/UX Authenticity Review and Improvement Recommendations
+# SimuLedger UI/UX Authenticity Review and Improvement Recommendations
 
 ## Overall verdict
 
 Your concern is correct.
 
-TraceChain already has **substantial functional authenticity**. It has real hashes, signatures, authorization, endorsements, transaction states, provenance, rejected audit events, causal reporting, role context, and distinct business-versus-ledger state. It is no longer merely a sequence of MCQs.
+SimuLedger already has **substantial functional authenticity**. It has real hashes, signatures, authorization, endorsements, transaction states, provenance, rejected audit events, causal reporting, role context, and distinct business-versus-ledger state. It is no longer merely a sequence of MCQs.
 
 However, its **visual and experiential authenticity remains moderate**. Most of the application still looks like one well-designed university web application composed of white cards, rounded borders, standard fields, navy buttons, explanatory text, and vertically stacked forms. The underlying mechanisms are authentic, but the interface does not consistently make the learner feel that they have entered:
 
@@ -63,7 +63,7 @@ The interaction-flow audit confirms that instructions, professional actions, blo
 
 ## Recommended design direction
 
-TraceChain should become a **simulation workspace containing several clearly differentiated application layers**, rather than one page containing every type of content.
+SimuLedger should become a **simulation workspace containing several clearly differentiated application layers**, rather than one page containing every type of content.
 
 I recommend four persistent visual layers.
 
@@ -102,7 +102,7 @@ Examples:
 - **Factory:** Production Transformation System
 - **Regulator:** Recall Command Center
 
-These applications should share a common TraceChain design system but differ in:
+These applications should share a common SimuLedger design system but differ in:
 
 - screen title;
 - navigation;
@@ -502,7 +502,7 @@ Then apply the validated approach to:
 
 ## Final judgment
 
-TraceChain does **not** need more blockchain functionality to solve the current immersion problem.
+SimuLedger does **not** need more blockchain functionality to solve the current immersion problem.
 
 It needs a clearer separation between:
 

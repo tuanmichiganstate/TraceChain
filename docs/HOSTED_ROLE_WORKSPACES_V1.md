@@ -1,6 +1,6 @@
 # Hosted role workspaces V1
 
-TraceChain relies on deployment authentication or a verified Moodle LTI 1.3
+SimuLedger relies on deployment authentication or a verified Moodle LTI 1.3
 launch, followed by server-provisioned application roles. A request body
 cannot grant an application role, assert a Moodle context, or assert a
 simulation identity.
@@ -36,13 +36,13 @@ evidence-based runs remain pending manual grading. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 The Scenario Author activity is a separately allowlisted resource link.
-Moodle controls who may open that activity; TraceChain additionally requires
+Moodle controls who may open that activity; SimuLedger additionally requires
 the signed full Instructor role and the exact server-configured resource-link
 ID. The resulting session is deliberately not an instructor or administrator
 session. A custom LTI parameter cannot elevate an ordinary instructor link.
 
 An LTI Deep Linking launch is narrower than the instructor workspace. It lists
-only active TraceChain assignments already bound to the verified Moodle course
+only active SimuLedger assignments already bound to the verified Moodle course
 and returns one signed resource link, or an empty response when the instructor
 cancels. It cannot open reports, create assignments, or select content from
 another course.
@@ -158,7 +158,7 @@ Moodle instructor and learner access may instead use a verified LTI 1.3
 subject, role, and course context. A learner activity grants access only to the
 exact assignment in its signed custom claim. A verified instructor may
 explicitly synchronize the exact course's NRPS learner snapshot for subsequent
-assignment creation. TraceChain does not implement passwords, general
+assignment creation. SimuLedger does not implement passwords, general
 institutional directory synchronization, scheduled roster synchronization,
 multi-tenant administration, or collaborative multi-learner runs.
 See `docs/APPLICATION_ACCESS_ADMINISTRATION_V1.md`.

@@ -183,7 +183,7 @@ describe("counterfactual comparison export", () => {
         "json",
       ),
     ).toBe(
-      "TraceChain_RUN_COUNTERFACTUAL_001_counterfactual_v1.json",
+      "SimuLedger_RUN_COUNTERFACTUAL_001_counterfactual_v1.json",
     );
   });
 

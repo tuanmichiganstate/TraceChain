@@ -29,7 +29,7 @@ const resetStatements = [
   "DROP TABLE IF EXISTS lti_login_states",
   "DROP TABLE IF EXISTS hosted_run_events",
   "DROP TABLE IF EXISTS application_users",
-  "DROP TABLE IF EXISTS tracechain_schema_metadata",
+  "DROP TABLE IF EXISTS simuledger_schema_metadata",
 ] as const;
 
 function assertSuccessfulBatch(
@@ -67,7 +67,7 @@ async function initialize(database: D1DatabaseLike): Promise<void> {
       `SELECT name
        FROM sqlite_master
        WHERE type = 'table'
-         AND name = 'tracechain_schema_metadata'`,
+         AND name = 'simuledger_schema_metadata'`,
     )
     .first<{ readonly name: string }>();
 
@@ -79,7 +79,7 @@ async function initialize(database: D1DatabaseLike): Promise<void> {
   const metadata = await database
     .prepare(
       `SELECT schema_version AS schemaVersion
-       FROM tracechain_schema_metadata
+       FROM simuledger_schema_metadata
        WHERE singleton_id = 1`,
     )
     .first<{ readonly schemaVersion: string }>();
@@ -94,7 +94,7 @@ async function initialize(database: D1DatabaseLike): Promise<void> {
  * Runtime guard for the one supported pre-release D1 schema.
  *
  * Development data is deliberately discarded when the exact schema version
- * changes. TraceChain has no migration or compatibility path before release.
+ * changes. SimuLedger has no migration or compatibility path before release.
  */
 export function ensureD1FoundationSchema(
   database: D1DatabaseLike,

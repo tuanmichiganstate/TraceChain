@@ -713,7 +713,7 @@ function validateModule(
           ).includes(mechanismId),
           "UNKNOWN_REAL_MECHANISM",
           `${path}.${field}.${mechanismIndex}`,
-          "must identify a genuinely computed TraceChain mechanism",
+          "must identify a genuinely computed SimuLedger mechanism",
         );
       });
     }

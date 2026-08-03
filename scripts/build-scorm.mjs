@@ -37,7 +37,7 @@ const packageJson = JSON.parse(
 const applicationVersion = packageJson.version;
 const packageGeneratorVersion = "1.0.0";
 const runtimeFileNames = new Set([
-  "tracechain.config.json",
+  "simuledger.config.json",
   "audit-scenario-pack.json",
   "technical-lab-pack.json",
   "scenario.json",
@@ -240,7 +240,7 @@ async function loadPackageDefinitions() {
   const cacheRoot = join(projectRoot, "node_modules", ".cache");
   mkdirSync(cacheRoot, { recursive: true });
   const temporaryDirectory = mkdtempSync(
-    join(cacheRoot, "tracechain-package-generator-"),
+    join(cacheRoot, "simuledger-package-generator-"),
   );
   const bundlePath = join(temporaryDirectory, "package-entry.mjs");
 
@@ -353,7 +353,7 @@ function validateAuditPackageInput(
   }
   const pack = definitions.publishScenarioPack(validation.pack, {
     publishedAt: provenance.generatedAt,
-    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+    publishedBy: "SIMULEDGER_PACKAGE_GENERATOR",
   });
   const auditVariantBank =
     configuration.scenarioVariation.strategy ===
@@ -567,7 +567,7 @@ function packageFileName(configuration, releaseBuild) {
       letter.toUpperCase(),
     );
   const releaseFileName = [
-    "TraceChain",
+    "SimuLedger",
     safeFileSegment(preset),
     defaultScenarioLabel(configuration),
     configuration.locale,
@@ -591,12 +591,12 @@ function resolvePackageText(configuration, scenario, titleOverride) {
       locale[modeTitleKey] ??
       locale[scenario.titleKey] ??
       locale[scenario.title?.localizationKey] ??
-      `TraceChain ${configuration.presetId}`,
+      `SimuLedger ${configuration.presetId}`,
     description:
       locale[modeDescriptionKey] ??
       locale[scenario.descriptionKey] ??
       locale["app.subtitle"] ??
-      "TraceChain supply-chain decision simulation",
+      "SimuLedger supply-chain decision simulation",
   };
 }
 
@@ -647,10 +647,10 @@ function manifestSource({
     <schemaversion>1.2</schemaversion>
   </metadata>
 
-  <organizations default="TRACECHAIN_ORGANIZATION">
-    <organization identifier="TRACECHAIN_ORGANIZATION" structure="hierarchical">
+  <organizations default="SIMULEDGER_ORGANIZATION">
+    <organization identifier="SIMULEDGER_ORGANIZATION" structure="hierarchical">
       <title>${escapeXml(title)}</title>
-      <item identifier="ITEM_TRACECHAIN" identifierref="RESOURCE_TRACECHAIN" isvisible="true">
+      <item identifier="ITEM_SIMULEDGER" identifierref="RESOURCE_SIMULEDGER" isvisible="true">
         <title>${escapeXml(title)}</title>
         <adlcp:masteryscore>${masteryScore}</adlcp:masteryscore>
         <adlcp:maxtimeallowed></adlcp:maxtimeallowed>
@@ -663,7 +663,7 @@ function manifestSource({
   </organizations>
 
   <resources>
-    <resource identifier="RESOURCE_TRACECHAIN" type="webcontent" adlcp:scormtype="sco" href="index.html">
+    <resource identifier="RESOURCE_SIMULEDGER" type="webcontent" adlcp:scormtype="sco" href="index.html">
 ${files.map((file) => `      <file href="${escapeXml(file)}" />`).join("\n")}
     </resource>
   </resources>
@@ -720,7 +720,7 @@ function packageOne({
 
   const embeddedConfiguration = definitions.embedConfiguration(configuration);
   writeFileSync(
-    join(packageDirectory, "tracechain.config.json"),
+    join(packageDirectory, "simuledger.config.json"),
     `${JSON.stringify(embeddedConfiguration, null, 2)}\n`,
     "utf8",
   );
@@ -851,7 +851,7 @@ function packageOne({
   const runtimeFiles = listFilesRecursively(packageDirectory).filter(
     (file) => !packagingFileNames.has(file),
   );
-  const identifier = `TRACECHAIN_${embeddedConfiguration.configurationHash
+  const identifier = `SIMULEDGER_${embeddedConfiguration.configurationHash
     .slice(0, 20)
     .toUpperCase()}`;
 
@@ -959,7 +959,7 @@ function packageOne({
     join(packageDirectory, "version.json"),
     `${JSON.stringify(
       {
-        name: "tracechain",
+        name: "simuledger",
         version: applicationVersion,
         scenarioId: scenario.scenarioId,
         scenarioVersion: scenarioVersionOf(scenario),
@@ -976,7 +976,7 @@ function packageOne({
   writeFileSync(
     join(packageDirectory, "README.txt"),
     [
-      `${title} — TraceChain ${applicationVersion}`,
+      `${title} — SimuLedger ${applicationVersion}`,
       description,
       "",
       "DEPLOYMENT",

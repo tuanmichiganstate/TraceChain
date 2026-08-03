@@ -85,7 +85,7 @@ export async function validateCryptographicRuntime(options: {
     }
     try {
       const message = new TextEncoder().encode(
-        `TraceChain key-pair validation:${key.keyId}`,
+        `SimuLedger key-pair validation:${key.keyId}`,
       );
       const signature = await provider.sign(
         {

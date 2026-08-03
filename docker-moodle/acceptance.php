@@ -6,27 +6,27 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir.'/gradelib.php');
 require_once($CFG->libdir.'/enrollib.php');
 
-$mode = getenv('TRACECHAIN_SCORM_MODE') ?: 'guided';
+$mode = getenv('SIMULEDGER_SCORM_MODE') ?: 'guided';
 $activitynames = [
-    'guided' => 'TraceChain Guided',
-    'practice' => 'TraceChain Practice',
-    'challenge' => 'TraceChain Challenge',
-    'assessment' => 'TraceChain Assessment',
-    'audit-guided' => 'TraceChain Audit Guided',
-    'audit-practice' => 'TraceChain Audit Practice',
-    'audit-challenge' => 'TraceChain Audit Challenge',
-    'audit-assessment' => 'TraceChain Audit Assessment',
-    'technical-lab' => 'TraceChain Technical Laboratory',
+    'guided' => 'SimuLedger Guided',
+    'practice' => 'SimuLedger Practice',
+    'challenge' => 'SimuLedger Challenge',
+    'assessment' => 'SimuLedger Assessment',
+    'audit-guided' => 'SimuLedger Audit Guided',
+    'audit-practice' => 'SimuLedger Audit Practice',
+    'audit-challenge' => 'SimuLedger Audit Challenge',
+    'audit-assessment' => 'SimuLedger Audit Assessment',
+    'technical-lab' => 'SimuLedger Technical Laboratory',
 ];
 if (!isset($activitynames[$mode])) {
-    throw new RuntimeException("unknown TRACECHAIN_SCORM_MODE: $mode");
+    throw new RuntimeException("unknown SIMULEDGER_SCORM_MODE: $mode");
 }
 $isaudit = str_starts_with($mode, 'audit-');
 $istechnicallab = $mode === 'technical-lab';
 // These exercise Moodle storage boundaries, not the player decoder. Their
 // framing and sizes represent the package's compact codec while remaining
 // independent of content hashes that change between packages.
-$prefix = $istechnicallab ? 'TL1.' : ($isaudit ? 'TA1.' : 'TC3.');
+$prefix = $istechnicallab ? 'TL1.' : ($isaudit ? 'TA1.' : 'SL1.');
 $FULL = $prefix . str_repeat('A', 512) . '.00000000';
 $MID  = $prefix . str_repeat('B', 220) . '.00000000';
 $midlocation = $isaudit

@@ -1,4 +1,4 @@
-# TraceChain Version 2 release baseline
+# SimuLedger Version 2 release baseline
 
 This record is reproducible from a clean checkout. Commands and results are
 recorded only after their output has been inspected. The illustrated learner
@@ -37,7 +37,7 @@ The Phase 3 clean-checkout boundary was verified by GitHub Actions run
 | Responsive UI review | Playwright-driven desktop and mobile simulation | start, Stages 1–9, 320 px reflow, and stage-entry focus inspected; 0 console errors |
 | SCORM | `npm run verify:scorm` | 23/23 checks, 10 files, 843.6 kB |
 | Moodle success | `./docker-moodle/run-acceptance.sh` | exit 0; storage, gradebook, highest-attempt grading, 4096-byte boundary, and cleanup passed |
-| Moodle forced failure | `TRACECHAIN_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh` | expected exit 1; cleanup passed and no synthetic grade or attempt remained |
+| Moodle forced failure | `SIMULEDGER_ACCEPTANCE_FORCE_FAILURE=1 ./docker-moodle/run-acceptance.sh` | expected exit 1; cleanup passed and no synthetic grade or attempt remained |
 
 The two expected Playwright skips are Safari/WebKit keyboard traversal. Safari
 does not move focus with Tab under its default system preference. Keyboard
@@ -59,11 +59,11 @@ and keyboard focus to the new heading.
 
 | Artifact | Provenance |
 |---|---|
-| SCORM package | `tracechain-scorm-v2.0.0.zip` |
+| SCORM package | `simuledger-scorm-v2.0.0.zip` |
 | SCORM source commit | `7eabc16d6f7dffa22403a883b13273cf9c185f0f` |
 | SCORM SHA-256 | `de2f314d2224d5897ac128f3f7d6f1b210ddeb0ac800dc6f4eb05b21a902e765` |
 | SCORM contents | 10 files, 863,876 bytes (843.6 kB), verifier 23/23; two consecutive rebuilds were byte-identical |
-| Content-review artifact | `docs/content-review/tracechain-content-review.html` |
+| Content-review artifact | `docs/content-review/simuledger-content-review.html` |
 | Content-review source commit | `7eabc16d6f7dffa22403a883b13273cf9c185f0f` |
 | Content-review SHA-256 | `6df203b5c5a5fb02f16a96b768f1f76fdb8e1c129ebd88743723ee3a9a2441d7` (231,666 bytes) |
 | Content-review parity | 539/539 |

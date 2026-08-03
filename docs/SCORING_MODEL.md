@@ -116,7 +116,7 @@ points to 13.2. Per hint:
 | `HINT_TRANSFORMATION_YIELD` | 6 | `INT_TRANSFORM_BATCH` | 1.2 |
 | `HINT_RECALL_PROVENANCE` | 9 | `INT_RECALL_SCOPE` | 4.5 |
 
-TC3 stores hint identifiers positionally and recomputes the score from the
+SL1 stores hint identifiers positionally and recomputes the score from the
 current scenario contract. If this load-bearing contract changes before
 release, development attempts are reset; no older state reader is retained.
 The item-scoped rule is asserted across every

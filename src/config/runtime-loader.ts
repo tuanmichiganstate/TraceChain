@@ -4,7 +4,7 @@ import { IncompatibleAttemptError, ScenarioConfigurationError } from "../domain/
 import { hashConfiguration } from "./hash";
 import type {
   BusinessSimulationConfiguration,
-  EmbeddedTraceChainConfiguration,
+  EmbeddedSimuLedgerConfiguration,
 } from "./types";
 import { isBusinessSimulationConfiguration } from "./types";
 import { assertValidConfiguration } from "./validation";
@@ -46,7 +46,7 @@ async function loadJson(fetcher: RuntimeFetch, path: string): Promise<unknown> {
   return response.json();
 }
 
-function isEmbeddedConfiguration(value: unknown): value is EmbeddedTraceChainConfiguration {
+function isEmbeddedConfiguration(value: unknown): value is EmbeddedSimuLedgerConfiguration {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -57,14 +57,14 @@ function isEmbeddedConfiguration(value: unknown): value is EmbeddedTraceChainCon
 
 export async function loadEmbeddedConfiguration(
   fetcher: RuntimeFetch,
-): Promise<EmbeddedTraceChainConfiguration> {
+): Promise<EmbeddedSimuLedgerConfiguration> {
   const configurationFile = await loadJson(
     fetcher,
-    "./tracechain.config.json",
+    "./simuledger.config.json",
   );
   if (!isEmbeddedConfiguration(configurationFile)) {
     throw new ScenarioConfigurationError(
-      "tracechain.config.json has an invalid envelope",
+      "simuledger.config.json has an invalid envelope",
     );
   }
   assertValidConfiguration(configurationFile.configuration);
@@ -135,7 +135,7 @@ export async function loadRuntimePackage(
     scenario.scenarioVersion !== configuration.scenarioVersion
   ) {
     throw new IncompatibleAttemptError(
-      "Embedded scenario identity does not match tracechain.config.json",
+      "Embedded scenario identity does not match simuledger.config.json",
     );
   }
   if (scenario.scoringConfiguration.maxScore !== configuration.scoring.maximumScore) {

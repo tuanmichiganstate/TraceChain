@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import en from "../../locales/en.json";
 import vi from "../../locales/vi.json";
 import { validateScenarioPack } from "../scenario-packs/validation";

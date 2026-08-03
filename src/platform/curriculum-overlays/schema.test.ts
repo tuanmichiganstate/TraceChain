@@ -7,7 +7,7 @@ describe("published curriculum-overlay JSON Schema", () => {
       readFileSync(
         resolve(
           process.cwd(),
-          "schemas/tracechain-curriculum-overlay-v2.schema.json",
+          "schemas/simuledger-curriculum-overlay-v2.schema.json",
         ),
         "utf8",
       ),
@@ -18,12 +18,12 @@ describe("published curriculum-overlay JSON Schema", () => {
     };
 
     expect(schema.title).toBe(
-      "TraceChain Curriculum Crosswalk Overlay V2",
+      "SimuLedger Curriculum Crosswalk Overlay V2",
     );
     expect(schema.required).toEqual(
       expect.arrayContaining([
         "owner",
-        "traceChainFrameworks",
+        "simuLedgerFrameworks",
         "externalFramework",
         "mappings",
       ]),

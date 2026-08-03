@@ -36,6 +36,6 @@ export {
 export {
   validateAuditVariantBank,
 } from "../src/platform/audit/audit-variant-bank";
-export { default as guidedAuditPack } from "../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-export { default as practiceAuditPack } from "../scenario-packs/practice-coffee-audit/tracechain.pack.json";
-export { default as challengeAuditPack } from "../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+export { default as guidedAuditPack } from "../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+export { default as practiceAuditPack } from "../scenario-packs/practice-coffee-audit/simuledger.pack.json";
+export { default as challengeAuditPack } from "../scenario-packs/challenge-coffee-audit/simuledger.pack.json";

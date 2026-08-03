@@ -2,7 +2,7 @@
 
 ## Decision
 
-Phase 5 completes the first approved product-modes release. TraceChain now
+Phase 5 completes the first approved product-modes release. SimuLedger now
 ships:
 
 - Guided and Practice Operations;
@@ -19,7 +19,7 @@ Audit Challenge and Audit Assessment remain deferred.
 
 ## Practice Audit case
 
-`scenario-packs/practice-coffee-audit/tracechain.pack.json` defines one curated
+`scenario-packs/practice-coffee-audit/simuledger.pack.json` defines one curated
 coffee-control review. It presents three supported findings:
 
 1. a recognized transporter produced a valid signature but was not authorized
@@ -177,15 +177,15 @@ same generated package catalogue. It does not contain a second generator.
 The Docker deployment tooling manages six stable, separately reset activities:
 
 ```text
-TraceChain Guided
-TraceChain Practice
-TraceChain Challenge
-TraceChain Assessment
-TraceChain Audit Guided
-TraceChain Audit Practice
+SimuLedger Guided
+SimuLedger Practice
+SimuLedger Challenge
+SimuLedger Assessment
+SimuLedger Audit Guided
+SimuLedger Audit Practice
 ```
 
-Its storage acceptance uses TC3-shaped data for Operations and TA1-shaped data
+Its storage acceptance uses SL1-shaped data for Operations and TA1-shaped data
 for Audit. Deployment and live Moodle acceptance are operational actions and
 are run only when explicitly requested.
 

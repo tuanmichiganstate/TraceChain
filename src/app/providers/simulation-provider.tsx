@@ -3,7 +3,7 @@
  *
  * The simulation core is platform-independent. This provider supplies trusted
  * scenario context, turns learner submissions into metadata-bearing commands,
- * journals the bounded replay inputs, and persists a prospective TC3 snapshot
+ * journals the bounded replay inputs, and persists a prospective SL1 snapshot
  * before publishing the resulting UI state.
  */
 
@@ -31,10 +31,10 @@ import { KnowledgeCheckType, type KnowledgeCheckDefinition } from "../../domain/
 import { LearnerInteractionType } from "../../domain/types/scoring";
 import { sha256Hex } from "../../infrastructure/hashing/sha256";
 import {
-  decodeTc3Attempt,
-  encodeTc3Attempt,
+  decodeSl1Attempt,
+  encodeSl1Attempt,
   type CompactCommandJournalEntry,
-} from "../../infrastructure/persistence/tc3-codec";
+} from "../../infrastructure/persistence/sl1-codec";
 import {
   LearningPlatformPersistenceBridge,
   type SimulationPersistence,
@@ -69,7 +69,7 @@ import {
   contextAt,
   contextIndex,
   JournalOpcode,
-  tc3CodecSchema,
+  sl1CodecSchema,
   validateAndApplyHandoff,
 } from "../../domain/simulation/command-journal";
 import {
@@ -104,7 +104,7 @@ import {
   type DiscrepancyDecisionEvaluation,
 } from "../../domain/simulation/consequential-decisions";
 import { replayCommandJournal } from "../../domain/simulation/replay-journal";
-import { TraceChainError } from "../../domain/errors";
+import { SimuLedgerError } from "../../domain/errors";
 import { useScenario } from "./scenario-provider";
 import { useOptionalConfiguration } from "./configuration-provider";
 import { GUIDED_PRESET } from "../../config/presets";
@@ -113,7 +113,7 @@ import { APP_VERSION, defaultAppConfiguration } from "../configuration";
 import {
   createInitialSessionState,
   sessionReducer,
-  toTc3AttemptSnapshot,
+  toSl1AttemptSnapshot,
   type SessionState,
   type SessionAction,
 } from "../session/session-state";
@@ -155,7 +155,7 @@ function recoveryDetails(
   readonly requiresNewLmsAttempt: boolean;
 } {
   const messageKey =
-    error instanceof TraceChainError
+    error instanceof SimuLedgerError
       ? error.messageKey
       : "errors.persistence";
 
@@ -326,7 +326,7 @@ export function SimulationProvider({
   );
   const codecSchema = useMemo(
     () =>
-      tc3CodecSchema({
+      sl1CodecSchema({
         configuration,
         configurationHash,
         scenario,
@@ -459,8 +459,8 @@ export function SimulationProvider({
   const encodeState = useCallback(
     (candidate: SessionState): string => {
       const breakdown = scoreFor(candidate);
-      return encodeTc3Attempt(
-        toTc3AttemptSnapshot(
+      return encodeSl1Attempt(
+        toSl1AttemptSnapshot(
           candidate,
           isPassing(breakdown.score, activeScoringConfiguration),
         ),
@@ -593,7 +593,7 @@ export function SimulationProvider({
       }
 
       try {
-        const snapshot = decodeTc3Attempt(stored, codecSchema);
+        const snapshot = decodeSl1Attempt(stored, codecSchema);
         if (snapshot.variantAssignment !== undefined) {
           dispatch({
             type: "VARIANT_ASSIGNED",
@@ -2078,7 +2078,7 @@ export function SimulationProvider({
             return;
           }
           try {
-            const snapshot = decodeTc3Attempt(stored, codecSchema);
+            const snapshot = decodeSl1Attempt(stored, codecSchema);
             const replay = await replayCommandJournal({
               snapshot,
               initialDomain: seededDomain,

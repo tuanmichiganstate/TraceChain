@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import packJson from "../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import challengePackJson from "../../scenario-packs/challenge-coffee-audit/tracechain.pack.json";
+import packJson from "../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import challengePackJson from "../../scenario-packs/challenge-coffee-audit/simuledger.pack.json";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
 import { publishScenarioPack } from "../platform/scenario-packs/publication";
 import { validateScenarioPack } from "../platform/scenario-packs/validation";
@@ -21,11 +21,11 @@ function files() {
   }
   const pack = publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+    publishedBy: "SIMULEDGER_PACKAGE_GENERATOR",
   });
   const source = `${JSON.stringify(pack, null, 2)}\n`;
   return {
-    "./tracechain.config.json":
+    "./simuledger.config.json":
       embedConfiguration(AUDIT_GUIDED_PRESET),
     "./audit-scenario-pack.json": pack,
     "./build-info.json": {
@@ -56,11 +56,11 @@ function challengeFiles() {
   }
   const pack = publishScenarioPack(validation.pack, {
     publishedAt: "2026-07-27T03:00:00.000Z",
-    publishedBy: "TRACECHAIN_PACKAGE_GENERATOR",
+    publishedBy: "SIMULEDGER_PACKAGE_GENERATOR",
   });
   const source = `${JSON.stringify(pack, null, 2)}\n`;
   return {
-    "./tracechain.config.json":
+    "./simuledger.config.json":
       embedConfiguration(AUDIT_CHALLENGE_PRESET),
     "./audit-scenario-pack.json": pack,
     "./build-info.json": {

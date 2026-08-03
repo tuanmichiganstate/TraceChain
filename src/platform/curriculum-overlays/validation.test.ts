@@ -1,7 +1,7 @@
 import courseOverlayJson from "../../../curriculum-overlays/pharmaceutical-pilot-course.overlay.json";
 import programOverlayJson from "../../../curriculum-overlays/pharmaceutical-pilot-program.overlay.json";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
-import coffeePackJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
+import coffeePackJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import type {
   CurriculumCrosswalkOverlayV2,
 } from "../contracts/curriculum-crosswalk";
@@ -65,7 +65,7 @@ describe("curriculum overlay validation", () => {
     }
   });
 
-  it("binds overlays to exact TraceChain framework versions without pack ownership", () => {
+  it("binds overlays to exact SimuLedger framework versions without pack ownership", () => {
     const pharmaceutical = pack(
       structuredClone(pharmaceuticalPackJson),
     );
@@ -104,7 +104,7 @@ describe("curriculum overlay validation", () => {
       ),
     ).toContainEqual(
       expect.objectContaining({
-        code: "UNKNOWN_TRACECHAIN_INDICATOR",
+        code: "UNKNOWN_SIMULEDGER_INDICATOR",
         path: "$.mappings[0].indicatorId",
       }),
     );

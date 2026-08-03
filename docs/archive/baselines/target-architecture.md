@@ -6,7 +6,7 @@ Canonical roadmap:
 
 ## Architectural objective
 
-TraceChain will support two delivery channels from one versioned content and
+SimuLedger will support two delivery channels from one versioned content and
 simulation system:
 
 1. Server-authoritative, individual hosted runs with instructor workflows.
@@ -123,7 +123,7 @@ events, reports, and pack definitions remain structured D1 records.
 Institutional OIDC remains the production preference where the deployment
 environment supplies it. The first Sites implementation may use forwarded
 authenticated-user identity, with all application-role authorization enforced
-server-side. No password system will be built in TraceChain.
+server-side. No password system will be built in SimuLedger.
 
 ## Identity model
 
@@ -265,13 +265,13 @@ Current package presets and hosted run behavior are separate axes:
 
 The persisted package-mode vocabulary remains unchanged. Hosted run
 configuration adds `tutorial`, `standard`, `sandbox`, and `configured`
-behavior without reinterpreting existing TC3 data.
+behavior without reinterpreting existing SL1 data.
 
 ## SCORM boundary
 
 The SCORM player continues to own:
 
-- compact TC3 replay inputs;
+- compact SL1 replay inputs;
 - package-local scoring and feedback;
 - LMS completion, success, score, and interactions;
 - offline operation.

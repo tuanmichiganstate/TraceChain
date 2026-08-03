@@ -8,7 +8,7 @@ describe("published Technical Laboratory JSON Schema", () => {
       readFileSync(
         resolve(
           process.cwd(),
-          "schemas/tracechain-technical-lab-pack-v1.schema.json",
+          "schemas/simuledger-technical-lab-pack-v1.schema.json",
         ),
         "utf8",
       ),
@@ -35,10 +35,10 @@ describe("published Technical Laboratory JSON Schema", () => {
       "https://json-schema.org/draft/2020-12/schema",
     );
     expect(schema.$id).toContain(
-      "tracechain-technical-lab-pack-v1",
+      "simuledger-technical-lab-pack-v1",
     );
     expect(schema.title).toBe(
-      "TraceChain Technical Laboratory Pack V1",
+      "SimuLedger Technical Laboratory Pack V1",
     );
     expect(schema.required).toEqual([
       "pack",

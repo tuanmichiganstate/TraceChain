@@ -6,7 +6,7 @@ registration and that configuration is deployed.
 
 ## Purpose and boundary
 
-TraceChain accepts Moodle LTI 1.3 Resource Link launches for the existing
+SimuLedger accepts Moodle LTI 1.3 Resource Link launches for the existing
 hosted `/instructor`, `/author`, and `/learner` workspaces and Deep Linking
 requests for course assignment selection. Every launch reuses the same hosted
 application, API, D1 database, assignment model, simulation engine, reporting
@@ -23,7 +23,7 @@ course-roster synchronization:
 - one-use state and nonce validation;
 - exact issuer, client, deployment, context, resource-link, and role checks;
 - automatic creation of a durable external instructor or learner identity;
-- an eight-hour server-side HTTP-only session carrying exactly one TraceChain
+- an eight-hour server-side HTTP-only session carrying exactly one SimuLedger
   application role;
 - a server-allowlisted Scenario Author resource link that converts a verified
   full Instructor launch into one session-scoped `scenario-author` principal;
@@ -72,7 +72,7 @@ It deliberately does not implement:
 - a separate instructor deployment.
 
 Moodle continues to own activity availability, enrolment rules, attempt
-aggregation, and the gradebook. TraceChain authenticates hosted-platform
+aggregation, and the gradebook. SimuLedger authenticates hosted-platform
 access and returns one run's final completion and available score to the exact
 line item supplied by Moodle. NRPS imports a read-only snapshot only after the
 instructor requests synchronization from the launched course. It does not turn
@@ -97,11 +97,11 @@ separate endpoints and a separate session cookie:
 The existing direct Sites-authenticated session remains available. An ordinary
 LTI session grants either `instructor` or `learner`, never a union of platform
 roles. An instructor session carries one Moodle course context. A learner
-session carries that course context and one exact TraceChain assignment ID.
+session carries that course context and one exact SimuLedger assignment ID.
 Neither ordinary launch infers author, rater, or administrator authority.
 
 One separately configured resource link may grant session-scoped
-`scenario-author` authority. TraceChain requires both the standard full LTI
+`scenario-author` authority. SimuLedger requires both the standard full LTI
 Instructor role and an exact resource-link ID listed in the server-owned
 registration. A custom parameter, query parameter, launch name, or client
 request cannot grant this role. The resulting principal has only
@@ -115,18 +115,18 @@ without strengthening these authorization checks.
 
 ## Moodle manual registration
 
-Register TraceChain as an LTI 1.3 External tool in Moodle. Use a new-window
+Register SimuLedger as an LTI 1.3 External tool in Moodle. Use a new-window
 launch; embedded launches are not supported because modern browsers may block
 third-party cookies.
 
-For a deployment at `https://tracechain.example`, provide Moodle with:
+For a deployment at `https://simuledger.example`, provide Moodle with:
 
 | Moodle field | Value |
 |---|---|
-| Tool URL / redirect URI | `https://tracechain.example/api/lti/v1/launch` |
-| Initiate login URL | `https://tracechain.example/api/lti/v1/login` |
-| Public keyset URL | `https://tracechain.example/api/lti/v1/jwks` |
-| Content selection URL | `https://tracechain.example/api/lti/v1/launch` |
+| Tool URL / redirect URI | `https://simuledger.example/api/lti/v1/launch` |
+| Initiate login URL | `https://simuledger.example/api/lti/v1/login` |
+| Public keyset URL | `https://simuledger.example/api/lti/v1/jwks` |
+| Content selection URL | `https://simuledger.example/api/lti/v1/launch` |
 | Default launch container | New window |
 
 After registration, Moodle supplies the platform issuer, client ID, deployment
@@ -142,7 +142,7 @@ configured. In Moodle, enable the Names and Role Provisioning service and its
 read-only context-membership scope for the tool.
 
 Name and email claims are optional display metadata. They are not trusted as
-the durable identity. TraceChain keys each external identity by:
+the durable identity. SimuLedger keys each external identity by:
 
 ```text
 issuer + client ID + deployment ID + subject
@@ -166,7 +166,7 @@ server registration's `scenarioAuthorResourceLinkIds`.
 
 The activity must send the standard full LTI Instructor role. Moodle controls
 who may open the activity through its course role and activity-access rules.
-TraceChain then applies its own narrower checks:
+SimuLedger then applies its own narrower checks:
 
 - the issuer, client, deployment, course, role, and resource-link claims must
   pass the normal signed launch validation;
@@ -177,14 +177,14 @@ TraceChain then applies its own narrower checks:
 - `/instructor` assignment data and `/admin` remain forbidden.
 
 Do not use a custom parameter such as
-`tracechain_workspace=scenario-author` as authorization. TraceChain ignores it
+`simuledger_workspace=scenario-author` as authorization. SimuLedger ignores it
 for privilege decisions.
 
 To obtain the opaque resource-link ID safely:
 
 1. Create and launch the new Moodle activity once as a full Instructor before
    allowlisting it.
-2. In the launched TraceChain tab, open `/api/v1/session`.
+2. In the launched SimuLedger tab, open `/api/v1/session`.
 3. Copy `learningContext.resourceLinkId`, which came from the verified signed
    launch.
 4. Add that exact value to `scenarioAuthorResourceLinkIds` in the matching
@@ -198,14 +198,14 @@ restricted intentionally.
 
 ### Learner activity through Deep Linking
 
-First create the TraceChain assignment through the course's instructor
+First create the SimuLedger assignment through the course's instructor
 activity. Then add a Moodle External tool activity and use Moodle's
-**Select content** action. TraceChain shows only active assignments already
+**Select content** action. SimuLedger shows only active assignments already
 bound to that verified course. Selecting one returns an LTI resource link with
 this signed custom property:
 
 ```text
-tracechain_assignment_id=ASSIGNMENT_ID
+simuledger_assignment_id=ASSIGNMENT_ID
 ```
 
 Moodle stores that property with the resource link and sends it back in the
@@ -213,7 +213,7 @@ signed custom claim on later launches. Moodle must send the standard full LTI
 Learner role to a learner. The assignment identifier is never accepted from a
 browser query parameter or ordinary API request.
 
-Keep one stable TraceChain assignment ID per Moodle activity. A successful
+Keep one stable SimuLedger assignment ID per Moodle activity. A successful
 Deep Linking response does not force Moodle to save the activity; the
 instructor may still cancel Moodle's activity form.
 
@@ -227,7 +227,7 @@ into only that assignment.
 
 ## Server configuration
 
-`TRACECHAIN_LTI_REGISTRATIONS_JSON` contains one to sixteen registrations:
+`SIMULEDGER_LTI_REGISTRATIONS_JSON` contains one to sixteen registrations:
 
 ```json
 [
@@ -251,14 +251,14 @@ defaults to no Moodle author access. Removing an ID revokes author authority
 from existing LTI sessions on their next API request because the live
 server-owned registration is rechecked.
 
-`TRACECHAIN_LTI_TOOL_JWKS_JSON` contains the public tool keyset Moodle records:
+`SIMULEDGER_LTI_TOOL_JWKS_JSON` contains the public tool keyset Moodle records:
 
 ```json
 {
   "keys": [
     {
       "kty": "RSA",
-      "kid": "TRACECHAIN_TOOL_KEY_2026_01",
+      "kid": "SIMULEDGER_TOOL_KEY_2026_01",
       "use": "sig",
       "alg": "RS256",
       "n": "PUBLIC_MODULUS_BASE64URL",
@@ -271,7 +271,7 @@ server-owned registration is rechecked.
 Only public JWK members are accepted. Private RSA or symmetric key material is
 rejected by this public-key configuration.
 
-`TRACECHAIN_LTI_TOOL_PRIVATE_JWK_JSON` contains the one RSA private key used to
+`SIMULEDGER_LTI_TOOL_PRIVATE_JWK_JSON` contains the one RSA private key used to
 sign Deep Linking responses and AGS or NRPS OAuth client assertions. Store it
 as a deployment secret, never in a runtime file or committed environment file.
 Its `kid`, `n`, and `e` values must match one RS256 signing key in the public
@@ -280,7 +280,7 @@ keyset:
 ```json
 {
   "kty": "RSA",
-  "kid": "TRACECHAIN_TOOL_KEY_2026_01",
+  "kid": "SIMULEDGER_TOOL_KEY_2026_01",
   "use": "sig",
   "alg": "RS256",
   "n": "PUBLIC_MODULUS_BASE64URL",
@@ -306,7 +306,7 @@ Moodle External tool
   -> one-use hashed state and nonce stored in D1
   -> redirect to Moodle authorization endpoint
   -> Moodle form-posts signed id_token to /api/lti/v1/launch
-  -> TraceChain verifies RS256 token and LTI claims
+  -> SimuLedger verifies RS256 token and LTI claims
   -> Instructor:
        provision instructor identity
        bind verified course context
@@ -357,9 +357,9 @@ Every launch token must contain:
 - a resource-link ID for `LtiResourceLinkRequest`.
 
 A learner resource-link launch additionally requires a bounded
-`tracechain_assignment_id` value in the standard LTI custom claim.
+`simuledger_assignment_id` value in the standard LTI custom claim.
 
-When Moodle supplies the standard AGS endpoint claim, TraceChain validates:
+When Moodle supplies the standard AGS endpoint claim, SimuLedger validates:
 
 - a bounded absolute `lineitem` URL;
 - the exact Moodle issuer origin;
@@ -373,7 +373,7 @@ The platform user ID in the score is the verified LTI `sub`; it never comes
 from a learner request body.
 
 When Moodle supplies the standard NRPS names-and-roles claim on an instructor
-resource-link launch, TraceChain validates:
+resource-link launch, SimuLedger validates:
 
 - a bounded absolute `context_memberships_url`;
 - the exact Moodle issuer origin;
@@ -476,7 +476,7 @@ Dedicated external-identity administration is deferred.
 
 ## Final outcome return
 
-TraceChain posts only after the authoritative run event log contains
+SimuLedger posts only after the authoritative run event log contains
 `RUN_COMPLETED`. Learner completion is never rolled back because Moodle is
 temporarily unavailable.
 
@@ -540,7 +540,7 @@ not persisted. Scenario Author authority is not copied into a session row; the
 worker rechecks the signed session context against the live server allowlist on
 every API request.
 
-TraceChain has a pre-release no-migration policy. Before deployment, the
+SimuLedger has a pre-release no-migration policy. Before deployment, the
 runtime schema guard compares the exact schema marker, discards an absent or
 non-current development schema, and installs the current schema from scratch.
 Do not add compatibility readers or a migration chain for obsolete
@@ -594,7 +594,7 @@ Before enabling real Moodle learner activities:
 29. Confirm that activity opens `/author` with only the `scenario-author`
     role, and that return-to-Moodle and sign-out work.
 30. Confirm an unlisted Instructor activity remains `/instructor`, even if it
-    sends `tracechain_workspace=scenario-author`.
+    sends `simuledger_workspace=scenario-author`.
 31. Confirm a learner launch, instructor assignment API, and administrator API
     are denied from the author session.
 32. Confirm direct hosted sessions and SCORM activities behave as before.

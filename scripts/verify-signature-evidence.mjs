@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Independent verifier for a TraceChain signature-evidence bundle.
+ * Independent verifier for a SimuLedger signature-evidence bundle.
  *
  * This intentionally uses Node's crypto implementation rather than the
  * application's Ed25519 provider. Agreement therefore checks the serialized
@@ -105,10 +105,10 @@ export function verifySignatureEvidenceBundle(bundle) {
   const proposal = bundle.proposal;
   const statement = bundle.signatureStatement;
   const signature = bundle.signature;
-  if (proposal.domain !== "TRACECHAIN_TRANSACTION_PROPOSAL_V1") {
+  if (proposal.domain !== "SIMULEDGER_TRANSACTION_PROPOSAL_V1") {
     fail("Proposal domain is invalid");
   }
-  if (statement.domain !== "TRACECHAIN_SIGNATURE_V1") {
+  if (statement.domain !== "SIMULEDGER_SIGNATURE_V1") {
     fail("Signature-statement domain is invalid");
   }
   if (signature.algorithm !== "Ed25519") {
@@ -130,7 +130,7 @@ export function verifySignatureEvidenceBundle(bundle) {
   }
 
   const reconstructedStatement = {
-    domain: "TRACECHAIN_SIGNATURE_V1",
+    domain: "SIMULEDGER_SIGNATURE_V1",
     purpose: signature.purpose,
     proposalDigest: calculatedDigest,
     sessionId: proposal.sessionId,

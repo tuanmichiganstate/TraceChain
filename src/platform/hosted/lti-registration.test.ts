@@ -18,8 +18,8 @@ function registration(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
     registrationId: "MOODLE_001",
     issuer: "https://moodle.example",
-    clientId: "TRACECHAIN_CLIENT",
-    deploymentId: "TRACECHAIN_DEPLOYMENT",
+    clientId: "SIMULEDGER_CLIENT",
+    deploymentId: "SIMULEDGER_DEPLOYMENT",
     authorizationEndpoint:
       "https://moodle.example/mod/lti/auth.php",
     jwksUri: "https://moodle.example/mod/lti/certs.php",
@@ -72,13 +72,13 @@ describe("LTI registration validation", () => {
       JSON.stringify([
         registration({
           scenarioAuthorResourceLinkIds: [
-            "RESOURCE_TRACECHAIN_AUTHOR",
+            "RESOURCE_SIMULEDGER_AUTHOR",
           ],
         }),
       ]),
     );
     expect(parsed?.scenarioAuthorResourceLinkIds).toEqual([
-      "RESOURCE_TRACECHAIN_AUTHOR",
+      "RESOURCE_SIMULEDGER_AUTHOR",
     ]);
 
     for (const scenarioAuthorResourceLinkIds of [

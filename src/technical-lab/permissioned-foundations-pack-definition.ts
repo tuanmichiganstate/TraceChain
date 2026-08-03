@@ -488,7 +488,7 @@ const validatedPermissionedFoundationsLabBundle: TechnicalLabPackBundle =
 const publicationMetadata = {
   contentHash: "",
   publishedAt: "2026-07-27T00:00:00.000Z",
-  publishedBy: "TRACECHAIN",
+  publishedBy: "SIMULEDGER",
 } as const;
 
 const publishingPermissionedFoundationsLabBundle: TechnicalLabPackBundle =

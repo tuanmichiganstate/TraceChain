@@ -1,4 +1,4 @@
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import { FixedClock, SequenceIdGenerator } from "../../domain/simulation/environment";
 import { TransactionType } from "../../domain/types/enums";
 import type { RecordCorrectionCommand } from "../../domain/commands/commands";

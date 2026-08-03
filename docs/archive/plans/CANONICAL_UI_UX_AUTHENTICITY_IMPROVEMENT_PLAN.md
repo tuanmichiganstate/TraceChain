@@ -1,10 +1,10 @@
-# TraceChain Canonical UI/UX Authenticity Improvement Plan
+# SimuLedger Canonical UI/UX Authenticity Improvement Plan
 
 ## 1. Purpose
 
 Implement the recommendations in
-`TraceChain_UI_UX_Authenticity_Review_and_Improvement_Recommendations.md`
-without changing TraceChain's simulation, scoring, cryptographic, persistence,
+`SimuLedger_UI_UX_Authenticity_Review_and_Improvement_Recommendations.md`
+without changing SimuLedger's simulation, scoring, cryptographic, persistence,
 or packaging architecture.
 
 The outcome is a clearer simulation workspace in which learners can immediately
@@ -74,7 +74,7 @@ only when the product owner explicitly requests it.
 - Changes to hint targets or ceilings
 - Changes to command, event, or audit semantics
 - Changes to deterministic replay
-- Changes to TC3 journal semantics or storage limits
+- Changes to SL1 journal semantics or storage limits
 - Persistent SCORM counterfactual branches
 - New backend or authentication behavior
 - New collaboration behavior
@@ -614,7 +614,7 @@ The final Increment 3 gate must prove:
 - Stage 9 is visibly a recall command center with provenance as primary
   evidence.
 - Scores, hints, mitigation, event histories, and causal reports are unchanged.
-- TC3 remains within its existing bound.
+- SL1 remains within its existing bound.
 - SCORM resume works at the same consequential boundaries.
 - `npm run quality` and the full Playwright matrix pass.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
 import type {
   ClassCompetencyIndicatorV1,
   HostedAssignmentCompetencyReportV1,
@@ -183,18 +183,18 @@ describe("curriculum crosswalk report", () => {
       status: "ADOPTED",
       educationalDemoOnly: true,
       owner: {
-        ownerId: "TRACECHAIN_DEMO_COURSE",
+        ownerId: "SIMULEDGER_DEMO_COURSE",
         ownerType: "COURSE",
       },
       externalFrameworkId: "PHARMA_PILOT_COURSE_OUTCOMES",
       labelsByLocale: {
         en: {
-          ownerDisplayName: "TraceChain demonstration course",
+          ownerDisplayName: "SimuLedger demonstration course",
           externalFrameworkTitle:
             "Pilot pharmaceutical course outcomes",
         },
         vi: {
-          ownerDisplayName: "Học phần minh họa TraceChain",
+          ownerDisplayName: "Học phần minh họa SimuLedger",
           externalFrameworkTitle:
             "Chuẩn đầu ra học phần dược phẩm thí điểm",
         },
@@ -248,7 +248,7 @@ describe("curriculum crosswalk report", () => {
     expect(programOverlay).toMatchObject({
       overlayId: "OVERLAY_PHARMA_PILOT_PROGRAM",
       owner: {
-        ownerId: "TRACECHAIN_DEMO_PROGRAM",
+        ownerId: "SIMULEDGER_DEMO_PROGRAM",
         ownerType: "PROGRAM",
       },
     });
@@ -272,7 +272,7 @@ describe("curriculum crosswalk report", () => {
         "ASSIGNMENT PHARMA/TRANSFER",
       ),
     ).toBe(
-      "TraceChain_ASSIGNMENT_PHARMA_TRANSFER_curriculum_overlay_v2.json",
+      "SimuLedger_ASSIGNMENT_PHARMA_TRANSFER_curriculum_overlay_v2.json",
     );
   });
 

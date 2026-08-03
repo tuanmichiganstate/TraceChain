@@ -1,6 +1,6 @@
 import type { LtiLearningContextV2 } from "./lti";
 import type { HostedRunModeConfigurationV1 } from "./scenario-pack";
-import type { TraceChainExperienceConfigurationV2 } from "../../config/types";
+import type { SimuLedgerExperienceConfigurationV2 } from "../../config/types";
 import type { VersionLifecycleStatus } from "./content";
 
 export type AssignmentRunMode =
@@ -62,7 +62,7 @@ export interface HostedAssignmentV1 {
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly experienceConfiguration:
-    TraceChainExperienceConfigurationV2;
+    SimuLedgerExperienceConfigurationV2;
   readonly experienceConfigurationHash: string;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
@@ -118,7 +118,7 @@ export interface CreateHostedAssignmentRequest {
   readonly mode: AssignmentRunMode;
   readonly runConfiguration: HostedRunModeConfigurationV1;
   readonly experienceConfiguration:
-    TraceChainExperienceConfigurationV2;
+    SimuLedgerExperienceConfigurationV2;
   readonly experienceConfigurationHash: string;
   readonly counterfactualReplay:
     AssignmentCounterfactualConfigurationV1;
@@ -231,7 +231,7 @@ export interface HostedAssignmentScenarioOptionV1 {
   readonly experienceConfigurations: readonly {
     readonly mode: AssignmentRunMode;
     readonly configuration:
-      TraceChainExperienceConfigurationV2;
+      SimuLedgerExperienceConfigurationV2;
     readonly configurationHash: string;
   }[];
   readonly summary: HostedAssignmentScenarioSummaryV1;

@@ -40,7 +40,7 @@ import {
   findLtiRegistration,
 } from "./lti-registration";
 
-export const LTI_SESSION_COOKIE = "__Host-tracechain-lti";
+export const LTI_SESSION_COOKIE = "__Host-simuledger-lti";
 const LTI_LOGIN_STATE_LIFETIME_MS = 10 * 60 * 1000;
 const LTI_SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
 const MAXIMUM_LTI_PARAMETER_LENGTH = 8 * 1024;
@@ -140,7 +140,7 @@ function sameOriginLtiLaunchTarget(
   ) {
     throw new LtiAuthenticationError(
       "LTI_REQUEST_INVALID",
-      "target_link_uri must be the registered TraceChain launch endpoint.",
+      "target_link_uri must be the registered SimuLedger launch endpoint.",
     );
   }
   return target.toString();
@@ -410,7 +410,7 @@ async function verifiedLaunchPayload(options: {
     ) {
       throw new LtiAuthenticationError(
         "LTI_TOKEN_INVALID",
-        "A multi-audience LTI token must identify TraceChain as its authorized party.",
+        "A multi-audience LTI token must identify SimuLedger as its authorized party.",
       );
     }
     if (
@@ -512,7 +512,7 @@ function deepLinkingSettings(
   ) {
     throw new LtiAuthenticationError(
       "LTI_DEEP_LINK_UNSUPPORTED",
-      "TraceChain Deep Linking requires an LTI resource link that opens in a new window.",
+      "SimuLedger Deep Linking requires an LTI resource link that opens in a new window.",
     );
   }
   if (
@@ -736,7 +736,7 @@ function learningContext(
         : (() => {
             throw new LtiAuthenticationError(
               "LTI_INSTRUCTOR_ROLE_REQUIRED",
-              "The Moodle launch does not carry a supported TraceChain role.",
+              "The Moodle launch does not carry a supported SimuLedger role.",
             );
           })();
   if (
@@ -797,12 +797,12 @@ function learningContext(
     ) {
       throw new LtiAuthenticationError(
         "LTI_ASSIGNMENT_REQUIRED",
-        "A learner launch must identify one TraceChain assignment.",
+        "A learner launch must identify one SimuLedger assignment.",
         "/learner",
       );
     }
     const candidate = (custom as Readonly<Record<string, unknown>>)
-      .tracechain_assignment_id;
+      .simuledger_assignment_id;
     if (
       typeof candidate !== "string" ||
       candidate.trim().length === 0 ||
@@ -969,7 +969,7 @@ export async function completeLtiLaunch(options: {
   ) {
     throw new LtiAuthenticationError(
       "LTI_ASSIGNMENT_ACCESS_DENIED",
-      "The learner launch is not bound to this Moodle course and TraceChain assignment.",
+      "The learner launch is not bound to this Moodle course and SimuLedger assignment.",
       "/learner",
     );
   }

@@ -13,7 +13,7 @@ import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { inspectScenarioImage } from "./image-assets";
 import { validateScenarioPack } from "./validation";
 
-export const SCENARIO_PACK_MANIFEST_PATH = "tracechain.pack.json";
+export const SCENARIO_PACK_MANIFEST_PATH = "simuledger.pack.json";
 export const MAXIMUM_SCENARIO_BUNDLE_BYTES = 30 * 1024 * 1024;
 const MAXIMUM_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAXIMUM_BUNDLE_ENTRY_BYTES = 5 * 1024 * 1024;
@@ -270,5 +270,5 @@ export function scenarioPackBundleFilename(pack: ScenarioPackV2): string {
   const safe = `${pack.packId}_${pack.version}`
     .replace(/[^A-Za-z0-9._-]+/gu, "_")
     .replace(/^_+|_+$/gu, "");
-  return `TraceChain_${safe || "Scenario"}.zip`;
+  return `SimuLedger_${safe || "Scenario"}.zip`;
 }

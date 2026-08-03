@@ -1,5 +1,5 @@
 /**
- * Bounded TC3 command-journal codec.
+ * Bounded SL1 command-journal codec.
  *
  * Events and acceptance flags are deliberately absent. Replay submits the
  * compact commands under the recorded scenario-controlled context sequence and
@@ -27,11 +27,11 @@ import {
   selectVariantIndex,
 } from "../../domain/scenario/variant-bank";
 
-export const TC3_MAGIC = "TC3";
-export const TC3_INTERNAL_CHARACTER_LIMIT = 3_800;
-export const TC3_AUTHORED_PAYLOAD_LIMIT = 3_000;
+export const SL1_MAGIC = "SL1";
+export const SL1_INTERNAL_CHARACTER_LIMIT = 3_800;
+export const SL1_AUTHORED_PAYLOAD_LIMIT = 3_000;
 
-export const TC3_SECTION_BUDGET = {
+export const SL1_SECTION_BUDGET = {
   metadata: 280,
   progress: 420,
   context: 160,
@@ -65,7 +65,7 @@ export interface JournalOpcodeDefinition {
   readonly textValueByteLimits?: Readonly<Record<number, number>>;
 }
 
-export interface Tc3CodecSchema {
+export interface Sl1CodecSchema {
   readonly configurationHash: string;
   readonly scenarioId: string;
   readonly scenarioVersion: string;
@@ -76,7 +76,7 @@ export interface Tc3CodecSchema {
   readonly variantBank?: ScenarioVariantBank;
 }
 
-export interface Tc3AttemptSnapshot {
+export interface Sl1AttemptSnapshot {
   readonly sessionId: string;
   readonly currentStageId: ScenarioStageId;
   readonly completedStageIds: readonly ScenarioStageId[];
@@ -88,7 +88,7 @@ export interface Tc3AttemptSnapshot {
   readonly variantAssignment?: ScenarioVariantAssignment;
 }
 
-export interface Tc3SizeBreakdown {
+export interface Sl1SizeBreakdown {
   readonly metadata: number;
   readonly progress: number;
   readonly context: number;
@@ -114,7 +114,7 @@ type WireVariantAssignment = readonly [
   assignmentSourceIndex: number,
 ];
 
-type Tc3Wire = readonly [
+type Sl1Wire = readonly [
   configurationHash: string,
   scenarioId: string,
   scenarioVersion: string,
@@ -155,14 +155,14 @@ function encodeBase64Url(bytes: Uint8Array): string {
 
 function decodeBase64Url(encoded: string): Uint8Array {
   if (!/^[A-Za-z0-9_-]*$/.test(encoded) || encoded.length % 4 === 1) {
-    throw new PersistenceError("TC3 payload is not valid base64url");
+    throw new PersistenceError("SL1 payload is not valid base64url");
   }
   const bytes: number[] = [];
   for (let offset = 0; offset < encoded.length; offset += 4) {
     const chars = encoded.slice(offset, offset + 4);
     const values = [...chars].map((character) => BASE64URL_ALPHABET.indexOf(character));
     if (values.some((value) => value < 0)) {
-      throw new PersistenceError("TC3 payload contains an invalid base64url character");
+      throw new PersistenceError("SL1 payload contains an invalid base64url character");
     }
     const value =
       ((values[0] ?? 0) << 18) |
@@ -192,7 +192,7 @@ export function assertStageBitmapCapacity(
 ): void {
   if (stageOrder.length > 31) {
     throw new PersistenceError(
-      `TC3 stores completed stages in a 31-slot bitmap, but the scenario declares ${String(stageOrder.length)} stages`,
+      `SL1 stores completed stages in a 31-slot bitmap, but the scenario declares ${String(stageOrder.length)} stages`,
     );
   }
 }
@@ -212,7 +212,7 @@ function stagesFromBitmap(bitmap: number): ScenarioStageId[] {
   return SCENARIO_STAGE_ORDER.filter((_stage, index) => (bitmap & (1 << index)) !== 0);
 }
 
-function hintBitmap(hints: readonly string[], schema: Tc3CodecSchema): string {
+function hintBitmap(hints: readonly string[], schema: Sl1CodecSchema): string {
   let bitmap = 0n;
   for (const hint of hints) {
     const index = schema.hintIds.indexOf(hint);
@@ -222,8 +222,8 @@ function hintBitmap(hints: readonly string[], schema: Tc3CodecSchema): string {
   return bitmap.toString(36);
 }
 
-function hintsFromBitmap(field: string, schema: Tc3CodecSchema): string[] {
-  if (!/^[0-9a-z]+$/.test(field)) throw new PersistenceError("Malformed TC3 hint bitmap");
+function hintsFromBitmap(field: string, schema: Sl1CodecSchema): string[] {
+  if (!/^[0-9a-z]+$/.test(field)) throw new PersistenceError("Malformed SL1 hint bitmap");
   const bitmap = [...field].reduce(
     (total, character) => total * 36n + BigInt(Number.parseInt(character, 36)),
     0n,
@@ -232,7 +232,7 @@ function hintsFromBitmap(field: string, schema: Tc3CodecSchema): string[] {
     (1n << BigInt(schema.hintIds.length)) - 1n;
   if (bitmap > maximumBitmap) {
     throw new PersistenceError(
-      "TC3 hint bitmap contains an unknown hint",
+      "SL1 hint bitmap contains an unknown hint",
     );
   }
   return schema.hintIds.filter(
@@ -242,7 +242,7 @@ function hintsFromBitmap(field: string, schema: Tc3CodecSchema): string[] {
 
 function decisionValues(
   decisions: Readonly<Record<string, DecisionRecord>>,
-  schema: Tc3CodecSchema,
+  schema: Sl1CodecSchema,
 ): number[] {
   return schema.decisionIds.flatMap((id) => {
     const record = decisions[id];
@@ -270,10 +270,10 @@ function decisionValues(
 
 function decisionsFromValues(
   values: readonly number[],
-  schema: Tc3CodecSchema,
+  schema: Sl1CodecSchema,
 ): Record<string, DecisionRecord> {
   if (values.length !== schema.decisionIds.length * 2) {
-    throw new PersistenceError("TC3 decision vector does not match the scenario schema");
+    throw new PersistenceError("SL1 decision vector does not match the scenario schema");
   }
   const decisions: Record<string, DecisionRecord> = {};
   for (let index = 0; index < schema.decisionIds.length; index += 1) {
@@ -287,7 +287,7 @@ function decisionsFromValues(
       (attemptCount as number) < 0 ||
       (attemptCount as number) > MAX_ATTEMPT_COUNT
     ) {
-      throw new PersistenceError("TC3 decision vector contains invalid values");
+      throw new PersistenceError("SL1 decision vector contains invalid values");
     }
     if ((attemptCount as number) > 0) {
       decisions[schema.decisionIds[index] as string] = {
@@ -299,9 +299,9 @@ function decisionsFromValues(
   return decisions;
 }
 
-function validateSchema(schema: Tc3CodecSchema): void {
+function validateSchema(schema: Sl1CodecSchema): void {
   if (!HASH_PATTERN.test(schema.configurationHash)) {
-    throw new PersistenceError("TC3 configuration hash must be 64 lowercase hexadecimal characters");
+    throw new PersistenceError("SL1 configuration hash must be 64 lowercase hexadecimal characters");
   }
   for (const [name, value] of [
     ["scenarioId", schema.scenarioId],
@@ -309,13 +309,13 @@ function validateSchema(schema: Tc3CodecSchema): void {
     ["scenarioSeed", schema.scenarioSeed],
   ] as const) {
     if (!IDENTIFIER_PATTERN.test(value)) {
-      throw new PersistenceError(`TC3 ${name} is not a bounded portable identifier`);
+      throw new PersistenceError(`SL1 ${name} is not a bounded portable identifier`);
     }
   }
   const seen = new Set<number>();
   for (const definition of schema.opcodes) {
     if (!Number.isInteger(definition.opcode) || definition.opcode < 0 || seen.has(definition.opcode)) {
-      throw new PersistenceError(`Invalid or duplicate TC3 opcode: ${definition.opcode}`);
+      throw new PersistenceError(`Invalid or duplicate SL1 opcode: ${definition.opcode}`);
     }
     if (!Number.isInteger(definition.maxOccurrences) || definition.maxOccurrences < 0) {
       throw new PersistenceError(`Opcode ${definition.opcode} has an invalid occurrence limit`);
@@ -334,7 +334,7 @@ function validateSchema(schema: Tc3CodecSchema): void {
       schema.variantBank.variants.length === 0)
   ) {
     throw new PersistenceError(
-      "TC3 variant-bank schema must identify at least one variant",
+      "SL1 variant-bank schema must identify at least one variant",
     );
   }
 }
@@ -347,19 +347,19 @@ const ASSIGNMENT_SOURCES = [
 
 function wireVariantAssignment(
   assignment: ScenarioVariantAssignment | undefined,
-  schema: Tc3CodecSchema,
+  schema: Sl1CodecSchema,
 ): WireVariantAssignment | null {
   if (schema.variantBank === undefined) {
     if (assignment !== undefined) {
       throw new PersistenceError(
-        "Fixed TC3 scenarios cannot store a variant assignment",
+        "Fixed SL1 scenarios cannot store a variant assignment",
       );
     }
     return null;
   }
   if (assignment === undefined) {
     throw new PersistenceError(
-      "Variant-bank TC3 state requires an assignment",
+      "Variant-bank SL1 state requires an assignment",
     );
   }
   const expected = assignmentForVariant({
@@ -384,7 +384,7 @@ function wireVariantAssignment(
     assignment.selectionAlgorithmVersion !== "1"
   ) {
     throw new IncompatibleAttemptError(
-      "TC3 variant assignment does not match the configured immutable bank",
+      "SL1 variant assignment does not match the configured immutable bank",
     );
   }
   const assignmentSourceIndex = ASSIGNMENT_SOURCES.indexOf(
@@ -392,7 +392,7 @@ function wireVariantAssignment(
   );
   if (assignmentSourceIndex < 0) {
     throw new PersistenceError(
-      "TC3 variant assignment has an unknown source",
+      "SL1 variant assignment has an unknown source",
     );
   }
   return [
@@ -404,7 +404,7 @@ function wireVariantAssignment(
 
 function assignmentFromWire(
   value: WireVariantAssignment | null,
-  schema: Tc3CodecSchema,
+  schema: Sl1CodecSchema,
 ): ScenarioVariantAssignment | undefined {
   if (schema.variantBank === undefined) {
     if (value !== null) {
@@ -422,13 +422,13 @@ function assignmentFromWire(
     !Number.isInteger(value[2])
   ) {
     throw new PersistenceError(
-      "TC3 variant assignment is malformed",
+      "SL1 variant assignment is malformed",
     );
   }
   const assignmentSource = ASSIGNMENT_SOURCES[value[2]];
   if (assignmentSource === undefined) {
     throw new PersistenceError(
-      "TC3 variant assignment source is out of range",
+      "SL1 variant assignment source is out of range",
     );
   }
   const assignment = assignmentForVariant({
@@ -453,7 +453,7 @@ function assignmentFromWire(
 
 function validateJournal(
   entries: readonly CompactCommandJournalEntry[],
-  schema: Tc3CodecSchema,
+  schema: Sl1CodecSchema,
 ): void {
   const definitions = new Map(schema.opcodes.map((definition) => [definition.opcode, definition]));
   const occurrences = new Map<number, number>();
@@ -462,7 +462,7 @@ function validateJournal(
 
   for (const entry of entries) {
     const definition = definitions.get(entry.opcode);
-    if (definition === undefined) throw new PersistenceError(`Unknown TC3 opcode: ${entry.opcode}`);
+    if (definition === undefined) throw new PersistenceError(`Unknown SL1 opcode: ${entry.opcode}`);
     if (
       !Number.isInteger(entry.commandSequence) ||
       entry.commandSequence < 0 ||
@@ -471,7 +471,7 @@ function validateJournal(
       throw new PersistenceError(`Duplicate or invalid command sequence: ${entry.commandSequence}`);
     }
     if (entry.commandSequence <= previousCommandSequence) {
-      throw new PersistenceError("TC3 command journal must be strictly ordered");
+      throw new PersistenceError("SL1 command journal must be strictly ordered");
     }
     if (!Number.isInteger(entry.contextIndex) || entry.contextIndex < 0) {
       throw new PersistenceError(`Invalid trusted-context index: ${entry.contextIndex}`);
@@ -513,9 +513,9 @@ function validateJournal(
   }
 }
 
-function wireFromSnapshot(snapshot: Tc3AttemptSnapshot, schema: Tc3CodecSchema): Tc3Wire {
+function wireFromSnapshot(snapshot: Sl1AttemptSnapshot, schema: Sl1CodecSchema): Sl1Wire {
   const currentStageIndex = SCENARIO_STAGE_ORDER.indexOf(snapshot.currentStageId);
-  if (currentStageIndex < 0) throw new PersistenceError("Unknown TC3 current stage");
+  if (currentStageIndex < 0) throw new PersistenceError("Unknown SL1 current stage");
   return [
     schema.configurationHash,
     schema.scenarioId,
@@ -539,10 +539,10 @@ function wireFromSnapshot(snapshot: Tc3AttemptSnapshot, schema: Tc3CodecSchema):
   ];
 }
 
-export function measureTc3Attempt(
-  snapshot: Tc3AttemptSnapshot,
-  schema: Tc3CodecSchema,
-): Tc3SizeBreakdown {
+export function measureSl1Attempt(
+  snapshot: Sl1AttemptSnapshot,
+  schema: Sl1CodecSchema,
+): Sl1SizeBreakdown {
   validateSchema(schema);
   validateJournal(snapshot.journal, schema);
   const wire = wireFromSnapshot(snapshot, schema);
@@ -563,7 +563,7 @@ export function measureTc3Attempt(
   const stage3 = encodedJsonCharacters(bySection.get("stage3") ?? []);
   const stage5 = encodedJsonCharacters(bySection.get("stage5") ?? []);
   const stage9 = encodedJsonCharacters(bySection.get("stage9") ?? []);
-  const completionAndFraming = encodedJsonCharacters([wire[10]]) + TC3_MAGIC.length + 10;
+  const completionAndFraming = encodedJsonCharacters([wire[10]]) + SL1_MAGIC.length + 10;
   const authoredPayload =
     metadata +
     progress +
@@ -574,7 +574,7 @@ export function measureTc3Attempt(
     stage9 +
     completionAndFraming;
   const payload = encodeBase64Url(utf8Bytes(JSON.stringify(wire)));
-  const total = `${TC3_MAGIC}.${payload}.${sha256Hex(payload).slice(0, 8)}`.length;
+  const total = `${SL1_MAGIC}.${payload}.${sha256Hex(payload).slice(0, 8)}`.length;
 
   return {
     metadata,
@@ -590,58 +590,58 @@ export function measureTc3Attempt(
   };
 }
 
-function assertBudget(breakdown: Tc3SizeBreakdown): void {
-  for (const section of Object.keys(TC3_SECTION_BUDGET) as Array<
-    keyof typeof TC3_SECTION_BUDGET
+function assertBudget(breakdown: Sl1SizeBreakdown): void {
+  for (const section of Object.keys(SL1_SECTION_BUDGET) as Array<
+    keyof typeof SL1_SECTION_BUDGET
   >) {
-    if (breakdown[section] > TC3_SECTION_BUDGET[section]) {
+    if (breakdown[section] > SL1_SECTION_BUDGET[section]) {
       throw new PersistenceError(
-        `TC3 ${section} section is ${breakdown[section]} characters, over its ` +
-          `${TC3_SECTION_BUDGET[section]}-character authored budget`,
+        `SL1 ${section} section is ${breakdown[section]} characters, over its ` +
+          `${SL1_SECTION_BUDGET[section]}-character authored budget`,
       );
     }
   }
-  if (breakdown.authoredPayload > TC3_AUTHORED_PAYLOAD_LIMIT) {
-    throw new PersistenceError("TC3 authored payload exceeds 3000 characters");
+  if (breakdown.authoredPayload > SL1_AUTHORED_PAYLOAD_LIMIT) {
+    throw new PersistenceError("SL1 authored payload exceeds 3000 characters");
   }
-  if (breakdown.total > TC3_INTERNAL_CHARACTER_LIMIT) {
-    throw new PersistenceError("TC3 suspend data exceeds the 3800-character internal ceiling");
+  if (breakdown.total > SL1_INTERNAL_CHARACTER_LIMIT) {
+    throw new PersistenceError("SL1 suspend data exceeds the 3800-character internal ceiling");
   }
 }
 
-export function encodeTc3Attempt(
-  snapshot: Tc3AttemptSnapshot,
-  schema: Tc3CodecSchema,
+export function encodeSl1Attempt(
+  snapshot: Sl1AttemptSnapshot,
+  schema: Sl1CodecSchema,
 ): string {
   if (!IDENTIFIER_PATTERN.test(snapshot.sessionId)) {
-    throw new PersistenceError("TC3 session identifier is not bounded or portable");
+    throw new PersistenceError("SL1 session identifier is not bounded or portable");
   }
-  const breakdown = measureTc3Attempt(snapshot, schema);
+  const breakdown = measureSl1Attempt(snapshot, schema);
   assertBudget(breakdown);
   const payload = encodeBase64Url(utf8Bytes(JSON.stringify(wireFromSnapshot(snapshot, schema))));
-  return `${TC3_MAGIC}.${payload}.${sha256Hex(payload).slice(0, 8)}`;
+  return `${SL1_MAGIC}.${payload}.${sha256Hex(payload).slice(0, 8)}`;
 }
 
-function parseWire(encoded: string): Tc3Wire {
+function parseWire(encoded: string): Sl1Wire {
   const [magic, payload, checksum, ...extra] = encoded.trim().split(".");
-  if (magic !== TC3_MAGIC) {
+  if (magic !== SL1_MAGIC) {
     throw new UnsupportedStateVersionError(
-      `Unsupported state schema: expected ${TC3_MAGIC}, found "${magic ?? ""}"`,
+      `Unsupported state schema: expected ${SL1_MAGIC}, found "${magic ?? ""}"`,
       magic ?? null,
     );
   }
   if (payload === undefined || checksum === undefined || extra.length > 0) {
-    throw new PersistenceError("Malformed TC3 state framing");
+    throw new PersistenceError("Malformed SL1 state framing");
   }
   if (sha256Hex(payload).slice(0, 8) !== checksum) {
-    throw new PersistenceError("TC3 state failed its checksum");
+    throw new PersistenceError("SL1 state failed its checksum");
   }
   try {
-    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(decodeBase64Url(payload))) as Tc3Wire;
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(decodeBase64Url(payload))) as Sl1Wire;
   } catch (error) {
     if (error instanceof PersistenceError) throw error;
     throw new PersistenceError(
-      `TC3 payload is not valid UTF-8 JSON: ${error instanceof Error ? error.message : String(error)}`,
+      `SL1 payload is not valid UTF-8 JSON: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -653,13 +653,13 @@ export interface CompactVariantAssignment {
     ScenarioVariantAssignment["assignmentSource"];
 }
 
-export function peekTc3VariantAssignment(
+export function peekSl1VariantAssignment(
   encoded: string,
 ): CompactVariantAssignment | null {
   const wire = parseWire(encoded);
   if (!Array.isArray(wire) || wire.length !== 12) {
     throw new PersistenceError(
-      "TC3 payload has an invalid field count",
+      "SL1 payload has an invalid field count",
     );
   }
   const value = wire[11];
@@ -672,13 +672,13 @@ export function peekTc3VariantAssignment(
     !Number.isInteger(value[2])
   ) {
     throw new PersistenceError(
-      "TC3 variant assignment is malformed",
+      "SL1 variant assignment is malformed",
     );
   }
   const assignmentSource = ASSIGNMENT_SOURCES[value[2]];
   if (assignmentSource === undefined) {
     throw new PersistenceError(
-      "TC3 variant assignment source is out of range",
+      "SL1 variant assignment source is out of range",
     );
   }
   return {
@@ -743,18 +743,18 @@ function assertWireShape(
     flags < 0 ||
     (flags & ~3) !== 0
   ) {
-    throw new PersistenceError("TC3 payload has a malformed field");
+    throw new PersistenceError("SL1 payload has a malformed field");
   }
 }
 
-export function decodeTc3Attempt(
+export function decodeSl1Attempt(
   encoded: string,
-  schema: Tc3CodecSchema,
-): Tc3AttemptSnapshot {
+  schema: Sl1CodecSchema,
+): Sl1AttemptSnapshot {
   validateSchema(schema);
   const wire = parseWire(encoded);
   if (!Array.isArray(wire) || wire.length !== 12) {
-    throw new PersistenceError("TC3 payload has an invalid field count");
+    throw new PersistenceError("SL1 payload has an invalid field count");
   }
   assertWireShape(wire);
   if (
@@ -768,7 +768,7 @@ export function decodeTc3Attempt(
     );
   }
   const stage = SCENARIO_STAGE_ORDER[wire[5]];
-  if (stage === undefined) throw new PersistenceError("TC3 current stage is out of range");
+  if (stage === undefined) throw new PersistenceError("SL1 current stage is out of range");
   const journal = wire[9].map(
     (entry): CompactCommandJournalEntry => ({
       commandSequence: entry[0],
@@ -778,7 +778,7 @@ export function decodeTc3Attempt(
     }),
   );
   const variantAssignment = assignmentFromWire(wire[11], schema);
-  const snapshot: Tc3AttemptSnapshot = {
+  const snapshot: Sl1AttemptSnapshot = {
     sessionId: wire[4],
     currentStageId: stage,
     completedStageIds: stagesFromBitmap(wire[6]),
@@ -793,6 +793,6 @@ export function decodeTc3Attempt(
           variantAssignment,
         }),
   };
-  assertBudget(measureTc3Attempt(snapshot, schema));
+  assertBudget(measureSl1Attempt(snapshot, schema));
   return snapshot;
 }

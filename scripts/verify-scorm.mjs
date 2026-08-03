@@ -35,7 +35,7 @@ const packagingFiles = new Set([
 ]);
 const packageSpecificFiles = new Set([
   ...packagingFiles,
-  "tracechain.config.json",
+  "simuledger.config.json",
   "audit-scenario-pack.json",
   "technical-lab-pack.json",
   "scenario.json",
@@ -105,7 +105,7 @@ function packageFileName(configuration, releaseBuild) {
                 ? "ChallengeCoffeeAuditBank"
           : safeFileSegment(configuration.scenarioId);
   const releaseFileName = [
-    "TraceChain",
+    "SimuLedger",
     safeFileSegment(preset),
     scenarioLabel,
     configuration.locale,
@@ -134,7 +134,7 @@ function defaultPackagePaths() {
       projectRoot,
       "dist-scorm",
       presetId,
-      "tracechain.config.json",
+      "simuledger.config.json",
     );
     if (!existsSync(configurationPath)) {
       throw new Error(
@@ -565,7 +565,7 @@ function verifyCryptographicRuntime({
         type: "spki",
       });
       const message = Buffer.from(
-        `TraceChain offline package verification:${key.keyId}`,
+        `SimuLedger offline package verification:${key.keyId}`,
         "utf8",
       );
       const first = sign(null, message, privateKey);
@@ -857,7 +857,7 @@ function verifyPackage(zipPath) {
   const required = [
     "imsmanifest.xml",
     "index.html",
-    "tracechain.config.json",
+    "simuledger.config.json",
     "build-info.json",
     "version.json",
     "README.txt",
@@ -915,7 +915,7 @@ function verifyPackage(zipPath) {
   let buildInformation = null;
   let versionMetadata = null;
   try {
-    envelope = JSON.parse(zip.readAsText("tracechain.config.json"));
+    envelope = JSON.parse(zip.readAsText("simuledger.config.json"));
   } catch {
     // The checks below report each malformed file independently.
   }
@@ -938,7 +938,7 @@ function verifyPackage(zipPath) {
   } catch {
     // Reported below.
   }
-  check("tracechain.config.json is valid JSON", envelope !== null);
+  check("simuledger.config.json is valid JSON", envelope !== null);
   check("build-info.json is valid JSON", buildInformation !== null);
   check("version.json is valid JSON", versionMetadata !== null);
 
@@ -1071,7 +1071,7 @@ function verifyPackage(zipPath) {
           scenario?.auditCase?.version ===
             configuration.auditCaseVersion) &&
         scenario?.hostedRuntime?.runtimeId ===
-          "tracechain-audit-v1",
+          "simuledger-audit-v1",
     );
     check(
       "Audit scoring contract matches configuration",
@@ -1329,8 +1329,8 @@ function verifyPackage(zipPath) {
             .update(
               canonicalize({
                 domain: isAudit
-                  ? "TRACECHAIN_AUDIT_VARIANT_V1"
-                  : "TRACECHAIN_SCENARIO_VARIANT_V1",
+                  ? "SIMULEDGER_AUDIT_VARIANT_V1"
+                  : "SIMULEDGER_SCENARIO_VARIANT_V1",
                 scenario: variantScenario,
               }),
             )

@@ -7,13 +7,13 @@ import {
   type ScenarioVariantAssignment,
 } from "../domain/scenario/variant-bank";
 import { IncompatibleAttemptError } from "../domain/errors";
-import { tc3CodecSchema } from "../domain/simulation/command-journal";
+import { sl1CodecSchema } from "../domain/simulation/command-journal";
 import {
-  decodeTc3Attempt,
-  encodeTc3Attempt,
-  peekTc3VariantAssignment,
-  type Tc3AttemptSnapshot,
-} from "../infrastructure/persistence/tc3-codec";
+  decodeSl1Attempt,
+  encodeSl1Attempt,
+  peekSl1VariantAssignment,
+  type Sl1AttemptSnapshot,
+} from "../infrastructure/persistence/sl1-codec";
 import {
   LearningPlatformPersistenceBridge,
   type SimulationPersistence,
@@ -46,7 +46,7 @@ export interface InitializedRuntimePackage
 
 function emptySnapshot(
   assignment: ScenarioVariantAssignment,
-): Tc3AttemptSnapshot {
+): Sl1AttemptSnapshot {
   return {
     sessionId: "SES_000001",
     currentStageId: ScenarioStageId.ORIENTATION,
@@ -61,7 +61,7 @@ function emptySnapshot(
 }
 
 function containsLearnerProgress(
-  snapshot: Tc3AttemptSnapshot,
+  snapshot: Sl1AttemptSnapshot,
 ): boolean {
   return (
     snapshot.journal.length > 0 ||
@@ -147,20 +147,20 @@ export async function initializeRuntimeAttempt(
       );
     }
     scenario = selected.scenario;
-    const schema = tc3CodecSchema({
+    const schema = sl1CodecSchema({
       configuration: runtime.configuration,
       configurationHash: runtime.configurationHash,
       scenario,
       variantBank: runtime.variantBank,
     });
-    storedAttempt = encodeTc3Attempt(
+    storedAttempt = encodeSl1Attempt(
       emptySnapshot(assignment),
       schema,
     );
     await persistence.persistAndCommit(storedAttempt);
     isAssignmentOnly = true;
   } else {
-    const compact = peekTc3VariantAssignment(storedAttempt);
+    const compact = peekSl1VariantAssignment(storedAttempt);
     if (compact === null) {
       throw new IncompatibleAttemptError(
         "Stored progress has no Challenge variant assignment",
@@ -180,9 +180,9 @@ export async function initializeRuntimeAttempt(
       );
     }
     scenario = selected.scenario;
-    const restored = decodeTc3Attempt(
+    const restored = decodeSl1Attempt(
       storedAttempt,
-      tc3CodecSchema({
+      sl1CodecSchema({
         configuration: runtime.configuration,
         configurationHash: runtime.configurationHash,
         scenario,

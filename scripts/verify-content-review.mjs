@@ -38,7 +38,7 @@ if (sourceCommitMatch === null) {
   process.exit(1);
 }
 
-const temporaryRoot = mkdtempSync(join(tmpdir(), "tracechain-content-review-"));
+const temporaryRoot = mkdtempSync(join(tmpdir(), "simuledger-content-review-"));
 try {
   const result = await generateContentReview({
     projectRoot,

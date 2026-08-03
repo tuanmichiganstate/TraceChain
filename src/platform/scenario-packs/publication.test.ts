@@ -1,4 +1,4 @@
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import {
   MemoryScenarioPackRepository,

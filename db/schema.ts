@@ -1,19 +1,19 @@
 /**
- * Logical D1 schema for the first hosted TraceChain vertical slice.
+ * Logical D1 schema for the first hosted SimuLedger vertical slice.
  *
  * Keep one SQL statement per entry so deployment code can prepare and execute
  * statements independently. Development environments install this current
  * schema from scratch; obsolete database shapes are not upgraded.
  */
 export const currentD1SchemaVersion =
-  "2026-07-30-generic-runtime-v3";
+  "2026-08-03-simuledger-brand-v1";
 
 export const schemaStatements = [
-  `CREATE TABLE IF NOT EXISTS tracechain_schema_metadata (
+  `CREATE TABLE IF NOT EXISTS simuledger_schema_metadata (
     singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
     schema_version TEXT NOT NULL
   ) STRICT`,
-  `INSERT OR IGNORE INTO tracechain_schema_metadata (
+  `INSERT OR IGNORE INTO simuledger_schema_metadata (
     singleton_id,
     schema_version
   ) VALUES (1, '${currentD1SchemaVersion}')`,

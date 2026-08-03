@@ -117,7 +117,7 @@ export function resolveStochasticOutcome(options: {
   }
   const drawKey = sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_STOCHASTIC_DRAW_V1",
+      domain: "SIMULEDGER_STOCHASTIC_DRAW_V1",
       scenarioVersion: options.scenarioVersion,
       scenarioSeed: options.scenarioSeed,
       outcomeModelId: model.outcomeModelId,

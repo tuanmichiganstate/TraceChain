@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tracechain.example/schemas/tracechain-curriculum-overlay-v2.schema.json",
-  "title": "TraceChain Curriculum Crosswalk Overlay V2",
+  "$id": "https://simuledger.example/schemas/simuledger-curriculum-overlay-v2.schema.json",
+  "title": "SimuLedger Curriculum Crosswalk Overlay V2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,7 +14,7 @@
     "effectiveFrom",
     "supportedLocales",
     "title",
-    "traceChainFrameworks",
+    "simuLedgerFrameworks",
     "externalFramework",
     "mappings"
   ],
@@ -61,7 +61,7 @@
     "title": {
       "$ref": "#/$defs/localizedValues"
     },
-    "traceChainFrameworks": {
+    "simuLedgerFrameworks": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,

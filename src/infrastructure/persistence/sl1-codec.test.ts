@@ -20,7 +20,7 @@ import type { BusinessSimulationConfiguration } from "../../config/types";
 import {
   commandJournalDefinitions,
   JournalOpcode,
-  tc3CodecSchema,
+  sl1CodecSchema,
 } from "../../domain/simulation/command-journal";
 import { coffeeScenario } from "../../scenarios/coffee-traceability/scenario";
 import { challengeAScenario } from "../../scenarios/challenge-a/scenario";
@@ -30,23 +30,23 @@ import { practiceVariantBank } from "../../scenarios/practice-a/variant-bank";
 import { selectVariantAssignment } from "../../domain/scenario/variant-bank";
 import { sha256Hex } from "../hashing/sha256";
 import {
-  TC3_AUTHORED_PAYLOAD_LIMIT,
-  TC3_INTERNAL_CHARACTER_LIMIT,
-  TC3_SECTION_BUDGET,
+  SL1_AUTHORED_PAYLOAD_LIMIT,
+  SL1_INTERNAL_CHARACTER_LIMIT,
+  SL1_SECTION_BUDGET,
   assertStageBitmapCapacity,
-  decodeTc3Attempt,
-  encodeTc3Attempt,
-  measureTc3Attempt,
+  decodeSl1Attempt,
+  encodeSl1Attempt,
+  measureSl1Attempt,
   type CompactCommandJournalEntry,
-  type Tc3AttemptSnapshot,
-  type Tc3CodecSchema,
-} from "./tc3-codec";
+  type Sl1AttemptSnapshot,
+  type Sl1CodecSchema,
+} from "./sl1-codec";
 import {
   MAX_ATTEMPT_COUNT,
   type DecisionRecord,
 } from "./attempt-state";
 
-const schema: Tc3CodecSchema = {
+const schema: Sl1CodecSchema = {
   configurationHash: "a".repeat(64),
   scenarioId: "SCN_COFFEE_001",
   scenarioVersion: "2",
@@ -67,7 +67,7 @@ const schema: Tc3CodecSchema = {
   ],
 };
 
-function snapshot(overrides: Partial<Tc3AttemptSnapshot> = {}): Tc3AttemptSnapshot {
+function snapshot(overrides: Partial<Sl1AttemptSnapshot> = {}): Sl1AttemptSnapshot {
   return {
     sessionId: "SES_000001",
     currentStageId: ScenarioStageId.RECEIVE_AND_CORRECT,
@@ -219,12 +219,12 @@ function maximumJournal(
   );
 }
 
-/** Re-frame an arbitrary wire array as a checksum-valid TC3 payload. */
-function forgedTc3(wire: unknown): string {
+/** Re-frame an arbitrary wire array as a checksum-valid SL1 payload. */
+function forgedSl1(wire: unknown): string {
   const payload = Buffer.from(JSON.stringify(wire), "utf8").toString(
     "base64url",
   );
-  return `TC3.${payload}.${sha256Hex(payload).slice(0, 8)}`;
+  return `SL1.${payload}.${sha256Hex(payload).slice(0, 8)}`;
 }
 
 function decodedWire(encoded: string): readonly unknown[] {
@@ -234,27 +234,27 @@ function decodedWire(encoded: string): readonly unknown[] {
   ) as readonly unknown[];
 }
 
-describe("TC3 attempt codec", () => {
+describe("SL1 attempt codec", () => {
   it("round-trips compact commands without storing outcomes", () => {
-    const encoded = encodeTc3Attempt(snapshot(), schema);
-    expect(encoded.startsWith("TC3.")).toBe(true);
-    expect(decodeTc3Attempt(encoded, schema)).toEqual(snapshot());
+    const encoded = encodeSl1Attempt(snapshot(), schema);
+    expect(encoded.startsWith("SL1.")).toBe(true);
+    expect(decodeSl1Attempt(encoded, schema)).toEqual(snapshot());
     expect(encoded).not.toContain("COMMAND_REJECTED");
     expect(encoded).not.toContain("isAccepted");
   });
 
   it("uses exact configuration and scenario identity boundaries", () => {
-    const encoded = encodeTc3Attempt(snapshot(), schema);
+    const encoded = encodeSl1Attempt(snapshot(), schema);
     expect(() =>
-      decodeTc3Attempt(encoded, { ...schema, configurationHash: "b".repeat(64) }),
+      decodeSl1Attempt(encoded, { ...schema, configurationHash: "b".repeat(64) }),
     ).toThrow(IncompatibleAttemptError);
     expect(() =>
-      decodeTc3Attempt(encoded, { ...schema, scenarioVersion: "3" }),
+      decodeSl1Attempt(encoded, { ...schema, scenarioVersion: "3" }),
     ).toThrow(IncompatibleAttemptError);
   });
 
   it("rejects obsolete attempt formats", () => {
-    expect(() => decodeTc3Attempt("TC2.000....", schema)).toThrow(
+    expect(() => decodeSl1Attempt("LEGACY2.000....", schema)).toThrow(
       UnsupportedStateVersionError,
     );
   });
@@ -265,7 +265,7 @@ describe("TC3 attempt codec", () => {
    * TypeError raised part-way through reading the wire.
    */
   it("rejects a structurally invalid wire as a persistence fault", () => {
-    const valid = decodedWire(encodeTc3Attempt(snapshot(), schema));
+    const valid = decodedWire(encodeSl1Attempt(snapshot(), schema));
     const corruptions: readonly (readonly [number, unknown])[] = [
       [4, 17],
       [4, "session id with spaces"],
@@ -288,7 +288,7 @@ describe("TC3 attempt codec", () => {
       const wire = [...valid];
       wire[index] = corruption;
       expect(
-        () => decodeTc3Attempt(forgedTc3(wire), schema),
+        () => decodeSl1Attempt(forgedSl1(wire), schema),
         `wire slot ${String(index)} must be rejected`,
       ).toThrow(PersistenceError);
     }
@@ -307,7 +307,7 @@ describe("TC3 attempt codec", () => {
 
   it("rejects duplicate command identifiers", () => {
     expect(() =>
-      encodeTc3Attempt(
+      encodeSl1Attempt(
         snapshot({
           journal: [
             { commandSequence: 1, opcode: 1, contextIndex: 0, values: [] },
@@ -321,7 +321,7 @@ describe("TC3 attempt codec", () => {
 
   it("rejects strings unless the scenario gives them an explicit byte limit", () => {
     expect(() =>
-      encodeTc3Attempt(
+      encodeSl1Attempt(
         snapshot({
           journal: [
             { commandSequence: 1, opcode: 1, contextIndex: 0, values: ["unbounded"] },
@@ -334,7 +334,7 @@ describe("TC3 attempt codec", () => {
 
   it("rejects rather than truncates oversized UTF-8 text", () => {
     expect(() =>
-      encodeTc3Attempt(
+      encodeSl1Attempt(
         snapshot({
           journal: [
             {
@@ -379,14 +379,14 @@ describe("TC3 attempt codec", () => {
       })),
     ];
     const maximum = snapshot({ journal });
-    const size = measureTc3Attempt(maximum, schema);
-    expect(size.total).toBeLessThanOrEqual(TC3_INTERNAL_CHARACTER_LIMIT);
-    expect(encodeTc3Attempt(maximum, schema)).toHaveLength(size.total);
+    const size = measureSl1Attempt(maximum, schema);
+    expect(size.total).toBeLessThanOrEqual(SL1_INTERNAL_CHARACTER_LIMIT);
+    expect(encodeSl1Attempt(maximum, schema)).toHaveLength(size.total);
   });
 
   it("enforces authored occurrence bounds", () => {
     expect(() =>
-      encodeTc3Attempt(
+      encodeSl1Attempt(
         snapshot({
           journal: Array.from({ length: 5 }, (_, index) => ({
             commandSequence: index + 1,
@@ -413,7 +413,7 @@ describe("TC3 attempt codec", () => {
       attemptSeed: "STAGE4RETRYSEED0001",
       assignmentSource: "SCORM_ATTEMPT",
     });
-    const challengeSchema = tc3CodecSchema({
+    const challengeSchema = sl1CodecSchema({
       configuration: signatureOnlyChallenge,
       configurationHash: hashConfiguration(
         signatureOnlyChallenge,
@@ -421,7 +421,7 @@ describe("TC3 attempt codec", () => {
       scenario: challengeAScenario,
       variantBank: challengeVariantBank,
     });
-    const retryAttempt: Tc3AttemptSnapshot = {
+    const retryAttempt: Sl1AttemptSnapshot = {
       sessionId: "SES_STAGE4_RETRY",
       currentStageId: ScenarioStageId.SHIP_AND_MONITOR,
       completedStageIds: [
@@ -463,7 +463,7 @@ describe("TC3 attempt codec", () => {
     };
 
     expect(() =>
-      encodeTc3Attempt(retryAttempt, challengeSchema),
+      encodeSl1Attempt(retryAttempt, challengeSchema),
     ).not.toThrow();
   });
 
@@ -497,7 +497,7 @@ describe("TC3 attempt codec", () => {
           : (variantBank.variants[
               variantAssignment.variantIndex
             ]?.scenario ?? scenario);
-      const actualSchema = tc3CodecSchema({
+      const actualSchema = sl1CodecSchema({
         configuration,
         configurationHash: hashConfiguration(configuration),
         scenario: activeScenario,
@@ -505,7 +505,7 @@ describe("TC3 attempt codec", () => {
           ? {}
           : { variantBank }),
       });
-      const maximum: Tc3AttemptSnapshot = {
+      const maximum: Sl1AttemptSnapshot = {
         sessionId: "SES_000001",
         currentStageId: ScenarioStageId.RECALL_AND_DEBRIEF,
         completedStageIds: SCENARIO_STAGE_ORDER,
@@ -518,29 +518,29 @@ describe("TC3 attempt codec", () => {
           ? {}
           : { variantAssignment }),
       };
-      const size = measureTc3Attempt(maximum, actualSchema);
+      const size = measureSl1Attempt(maximum, actualSchema);
 
-      for (const section of Object.keys(TC3_SECTION_BUDGET) as Array<
-        keyof typeof TC3_SECTION_BUDGET
+      for (const section of Object.keys(SL1_SECTION_BUDGET) as Array<
+        keyof typeof SL1_SECTION_BUDGET
       >) {
         expect(size[section], section).toBeLessThanOrEqual(
-          TC3_SECTION_BUDGET[section],
+          SL1_SECTION_BUDGET[section],
         );
       }
       expect(size.authoredPayload).toBeLessThanOrEqual(
-        TC3_AUTHORED_PAYLOAD_LIMIT,
+        SL1_AUTHORED_PAYLOAD_LIMIT,
       );
       expect(size.total).toBeLessThanOrEqual(
-        TC3_INTERNAL_CHARACTER_LIMIT,
+        SL1_INTERNAL_CHARACTER_LIMIT,
       );
-      expect(encodeTc3Attempt(maximum, actualSchema)).toHaveLength(
+      expect(encodeSl1Attempt(maximum, actualSchema)).toHaveLength(
         size.total,
       );
     },
   );
 
   it("retains the existing compact attempt-count saturation contract", () => {
-    const encoded = encodeTc3Attempt(
+    const encoded = encodeSl1Attempt(
       snapshot({
         decisions: {
           DEC_1: {
@@ -551,7 +551,7 @@ describe("TC3 attempt codec", () => {
       }),
       schema,
     );
-    expect(decodeTc3Attempt(encoded, schema).decisions.DEC_1).toEqual({
+    expect(decodeSl1Attempt(encoded, schema).decisions.DEC_1).toEqual({
       encodedValue: 1,
       attemptCount: MAX_ATTEMPT_COUNT,
     });

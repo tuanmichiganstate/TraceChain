@@ -57,7 +57,7 @@ through the separate LTI 1.3 boundary. That flow verifies Moodle's signed
 launch, one-use state and nonce, registered deployment, full Instructor or
 Learner role, and course context before creating a server-side session. A
 learner launch additionally requires the signed
-`tracechain_assignment_id` custom claim and is authorized only for that
+`simuledger_assignment_id` custom claim and is authorized only for that
 course-bound assignment. Deep Linking lets a verified instructor select one
 active assignment from that course and returns the binding to Moodle in a
 signed resource link. When Moodle accepts a line item, the resource launch
@@ -69,7 +69,7 @@ assignment selection. See
 `docs/LTI_1_3_INSTRUCTOR_WORKSPACE_V1.md`.
 
 For an empty deployment, the optional runtime variable
-`TRACECHAIN_BOOTSTRAP_ADMIN_EMAILS` may contain a comma-separated email
+`SIMULEDGER_BOOTSTRAP_ADMIN_EMAILS` may contain a comma-separated email
 allowlist. The first matching, deployment-authenticated request provisions
 `administrator`, `instructor`, and `scenario-author` roles. The allowlist is
 server-owned, and removing it stops further bootstrap provisioning without
@@ -187,7 +187,7 @@ The public LTI boundary is versioned separately under `/api/lti/v1`:
 
 | Method and path | Result |
 |---|---|
-| `GET /jwks` | Configured public TraceChain tool keyset |
+| `GET /jwks` | Configured public SimuLedger tool keyset |
 | `GET` or `POST /login` | Validated OIDC login initiation and redirect to Moodle |
 | `POST /launch` | Signed LTI Resource Link or Deep Linking launch and purpose-limited session |
 | `POST /logout` | Same-origin session revocation and cookie clearing |
@@ -421,4 +421,4 @@ limit remains unlimited.
   Node-generated artifacts and content-addressed R2 storage.
 - The hosted service exposes both the custody-transfer and quantity-correction
   endorsement policies.
-- SCORM continues to use TC3 and is unchanged by hosted D1 persistence.
+- SCORM continues to use SL1 and is unchanged by hosted D1 persistence.

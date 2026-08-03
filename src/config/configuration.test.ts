@@ -78,7 +78,7 @@ function cryptographicFiles(): Readonly<Record<string, unknown>> {
   };
 }
 
-describe("TraceChain configuration", () => {
+describe("SimuLedger configuration", () => {
   it("validates every shipped preset", () => {
     for (const preset of Object.values(LECTURER_PRESETS)) {
       expect(validateConfiguration(preset)).toEqual({ isValid: true, issues: [] });
@@ -195,7 +195,7 @@ describe("TraceChain configuration", () => {
 
   it("loads configuration and scenario from separate runtime files", async () => {
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
+      "./simuledger.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
       ...portraitMediaFiles(),
       ...cryptographicFiles(),
@@ -226,7 +226,7 @@ describe("TraceChain configuration", () => {
       2,
     )}\n`;
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json":
+      "./simuledger.config.json":
         embedConfiguration(CHALLENGE_PRESET),
       "./scenario.json": challengeAScenario,
       "./scenario-variant-bank.json": challengeVariantBank,
@@ -273,7 +273,7 @@ describe("TraceChain configuration", () => {
       scoring: { ...GUIDED_PRESET.scoring, passScore: 80 },
     };
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json": embedConfiguration(configuration),
+      "./simuledger.config.json": embedConfiguration(configuration),
       "./scenario.json": coffeeScenario,
       ...portraitMediaFiles(),
       ...cryptographicFiles(),
@@ -299,7 +299,7 @@ describe("TraceChain configuration", () => {
     };
     const requested: string[] = [];
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json": embedConfiguration(configuration),
+      "./simuledger.config.json": embedConfiguration(configuration),
       "./scenario.json": coffeeScenario,
       ...portraitMediaFiles(),
     };
@@ -314,7 +314,7 @@ describe("TraceChain configuration", () => {
 
     expect(runtime.cryptographicRuntime).toBeNull();
     expect(requested).toEqual([
-      "./tracechain.config.json",
+      "./simuledger.config.json",
       "./scenario.json",
       "./media-manifest.json",
       "./build-info.json",
@@ -324,7 +324,7 @@ describe("TraceChain configuration", () => {
   it("rejects portrait media metadata bound to different scenario content", async () => {
     const media = portraitMediaFiles();
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
+      "./simuledger.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
       ...media,
       ...cryptographicFiles(),
@@ -348,7 +348,7 @@ describe("TraceChain configuration", () => {
   it("rejects cryptographic runtime metadata bound to different scenario content", async () => {
     const crypto = cryptographicFiles();
     const files: Readonly<Record<string, unknown>> = {
-      "./tracechain.config.json": embedConfiguration(GUIDED_PRESET),
+      "./simuledger.config.json": embedConfiguration(GUIDED_PRESET),
       "./scenario.json": coffeeScenario,
       ...portraitMediaFiles(),
       ...crypto,

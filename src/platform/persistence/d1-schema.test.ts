@@ -106,7 +106,7 @@ describe("D1 current-schema installer", () => {
     const metadata = database.sqlite
       .prepare(
         `SELECT schema_version AS schemaVersion
-         FROM tracechain_schema_metadata
+         FROM simuledger_schema_metadata
          WHERE singleton_id = 1`,
       )
       .get() as { readonly schemaVersion: string };
@@ -202,7 +202,7 @@ describe("D1 current-schema installer", () => {
     }
     obsoleteDatabase.sqlite
       .prepare(
-        `UPDATE tracechain_schema_metadata
+        `UPDATE simuledger_schema_metadata
          SET schema_version = 'obsolete'`,
       )
       .run();

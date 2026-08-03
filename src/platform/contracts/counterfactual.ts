@@ -174,7 +174,7 @@ export interface CounterfactualComparisonV1 {
 
 export interface CounterfactualComparisonExportV1 {
   readonly schemaVersion: "1.0.0";
-  readonly exportType: "TRACECHAIN_COUNTERFACTUAL_COMPARISON";
+  readonly exportType: "SIMULEDGER_COUNTERFACTUAL_COMPARISON";
   readonly generatedAt: string;
   readonly metadata: CounterfactualRunMetadataV1;
   readonly comparison: CounterfactualComparisonV1;
@@ -212,7 +212,7 @@ export interface AssignmentCounterfactualReportSummaryV1 {
 export interface AssignmentCounterfactualReportV1 {
   readonly schemaVersion: "1.0.0";
   readonly reportType:
-    "TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT";
+    "SIMULEDGER_ASSIGNMENT_COUNTERFACTUAL_REPORT";
   readonly assignmentId: string;
   readonly generatedAt: string;
   readonly summary: AssignmentCounterfactualReportSummaryV1;

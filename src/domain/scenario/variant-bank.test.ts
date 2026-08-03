@@ -83,7 +83,7 @@ describe("seeded scenario-variant selection", () => {
       selectionAlgorithmVersion: "1",
     });
     expect(replay).toBe(first);
-    expect(first).toBe(0);
+    expect(first).toBe(1);
   });
 
   it("reconstructs assignment metadata from a compact index and seed", () => {

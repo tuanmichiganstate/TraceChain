@@ -107,7 +107,7 @@ async function assertValidTechnicalLabCryptographicRuntime(
   }
   const provider = new NobleEd25519Provider();
   const probe = new TextEncoder().encode(
-    "TRACECHAIN_TECHNICAL_LAB_KEY_PAIR_PROBE_V1",
+    "SIMULEDGER_TECHNICAL_LAB_KEY_PAIR_PROBE_V1",
   );
   for (const key of runtime.signingKeys.keys) {
     const identity = identities.get(key.organizationId);

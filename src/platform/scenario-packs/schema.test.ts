@@ -5,7 +5,7 @@ describe("published scenario-pack V2 JSON Schema", () => {
   it("is valid JSON with a stable versioned identity", () => {
     const path = resolve(
       process.cwd(),
-      "schemas/tracechain-scenario-pack-v2.schema.json",
+      "schemas/simuledger-scenario-pack-v2.schema.json",
     );
     const schema = JSON.parse(readFileSync(path, "utf8")) as {
       $schema?: string;
@@ -25,8 +25,8 @@ describe("published scenario-pack V2 JSON Schema", () => {
     expect(schema.$schema).toBe(
       "https://json-schema.org/draft/2020-12/schema",
     );
-    expect(schema.$id).toContain("tracechain-scenario-pack-v2");
-    expect(schema.title).toBe("TraceChain Scenario Pack V2");
+    expect(schema.$id).toContain("simuledger-scenario-pack-v2");
+    expect(schema.title).toBe("SimuLedger Scenario Pack V2");
     expect(schema.properties).toHaveProperty("schemaVersion");
     expect(schema.properties).toHaveProperty("scenarios");
     expect(schema.properties).toHaveProperty("auditVariantBanks");

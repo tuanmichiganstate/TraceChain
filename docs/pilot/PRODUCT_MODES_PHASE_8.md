@@ -56,7 +56,7 @@ or acceptance decisions.
 Once approvals exist, the operator should:
 
 1. Freeze the exact platform and instrument identities.
-2. Store consent and identity linkage outside TraceChain.
+2. Store consent and identity linkage outside SimuLedger.
 3. Run the approved learner, instructor, author, accessibility, and content
    review sessions.
 4. Export assignment-scoped pseudonymous evidence.

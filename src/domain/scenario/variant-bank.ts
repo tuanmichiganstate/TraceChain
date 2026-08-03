@@ -125,7 +125,7 @@ export function hashScenarioVariant(
 ): string {
   return sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_SCENARIO_VARIANT_V1",
+      domain: "SIMULEDGER_SCENARIO_VARIANT_V1",
       scenario,
     }),
   );
@@ -134,7 +134,7 @@ export function hashScenarioVariant(
 export function hashAnswerPattern(value: unknown): string {
   return sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_VARIANT_ANSWER_PATTERN_V1",
+      domain: "SIMULEDGER_VARIANT_ANSWER_PATTERN_V1",
       value,
     }),
   );
@@ -508,7 +508,7 @@ export function selectVariantIndex(options: {
   }
   const digest = sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_VARIANT_SELECTION_V1",
+      domain: "SIMULEDGER_VARIANT_SELECTION_V1",
       bankId: options.bank.bankId,
       bankVersion: options.bank.bankVersion,
       attemptSeed: options.attemptSeed,

@@ -189,7 +189,7 @@ function proposal(options: {
   readonly expectedStateVersions?: Readonly<Record<string, number>>;
 }): TransactionProposalV1 {
   return {
-    domain: "TRACECHAIN_TRANSACTION_PROPOSAL_V1",
+    domain: "SIMULEDGER_TRANSACTION_PROPOSAL_V1",
     configurationHash: options.configurationHash,
     scenarioId: LAB_SCENARIO_ID,
     scenarioVersion: LAB_SCENARIO_VERSION,

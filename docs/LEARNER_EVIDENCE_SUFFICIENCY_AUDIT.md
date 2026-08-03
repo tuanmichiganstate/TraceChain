@@ -1,4 +1,4 @@
-# TraceChain learner evidence sufficiency audit
+# SimuLedger learner evidence sufficiency audit
 
 This report is generated from the compiled SCORM scenarios, all hosted scenario packs, and `docs/content-review/learner-evidence-contract.json`.
 

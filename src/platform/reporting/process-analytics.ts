@@ -281,10 +281,10 @@ export function createAssignmentProcessAnalytics(input: {
 
   return {
     schemaVersion: "1.2.0",
-    reportType: "TRACECHAIN_ASSIGNMENT_PROCESS_ANALYTICS",
+    reportType: "SIMULEDGER_ASSIGNMENT_PROCESS_ANALYTICS",
     interpretation:
       "DESCRIPTIVE_EVENT_LINKED_NO_LEARNER_TRAIT_INFERENCE",
-    ruleVersion: "TRACECHAIN_PROCESS_ANALYTICS_V1@1.2.0",
+    ruleVersion: "SIMULEDGER_PROCESS_ANALYTICS_V1@1.2.0",
     assignmentId: assignment.assignmentId,
     packId: assignment.packId,
     packVersion: assignment.packVersion,

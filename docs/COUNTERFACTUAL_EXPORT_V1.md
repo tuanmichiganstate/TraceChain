@@ -32,7 +32,7 @@ The versioned document contains:
 
 ```text
 schemaVersion   1.0.0
-exportType      TRACECHAIN_COUNTERFACTUAL_COMPARISON
+exportType      SIMULEDGER_COUNTERFACTUAL_COMPARISON
 generatedAt     UTC request time
 metadata        immutable CounterfactualRunMetadataV1
 comparison      CounterfactualComparisonV1
@@ -95,8 +95,8 @@ Nested values use canonical JSON. Spreadsheet formula prefixes are neutralized
 in direct text cells. The filenames are:
 
 ```text
-TraceChain_{branchId}_counterfactual_v1.json
-TraceChain_{branchId}_counterfactual_v1.csv
+SimuLedger_{branchId}_counterfactual_v1.json
+SimuLedger_{branchId}_counterfactual_v1.csv
 ```
 
 ## Assignment report
@@ -105,7 +105,7 @@ The assignment report is a normal authenticated JSON API response with:
 
 ```text
 schemaVersion   1.0.0
-reportType      TRACECHAIN_ASSIGNMENT_COUNTERFACTUAL_REPORT
+reportType      SIMULEDGER_ASSIGNMENT_COUNTERFACTUAL_REPORT
 assignmentId
 generatedAt
 summary

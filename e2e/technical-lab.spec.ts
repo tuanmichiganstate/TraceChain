@@ -40,7 +40,7 @@ const cryptographicFiles = {
 } as const;
 
 const runtimeFiles: Readonly<Record<string, unknown>> = {
-  "tracechain.config.json": embedConfiguration(configuration),
+  "simuledger.config.json": embedConfiguration(configuration),
   "technical-lab-pack.json":
     permissionedFoundationsLabBundle,
   ...cryptographicFiles,
@@ -70,7 +70,7 @@ const runtimeFiles: Readonly<Record<string, unknown>> = {
 
 async function installTechnicalLabRuntime(page: Page): Promise<void> {
   await page.route(
-    /\/(?:technical-lab-runtime\/)?(?:tracechain\.config|technical-lab-pack|build-info|identity-registry|educational-signing-keys|authorization-policies|endorsement-policies)\.json$/u,
+    /\/(?:technical-lab-runtime\/)?(?:simuledger\.config|technical-lab-pack|build-info|identity-registry|educational-signing-keys|authorization-policies|endorsement-policies)\.json$/u,
     async (route) => {
       const fileName = new URL(route.request().url()).pathname
         .split("/")

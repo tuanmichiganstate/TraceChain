@@ -30,8 +30,8 @@ const registration: LtiPlatformRegistrationV1 = {
   schemaVersion: "1.0.0",
   registrationId: "MOODLE_DEMO",
   issuer: "https://moodle.example",
-  clientId: "TRACECHAIN_CLIENT",
-  deploymentId: "TRACECHAIN_DEPLOYMENT",
+  clientId: "SIMULEDGER_CLIENT",
+  deploymentId: "SIMULEDGER_DEPLOYMENT",
   authorizationEndpoint:
     "https://moodle.example/mod/lti/auth.php",
   jwksUri: "https://moodle.example/mod/lti/certs.php",
@@ -125,7 +125,7 @@ describe("LTI Assignment and Grade Services", () => {
     );
     const privateJwk = {
       ...(await exportJWK(privateKey)),
-      kid: "TRACECHAIN_TOOL_KEY",
+      kid: "SIMULEDGER_TOOL_KEY",
       alg: "RS256",
       use: "sig",
     };
@@ -227,7 +227,7 @@ describe("LTI Assignment and Grade Services", () => {
     });
     const privateJwk = {
       ...(await exportJWK(privateKey)),
-      kid: "TRACECHAIN_TOOL_KEY",
+      kid: "SIMULEDGER_TOOL_KEY",
       alg: "RS256",
       use: "sig",
     };
@@ -290,7 +290,7 @@ describe("LTI Assignment and Grade Services", () => {
       registration,
       privateJwk: {
         ...(await exportJWK(privateKey)),
-        kid: "TRACECHAIN_TOOL_KEY",
+        kid: "SIMULEDGER_TOOL_KEY",
         alg: "RS256",
         use: "sig",
       },

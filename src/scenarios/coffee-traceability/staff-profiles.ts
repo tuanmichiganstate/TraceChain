@@ -26,7 +26,7 @@ export const PortraitAssetId = {
   REGULATORY_AUDITOR: "PORTRAIT_REGULATORY_AUDITOR",
 } as const;
 
-const approvalReference = "TRACECHAIN_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26";
+const approvalReference = "SIMULEDGER_PRODUCT_OWNER_IMPLEMENTATION_2026-07-26";
 
 export const coffeePortraitAssets: readonly ScenarioPortraitAsset[] = [
   {

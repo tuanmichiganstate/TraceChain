@@ -1,17 +1,17 @@
 import { canonicalize } from "../infrastructure/hashing/canonicalize";
 import { sha256Hex } from "../infrastructure/hashing/sha256";
 import type {
-  EmbeddedTraceChainConfiguration,
-  TraceChainConfiguration,
+  EmbeddedSimuLedgerConfiguration,
+  SimuLedgerConfiguration,
 } from "./types";
 
-export function hashConfiguration(configuration: TraceChainConfiguration): string {
+export function hashConfiguration(configuration: SimuLedgerConfiguration): string {
   return sha256Hex(canonicalize(configuration));
 }
 
 export function embedConfiguration(
-  configuration: TraceChainConfiguration,
-): EmbeddedTraceChainConfiguration {
+  configuration: SimuLedgerConfiguration,
+): EmbeddedSimuLedgerConfiguration {
   return {
     configuration,
     configurationHash: hashConfiguration(configuration),

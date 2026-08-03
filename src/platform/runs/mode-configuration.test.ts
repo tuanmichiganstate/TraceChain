@@ -1,4 +1,4 @@
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import type { ScenarioDefinitionV1 } from "../contracts/scenario-pack";
 import {
   HostedModeConfigurationError,

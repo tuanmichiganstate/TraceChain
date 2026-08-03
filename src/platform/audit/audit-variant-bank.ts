@@ -38,7 +38,7 @@ export function hashAuditVariantScenario(
 ): string {
   return sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_AUDIT_VARIANT_V1",
+      domain: "SIMULEDGER_AUDIT_VARIANT_V1",
       scenario,
     }),
   );
@@ -47,7 +47,7 @@ export function hashAuditVariantScenario(
 export function hashAuditAnswerPattern(value: unknown): string {
   return sha256Hex(
     canonicalize({
-      domain: "TRACECHAIN_AUDIT_ANSWER_PATTERN_V1",
+      domain: "SIMULEDGER_AUDIT_ANSWER_PATTERN_V1",
       value,
     }),
   );

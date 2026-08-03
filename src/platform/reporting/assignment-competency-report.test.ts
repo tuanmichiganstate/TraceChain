@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
 import type { HostedAssignmentReportV1 } from "../contracts/assessment";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { CompetencyEvidenceProjection } from "../hosted/stage3-types";
@@ -159,7 +159,7 @@ describe("assignment competency report", () => {
       scenarioVersion: scenario.version,
       frameworks: [
         {
-          frameworkId: "TRACECHAIN_CORE",
+          frameworkId: "SIMULEDGER_CORE",
           frameworkVersion: "1.0.0",
         },
       ],

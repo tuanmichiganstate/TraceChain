@@ -159,7 +159,7 @@ The comparison response contains:
   competency evidence were not changed.
 
 The six authored comparison dimensions resolve through explicit runtime metric
-IDs. Academic score reuses the existing TraceChain scoring engine. Process
+IDs. Academic score reuses the existing SimuLedger scoring engine. Process
 quality, safety, cost, compliance, and evidence quality are deterministic
 non-grade diagnostics. Each changed value carries an authored causal
 classification; a compound branch is marked as involving later decisions

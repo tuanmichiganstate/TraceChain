@@ -138,7 +138,7 @@ export interface DeliveryConfiguration {
   readonly availabilityRuleId?: string;
 }
 
-export interface TraceChainExperienceConfigurationV2 {
+export interface SimuLedgerExperienceConfigurationV2 {
   readonly configurationSchemaVersion: "2";
   readonly presetId: string;
   readonly activityType: ActivityType;
@@ -174,14 +174,14 @@ export type ScenarioVariationConfiguration =
       readonly displayCaseReferenceToLearner: boolean;
     };
 
-interface TraceChainConfigurationBase
-  extends TraceChainExperienceConfigurationV2 {
+interface SimuLedgerConfigurationBase
+  extends SimuLedgerExperienceConfigurationV2 {
   readonly presetId: LearningPresetId;
 }
 
 export interface BusinessSimulationConfiguration
-  extends TraceChainConfigurationBase {
-  readonly applicationCompatibilityVersion: "tc3-v2";
+  extends SimuLedgerConfigurationBase {
+  readonly applicationCompatibilityVersion: "sl1-v1";
   readonly presetId: BusinessPresetId;
   readonly activityType: "OPERATIONS";
   readonly scenarioId: string;
@@ -200,7 +200,7 @@ export interface BusinessSimulationConfiguration
 }
 
 export interface AuditSimulationConfiguration
-  extends TraceChainConfigurationBase {
+  extends SimuLedgerConfigurationBase {
   readonly applicationCompatibilityVersion: "ta2-v1";
   readonly presetId: AuditPresetId;
   readonly activityType: "AUDIT";
@@ -213,7 +213,7 @@ export interface AuditSimulationConfiguration
 }
 
 export interface TechnicalLabConfiguration
-  extends TraceChainConfigurationBase {
+  extends SimuLedgerConfigurationBase {
   readonly applicationCompatibilityVersion: "tl1-v1";
   readonly presetId: "technical-lab";
   readonly activityType: "TECHNICAL_LAB";
@@ -225,30 +225,30 @@ export interface TechnicalLabConfiguration
   readonly scoringMode: "graded";
 }
 
-export type TraceChainConfiguration =
+export type SimuLedgerConfiguration =
   | BusinessSimulationConfiguration
   | AuditSimulationConfiguration
   | TechnicalLabConfiguration;
 
-export interface EmbeddedTraceChainConfiguration {
-  readonly configuration: TraceChainConfiguration;
+export interface EmbeddedSimuLedgerConfiguration {
+  readonly configuration: SimuLedgerConfiguration;
   readonly configurationHash: string;
 }
 
 export function isBusinessSimulationConfiguration(
-  configuration: TraceChainConfiguration,
+  configuration: SimuLedgerConfiguration,
 ): configuration is BusinessSimulationConfiguration {
   return configuration.activityType === "OPERATIONS";
 }
 
 export function isTechnicalLabConfiguration(
-  configuration: TraceChainConfiguration,
+  configuration: SimuLedgerConfiguration,
 ): configuration is TechnicalLabConfiguration {
   return configuration.activityType === "TECHNICAL_LAB";
 }
 
 export function isAuditSimulationConfiguration(
-  configuration: TraceChainConfiguration,
+  configuration: SimuLedgerConfiguration,
 ): configuration is AuditSimulationConfiguration {
   return configuration.activityType === "AUDIT";
 }

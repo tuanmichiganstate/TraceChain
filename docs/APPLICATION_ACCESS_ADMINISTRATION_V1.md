@@ -4,8 +4,8 @@ Status: implemented for the hosted administrator workspace.
 
 ## Purpose
 
-TraceChain application access is separate from deployment authentication. The
-hosting identity boundary supplies a verified email address; TraceChain maps
+SimuLedger application access is separate from deployment authentication. The
+hosting identity boundary supplies a verified email address; SimuLedger maps
 that address to a server-owned user ID and application roles.
 
 The administrator workspace can:

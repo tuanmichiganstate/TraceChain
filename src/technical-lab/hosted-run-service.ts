@@ -160,7 +160,7 @@ function elapsedSeconds(startedAt: string, endedAt: string): number {
 }
 
 const WITHHELD_CORRECT_OPTION_ID =
-  "__TRACECHAIN_CORRECT_OPTION_WITHHELD__";
+  "__SIMULEDGER_CORRECT_OPTION_WITHHELD__";
 
 function learnerSafeCheckpoint(
   definition: TechnicalLabCheckpointDefinition,

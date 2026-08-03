@@ -189,7 +189,7 @@ describe("suspend data that no longer decodes", () => {
   it("offers recovery rather than pretending the attempt is new", async () => {
     const api = new MockScorm12Api({
       initialValues: {
-        "cmi.suspend_data": "TC2.61r.0021.0.0.deadbeef",
+        "cmi.suspend_data": "LEGACY2.61r.0021.0.0.deadbeef",
         "cmi.core.entry": "resume",
       },
     });
@@ -198,6 +198,6 @@ describe("suspend data that no longer decodes", () => {
     expect(await screen.findByText("Không khôi phục được tiến độ")).toBeInTheDocument();
     expect(screen.getByText(/dùng LMS để bắt đầu một lượt học mới/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bắt đầu lại hoạt động" })).toBeNull();
-    expect(api.peek("cmi.suspend_data")).toBe("TC2.61r.0021.0.0.deadbeef");
+    expect(api.peek("cmi.suspend_data")).toBe("LEGACY2.61r.0021.0.0.deadbeef");
   });
 });

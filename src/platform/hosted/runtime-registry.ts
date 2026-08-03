@@ -56,13 +56,13 @@ export function hostedRuntimeKindFor(
 ): HostedRuntimeKind | null {
   if (
     scenario.hostedRuntime?.runtimeId ===
-      "tracechain-technical-lab-v1"
+      "simuledger-technical-lab-v1"
   ) {
     return "technical-lab-v1";
   }
   if (
     scenario.hostedRuntime?.runtimeId ===
-      "tracechain-audit-v1" &&
+      "simuledger-audit-v1" &&
     scenario.auditCase !== undefined &&
     scenario.hostedRuntime.auditCaseId ===
       scenario.auditCase.auditCaseId
@@ -71,7 +71,7 @@ export function hostedRuntimeKindFor(
   }
   if (
     scenario.hostedRuntime?.runtimeId ===
-      "tracechain-coffee-v2" &&
+      "simuledger-coffee-v2" &&
     scenario.hostedRuntime.entryStageId ===
       "STG_03_ANCHOR_CERTIFICATE"
   ) {

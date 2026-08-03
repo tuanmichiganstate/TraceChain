@@ -10,9 +10,9 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import packJson from "../../../scenario-packs/standard-coffee-stage3/tracechain.pack.json";
-import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/tracechain.pack.json";
-import auditPackJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/standard-coffee-stage3/simuledger.pack.json";
+import pharmaceuticalPackJson from "../../../scenario-packs/pharmaceutical-cold-chain/simuledger.pack.json";
+import auditPackJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import { createScenarioPackBundle } from "../scenario-packs/scenario-pack-bundle";
@@ -41,10 +41,10 @@ describe("scenario author workspace", () => {
           provider: "lti-1.3",
           launchType: "resource-link",
           issuer: "https://moodle.example.edu",
-          clientId: "TRACECHAIN_CLIENT",
-          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          clientId: "SIMULEDGER_CLIENT",
+          deploymentId: "SIMULEDGER_DEPLOYMENT",
           contextId: "COURSE_BLOCKCHAIN_001",
-          resourceLinkId: "RESOURCE_TRACECHAIN_AUTHOR",
+          resourceLinkId: "RESOURCE_SIMULEDGER_AUTHOR",
           contextTitle: "Blockchain Governance",
           returnUrl:
             "https://moodle.example.edu/course/view.php?id=42",
@@ -1148,7 +1148,7 @@ describe("scenario author workspace", () => {
   it("removes obsolete device drafts instead of offering an incompatible restore", async () => {
     const userId = "USER_AUTHOR_OBSOLETE";
     window.localStorage.setItem(
-      `tracechain.scenario-author.draft.v1:${userId}`,
+      `simuledger.scenario-author.draft.v1:${userId}`,
       JSON.stringify({
         schemaVersion: "1",
         savedAt: "2026-07-01T00:00:00.000Z",
@@ -1185,7 +1185,7 @@ describe("scenario author workspace", () => {
     ).not.toBeInTheDocument();
     expect(
       window.localStorage.getItem(
-        `tracechain.scenario-author.draft.v1:${userId}`,
+        `simuledger.scenario-author.draft.v1:${userId}`,
       ),
     ).toBeNull();
   });

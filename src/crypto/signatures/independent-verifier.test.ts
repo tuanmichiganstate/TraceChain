@@ -27,7 +27,7 @@ import {
 } from "./signing-service";
 
 const temporaryDirectory = mkdtempSync(
-  join(tmpdir(), "tracechain-signature-evidence-"),
+  join(tmpdir(), "simuledger-signature-evidence-"),
 );
 
 afterAll(() => {

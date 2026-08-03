@@ -1,5 +1,5 @@
-import packJson from "../../../scenario-packs/guided-coffee-audit/tracechain.pack.json";
-import practicePackJson from "../../../scenario-packs/practice-coffee-audit/tracechain.pack.json";
+import packJson from "../../../scenario-packs/guided-coffee-audit/simuledger.pack.json";
+import practicePackJson from "../../../scenario-packs/practice-coffee-audit/simuledger.pack.json";
 import { describe, expect, it } from "vitest";
 import {
   FixedClock,
