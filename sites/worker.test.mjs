@@ -4662,6 +4662,18 @@ test("creates and resumes the built-in Technical Laboratory through hosted D1 AP
       scoredElementCount: 7,
       maximumScore: 100,
     });
+    assert.equal(
+      technicalOption.labelsByLocale.vi.educationalPurpose,
+      "Thực hành phân biệt bằng chứng mật mã, thẩm quyền tổ chức, phê duyệt theo chính sách và trạng thái hiện tại qua các thí nghiệm kiểm tra thật.",
+    );
+    assert.equal(
+      technicalOption.labelsByLocale.vi.organizationTitles.ORG_TECHNICAL_LAB,
+      "Phòng thí nghiệm kỹ thuật",
+    );
+    assert.equal(
+      technicalOption.labelsByLocale.vi.roleTitles.TECHNICAL_LEARNER,
+      "Chuyên viên kiểm tra",
+    );
 
     const assignmentId = "ASSIGNMENT_TECHNICAL_LAB_SITE";
     const createAssignment = await worker.fetch(

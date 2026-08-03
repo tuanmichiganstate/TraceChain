@@ -44,21 +44,21 @@ import {
 } from "../scenario-packs/scenario-pack-bundle";
 
 const MAXIMUM_IMPORT_BYTES = 2 * 1024 * 1024;
-const AUTHOR_DRAFT_SCHEMA_VERSION = "1";
+const AUTHOR_DRAFT_SCHEMA_VERSION = "2";
 
-interface StoredAuthorDraftV1 {
-  readonly schemaVersion: "1";
+interface StoredAuthorDraftV2 {
+  readonly schemaVersion: "2";
   readonly savedAt: string;
   readonly pack: ScenarioPackV2;
 }
 
 function authorDraftStorageKey(userId: string): string {
-  return `tracechain.scenario-author.draft.v1:${userId}`;
+  return `tracechain.scenario-author.draft.v2:${userId}`;
 }
 
 function parseStoredAuthorDraft(
   raw: string,
-): StoredAuthorDraftV1 | null {
+): StoredAuthorDraftV2 | null {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (
@@ -77,7 +77,7 @@ function parseStoredAuthorDraft(
       return null;
     }
     return {
-      schemaVersion: "1",
+      schemaVersion: "2",
       savedAt: record.savedAt,
       pack: record.pack,
     };
@@ -465,7 +465,7 @@ export function ScenarioAuthorScreen({
   const [isSigningOut, setSigningOut] = useState(false);
   const [messageKey, setMessageKey] = useState<string | null>(null);
   const [recoverableDraft, setRecoverableDraft] =
-    useState<StoredAuthorDraftV1 | null>(null);
+    useState<StoredAuthorDraftV2 | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [draftSaveFailed, setDraftSaveFailed] = useState(false);
   const [builderFocusRequest, setBuilderFocusRequest] = useState<{
@@ -570,6 +570,9 @@ export function ScenarioAuthorScreen({
         if (!active) return;
         setSession(loaded);
         try {
+          window.localStorage.removeItem(
+            `tracechain.scenario-author.draft.v1:${loaded.userId}`,
+          );
           const storageKey = authorDraftStorageKey(loaded.userId);
           const raw = window.localStorage.getItem(storageKey);
           if (raw !== null) {
@@ -605,8 +608,8 @@ export function ScenarioAuthorScreen({
       return;
     }
     const saveTimer = window.setTimeout(() => {
-      const stored: StoredAuthorDraftV1 = {
-        schemaVersion: "1",
+      const stored: StoredAuthorDraftV2 = {
+        schemaVersion: "2",
         savedAt: new Date().toISOString(),
         pack: candidate,
       };

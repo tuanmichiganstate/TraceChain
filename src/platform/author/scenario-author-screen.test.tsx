@@ -1145,6 +1145,51 @@ describe("scenario author workspace", () => {
     );
   });
 
+  it("removes obsolete device drafts instead of offering an incompatible restore", async () => {
+    const userId = "USER_AUTHOR_OBSOLETE";
+    window.localStorage.setItem(
+      `tracechain.scenario-author.draft.v1:${userId}`,
+      JSON.stringify({
+        schemaVersion: "1",
+        savedAt: "2026-07-01T00:00:00.000Z",
+        pack: pharmaceuticalPackJson,
+      }),
+    );
+    const api: ScenarioAuthoringApi = {
+      loadSession: vi.fn().mockResolvedValue({
+        userId,
+        email: "obsolete@example.edu",
+        roles: ["scenario-author"],
+      }),
+      listPacks: vi.fn().mockResolvedValue([]),
+      validatePack: vi.fn(),
+      importPack: vi.fn(),
+      loadPack: vi.fn(),
+      preview: vi.fn(),
+      compare: vi.fn(),
+      publish: vi.fn(),
+      retire: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <ScenarioAuthorScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    await screen.findByRole("button", {
+      name: "Start a new scenario",
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Saved draft available" }),
+    ).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem(
+        `tracechain.scenario-author.draft.v1:${userId}`,
+      ),
+    ).toBeNull();
+  });
+
   it("opens the builder section named by a validation issue", async () => {
     const validatePack = vi.fn().mockResolvedValue({
       schemaVersion: "1.0.0",

@@ -94,6 +94,7 @@ export interface InstructorSession {
   readonly roles: readonly ApplicationRole[];
   readonly authenticationSource?: "sites" | "lti";
   readonly ltiLaunchType?: LtiLaunchType;
+  readonly ltiAssignmentId?: string;
   readonly ltiNrpsAvailable?: boolean;
   readonly learningContext?: LtiLearningContextV2;
 }
@@ -775,6 +776,21 @@ function directoryItemFromAssignment(
   };
 }
 
+function isLocalOnlyIssuer(issuer: string | undefined): boolean {
+  if (issuer === undefined) return false;
+  try {
+    const hostname = new URL(issuer).hostname.toLocaleLowerCase();
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function InstructorReviewScreen({
   api = browserApi,
 }: {
@@ -835,6 +851,10 @@ export function InstructorReviewScreen({
     session?.displayName ??
     session?.userId ??
     "";
+  const ltiNrpsLocalOnly =
+    session?.authenticationSource === "lti" &&
+    session.ltiNrpsAvailable === true &&
+    isLocalOnlyIssuer(session.learningContext?.issuer);
 
   useEffect(() => {
     if (
@@ -972,6 +992,15 @@ export function InstructorReviewScreen({
                   </>
                 ) : null}
               </dl>
+              {session.authenticationSource === "lti" &&
+              session.ltiAssignmentId !== undefined &&
+              session.roles.includes("instructor") ? (
+                <p className="notice notice--standalone" role="status">
+                  {t("instructorReview.lti.assignmentInstructorLaunch", {
+                    assignmentId: session.ltiAssignmentId,
+                  })}
+                </p>
+              ) : null}
               {session.authenticationSource === "lti" ? (
                 <div className="instructor-review__form-actions">
                   {session.learningContext?.returnUrl === undefined ? null : (
@@ -1045,8 +1074,10 @@ export function InstructorReviewScreen({
               }
               allowLtiNrpsSync={
                 session?.authenticationSource === "lti" &&
-                session.ltiNrpsAvailable === true
+                session.ltiNrpsAvailable === true &&
+                !ltiNrpsLocalOnly
               }
+              ltiNrpsLocalOnly={ltiNrpsLocalOnly}
               onCreated={(assignment) =>
                 setAssignmentDirectory((current) => [
                   directoryItemFromAssignment(assignment),
@@ -2257,11 +2288,13 @@ function AssignmentCreation({
   api,
   allowLtiLearnerLaunch,
   allowLtiNrpsSync,
+  ltiNrpsLocalOnly,
   onCreated,
 }: {
   readonly api: InstructorReviewApi;
   readonly allowLtiLearnerLaunch: boolean;
   readonly allowLtiNrpsSync: boolean;
+  readonly ltiNrpsLocalOnly: boolean;
   readonly onCreated: (assignment: HostedAssignmentV1) => void;
 }): ReactNode {
   const t = useTranslator();
@@ -2945,6 +2978,11 @@ function AssignmentCreation({
                   : t("instructorReview.lti.nrps.sync")}
               </button>
             </div>
+          ) : null}
+          {ltiNrpsLocalOnly ? (
+            <p className="notice notice--standalone" role="status">
+              {t("instructorReview.lti.nrps.localUnavailable")}
+            </p>
           ) : null}
           {nrpsSync === null ? null : (
             <p role="status">

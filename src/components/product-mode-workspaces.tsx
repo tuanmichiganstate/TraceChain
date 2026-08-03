@@ -313,6 +313,10 @@ export interface AuditChoiceOption {
   readonly label: string;
 }
 
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
 /**
  * A bounded, evidence-linked audit finding form. It never mutates ledger state
  * and does not decide whether the finding is correct.
@@ -359,6 +363,11 @@ export function AuditFindingBuilder({
     readonly rootCause: string;
     readonly recommendationChoice: string;
     readonly recommendation: string;
+    readonly utf8ByteCount: (input: {
+      readonly used: number;
+      readonly maximum: number;
+    }) => string;
+    readonly utf8ByteExceeded: string;
     readonly saveDraft?: string;
     readonly submit: string;
   };
@@ -388,6 +397,20 @@ export function AuditFindingBuilder({
   readonly onSubmit: () => void;
 }): ReactNode {
   const headingId = useId();
+  const titleBytes = utf8ByteLength(draft.title);
+  const observationBytes = utf8ByteLength(draft.observation);
+  const recommendationBytes = utf8ByteLength(draft.recommendation);
+  const titleExceeded =
+    titleBytes > inputLimits.findingTitleUtf8Bytes;
+  const observationExceeded =
+    observationBytes > inputLimits.findingObservationUtf8Bytes;
+  const recommendationExceeded =
+    recommendationBytes >
+    inputLimits.findingRecommendationUtf8Bytes;
+  const textWithinLimits =
+    !titleExceeded &&
+    !observationExceeded &&
+    !recommendationExceeded;
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -455,29 +478,71 @@ export function AuditFindingBuilder({
             </select>
           </label>
         </div>
-        <label className="field">
-          <span>{labels.findingTitle}</span>
+        <div className="field">
+          <label htmlFor={`${headingId}-title`}>
+            <span>{labels.findingTitle}</span>
+          </label>
           <input
+            id={`${headingId}-title`}
             value={draft.title}
-            maxLength={inputLimits.findingTitleUtf8Bytes}
             disabled={disabled}
+            aria-invalid={titleExceeded}
+            aria-describedby={`${headingId}-title-bytes${
+              titleExceeded ? ` ${headingId}-title-error` : ""
+            }`}
             onChange={(event) =>
               onChange({ ...draft, title: event.target.value })
             }
           />
-        </label>
-        <label className="field">
-          <span>{labels.observation}</span>
+          <span className="field__hint" id={`${headingId}-title-bytes`}>
+            {labels.utf8ByteCount({
+              used: titleBytes,
+              maximum: inputLimits.findingTitleUtf8Bytes,
+            })}
+          </span>
+          {titleExceeded ? (
+            <span className="field__error" id={`${headingId}-title-error`}>
+              {labels.utf8ByteExceeded}
+            </span>
+          ) : null}
+        </div>
+        <div className="field">
+          <label htmlFor={`${headingId}-observation`}>
+            <span>{labels.observation}</span>
+          </label>
           <textarea
+            id={`${headingId}-observation`}
             value={draft.observation}
-            maxLength={inputLimits.findingObservationUtf8Bytes}
             rows={4}
             disabled={disabled}
+            aria-invalid={observationExceeded}
+            aria-describedby={`${headingId}-observation-bytes${
+              observationExceeded
+                ? ` ${headingId}-observation-error`
+                : ""
+            }`}
             onChange={(event) =>
               onChange({ ...draft, observation: event.target.value })
             }
           />
-        </label>
+          <span
+            className="field__hint"
+            id={`${headingId}-observation-bytes`}
+          >
+            {labels.utf8ByteCount({
+              used: observationBytes,
+              maximum: inputLimits.findingObservationUtf8Bytes,
+            })}
+          </span>
+          {observationExceeded ? (
+            <span
+              className="field__error"
+              id={`${headingId}-observation-error`}
+            >
+              {labels.utf8ByteExceeded}
+            </span>
+          ) : null}
+        </div>
         <fieldset className="fieldset" disabled={disabled}>
           <legend>{labels.severity}</legend>
           <div className="audit-finding-builder__severity">
@@ -627,27 +692,51 @@ export function AuditFindingBuilder({
             </select>
           </label>
         </div>
-        <label className="field">
-          <span>{labels.recommendation}</span>
+        <div className="field">
+          <label htmlFor={`${headingId}-recommendation`}>
+            <span>{labels.recommendation}</span>
+          </label>
           <textarea
+            id={`${headingId}-recommendation`}
             value={draft.recommendation}
-            maxLength={
-              inputLimits.findingRecommendationUtf8Bytes
-            }
             rows={3}
             disabled={disabled}
+            aria-invalid={recommendationExceeded}
+            aria-describedby={`${headingId}-recommendation-bytes${
+              recommendationExceeded
+                ? ` ${headingId}-recommendation-error`
+                : ""
+            }`}
             onChange={(event) =>
               onChange({ ...draft, recommendation: event.target.value })
             }
           />
-        </label>
+          <span
+            className="field__hint"
+            id={`${headingId}-recommendation-bytes`}
+          >
+            {labels.utf8ByteCount({
+              used: recommendationBytes,
+              maximum:
+                inputLimits.findingRecommendationUtf8Bytes,
+            })}
+          </span>
+          {recommendationExceeded ? (
+            <span
+              className="field__error"
+              id={`${headingId}-recommendation-error`}
+            >
+              {labels.utf8ByteExceeded}
+            </span>
+          ) : null}
+        </div>
         <div className="audit-finding-builder__actions">
           {onSaveDraft === undefined ||
           labels.saveDraft === undefined ? null : (
             <button
               type="button"
               className="button button--secondary"
-              disabled={disabled}
+              disabled={disabled || !textWithinLimits}
               onClick={onSaveDraft}
             >
               {labels.saveDraft}
@@ -656,9 +745,10 @@ export function AuditFindingBuilder({
           <button
             type="submit"
             className="button button--primary"
-            disabled={
-              disabled ||
-              draft.title.trim().length === 0 ||
+              disabled={
+                disabled ||
+                !textWithinLimits ||
+                draft.title.trim().length === 0 ||
               draft.observation.trim().length === 0 ||
               draft.evidenceIds.length === 0 ||
               draft.policyIds.length === 0 ||

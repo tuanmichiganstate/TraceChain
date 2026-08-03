@@ -113,6 +113,15 @@ function sortedUsers(
   );
 }
 
+function isAuthorizationErrorCode(code: string): boolean {
+  return (
+    code === "APPLICATION_ROLE_REQUIRED" ||
+    code === "RUN_ACCESS_DENIED" ||
+    code === "APPLICATION_ACCESS_NOT_PROVISIONED" ||
+    code === "AUTHENTICATION_REQUIRED"
+  );
+}
+
 export function ApplicationAccessScreen({
   api = browserApi,
 }: {
@@ -136,20 +145,30 @@ export function ApplicationAccessScreen({
     useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [accessBoundary, setAccessBoundary] = useState<
+    "NOT_AUTHORIZED" | "UNAVAILABLE" | null
+  >(null);
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     void api.loadUsers().then(
       (loaded) => {
-        if (active) setUsers(sortedUsers(loaded));
+        if (active) {
+          setUsers(sortedUsers(loaded));
+          setAccessBoundary(null);
+        }
       },
       (error: unknown) => {
         if (active) {
-          setErrorCode(
+          const code =
             error instanceof ApplicationAccessApiError
               ? error.code
-              : "APPLICATION_ACCESS_REQUEST_FAILED",
+              : "APPLICATION_ACCESS_REQUEST_FAILED";
+          setAccessBoundary(
+            isAuthorizationErrorCode(code)
+              ? "NOT_AUTHORIZED"
+              : "UNAVAILABLE",
           );
         }
       },
@@ -208,11 +227,15 @@ export function ApplicationAccessScreen({
         () => setAuditError(true),
       );
     } catch (error: unknown) {
-      setErrorCode(
+      const code =
         error instanceof ApplicationAccessApiError
           ? error.code
-          : "APPLICATION_ACCESS_REQUEST_FAILED",
-      );
+          : "APPLICATION_ACCESS_REQUEST_FAILED";
+      if (isAuthorizationErrorCode(code)) {
+        setAccessBoundary("NOT_AUTHORIZED");
+      } else {
+        setErrorCode(code);
+      }
     } finally {
       setBusy(false);
     }
@@ -241,6 +264,38 @@ export function ApplicationAccessScreen({
       : errorCode === "ACCESS_COMMAND_CONFLICT"
         ? "adminAccess.error.conflict"
         : "adminAccess.error.generic";
+  if (users === null || accessBoundary !== null) {
+    const messageKey =
+      accessBoundary === "NOT_AUTHORIZED"
+        ? "adminAccess.error.notAuthorized"
+        : accessBoundary === "UNAVAILABLE"
+          ? "adminAccess.error.accessUnavailable"
+          : "adminAccess.verifying";
+    return (
+      <>
+        <a className="skip-link" href="#main-content">
+          {t("navigation.skip")}
+        </a>
+        <main className="start" id="main-content">
+          <div className="start__inner">
+            <header className="instructor-review__header">
+              <p className="eyebrow">{t("adminAccess.eyebrow")}</p>
+              <h1>{t("adminAccess.title")}</h1>
+              <p className="start__subtitle">
+                {t("adminAccess.subtitle")}
+              </p>
+            </header>
+            <section
+              className="notice notice--standalone"
+              role={accessBoundary === null ? "status" : "alert"}
+            >
+              <p>{t(messageKey)}</p>
+            </section>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

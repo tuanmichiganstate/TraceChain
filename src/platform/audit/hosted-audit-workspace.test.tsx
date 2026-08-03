@@ -293,6 +293,80 @@ describe("HostedAuditWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("preserves the finding form until the submitted revision appears in the projection", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <LocaleProvider locale="en">
+        <HostedAuditWorkspace
+          audit={auditProjection()}
+          completed={false}
+          busy={false}
+          onSubmit={onSubmit}
+          createFindingId={() => "AUD_FINDING_PENDING"}
+        />
+      </LocaleProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("tab", { name: /^Findings,/iu }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Finding title" }),
+      "Certificate review gap",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Evidence-based observation" }),
+      "The certificate was accepted before review.",
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Certificate validity record" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Certificate acceptance policy" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Recommendation rationale" }),
+      "Require review before acceptance.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Submit finding" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole("textbox", { name: "Finding title" }),
+    ).toHaveValue("Certificate review gap");
+  });
+
+  it("applies the authored UTF-8 byte limit to audit conclusions", async () => {
+    const user = userEvent.setup();
+    render(
+      <LocaleProvider locale="en">
+        <HostedAuditWorkspace
+          audit={auditProjection()}
+          completed={false}
+          busy={false}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+        />
+      </LocaleProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("tab", { name: /^Conclusion,/iu }),
+    );
+    const scope = screen.getByRole("textbox", {
+      name: "Scope summary",
+    });
+    await user.type(scope, "ă".repeat(49));
+
+    expect(screen.getByText("98 / 96 UTF-8 bytes")).toBeInTheDocument();
+    expect(scope).toHaveAttribute("aria-invalid", "true");
+    expect(
+      screen.getByRole("button", { name: "Submit audit conclusion" }),
+    ).toBeDisabled();
+  });
+
   it("renders the same evidence-linked report for learner and instructor replay", () => {
     render(
       <LocaleProvider locale="en">

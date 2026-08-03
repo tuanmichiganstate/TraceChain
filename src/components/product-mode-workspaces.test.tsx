@@ -174,6 +174,9 @@ describe("product-mode workspace primitives", () => {
           rootCause: "Root cause",
           recommendationChoice: "Response",
           recommendation: "Recommendation",
+          utf8ByteCount: ({ used, maximum }) =>
+            `${String(used)} / ${String(maximum)} UTF-8 bytes`,
+          utf8ByteExceeded: "Shorten this response.",
           submit: "Record draft finding",
         }}
         categoryOptions={[
@@ -231,5 +234,106 @@ describe("product-mode workspace primitives", () => {
     expect(submit).toBeEnabled();
     await user.click(submit);
     expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("measures authored text limits in UTF-8 bytes instead of characters", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    let draft: AuditFindingDraft = {
+      findingId: "AUD-F-UTF8",
+      categoryId: "CONTROL",
+      entityId: "TX-018",
+      title: "",
+      observation: "Reviewed evidence",
+      severity: "MODERATE",
+      materiality: "MATERIAL",
+      confidence: 60,
+      evidenceIds: ["TX-018"],
+      policyIds: ["POL-004"],
+      rootCauseCode: "ROOT-001",
+      recommendationCode: "REC-001",
+      recommendation: "Document the review",
+    };
+    const renderBuilder = () => (
+      <AuditFindingBuilder
+        eyebrow="Draft finding"
+        title="Finding AUD-F-UTF8"
+        description="Link the finding to evidence."
+        labels={{
+          category: "Finding category",
+          entity: "Affected entity",
+          findingTitle: "Finding title",
+          observation: "Observation",
+          severity: "Severity",
+          materiality: "Materiality",
+          confidence: "Confidence",
+          evidence: "Supporting evidence",
+          policy: "Applicable policy",
+          rootCause: "Root cause",
+          recommendationChoice: "Response",
+          recommendation: "Recommendation",
+          utf8ByteCount: ({ used, maximum }) =>
+            `${String(used)} / ${String(maximum)} UTF-8 bytes`,
+          utf8ByteExceeded: "Shorten this response.",
+          submit: "Record draft finding",
+        }}
+        categoryOptions={[
+          { choiceId: "CONTROL", label: "Control exception" },
+        ]}
+        entityOptions={[
+          { choiceId: "TX-018", label: "Transaction TX-018" },
+        ]}
+        severityOptions={{
+          LOW: "Low",
+          MODERATE: "Moderate",
+          HIGH: "High",
+          CRITICAL: "Critical",
+        }}
+        materialityOptions={{
+          NON_MATERIAL: "Non-material",
+          MATERIAL: "Material",
+        }}
+        evidenceOptions={[
+          { evidenceId: "TX-018", label: "Transaction TX-018" },
+        ]}
+        policyOptions={[
+          { evidenceId: "POL-004", label: "Policy POL-004" },
+        ]}
+        rootCauseOptions={[
+          { choiceId: "ROOT-001", label: "Missing review" },
+        ]}
+        recommendationOptions={[
+          { choiceId: "REC-001", label: "Require review" },
+        ]}
+        inputLimits={{
+          findingTitleUtf8Bytes: 48,
+          findingObservationUtf8Bytes: 120,
+          findingRecommendationUtf8Bytes: 120,
+          maximumEvidenceCitationsPerFinding: 4,
+          maximumPolicyCitationsPerFinding: 2,
+        }}
+        draft={draft}
+        onChange={(next) => {
+          draft = next;
+          view.rerender(renderBuilder());
+        }}
+        onSubmit={onSubmit}
+      />
+    );
+    const view = render(renderBuilder());
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Finding title" }),
+      "ă".repeat(25),
+    );
+
+    expect(screen.getByText("50 / 48 UTF-8 bytes")).toBeInTheDocument();
+    expect(screen.getByText("Shorten this response.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Finding title" }),
+    ).toHaveAttribute("aria-invalid", "true");
+    expect(
+      screen.getByRole("button", { name: "Record draft finding" }),
+    ).toBeDisabled();
   });
 });

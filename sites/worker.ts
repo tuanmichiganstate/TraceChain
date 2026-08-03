@@ -338,8 +338,10 @@ function assignmentOptionLabels(
     pack.supportedLocales.map((locale) => {
       const bundledCatalog: Readonly<Record<string, string>> | undefined =
         locale === "en" ? en : locale === "vi" ? vi : undefined;
-      const catalog =
-        pack.localizationCatalogs?.[locale] ?? bundledCatalog;
+      const catalog: Readonly<Record<string, string>> = {
+        ...(bundledCatalog ?? {}),
+        ...(pack.localizationCatalogs?.[locale] ?? {}),
+      };
       return [
         locale,
         {

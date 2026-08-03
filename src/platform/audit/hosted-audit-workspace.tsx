@@ -18,6 +18,10 @@ import type {
 } from "../contracts/audit";
 import type { LearnerRunLocalizedTextV1 } from "../contracts/run-events";
 
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
 function localized(
   value: LearnerRunLocalizedTextV1,
   t: ReturnType<typeof useTranslator>,
@@ -128,6 +132,10 @@ export function HostedAuditWorkspace({
     initialDraft(audit, createFindingId),
   );
   const [amending, setAmending] = useState(false);
+  const [pendingFinding, setPendingFinding] = useState<{
+    readonly findingId: string;
+    readonly previousRevision: number;
+  } | null>(null);
   const [conclusion, setConclusion] =
     useState<AuditConclusionDraft>(() => initialConclusion(audit));
   const [recordFilter, setRecordFilter] = useState("");
@@ -137,6 +145,19 @@ export function HostedAuditWorkspace({
   const activeFindings = audit.findings.filter(
     (finding) => finding.status === "SUBMITTED",
   );
+  const committedPendingFinding =
+    pendingFinding === null
+      ? undefined
+      : audit.findings.find(
+          (finding) =>
+            finding.findingId === pendingFinding.findingId &&
+            finding.revision > pendingFinding.previousRevision,
+        );
+  if (committedPendingFinding !== undefined) {
+    setDraft(blankDraft(audit, createFindingId));
+    setAmending(false);
+    setPendingFinding(null);
+  }
   const filteredRecords = useMemo(() => {
     const normalized = recordFilter.trim().toLocaleLowerCase();
     if (normalized.length === 0) return audit.sourceRecords;
@@ -156,14 +177,19 @@ export function HostedAuditWorkspace({
   }, [audit.sourceRecords, recordFilter]);
 
   const submitFinding = async (): Promise<void> => {
+    setPendingFinding({
+      findingId: draft.findingId,
+      previousRevision:
+        audit.findings.find(
+          (finding) => finding.findingId === draft.findingId,
+        )?.revision ?? 0,
+    });
     await onSubmit({
       commandType: amending
         ? "AMEND_AUDIT_FINDING"
         : "SUBMIT_AUDIT_FINDING",
       finding: draft,
     });
-    setDraft(blankDraft(audit, createFindingId));
-    setAmending(false);
   };
 
   const evidenceTab = (
@@ -443,6 +469,9 @@ export function HostedAuditWorkspace({
               "hostedAudit.recommendationChoice",
             ),
             recommendation: t("hostedAudit.recommendation"),
+            utf8ByteCount: ({ used, maximum }) =>
+              t("hostedAudit.utf8ByteCount", { used, maximum }),
+            utf8ByteExceeded: t("hostedAudit.utf8ByteExceeded"),
             saveDraft: t("hostedAudit.saveDraft"),
             submit: t(
               amending
@@ -736,6 +765,11 @@ function AuditConclusionForm({
       "hostedAudit.conclusion.recommendations",
     ],
   ] as const;
+  const fieldsWithinLimit = fields.every(
+    ([field]) =>
+      utf8ByteLength(draft[field]) <=
+      audit.inputLimits.conclusionFieldUtf8Bytes,
+  );
   return (
     <form className="card card--work stack" onSubmit={submit}>
       <h3>{t("hostedAudit.conclusion.title")}</h3>
@@ -763,24 +797,50 @@ function AuditConclusionForm({
           ))}
         </select>
       </label>
-      {fields.map(([field, key]) => (
-        <label key={field} className="field">
-          <span>{t(key)}</span>
-          <textarea
-            rows={3}
-            maxLength={audit.inputLimits.conclusionFieldUtf8Bytes}
-            required
-            value={draft[field]}
-            disabled={busy}
-            onChange={(event) =>
-              onChange({
-                ...draft,
-                [field]: event.target.value,
-              })
-            }
-          />
-        </label>
-      ))}
+      {fields.map(([field, key]) => {
+        const bytes = utf8ByteLength(draft[field]);
+        const exceeded =
+          bytes > audit.inputLimits.conclusionFieldUtf8Bytes;
+        const countId = `audit-conclusion-${field}-bytes`;
+        const errorId = `audit-conclusion-${field}-error`;
+        const controlId = `audit-conclusion-${field}`;
+        return (
+          <div key={field} className="field">
+            <label htmlFor={controlId}>
+              <span>{t(key)}</span>
+            </label>
+            <textarea
+              id={controlId}
+              rows={3}
+              required
+              value={draft[field]}
+              disabled={busy}
+              aria-invalid={exceeded}
+              aria-describedby={`${countId}${
+                exceeded ? ` ${errorId}` : ""
+              }`}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  [field]: event.target.value,
+                })
+              }
+            />
+            <span className="field__hint" id={countId}>
+              {t("hostedAudit.utf8ByteCount", {
+                used: bytes,
+                maximum:
+                  audit.inputLimits.conclusionFieldUtf8Bytes,
+              })}
+            </span>
+            {exceeded ? (
+              <span className="field__error" id={errorId}>
+                {t("hostedAudit.utf8ByteExceeded")}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
       <label className="field">
         <span>{t("hostedAudit.confidence")}</span>
         <input
@@ -800,7 +860,7 @@ function AuditConclusionForm({
       <button
         type="submit"
         className="button button--primary"
-        disabled={busy}
+        disabled={busy || !fieldsWithinLimit}
       >
         {t("hostedAudit.conclusion.submit")}
       </button>

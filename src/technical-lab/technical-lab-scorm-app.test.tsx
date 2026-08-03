@@ -6,7 +6,10 @@ import { NotificationProvider } from "../app/providers/notification-provider";
 import { hashConfiguration } from "../config/hash";
 import { TECHNICAL_LAB_PRESET } from "../config/presets";
 import type { TechnicalLabRuntimePackage } from "../config/technical-lab-runtime-loader";
-import { inspectTl1TechnicalLabStoredHeader } from "../infrastructure/persistence/tl1-technical-lab-codec";
+import {
+  inspectTl1TechnicalLabStoredHeader,
+  technicalLabBundleContentHash,
+} from "../infrastructure/persistence/tl1-technical-lab-codec";
 import { technicalLabCryptographicRuntime } from "./cryptographic-runtime";
 import { permissionedFoundationsLabBundle } from "./permissioned-foundations-pack";
 import { TechnicalLabScormApp } from "./technical-lab-scorm-app";
@@ -109,5 +112,65 @@ describe("TechnicalLabScormApp", () => {
     const disclosure = summary.closest("details");
     expect(disclosure).not.toBeNull();
     expect((disclosure as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it("does not load standalone progress written before the lab-content hash joined the storage identity", async () => {
+    const current = runtime();
+    localStorage.setItem(
+      `tracechain:${current.configurationHash}:${current.bundle.pack.labPackId}`,
+      JSON.stringify({
+        encodedState: "TL1.obsolete.payload",
+        location: "TL4",
+        score: 50,
+        status: "incomplete",
+      }),
+    );
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Run: inspect the authored input",
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Progress cannot be restored",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a local reset instead of LMS instructions for invalid standalone progress", async () => {
+    const current = runtime();
+    localStorage.setItem(
+      `tracechain:${current.configurationHash}.${technicalLabBundleContentHash(current.bundle)}:${current.bundle.pack.labPackId}`,
+      JSON.stringify({
+        encodedState: "TL1.invalid.payload",
+        location: "TL4",
+        score: 50,
+        status: "incomplete",
+      }),
+    );
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Local practice progress cannot be restored",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/use the LMS to begin a new attempt/iu),
+    ).not.toBeInTheDocument();
+    await userEvent.setup().click(
+      screen.getByRole("button", {
+        name: "Reset local practice",
+      }),
+    );
+    expect(
+      await screen.findByRole("button", {
+        name: "Run: inspect the authored input",
+      }),
+    ).toBeEnabled();
   });
 });

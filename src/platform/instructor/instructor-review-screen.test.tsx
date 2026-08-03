@@ -380,6 +380,62 @@ describe("instructor review screen", () => {
     ).toBeInTheDocument();
   });
 
+  it("explains an assignment-bound instructor launch and disables unreachable local NRPS", async () => {
+    const api: InstructorReviewApi = {
+      createAssignment: vi.fn(),
+      closeAssignment: vi.fn(),
+      loadAssignmentScenarioOptions: vi.fn().mockResolvedValue([]),
+      loadAssignmentLearnerOptions: vi.fn().mockResolvedValue([]),
+      synchronizeLtiNrpsRoster: vi.fn(),
+      loadAssignmentCompetencies: vi.fn(),
+      loadAssignmentCurriculumCrosswalks: vi.fn(),
+      loadAssignmentDecisionOutcomes: vi.fn(),
+      loadAssignmentMonitor: vi.fn(),
+      loadAssignmentReport: vi.fn(),
+      loadSession: vi.fn().mockResolvedValue({
+        userId: "USER_LTI_INSTRUCTOR_LOCAL",
+        displayName: "Local Moodle instructor",
+        roles: ["instructor"],
+        authenticationSource: "lti",
+        ltiLaunchType: "resource-link",
+        ltiAssignmentId: "LTI_DEMO_TECHLAB_20260728",
+        ltiNrpsAvailable: true,
+        learningContext: {
+          schemaVersion: "2.0.0",
+          provider: "lti-1.3",
+          launchType: "resource-link",
+          issuer: "http://localhost:8080",
+          clientId: "TRACECHAIN_CLIENT",
+          deploymentId: "TRACECHAIN_DEPLOYMENT",
+          contextId: "COURSE_DEMO_001",
+          resourceLinkId: "RESOURCE_TECHNICAL_LAB",
+        },
+      }),
+      loadRunReplay: vi.fn(),
+      loadRunReview: vi.fn(),
+      releaseFeedback: vi.fn(),
+      saveModeration: vi.fn(),
+      saveRating: vi.fn(),
+    };
+    renderScreen(api);
+
+    expect(
+      await screen.findByText(
+        "Moodle launched this activity with instructor permissions for assignment LTI_DEMO_TECHLAB_20260728, so TraceChain opened the instructor workspace. To test the learner activity, launch it from a Moodle account enrolled only as a student.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This Moodle address is local to your computer. The hosted TraceChain server cannot contact it to synchronize the roster. Use already provisioned learners, or expose Moodle through an HTTPS address reachable by the hosted server.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Synchronize Moodle roster",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows only the course assignment picker during an LTI Deep Linking launch", async () => {
     window.history.pushState(
       {},

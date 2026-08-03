@@ -3,11 +3,62 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../app/providers/locale-provider";
 import {
+  ApplicationAccessApiError,
   ApplicationAccessScreen,
   type ApplicationAccessApi,
 } from "./application-access-screen";
 
 describe("application access administration", () => {
+  it("shows an explicit access boundary instead of failed administration controls", async () => {
+    const api: ApplicationAccessApi = {
+      loadUsers: vi.fn().mockRejectedValue(
+        new ApplicationAccessApiError("APPLICATION_ROLE_REQUIRED"),
+      ),
+      loadAudit: vi.fn().mockRejectedValue(
+        new ApplicationAccessApiError("APPLICATION_ROLE_REQUIRED"),
+      ),
+      saveUser: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <ApplicationAccessScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Your TraceChain account does not have administrator permission.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save access" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("fails closed when administrator access cannot be verified", async () => {
+    const api: ApplicationAccessApi = {
+      loadUsers: vi.fn().mockRejectedValue(new TypeError("offline")),
+      loadAudit: vi.fn().mockRejectedValue(new TypeError("offline")),
+      saveUser: vi.fn(),
+    };
+
+    render(
+      <LocaleProvider locale="en">
+        <ApplicationAccessScreen api={api} />
+      </LocaleProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Administrator access could not be verified. Sign in through the hosted TraceChain site and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save access" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the append-only access-change audit history", async () => {
     const api = {
       loadUsers: vi.fn().mockResolvedValue([]),

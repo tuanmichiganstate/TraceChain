@@ -49,6 +49,7 @@ async function initializeAdapter(
 ): Promise<{
   readonly adapter: LearningPlatformAdapter;
   readonly isReadOnly: boolean;
+  readonly isStandalone: boolean;
 }> {
   const scorm = new Scorm12Adapter();
   const initialized = await scorm.initialize();
@@ -56,16 +57,21 @@ async function initializeAdapter(
     return {
       adapter: scorm,
       isReadOnly: initialized.isReadOnly,
+      isStandalone: false,
     };
   }
+  const bundleContentHash = technicalLabBundleContentHash(
+    runtime.bundle,
+  );
   const standalone = new StandalonePersistenceAdapter({
-    appVersion: runtime.configurationHash,
+    appVersion: `${runtime.configurationHash}.${bundleContentHash}`,
     scenarioId: runtime.bundle.pack.labPackId,
   });
   const fallback = await standalone.initialize();
   return {
     adapter: standalone,
     isReadOnly: fallback.isReadOnly,
+    isStandalone: true,
   };
 }
 
@@ -91,6 +97,9 @@ export function TechnicalLabScormApp({
     useState<ReadyTechnicalLabAttempt | null>(null);
   const [initializationFailed, setInitializationFailed] =
     useState(false);
+  const [standaloneMode, setStandaloneMode] = useState(false);
+  const [initializationGeneration, setInitializationGeneration] =
+    useState(0);
   const [persistenceFailed, setPersistenceFailed] =
     useState(false);
   const [actionFailed, setActionFailed] = useState(false);
@@ -103,6 +112,8 @@ export function TechnicalLabScormApp({
       try {
         const initialized = await initializeAdapter(runtime);
         activeAdapter = initialized.adapter;
+        adapterRef.current = initialized.adapter;
+        setStandaloneMode(initialized.isStandalone);
         const codecSchema = {
           configurationHash: runtime.configurationHash,
           bundle: runtime.bundle,
@@ -150,7 +161,6 @@ export function TechnicalLabScormApp({
           snapshot,
         );
         if (cancelled) return;
-        adapterRef.current = initialized.adapter;
         const ready = {
           snapshot,
           replay,
@@ -174,7 +184,19 @@ export function TechnicalLabScormApp({
       cancelled = true;
       window.removeEventListener("pagehide", finish);
     };
-  }, [runtime]);
+  }, [initializationGeneration, runtime]);
+
+  const resetStandaloneProgress = (): void => {
+    const adapter = adapterRef.current;
+    if (!(adapter instanceof StandalonePersistenceAdapter)) return;
+    adapter.clear();
+    adapterRef.current = null;
+    attemptRef.current = null;
+    setAttempt(null);
+    setInitializationFailed(false);
+    setStandaloneMode(false);
+    setInitializationGeneration((current) => current + 1);
+  };
 
   const applySnapshot = useCallback(
     async (
@@ -327,6 +349,29 @@ export function TechnicalLabScormApp({
   );
 
   if (initializationFailed) {
+    if (standaloneMode) {
+      return (
+        <main className="start" id="main-content">
+          <div className="start__inner">
+            <section className="card">
+              <h1>
+                {t("technicalLab.shell.standaloneRecoveryHeading")}
+              </h1>
+              <p>
+                {t("technicalLab.shell.standaloneRecoveryBody")}
+              </p>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={resetStandaloneProgress}
+              >
+                {t("technicalLab.shell.resetStandaloneProgress")}
+              </button>
+            </section>
+          </div>
+        </main>
+      );
+    }
     return (
       <main className="start" id="main-content">
         <div className="start__inner">

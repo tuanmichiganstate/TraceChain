@@ -441,6 +441,9 @@ function AuditFindingPrototype(): ReactNode {
             "prototype.auditFinding.field.recommendationChoice",
           ),
           recommendation: t("prototype.auditFinding.field.recommendation"),
+          utf8ByteCount: ({ used, maximum }) =>
+            t("hostedAudit.utf8ByteCount", { used, maximum }),
+          utf8ByteExceeded: t("hostedAudit.utf8ByteExceeded"),
           submit: t("prototype.auditFinding.submit"),
         }}
         categoryOptions={[
@@ -837,6 +840,14 @@ function MobileFindingPrototype(): ReactNode {
                   ),
                   recommendation: t(
                     "prototype.auditFinding.field.recommendation",
+                  ),
+                  utf8ByteCount: ({ used, maximum }) =>
+                    t("hostedAudit.utf8ByteCount", {
+                      used,
+                      maximum,
+                    }),
+                  utf8ByteExceeded: t(
+                    "hostedAudit.utf8ByteExceeded",
                   ),
                   submit: t("prototype.auditFinding.submit"),
                 }}
