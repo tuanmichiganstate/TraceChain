@@ -21,6 +21,34 @@ function makeWindow(api?: unknown): FakeWindow {
   return win;
 }
 
+class RejectingMockScorm12Api extends MockScorm12Api {
+  rejectedElement: string | null = null;
+  rejectFinish = false;
+  private forcedError: string | null = null;
+
+  override LMSSetValue(element: string, value: string): string {
+    if (element === this.rejectedElement) {
+      this.forcedError = MockErrorCode.INCORRECT_DATA_TYPE;
+      return "false";
+    }
+    this.forcedError = null;
+    return super.LMSSetValue(element, value);
+  }
+
+  override LMSFinish(parameter: ""): string {
+    if (this.rejectFinish) {
+      this.forcedError = MockErrorCode.GENERAL_EXCEPTION;
+      return "false";
+    }
+    this.forcedError = null;
+    return super.LMSFinish(parameter);
+  }
+
+  override LMSGetLastError(): string {
+    return this.forcedError ?? super.LMSGetLastError();
+  }
+}
+
 function chain(depth: number, api: unknown): FakeWindow {
   const top = makeWindow(api);
   let current = top;
@@ -87,11 +115,25 @@ describe("session time formatting", () => {
     expect(formatSessionTime(2_730_000)).toBe("00:45:30.00");
   });
 
+  it("carries rounded hundredths into the next minute or hour", () => {
+    expect(formatSessionTime(59_999)).toBe("00:01:00.00");
+    expect(formatSessionTime(3_599_999)).toBe("01:00:00.00");
+  });
+
   it("produces a value the SCORM data model accepts", () => {
     const api = new MockScorm12Api();
     api.LMSInitialize("");
     expect(api.LMSSetValue("cmi.core.session_time", formatSessionTime(2_730_000))).toBe("true");
     expect(api.LMSGetLastError()).toBe(MockErrorCode.NO_ERROR);
+  });
+
+  it("has a strict mock that rejects an out-of-range seconds field", () => {
+    const api = new MockScorm12Api();
+    api.LMSInitialize("");
+    expect(api.LMSSetValue("cmi.core.session_time", "00:00:60.00")).toBe(
+      "false",
+    );
+    expect(api.LMSGetLastError()).toBe(MockErrorCode.INCORRECT_DATA_TYPE);
   });
 
   it("treats a negative or non-finite duration as zero", () => {
@@ -174,6 +216,33 @@ describe("Scorm12Adapter", () => {
       const adapter = makeAdapter();
       await adapter.initialize();
       expect(await adapter.loadAttemptState()).toBeNull();
+    });
+
+    it("appends interactions after records from a resumed attempt", async () => {
+      const resumed = new MockScorm12Api({
+        initialValues: {
+          "cmi.core.entry": "resume",
+          "cmi.interactions.0.id": "INT_EXISTING",
+          "cmi.interactions.0.type": "choice",
+          "cmi.interactions.0.student_response": "A",
+          "cmi.interactions.0.result": "correct",
+          "cmi.interactions.0.time": "08:00:00",
+        },
+      });
+      const adapter = makeAdapter(resumed);
+      await adapter.initialize();
+
+      expect(resumed.LMSGetValue("cmi.interactions._count")).toBe("1");
+      await adapter.recordInteraction({
+        interactionId: "INT_NEW",
+        type: "choice",
+        learnerResponse: "B",
+        isCorrect: false,
+        scenarioTimestamp: "2026-07-27T08:05:00.000Z",
+      });
+
+      expect(resumed.peek("cmi.interactions.0.id")).toBe("INT_EXISTING");
+      expect(resumed.peek("cmi.interactions.1.id")).toBe("INT_NEW");
     });
 
     it("stores the raw stage identifier as the lesson location", async () => {
@@ -314,6 +383,72 @@ describe("Scorm12Adapter", () => {
   });
 
   describe("resilience", () => {
+    it.each([
+      [
+        "lesson location",
+        "cmi.core.lesson_location",
+        (adapter: Scorm12Adapter) => adapter.setLocation("STG_02"),
+      ],
+      [
+        "raw score",
+        "cmi.core.score.raw",
+        (adapter: Scorm12Adapter) => adapter.setScore(80),
+      ],
+      [
+        "completion status",
+        "cmi.core.lesson_status",
+        (adapter: Scorm12Adapter) => adapter.setCompletion(CompletionStatus.PASSED),
+      ],
+      [
+        "interaction result",
+        "cmi.interactions.0.result",
+        (adapter: Scorm12Adapter) =>
+          adapter.recordInteraction({
+            interactionId: "INT_FAILURE",
+            type: "choice",
+            learnerResponse: "A",
+            isCorrect: true,
+            scenarioTimestamp: "2026-07-27T08:05:00.000Z",
+          }),
+      ],
+    ])("rejects when the LMS refuses a %s write", async (_label, element, action) => {
+      const rejecting = new RejectingMockScorm12Api();
+      const adapter = makeAdapter(rejecting);
+      await adapter.initialize();
+      rejecting.rejectedElement = element;
+
+      await expect(action(adapter)).rejects.toMatchObject({
+        scormErrorCode: MockErrorCode.INCORRECT_DATA_TYPE,
+        scormMethod: "LMSSetValue",
+      });
+    });
+
+    it("rejects finish when the session-time write fails", async () => {
+      const rejecting = new RejectingMockScorm12Api();
+      const adapter = makeAdapter(rejecting);
+      await adapter.initialize();
+      rejecting.rejectedElement = "cmi.core.session_time";
+
+      await expect(adapter.finish()).rejects.toMatchObject({
+        scormErrorCode: MockErrorCode.INCORRECT_DATA_TYPE,
+        scormMethod: "LMSSetValue",
+      });
+      expect(rejecting.isInitialized).toBe(true);
+    });
+
+    it("rejects finish when LMSFinish fails", async () => {
+      const rejecting = new RejectingMockScorm12Api();
+      const adapter = makeAdapter(rejecting);
+      await adapter.initialize();
+      rejecting.rejectFinish = true;
+
+      await expect(adapter.finish()).rejects.toMatchObject({
+        scormErrorCode: MockErrorCode.GENERAL_EXCEPTION,
+        scormMethod: "LMSFinish",
+      });
+      expect(rejecting.isInitialized).toBe(true);
+    });
+
     it("reports initialization failure but rejects later authoritative commits", async () => {
       const failing = new MockScorm12Api({ failCommit: true });
       const adapter = makeAdapter(failing);

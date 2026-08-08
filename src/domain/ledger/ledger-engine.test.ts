@@ -409,6 +409,25 @@ describe("integrity verification", () => {
     expect(verifyIntegrity(createEmptyDomainState(), sha256Hex).isValid).toBe(true);
   });
 
+  it("rejects blocks and committed transactions omitted from the chain index", () => {
+    const state = cloneForTamperDemonstration(buildChain());
+    const omittedBlockId = state.blockOrder.at(-1);
+    if (omittedBlockId === undefined) throw new Error("Expected a block to omit");
+    const omittedTransactionId = state.blocksById[omittedBlockId]?.transactionIds[0];
+    if (omittedTransactionId === undefined) {
+      throw new Error("Expected the omitted block to contain a transaction");
+    }
+    (state as unknown as { blockOrder: string[] }).blockOrder =
+      state.blockOrder.filter((blockId) => blockId !== omittedBlockId);
+
+    const result = verifyIntegrity(state, sha256Hex);
+
+    expect(result.isValid).toBe(false);
+    expect(result.invalidBlockIds).toContain(omittedBlockId);
+    expect(result.invalidTransactionIds).toContain(omittedTransactionId);
+    expect(result.findings.join(" ")).toMatch(/omitted from the chain/);
+  });
+
   /**
    * The stage 8 demonstration: alter a historical quantity and watch the chain
    * refuse to agree with itself.

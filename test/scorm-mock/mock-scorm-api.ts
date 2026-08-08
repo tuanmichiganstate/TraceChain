@@ -11,6 +11,7 @@
  *   - cmi.core.lesson_status    the six-term vocabulary, nothing else
  *   - cmi.core.session_time     HHHH:MM:SS.SS
  *   - cmi.core.score.raw        0-100
+ *   - cmi.interactions._count   readable, derived collection size
  *   - read-only elements        error 403 on write
  *   - write-only elements       error 404 on read
  *   - any call before LMSInitialize  error 301
@@ -32,7 +33,8 @@ const LESSON_STATUS_VOCABULARY = new Set([
 
 const EXIT_VOCABULARY = new Set(["time-out", "suspend", "logout", ""]);
 
-const SESSION_TIME_PATTERN = /^\d{2,4}:\d{2}:\d{2}(\.\d{1,2})?$/;
+const SESSION_TIME_PATTERN = /^\d{2,4}:[0-5]\d:[0-5]\d(\.\d{1,2})?$/;
+const CLOCK_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 
 const READ_ONLY_ELEMENTS = new Set([
   "cmi.core.student_id",
@@ -41,6 +43,7 @@ const READ_ONLY_ELEMENTS = new Set([
   "cmi.core.entry",
   "cmi.core.lesson_mode",
   "cmi.core.total_time",
+  "cmi.interactions._count",
 ]);
 
 /** SCORM 1.2 makes these write-only; reading them must fail. */
@@ -126,8 +129,12 @@ export class MockScorm12Api implements Scorm12Api {
       this.lastError = MockErrorCode.ELEMENT_IS_WRITE_ONLY;
       return "";
     }
+    if (element === "cmi.interactions._count") {
+      this.lastError = MockErrorCode.NO_ERROR;
+      return String(this.interactionCount());
+    }
     if (element.startsWith("cmi.interactions.")) {
-      // SCORM 1.2 interactions are write-only.
+      // The records are write-only; only their collection count is readable.
       this.lastError = MockErrorCode.ELEMENT_IS_WRITE_ONLY;
       return "";
     }
@@ -194,6 +201,37 @@ export class MockScorm12Api implements Scorm12Api {
 
   /** Returns an error code when the write violates the data model, else null. */
   private validate(element: string, value: string): string | null {
+    const interaction = /^cmi\.interactions\.(\d+)\.(.+)$/.exec(element);
+    if (interaction !== null) {
+      const index = Number(interaction[1]);
+      const field = interaction[2];
+      const count = this.interactionCount();
+      if (index > count || (index === count && field !== "id")) {
+        return MockErrorCode.GENERAL_EXCEPTION;
+      }
+      switch (field) {
+        case "id":
+        case "student_response":
+          return value.length <= STRING_255_LIMIT
+            ? null
+            : MockErrorCode.INCORRECT_DATA_TYPE;
+        case "type":
+          return ["choice", "true-false", "matching", "sequencing"].includes(value)
+            ? null
+            : MockErrorCode.INCORRECT_DATA_TYPE;
+        case "result":
+          return value === "correct" || value === "wrong"
+            ? null
+            : MockErrorCode.INCORRECT_DATA_TYPE;
+        case "time":
+          return CLOCK_TIME_PATTERN.test(value)
+            ? null
+            : MockErrorCode.INCORRECT_DATA_TYPE;
+        default:
+          return MockErrorCode.ELEMENT_NOT_IMPLEMENTED;
+      }
+    }
+
     switch (element) {
       case "cmi.suspend_data":
         return value.length > SUSPEND_DATA_LIMIT ? MockErrorCode.INCORRECT_DATA_TYPE : null;
@@ -224,6 +262,17 @@ export class MockScorm12Api implements Scorm12Api {
       default:
         return null;
     }
+  }
+
+  private interactionCount(): number {
+    let highestIndex = -1;
+    for (const element of this.values.keys()) {
+      const match = /^cmi\.interactions\.(\d+)\./.exec(element);
+      if (match !== null) {
+        highestIndex = Math.max(highestIndex, Number(match[1]));
+      }
+    }
+    return highestIndex + 1;
   }
 
   // ---- Test-facing accessors -------------------------------------------

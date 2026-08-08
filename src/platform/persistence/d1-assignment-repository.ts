@@ -1813,28 +1813,29 @@ export class D1AssignmentRepository {
     }
     const revision = latestRevision + 1;
     const ratedAt = this.clock.now();
-    const result = await this.database
-      .prepare(INSERT_RATING)
-      .bind(
-        normalized.commandId,
-        assignment.assignmentId,
-        normalized.runId,
-        normalized.rubricId,
-        normalized.rubricVersion,
-        normalized.criterionId,
-        revision,
-        normalized.levelValue,
-        normalized.comment,
-        JSON.stringify(normalized.linkedEvidenceIds),
-        principal.userId,
-        ratedAt,
-      )
-      .run();
-    if (!result.success) {
-      throw new AssignmentRepositoryError(
-        "ASSIGNMENT_STORAGE_FAILED",
-        "The rating revision could not be stored.",
-      );
+    try {
+      const result = await this.database
+        .prepare(INSERT_RATING)
+        .bind(
+          normalized.commandId,
+          assignment.assignmentId,
+          normalized.runId,
+          normalized.rubricId,
+          normalized.rubricVersion,
+          normalized.criterionId,
+          revision,
+          normalized.levelValue,
+          normalized.comment,
+          JSON.stringify(normalized.linkedEvidenceIds),
+          principal.userId,
+          ratedAt,
+        )
+        .run();
+      if (!result.success) {
+        return this.ratingInsertFailure(normalized, principal);
+      }
+    } catch {
+      return this.ratingInsertFailure(normalized, principal);
     }
     return {
       rating: {
@@ -1969,28 +1970,29 @@ export class D1AssignmentRepository {
     }
     const revision = latestRevision + 1;
     const resolvedAt = this.clock.now();
-    const result = await this.database
-      .prepare(INSERT_MODERATION)
-      .bind(
-        normalized.commandId,
-        assignment.assignmentId,
-        normalized.runId,
-        normalized.rubricId,
-        normalized.rubricVersion,
-        normalized.criterionId,
-        revision,
-        normalized.levelValue,
-        normalized.comment,
-        JSON.stringify(normalized.sourceRatingIds),
-        principal.userId,
-        resolvedAt,
-      )
-      .run();
-    if (!result.success) {
-      throw new AssignmentRepositoryError(
-        "ASSIGNMENT_STORAGE_FAILED",
-        "The moderation resolution could not be stored.",
-      );
+    try {
+      const result = await this.database
+        .prepare(INSERT_MODERATION)
+        .bind(
+          normalized.commandId,
+          assignment.assignmentId,
+          normalized.runId,
+          normalized.rubricId,
+          normalized.rubricVersion,
+          normalized.criterionId,
+          revision,
+          normalized.levelValue,
+          normalized.comment,
+          JSON.stringify(normalized.sourceRatingIds),
+          principal.userId,
+          resolvedAt,
+        )
+        .run();
+      if (!result.success) {
+        return this.moderationInsertFailure(normalized, principal);
+      }
+    } catch {
+      return this.moderationInsertFailure(normalized, principal);
     }
     return {
       resolution: {
@@ -2373,6 +2375,95 @@ export class D1AssignmentRepository {
       );
     }
     return result.results;
+  }
+
+  private async ratingInsertFailure(
+    request: SaveManualRubricRatingRequest,
+    principal: ApplicationPrincipal,
+  ): Promise<ManualRubricRatingResult> {
+    const commandRow = await this.database
+      .prepare(FIND_RATING_BY_ID)
+      .bind(request.commandId)
+      .first<RatingRow>();
+    if (commandRow !== null) {
+      const existing = ratingFrom(commandRow);
+      if (isSameRating(existing, request, principal)) {
+        return {
+          rating: existing,
+          wasIdempotentReplay: true,
+        };
+      }
+      throw new AssignmentRepositoryError(
+        "RATING_REVISION_CONFLICT",
+        "The rating command ID is already bound to different content.",
+      );
+    }
+    const latestRevision = (await this.ratingRows(request.runId))
+      .filter(
+        (rating) =>
+          rating.rubric_id === request.rubricId &&
+          rating.criterion_id === request.criterionId,
+      )
+      .reduce(
+        (latest, rating) => Math.max(latest, rating.revision),
+        0,
+      );
+    if (latestRevision !== request.expectedRevision) {
+      throw new AssignmentRepositoryError(
+        "RATING_REVISION_CONFLICT",
+        "The rubric criterion was rated concurrently from a stale revision.",
+      );
+    }
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      "The rating revision could not be stored.",
+    );
+  }
+
+  private async moderationInsertFailure(
+    request: SaveRubricModerationRequest,
+    principal: ApplicationPrincipal,
+  ): Promise<RubricModerationResult> {
+    const commandRow = await this.database
+      .prepare(FIND_MODERATION_BY_ID)
+      .bind(request.commandId)
+      .first<ModerationRow>();
+    if (commandRow !== null) {
+      const existing = moderationFrom(commandRow);
+      if (isSameModeration(existing, request, principal)) {
+        return {
+          resolution: existing,
+          wasIdempotentReplay: true,
+        };
+      }
+      throw new AssignmentRepositoryError(
+        "MODERATION_REVISION_CONFLICT",
+        "The moderation command ID is already bound to different content.",
+      );
+    }
+    const latestRevision = (
+      await this.moderationRows(request.runId)
+    )
+      .filter(
+        (resolution) =>
+          resolution.rubric_id === request.rubricId &&
+          resolution.criterion_id === request.criterionId,
+      )
+      .reduce(
+        (latest, resolution) =>
+          Math.max(latest, resolution.revision),
+        0,
+      );
+    if (latestRevision !== request.expectedRevision) {
+      throw new AssignmentRepositoryError(
+        "MODERATION_REVISION_CONFLICT",
+        "The rubric criterion was moderated concurrently from a stale revision.",
+      );
+    }
+    throw new AssignmentRepositoryError(
+      "ASSIGNMENT_STORAGE_FAILED",
+      "The moderation resolution could not be stored.",
+    );
   }
 
   private async moderationRows(

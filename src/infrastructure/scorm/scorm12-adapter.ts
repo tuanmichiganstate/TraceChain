@@ -49,6 +49,7 @@ const ELEMENT = {
   SESSION_TIME: "cmi.core.session_time",
   EXIT: "cmi.core.exit",
   SUSPEND_DATA: "cmi.suspend_data",
+  INTERACTIONS_COUNT: "cmi.interactions._count",
 } as const;
 
 const SCORE_MINIMUM = 0;
@@ -98,6 +99,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     }
 
     this.context = this.readLearnerContext();
+    this.interactionIndex = this.readInteractionCount();
 
     // Section 21.4: mark the attempt in progress, but never downgrade a status
     // the learner already earned, and never write anything in review mode.
@@ -145,46 +147,91 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
 
   async saveAttemptState(encodedState: string): Promise<void> {
     if (this.isSuppressed()) return;
-    if (!this.setValue(ELEMENT.SUSPEND_DATA, encodedState)) {
-      throw new ScormCommunicationError(
-        "LMSSetValue rejected authoritative suspend data",
-        this.api?.LMSGetLastError() ?? null,
-        "LMSSetValue",
-      );
-    }
+    this.setRequiredValue(
+      ELEMENT.SUSPEND_DATA,
+      encodedState,
+      "LMSSetValue rejected authoritative suspend data",
+    );
   }
 
   async setLocation(location: string): Promise<void> {
     if (this.isSuppressed()) return;
     // Section 21.6: the raw stage identifier, never a translated label.
-    this.setValue(ELEMENT.LESSON_LOCATION, location);
+    this.setRequiredValue(
+      ELEMENT.LESSON_LOCATION,
+      location,
+      "LMSSetValue rejected the lesson location",
+    );
   }
 
   async setScore(score: number): Promise<void> {
     if (this.isSuppressed()) return;
     const clamped = Math.max(SCORE_MINIMUM, Math.min(SCORE_MAXIMUM, Math.round(score)));
-    this.setValue(ELEMENT.SCORE_MIN, String(SCORE_MINIMUM));
-    this.setValue(ELEMENT.SCORE_MAX, String(SCORE_MAXIMUM));
-    this.setValue(ELEMENT.SCORE_RAW, String(clamped));
+    this.setRequiredValue(
+      ELEMENT.SCORE_MIN,
+      String(SCORE_MINIMUM),
+      "LMSSetValue rejected the minimum score",
+    );
+    this.setRequiredValue(
+      ELEMENT.SCORE_MAX,
+      String(SCORE_MAXIMUM),
+      "LMSSetValue rejected the maximum score",
+    );
+    this.setRequiredValue(
+      ELEMENT.SCORE_RAW,
+      String(clamped),
+      "LMSSetValue rejected the learner score",
+    );
   }
 
   async setCompletion(status: CompletionStatus): Promise<void> {
     if (this.isSuppressed()) return;
-    this.setValue(ELEMENT.LESSON_STATUS, status);
+    this.setRequiredValue(
+      ELEMENT.LESSON_STATUS,
+      status,
+      "LMSSetValue rejected the completion status",
+    );
   }
 
   async recordInteraction(interaction: PlatformInteraction): Promise<void> {
     if (this.isSuppressed()) return;
-    // SCORM 1.2 interactions are write-only and indexed by position; the index
-    // is tracked locally because the array count cannot be read back.
+    if (this.interactionIndex === null) {
+      throw new ScormCommunicationError(
+        "LMSGetValue did not return a valid interaction count",
+        this.lastErrorCode(),
+        "LMSGetValue",
+      );
+    }
+    // Individual interaction records are write-only, but their read-only
+    // collection count lets a resumed attempt append without overwriting.
     const index = this.interactionIndex;
-    this.interactionIndex += 1;
     const prefix = `cmi.interactions.${index}`;
-    this.setValue(`${prefix}.id`, interaction.interactionId.slice(0, 255));
-    this.setValue(`${prefix}.type`, interaction.type);
-    this.setValue(`${prefix}.student_response`, interaction.learnerResponse.slice(0, 255));
-    this.setValue(`${prefix}.result`, interaction.isCorrect ? "correct" : "wrong");
-    this.setValue(`${prefix}.time`, toScormTime(interaction.scenarioTimestamp));
+    this.setRequiredValue(
+      `${prefix}.id`,
+      interaction.interactionId.slice(0, 255),
+      "LMSSetValue rejected the interaction identifier",
+    );
+    this.setRequiredValue(
+      `${prefix}.type`,
+      interaction.type,
+      "LMSSetValue rejected the interaction type",
+    );
+    this.setRequiredValue(
+      `${prefix}.student_response`,
+      interaction.learnerResponse.slice(0, 255),
+      "LMSSetValue rejected the learner interaction response",
+    );
+    this.setRequiredValue(
+      `${prefix}.result`,
+      interaction.isCorrect ? "correct" : "wrong",
+      "LMSSetValue rejected the interaction result",
+    );
+    this.setRequiredValue(
+      `${prefix}.time`,
+      toScormTime(interaction.scenarioTimestamp),
+      "LMSSetValue rejected the interaction time",
+    );
+    this.interactionIndex += 1;
   }
 
   async commit(): Promise<void> {
@@ -193,7 +240,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
       this.diagnostics.push("LMSCommit failed; progress may not be stored.");
       throw new ScormCommunicationError(
         "LMSCommit failed; authoritative state was not stored",
-        null,
+        this.lastErrorCode(),
         "LMSCommit",
       );
     }
@@ -203,7 +250,11 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     if (this.api === null) return;
 
     if (!this.isSuppressed()) {
-      this.setValue(ELEMENT.SESSION_TIME, formatSessionTime(this.clock() - this.sessionStartedAt));
+      this.setRequiredValue(
+        ELEMENT.SESSION_TIME,
+        formatSessionTime(this.clock() - this.sessionStartedAt),
+        "LMSSetValue rejected the session time",
+      );
 
       // Section 21.9: suspend an unfinished attempt so the LMS offers resume;
       // clear the exit for a finished one.
@@ -212,11 +263,21 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
         status === CompletionStatus.COMPLETED ||
         status === CompletionStatus.PASSED ||
         status === CompletionStatus.FAILED;
-      this.setValue(ELEMENT.EXIT, isResolved ? "" : "suspend");
+      this.setRequiredValue(
+        ELEMENT.EXIT,
+        isResolved ? "" : "suspend",
+        "LMSSetValue rejected the exit state",
+      );
     }
 
     await this.commit();
-    this.call("LMSFinish", () => this.api?.LMSFinish(""));
+    if (this.call("LMSFinish", () => this.api?.LMSFinish("")) !== "true") {
+      throw new ScormCommunicationError(
+        "LMSFinish failed; the session remains open",
+        this.lastErrorCode(),
+        "LMSFinish",
+      );
+    }
     this.api = null;
   }
 
@@ -225,7 +286,7 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
     return [...this.diagnostics];
   }
 
-  private interactionIndex = 0;
+  private interactionIndex: number | null = null;
 
   private isSuppressed(): boolean {
     return this.api === null || (this.context !== null && isReadOnlyAttempt(this.context));
@@ -245,6 +306,24 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
         CompletionStatus.NOT_ATTEMPTED,
       ),
     };
+  }
+
+  private readInteractionCount(): number | null {
+    const raw = this.getValue(ELEMENT.INTERACTIONS_COUNT);
+    if (!/^\d+$/.test(raw)) {
+      this.diagnostics.push(
+        `LMSGetValue("${ELEMENT.INTERACTIONS_COUNT}") did not return a non-negative integer.`,
+      );
+      return null;
+    }
+    const parsed = Number(raw);
+    if (!Number.isSafeInteger(parsed)) {
+      this.diagnostics.push(
+        `LMSGetValue("${ELEMENT.INTERACTIONS_COUNT}") exceeded the supported integer range.`,
+      );
+      return null;
+    }
+    return parsed;
   }
 
   private getValue(element: string): string {
@@ -267,6 +346,26 @@ export class Scorm12Adapter implements LearningPlatformAdapter {
       return false;
     }
     return true;
+  }
+
+  private setRequiredValue(
+    element: string,
+    value: string,
+    failureMessage: string,
+  ): void {
+    if (!this.setValue(element, value)) {
+      throw new ScormCommunicationError(
+        failureMessage,
+        this.lastErrorCode(),
+        "LMSSetValue",
+      );
+    }
+  }
+
+  private lastErrorCode(): string | null {
+    if (this.api === null) return null;
+    const code = this.call("LMSGetLastError", () => this.api?.LMSGetLastError());
+    return code === ScormErrorCode.NO_ERROR ? null : code;
   }
 
   /** Run an LMS call, converting any thrown error into a diagnostic. */

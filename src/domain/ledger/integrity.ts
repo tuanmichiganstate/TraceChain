@@ -19,6 +19,7 @@
  */
 
 import type { LedgerBlock, LedgerTransaction } from "../types/models";
+import { TransactionStatus } from "../types/enums";
 import {
   calculateBlockHash,
   calculateTransactionHash,
@@ -42,10 +43,16 @@ export function verifyIntegrity(state: DomainState, hash: HashFunction): Integri
   const findings: string[] = [];
 
   const seenTransactionIds = new Set<string>();
+  const seenBlockIds = new Set<string>();
   let expectedPreviousHash: string | null = null;
   let expectedBlockNumber = 1;
 
   for (const blockId of state.blockOrder) {
+    if (seenBlockIds.has(blockId)) {
+      if (!invalidBlockIds.includes(blockId)) invalidBlockIds.push(blockId);
+      findings.push(`Block ${blockId} appears more than once in the chain index.`);
+    }
+    seenBlockIds.add(blockId);
     const block = state.blocksById[blockId];
     if (block === undefined) {
       invalidBlockIds.push(blockId);
@@ -89,6 +96,19 @@ export function verifyIntegrity(state: DomainState, hash: HashFunction): Integri
       }
       seenTransactionIds.add(transactionId);
 
+      if (
+        transaction.transactionStatus !== TransactionStatus.COMMITTED ||
+        transaction.blockId !== blockId
+      ) {
+        blockIsValid = false;
+        if (!invalidTransactionIds.includes(transactionId)) {
+          invalidTransactionIds.push(transactionId);
+        }
+        findings.push(
+          `Transaction ${transactionId} does not identify ${blockId} as its committed block.`,
+        );
+      }
+
       if (!verifyTransactionHash(transaction, hash)) {
         blockIsValid = false;
         invalidTransactionIds.push(transactionId);
@@ -131,6 +151,25 @@ export function verifyIntegrity(state: DomainState, hash: HashFunction): Integri
     // Both cases are pinned by tests in ledger-engine.test.ts.
     expectedPreviousHash = block.blockHash;
     expectedBlockNumber += 1;
+  }
+
+  for (const blockId of Object.keys(state.blocksById)) {
+    if (!seenBlockIds.has(blockId)) {
+      invalidBlockIds.push(blockId);
+      findings.push(`Block ${blockId} was omitted from the chain index.`);
+    }
+  }
+
+  for (const transaction of Object.values(state.transactionsById)) {
+    if (
+      transaction.transactionStatus === TransactionStatus.COMMITTED &&
+      !seenTransactionIds.has(transaction.transactionId)
+    ) {
+      invalidTransactionIds.push(transaction.transactionId);
+      findings.push(
+        `Committed transaction ${transaction.transactionId} was omitted from the chain.`,
+      );
+    }
   }
 
   return {

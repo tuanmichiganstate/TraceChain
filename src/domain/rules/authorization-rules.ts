@@ -107,6 +107,20 @@ export const receiverAuthorizedRule: ValidationRule = {
       });
     }
 
+    if (
+      command.commandType === TransactionType.RECEIVE_BATCH &&
+      receiverId !== context.organizationId
+    ) {
+      return failed(
+        ValidationRuleId.RECEIVER_AUTHORIZED,
+        "validation.receiverMustBeActingOrganization",
+        {
+          declaredReceiver: receiverId,
+          actingOrganization: context.organizationId,
+        },
+      );
+    }
+
     /*
      * Handing something to yourself is not a transfer. This applies only to the
      * outgoing transaction types: on a RECEIVE_BATCH the receiver *is* the
@@ -157,6 +171,16 @@ export const certifierAuthorizedRule: ValidationRule = {
     }
 
     if (command.commandType === TransactionType.ISSUE_CERTIFICATE) {
+      if (command.issuerOrganizationId !== context.organizationId) {
+        return failed(
+          ValidationRuleId.CERTIFIER_AUTHORIZED,
+          "validation.certifierOrganizationMismatch",
+          {
+            declaredIssuer: command.issuerOrganizationId,
+            actingOrganization: context.organizationId,
+          },
+        );
+      }
       if (issuer.organizationType !== OrganizationType.CERTIFIER) {
         return failed(ValidationRuleId.CERTIFIER_AUTHORIZED, "validation.certifierWrongType", {
           organizationId: command.issuerOrganizationId,

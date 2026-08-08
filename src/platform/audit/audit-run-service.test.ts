@@ -7,6 +7,7 @@ import {
 import type { ScenarioPackV2 } from "../contracts/scenario-pack";
 import type { ApplicationPrincipal } from "../hosted/access";
 import { MemoryRunEventStore } from "../runs/event-store";
+import type { RunEventStore } from "../runs/event-store";
 import { publishScenarioPack } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
 import { AuditHostedRunService } from "./audit-run-service";
@@ -138,6 +139,132 @@ async function submitFinding(
 }
 
 describe("AuditHostedRunService", () => {
+  it("audits the first command at an authored deadline without changing audit work", async () => {
+    const draft = structuredClone(packJson) as unknown as {
+      scenarios: Array<{
+        modeConfigurations: Array<{ timeLimitMinutes?: number }>;
+      }>;
+    };
+    const configuration = draft.scenarios[0]?.modeConfigurations[0];
+    if (configuration === undefined) {
+      throw new Error("Expected the guided Audit mode configuration");
+    }
+    configuration.timeLimitMinutes = 1;
+    const validation = validateScenarioPack(draft);
+    if (!validation.isValid) {
+      throw new Error(
+        validation.issues
+          .map((issue) => `${issue.path}: ${issue.message}`)
+          .join("\n"),
+      );
+    }
+    const pack = publishScenarioPack(validation.pack, {
+      publishedAt: NOW,
+      publishedBy: instructor.userId,
+    });
+    const store = new MemoryRunEventStore();
+    const createService = new AuditHostedRunService(
+      pack,
+      "SCN_GUIDED_COFFEE_AUDIT",
+      "2.0.0",
+      store,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(1),
+    );
+    const created = await create(createService);
+    const deadline = "2026-07-27T03:01:00.000Z";
+    const atDeadline = new AuditHostedRunService(
+      pack,
+      "SCN_GUIDED_COFFEE_AUDIT",
+      "2.0.0",
+      store,
+      new FixedClock(deadline),
+      new SequenceIdGenerator(100),
+    );
+
+    const rejected = await atDeadline.submit(learner, {
+      commandType: "VIEW_AUDIT_SCOPE",
+      commandId: "COMMAND_AT_AUDIT_DEADLINE",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const events = await store.load(created.state.runId);
+    const projection = await atDeadline.learnerProjection(
+      learner,
+      created.state.runId,
+    );
+
+    expect(rejected.state.scopeViewed).toBe(false);
+    expect(events.at(-1)).toMatchObject({
+      eventType: "RUN_TIME_LIMIT_EXCEEDED",
+      causationId: "COMMAND_AT_AUDIT_DEADLINE",
+      payload: {
+        attemptedCommandType: "VIEW_AUDIT_SCOPE",
+        timeLimitMinutes: 1,
+        deadlineUtc: deadline,
+      },
+    });
+    expect(projection.timing).toEqual({
+      status: "expired",
+      startedAt: NOW,
+      observedAt: deadline,
+      deadline,
+      timeLimitMinutes: 1,
+    });
+    await expect(
+      atDeadline.submit(learner, {
+        commandType: "VIEW_AUDIT_SCOPE",
+        commandId: "COMMAND_AFTER_AUDIT_DEADLINE",
+        runId: created.state.runId,
+        expectedRunVersion: rejected.state.version,
+      }),
+    ).rejects.toMatchObject({ code: "RUN_TIME_LIMIT_EXCEEDED" });
+  });
+
+  it("rejects post-creation events whose trusted attribution was altered", async () => {
+    const { pack, store, service } = fixture();
+    const created = await create(service);
+    await service.submit(learner, {
+      commandType: "VIEW_AUDIT_SCOPE",
+      commandId: "COMMAND_VIEW_SCOPE_FOR_ATTRIBUTION",
+      runId: created.state.runId,
+      expectedRunVersion: created.state.version,
+    });
+    const events = structuredClone(
+      await store.load(created.state.runId),
+    );
+    const scopeEvent = events.find(
+      (event) => event.eventType === "AUDIT_SCOPE_VIEWED",
+    );
+    if (scopeEvent === undefined) throw new Error("Scope event is missing");
+    (
+      scopeEvent as unknown as { organizationId: string }
+    ).organizationId = "ORG_FORGED";
+    const tamperedStore: RunEventStore = {
+      async append() {
+        throw new Error("The replay probe does not append events");
+      },
+      async load() {
+        return events;
+      },
+      async loadThrough(_runId, throughSequenceNumber) {
+        return events.slice(0, throughSequenceNumber);
+      },
+    };
+    const replayed = new AuditHostedRunService(
+      pack,
+      "SCN_GUIDED_COFFEE_AUDIT",
+      "2.0.0",
+      tamperedStore,
+      new FixedClock(NOW),
+      new SequenceIdGenerator(100),
+    );
+
+    await expect(replayed.loadState(created.state.runId)).rejects.toMatchObject({
+      code: "PACK_CONTRACT_MISMATCH",
+    });
+  });
+
   it("withholds Assessment feedback until completion and enforces one-shot findings", async () => {
     const { scenario, service } = assessmentFixture();
     const auditCase = scenario.auditCase!;

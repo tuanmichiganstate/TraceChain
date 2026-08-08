@@ -178,10 +178,11 @@ ledger*, is unchanged and is asserted by a test.
 
 - **SCORM interactions are reporting, never state.** Answering a knowledge
   check writes `cmi.interactions.n` for the instructor's benefit. SCORM 1.2
-  makes interactions **write-only** — they cannot be read back — so the attempt
-  is always rebuilt from `cmi.suspend_data` alone. Responses are recorded as
-  identifiers rather than translated labels, so a report means the same thing
-  in either language.
+  makes each interaction record **write-only** — it cannot be read back — while
+  exposing the collection's read-only `_count` so resumed sessions can append
+  safely. The attempt is still rebuilt from `cmi.suspend_data` alone. Responses
+  are recorded as identifiers rather than translated labels, so a report means
+  the same thing in either language.
 - **Mock SCORM API** (`test/scorm-mock/`) enforcing the real 4096-character
   `suspend_data` ceiling, the 255-character `lesson_location` limit, the
   `lesson_status` vocabulary, and the session-time format. A suspend-data

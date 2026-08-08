@@ -484,6 +484,54 @@ export class AuditHostedRunService {
         "The audit is complete or the submitted run version is stale.",
       );
     }
+    const timing = this.runTiming(state, this.clock.now());
+    if (timing.status === "expired") {
+      if (
+        events.some(
+          (event) => event.eventType === "RUN_TIME_LIMIT_EXCEEDED",
+        )
+      ) {
+        throw new HostedRunCommandError(
+          "RUN_TIME_LIMIT_EXCEEDED",
+          "The authored Audit time limit has elapsed.",
+        );
+      }
+      if (
+        timing.deadline === undefined ||
+        timing.timeLimitMinutes === undefined
+      ) {
+        throw new HostedRunCommandError(
+          "PACK_CONTRACT_MISMATCH",
+          "An expired Audit run must retain its authored deadline.",
+        );
+      }
+      const expired = this.buildEvent({
+        runId: command.runId,
+        state,
+        principal: learner,
+        context: state.activeTrustedContext,
+        commandId: command.commandId,
+        commandDigest: digest,
+        batchIndex: 0,
+        eventType: "RUN_TIME_LIMIT_EXCEEDED",
+        payload: {
+          attemptedCommandType: command.commandType,
+          timeLimitMinutes: timing.timeLimitMinutes,
+          deadlineUtc: timing.deadline,
+          submittedCommand: submittedCommandIntent(command),
+        },
+      });
+      const appended = await this.eventStore.append({
+        runId: command.runId,
+        expectedNextSequenceNumber: events.length + 1,
+        events: withSubmittedCommand([expired], command),
+      });
+      return {
+        state: expired.nextState,
+        appendedEventIds: appended.events.map((event) => event.eventId),
+        wasIdempotentReplay: appended.wasIdempotentReplay,
+      };
+    }
     const built: BuiltAuditEvent[] = [];
     const add = (
       eventType: PlatformRunEventType,
@@ -828,9 +876,10 @@ export class AuditHostedRunService {
     principal: ApplicationPrincipal | null,
     runId: string,
   ): Promise<LearnerRunProjectionV1> {
-    const state = await this.loadState(runId);
+    const events = await this.requireEvents(runId);
+    const state = this.replay(events);
     requireAssignedLearner(principal, state.learnerUserId);
-    return this.projection(state);
+    return this.projection(state, this.clock.now());
   }
 
   async instructorTimeline(
@@ -947,7 +996,10 @@ export class AuditHostedRunService {
         causationId: selected.causationId,
         resultingStateHash: selected.resultingStateHash,
       },
-      projection: this.projection(state),
+      projection: this.projection(
+        state,
+        selected.serverTimestampUtc,
+      ),
     };
   }
 
@@ -1083,6 +1135,19 @@ export class AuditHostedRunService {
   private replay(
     events: readonly RunEventV1[],
   ): AuditHostedRunStateV1 {
+    const timeLimitEvents = events.filter(
+      (event) => event.eventType === "RUN_TIME_LIMIT_EXCEEDED",
+    );
+    if (
+      timeLimitEvents.length > 1 ||
+      (timeLimitEvents.length === 1 &&
+        timeLimitEvents[0] !== events.at(-1))
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "An Audit run may end with at most one time-limit event.",
+      );
+    }
     const state = replayRunEvents<AuditHostedRunStateV1 | null>(
       null,
       events,
@@ -1188,6 +1253,8 @@ export class AuditHostedRunService {
         schemaVersion: "1.0.0",
         runtimeKind: "audit-v1",
         runId: event.runId,
+        startedAt: event.serverTimestampUtc,
+        createdByUserId: event.authenticatedUserId,
         assignmentId: requiredString(
           event.payload.assignmentId,
           "assignmentId",
@@ -1230,8 +1297,34 @@ export class AuditHostedRunService {
       });
     }
     const state = this.stateOrThrow(current);
+    const expectedAuthenticatedUserId =
+      event.eventType === "AUDIT_CASE_OPENED"
+        ? state.createdByUserId
+        : state.learnerUserId;
+    if (
+      event.simulationActorId !==
+        state.activeTrustedContext.actorId ||
+      event.organizationId !==
+        state.activeTrustedContext.organizationId ||
+      event.roleId !== state.activeTrustedContext.roleId ||
+      event.authenticatedUserId !== expectedAuthenticatedUserId
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Audit event attribution does not match its trusted execution context.",
+      );
+    }
     switch (event.eventType) {
       case "AUDIT_CASE_OPENED":
+        if (
+          event.payload.auditCaseId !== this.auditCase.auditCaseId ||
+          event.payload.auditCaseVersion !== this.auditCase.version
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "The opened Audit case does not match its immutable source.",
+          );
+        }
         return this.updateState(state, event, {});
       case "AUDIT_SCOPE_VIEWED":
         return this.updateState(state, event, { scopeViewed: true });
@@ -1447,6 +1540,35 @@ export class AuditHostedRunService {
             permittedActionIdsByRole: {},
           },
         });
+      case "RUN_TIME_LIMIT_EXCEEDED": {
+        const deadlineUtc = requiredString(
+          event.payload.deadlineUtc,
+          "deadlineUtc",
+        );
+        const attemptedCommandType = requiredString(
+          event.payload.attemptedCommandType,
+          "attemptedCommandType",
+        );
+        const timing = this.runTiming(
+          { ...state, status: "active" },
+          event.serverTimestampUtc,
+        );
+        const submittedCommand = event.payload.submittedCommand;
+        if (
+          timing.status !== "expired" ||
+          timing.deadline !== deadlineUtc ||
+          timing.timeLimitMinutes !==
+            event.payload.timeLimitMinutes ||
+          !isObject(submittedCommand) ||
+          submittedCommand.commandType !== attemptedCommandType
+        ) {
+          throw new HostedRunCommandError(
+            "PACK_CONTRACT_MISMATCH",
+            "Audit time-limit evidence is not reproducible from the run start.",
+          );
+        }
+        return this.updateState(state, event, {});
+      }
       default:
         throw new HostedRunCommandError(
           "PACK_CONTRACT_MISMATCH",
@@ -1619,6 +1741,7 @@ export class AuditHostedRunService {
 
   private projection(
     state: AuditHostedRunStateV1,
+    observedAt: string,
   ): LearnerRunProjectionV1 {
     const roleId = state.activeTrustedContext.roleId;
     const acceptedLedgerRecords =
@@ -1657,7 +1780,52 @@ export class AuditHostedRunService {
           state.workflowState.permittedActionIdsByRole[roleId] ??
           [],
       },
+      timing: this.runTiming(state, observedAt),
       audit: this.auditProjection(state),
+    };
+  }
+
+  private runTiming(
+    state: AuditHostedRunStateV1,
+    observedAt: string,
+  ): NonNullable<LearnerRunProjectionV1["timing"]> {
+    const startedAtMs = Date.parse(state.startedAt);
+    const observedAtMs = Date.parse(observedAt);
+    if (
+      !Number.isFinite(startedAtMs) ||
+      !Number.isFinite(observedAtMs)
+    ) {
+      throw new HostedRunCommandError(
+        "PACK_CONTRACT_MISMATCH",
+        "Audit timing requires valid UTC timestamps.",
+      );
+    }
+    const startedAt = new Date(startedAtMs).toISOString();
+    const normalizedObservedAt = new Date(observedAtMs).toISOString();
+    const timeLimitMinutes =
+      state.modeConfiguration.timeLimitMinutes;
+    if (timeLimitMinutes === undefined) {
+      return {
+        status:
+          state.status === "completed" ? "completed" : "unlimited",
+        startedAt,
+        observedAt: normalizedObservedAt,
+      };
+    }
+    const deadline = new Date(
+      startedAtMs + timeLimitMinutes * 60_000,
+    ).toISOString();
+    return {
+      status:
+        state.status === "completed"
+          ? "completed"
+          : observedAtMs >= Date.parse(deadline)
+            ? "expired"
+            : "active",
+      startedAt,
+      observedAt: normalizedObservedAt,
+      deadline,
+      timeLimitMinutes,
     };
   }
 

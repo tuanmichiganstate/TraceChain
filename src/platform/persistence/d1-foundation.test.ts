@@ -14,7 +14,10 @@ import {
   verifyScenarioPackContentHash,
 } from "../scenario-packs/publication";
 import { validateScenarioPack } from "../scenario-packs/validation";
+import type { ApplicationPrincipal } from "../hosted/access";
+import { resolveHostedExperienceConfiguration } from "../runs/experience-configuration";
 import { D1ApplicationPrincipalRepository } from "./d1-principal-repository";
+import { D1AssignmentRepository } from "./d1-assignment-repository";
 import { D1CounterfactualRunRepository } from "./d1-counterfactual-run-repository";
 import {
   CounterfactualReflectionRepositoryError,
@@ -120,12 +123,181 @@ class SqliteD1Database implements D1DatabaseLike {
   }
 }
 
+class PairBarrier {
+  private arrivals = 0;
+  private release: (() => void) | null = null;
+  private readonly released = new Promise<void>((resolve) => {
+    this.release = resolve;
+  });
+
+  async wait(): Promise<void> {
+    this.arrivals += 1;
+    if (this.arrivals === 2) {
+      this.release?.();
+    }
+    await this.released;
+  }
+}
+
+class BarrierStatement implements D1PreparedStatementLike {
+  constructor(
+    private readonly delegate: D1PreparedStatementLike,
+    private readonly query: string,
+    private readonly database: ConcurrentInsertD1Database,
+  ) {}
+
+  bind(...values: readonly unknown[]): D1PreparedStatementLike {
+    return new BarrierStatement(
+      this.delegate.bind(...values),
+      this.query,
+      this.database,
+    );
+  }
+
+  first<Row>(): Promise<Row | null> {
+    return this.delegate.first<Row>();
+  }
+
+  all<Row>(): Promise<D1AllResultLike<Row>> {
+    return this.delegate.all<Row>();
+  }
+
+  async run(): Promise<D1ResultLike> {
+    await this.database.waitForArmedInsert(this.query);
+    return this.delegate.run();
+  }
+}
+
+class ConcurrentInsertD1Database extends SqliteD1Database {
+  private armedTable: string | null = null;
+  private barrier: PairBarrier | null = null;
+
+  armInsertBarrier(table: string): void {
+    this.armedTable = table;
+    this.barrier = new PairBarrier();
+  }
+
+  override prepare(query: string): D1PreparedStatementLike {
+    return new BarrierStatement(super.prepare(query), query, this);
+  }
+
+  async waitForArmedInsert(query: string): Promise<void> {
+    if (
+      this.armedTable !== null &&
+      query.includes(`INSERT INTO ${this.armedTable}`)
+    ) {
+      await this.barrier?.wait();
+    }
+  }
+}
+
 function draftPack() {
   const result = validateScenarioPack(structuredClone(packJson));
   if (!result.isValid) {
     throw new Error("D1 tests require a valid Stage 3 pack.");
   }
   return result.pack;
+}
+
+const instructorPrincipal: ApplicationPrincipal = {
+  userId: "USER_INSTRUCTOR_CONCURRENCY",
+  roles: ["instructor"],
+};
+
+async function ratingRepositoryFixture(
+  database: ConcurrentInsertD1Database,
+): Promise<D1AssignmentRepository> {
+  const now = "2026-07-27T03:00:00.000Z";
+  const insertUser = database.sqlite.prepare(
+    `INSERT INTO application_users (
+      user_id, email, status, created_at_utc
+    ) VALUES (?, ?, 'active', ?)`,
+  );
+  insertUser.run(
+    instructorPrincipal.userId,
+    "instructor-concurrency@example.edu",
+    now,
+  );
+  insertUser.run(
+    "USER_LEARNER_CONCURRENCY",
+    "learner-concurrency@example.edu",
+    now,
+  );
+  database.sqlite
+    .prepare(
+      `INSERT INTO application_role_assignments (
+        user_id, application_role, assigned_at_utc, assigned_by_user_id
+      ) VALUES (?, 'learner', ?, ?)`,
+    )
+    .run(
+      "USER_LEARNER_CONCURRENCY",
+      now,
+      instructorPrincipal.userId,
+    );
+
+  const pack = draftPack();
+  const scenario = pack.scenarios[0];
+  const runConfiguration = scenario?.modeConfigurations?.find(
+    (configuration) => configuration.mode === "standard",
+  );
+  if (scenario === undefined || runConfiguration === undefined) {
+    throw new Error("The D1 concurrency fixture requires standard mode.");
+  }
+  const experience = resolveHostedExperienceConfiguration({
+    packId: pack.packId,
+    packVersion: pack.version,
+    scenario,
+    runtimeConfiguration: runConfiguration,
+  });
+  const repository = new D1AssignmentRepository(
+    database,
+    new FixedClock(now),
+  );
+  await repository.create(
+    {
+      commandId: "COMMAND_ASSIGNMENT_CONCURRENCY",
+      assignmentId: "ASSIGNMENT_CONCURRENCY",
+      title: "Concurrency fixture",
+      packId: pack.packId,
+      packVersion: pack.version,
+      scenarioId: scenario.scenarioId,
+      scenarioVersion: scenario.version,
+      mode: "standard",
+      runConfiguration,
+      experienceConfiguration: experience.configuration,
+      experienceConfigurationHash: experience.configurationHash,
+      counterfactualReplay: {
+        enabled: false,
+        allowedDecisionNodeIds: [],
+        maximumBranchesPerLearner: 1,
+        learnerAvailability: "DISABLED",
+        requireReflection: false,
+      },
+      research: { enabled: false },
+      learnerUserIds: ["USER_LEARNER_CONCURRENCY"],
+    },
+    instructorPrincipal,
+  );
+  database.sqlite
+    .prepare(
+      `INSERT INTO hosted_run_events (
+        run_id, sequence_number, event_id, idempotency_key,
+        event_json, server_timestamp_utc
+      ) VALUES (?, 1, ?, ?, ?, ?)`,
+    )
+    .run(
+      "RUN_CONCURRENCY",
+      "EVENT_RUN_CONCURRENCY_CREATED",
+      "COMMAND_RUN_CONCURRENCY_CREATED:0",
+      JSON.stringify({
+        payload: {
+          assignmentId: "ASSIGNMENT_CONCURRENCY",
+          learnerUserId: "USER_LEARNER_CONCURRENCY",
+        },
+      }),
+      now,
+    );
+  return repository;
 }
 
 describe("D1 instructor-platform foundation", () => {
@@ -435,6 +607,104 @@ describe("D1 instructor-platform foundation", () => {
           repository,
         ),
       ).rejects.toBeInstanceOf(AuthenticatedPrincipalError);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("maps a concurrent rating revision collision to a stale-revision conflict", async () => {
+    const database = new ConcurrentInsertD1Database();
+    try {
+      const repository = await ratingRepositoryFixture(database);
+      database.armInsertBarrier("rubric_rating_revisions");
+      const request = {
+        runId: "RUN_CONCURRENCY",
+        rubricId: "RUBRIC_CERTIFICATE_DECISION",
+        rubricVersion: "1.0.0",
+        criterionId: "CRITERION_EVIDENCE_USE",
+        levelValue: 2,
+        comment: "Concurrent rating.",
+        linkedEvidenceIds: ["EVENT_EVIDENCE_CONCURRENCY"],
+        expectedRevision: 0,
+      } as const;
+
+      const results = await Promise.allSettled([
+        repository.saveRating(
+          { ...request, commandId: "COMMAND_RATING_CONCURRENT_A" },
+          instructorPrincipal,
+        ),
+        repository.saveRating(
+          { ...request, commandId: "COMMAND_RATING_CONCURRENT_B" },
+          instructorPrincipal,
+        ),
+      ]);
+
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((result) => result.status === "rejected")).toEqual([
+        expect.objectContaining({
+          reason: expect.objectContaining({
+            code: "RATING_REVISION_CONFLICT",
+          }),
+        }),
+      ]);
+      expect(await repository.currentRatings(request.runId)).toHaveLength(1);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("maps a concurrent moderation revision collision to a stale-revision conflict", async () => {
+    const database = new ConcurrentInsertD1Database();
+    try {
+      const repository = await ratingRepositoryFixture(database);
+      const rating = await repository.saveRating(
+        {
+          commandId: "COMMAND_RATING_FOR_MODERATION",
+          runId: "RUN_CONCURRENCY",
+          rubricId: "RUBRIC_CERTIFICATE_DECISION",
+          rubricVersion: "1.0.0",
+          criterionId: "CRITERION_EVIDENCE_USE",
+          levelValue: 2,
+          comment: "Source rating.",
+          linkedEvidenceIds: ["EVENT_EVIDENCE_CONCURRENCY"],
+          expectedRevision: 0,
+        },
+        instructorPrincipal,
+      );
+      database.armInsertBarrier("rubric_moderation_resolutions");
+      const request = {
+        runId: "RUN_CONCURRENCY",
+        rubricId: "RUBRIC_CERTIFICATE_DECISION",
+        rubricVersion: "1.0.0",
+        criterionId: "CRITERION_EVIDENCE_USE",
+        levelValue: 2,
+        comment: "Concurrent moderation.",
+        sourceRatingIds: [rating.rating.ratingId],
+        expectedRevision: 0,
+      } as const;
+
+      const results = await Promise.allSettled([
+        repository.saveModeration(
+          { ...request, commandId: "COMMAND_MODERATION_CONCURRENT_A" },
+          instructorPrincipal,
+        ),
+        repository.saveModeration(
+          { ...request, commandId: "COMMAND_MODERATION_CONCURRENT_B" },
+          instructorPrincipal,
+        ),
+      ]);
+
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((result) => result.status === "rejected")).toEqual([
+        expect.objectContaining({
+          reason: expect.objectContaining({
+            code: "MODERATION_REVISION_CONFLICT",
+          }),
+        }),
+      ]);
+      expect(
+        await repository.currentModerationResolutions(request.runId),
+      ).toHaveLength(1);
     } finally {
       database.close();
     }

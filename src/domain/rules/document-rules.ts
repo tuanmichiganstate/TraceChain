@@ -54,6 +54,76 @@ export const documentHashPresentRule: ValidationRule = {
   },
 };
 
+/** Anchor identifiers are immutable, and certificates use their asset's anchor. */
+export const documentAnchorValidRule: ValidationRule = {
+  ruleId: ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+  appliesTo: [TransactionType.ANCHOR_DOCUMENT, TransactionType.ISSUE_CERTIFICATE],
+  evaluate(command, context) {
+    if (command.commandType === TransactionType.ANCHOR_DOCUMENT) {
+      if (
+        context.state.documentAnchorsById[command.documentAnchorId] !==
+        undefined
+      ) {
+        return failed(
+          ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+          "validation.documentAnchorIdAlreadyExists",
+          { documentAnchorId: command.documentAnchorId },
+        );
+      }
+      return passed(
+        ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+        "validation.documentAnchorValid",
+      );
+    }
+
+    if (command.commandType !== TransactionType.ISSUE_CERTIFICATE) {
+      return notApplicable(ValidationRuleId.DOCUMENT_ANCHOR_VALID);
+    }
+
+    const anchor =
+      context.state.documentAnchorsById[command.documentAnchorId];
+    const asset = context.state.assetsById[command.assetId];
+    if (anchor === undefined || asset === undefined) {
+      return notApplicable(ValidationRuleId.DOCUMENT_ANCHOR_VALID);
+    }
+    if (!asset.documentAnchorIds.includes(command.documentAnchorId)) {
+      return failed(
+        ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+        "validation.documentAnchorNotLinkedToAsset",
+        {
+          assetId: command.assetId,
+          documentAnchorId: command.documentAnchorId,
+        },
+      );
+    }
+    if (anchor.documentType !== DocumentType.QUALITY_CERTIFICATE) {
+      return failed(
+        ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+        "validation.documentAnchorNotCertificate",
+        {
+          documentAnchorId: command.documentAnchorId,
+          documentType: anchor.documentType,
+        },
+      );
+    }
+    if (anchor.issuerOrganizationId !== command.issuerOrganizationId) {
+      return failed(
+        ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+        "validation.documentAnchorIssuerMismatch",
+        {
+          anchorIssuer: anchor.issuerOrganizationId,
+          declaredIssuer: command.issuerOrganizationId,
+        },
+      );
+    }
+
+    return passed(
+      ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+      "validation.documentAnchorValid",
+    );
+  },
+};
+
 /** The metadata discriminant must match the document and its values be valid. */
 export const documentMetadataValidRule: ValidationRule = {
   ruleId: ValidationRuleId.DOCUMENT_METADATA_VALID,
@@ -123,6 +193,7 @@ export const certificateNotExpiredRule: ValidationRule = {
 
 export const documentRules: readonly ValidationRule<SupplyChainCommand>[] = [
   documentHashPresentRule,
+  documentAnchorValidRule,
   documentMetadataValidRule,
   certificateNotExpiredRule,
 ];

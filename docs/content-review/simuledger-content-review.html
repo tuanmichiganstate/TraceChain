@@ -85,7 +85,7 @@
 <li><a href="#group-transaction"><span>transaction</span><b>14</b></a></li>
 <li><a href="#group-transactionType"><span>transactionType</span><b>12</b></a></li>
 <li><a href="#group-unit"><span>unit</span><b>3</b></a></li>
-<li><a href="#group-validation"><span>validation</span><b>94</b></a></li>
+<li><a href="#group-validation"><span>validation</span><b>101</b></a></li>
 <li><a href="#group-workspace"><span>workspace</span><b>13</b></a></li></ol></nav>
 <main id="main">
 <header>
@@ -93,7 +93,7 @@
   <p class="lede">Danh mục đầy đủ, được sinh trực tiếp từ hai tệp ngôn ngữ và định nghĩa kịch bản. Mỗi khóa xuất hiện đúng một lần; tiếng Anh chỉ dùng để đối chiếu.</p>
   <div class="status"><strong>Trạng thái: chưa được chuyên gia tiếng Việt rà soát.</strong> Tài liệu này không phải bằng chứng phê duyệt nội dung.</div>
   <ul class="facts">
-    <li><b>3402/3402</b>chuỗi song ngữ</li>
+    <li><b>3409/3409</b>chuỗi song ngữ</li>
     <li><b>9</b>bước</li>
     <li><b>10</b>câu hỏi</li>
     <li><b>70/100</b>điểm đạt</li>
@@ -16789,7 +16789,7 @@
 </article>
 </section>
 <section id="group-validation">
-  <h2>validation <span>94 chuỗi</span></h2>
+  <h2>validation <span>101 chuỗi</span></h2>
   <article class="entry" data-locale-key="validation.actionNotPermitted">
   <header><code>validation.actionNotPermitted</code></header>
   <p class="vi" lang="vi">Tổ chức này không được phép thực hiện hành động đã chọn.</p>
@@ -16879,6 +16879,11 @@
   <header><code>validation.certifierNotRecognized</code></header>
   <p class="vi" lang="vi">Đơn vị cấp chứng nhận chưa được công nhận trên mạng này. Hàm băm chỉ chứng minh tệp không bị thay đổi, không chứng minh đơn vị cấp có thẩm quyền.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The issuing body is not recognized on this network. A hash proves a file has not changed; it does not prove the issuer had authority.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.certifierOrganizationMismatch">
+  <header><code>validation.certifierOrganizationMismatch</code></header>
+  <p class="vi" lang="vi">Tổ chức chứng nhận đang thao tác không khớp với bên cấp được khai báo.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The acting certification organization does not match the declared certificate issuer.</p></details>
 </article>
   <article class="entry" data-locale-key="validation.certifierUnknown">
   <header><code>validation.certifierUnknown</code></header>
@@ -17005,10 +17010,35 @@
   <p class="vi" lang="vi">Bên giao trong giao dịch không khớp với bên đang lưu giữ trên sổ cái.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The sender named in the transaction is not the current custodian on the ledger.</p></details>
 </article>
+  <article class="entry" data-locale-key="validation.documentAnchorIdAlreadyExists">
+  <header><code>validation.documentAnchorIdAlreadyExists</code></header>
+  <p class="vi" lang="vi">Mã neo tài liệu này đã được sử dụng và không thể bị thay thế.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">This document anchor identifier is already in use and cannot be replaced.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.documentAnchorIssuerMismatch">
+  <header><code>validation.documentAnchorIssuerMismatch</code></header>
+  <p class="vi" lang="vi">Tổ chức cấp chứng nhận không khớp với tổ chức được ghi trên mã neo.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The certificate issuer does not match the issuer recorded on its anchor.</p></details>
+</article>
   <article class="entry" data-locale-key="validation.documentAnchorMissing">
   <header><code>validation.documentAnchorMissing</code></header>
   <p class="vi" lang="vi">Tài liệu chưa được ghi nhận trên chuỗi.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The document has not been anchored on chain.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.documentAnchorNotCertificate">
+  <header><code>validation.documentAnchorNotCertificate</code></header>
+  <p class="vi" lang="vi">Mã neo đã chọn không phải là chứng nhận chất lượng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The selected anchor is not a quality certificate.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.documentAnchorNotLinkedToAsset">
+  <header><code>validation.documentAnchorNotLinkedToAsset</code></header>
+  <p class="vi" lang="vi">Mã neo chứng nhận không thuộc về tài sản này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The certificate anchor does not belong to this asset.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.documentAnchorValid">
+  <header><code>validation.documentAnchorValid</code></header>
+  <p class="vi" lang="vi">Mã neo tài liệu là duy nhất và thuộc về tài sản này.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The document anchor is unique and belongs to this asset.</p></details>
 </article>
   <article class="entry" data-locale-key="validation.documentHashMissing">
   <header><code>validation.documentHashMissing</code></header>
@@ -17164,6 +17194,11 @@
   <header><code>validation.receiverInactive</code></header>
   <p class="vi" lang="vi">Bên nhận không còn hoạt động trên mạng này.</p>
   <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">The receiving party is no longer active on this network.</p></details>
+</article>
+  <article class="entry" data-locale-key="validation.receiverMustBeActingOrganization">
+  <header><code>validation.receiverMustBeActingOrganization</code></header>
+  <p class="vi" lang="vi">Biên nhận phải được ghi cho chính tổ chức đang thực hiện thao tác nhận hàng.</p>
+  <details><summary>Đối chiếu tiếng Anh</summary><p lang="en">A receipt must be booked into the organization performing the receiving action.</p></details>
 </article>
   <article class="entry" data-locale-key="validation.receiverSameAsSender">
   <header><code>validation.receiverSameAsSender</code></header>
@@ -17330,7 +17365,7 @@
 </article>
 </section>
 <footer class="provenance">
-  <p>Nguồn: <code>7e14831981f1c85b288c414a0950f276125fc5ac</code> · SHA-256 nguồn: <code>3b12c29a94011e113be1ab5338cb1a78138778f510ff44bce608a5c8517ac756</code> · Generator 1.0.0.</p>
+  <p>Nguồn: <code>f587487fb3c117efb7d7f7257211728c2a3a6a60</code> · SHA-256 nguồn: <code>14937f80ad1dc96dd444f1dcc87a6c98b3058d9b186a095e6203324a416aedb4</code> · Generator 1.0.0.</p>
   <p>Phạm vi loại trừ được ghi đầy đủ trong <code>MANIFEST.md</code>. Góp ý nên trích khóa ngôn ngữ hiển thị ở đầu mỗi mục.</p>
 </footer>
 </main>

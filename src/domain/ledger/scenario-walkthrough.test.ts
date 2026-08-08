@@ -14,6 +14,7 @@ import {
 import {
   AssetLifecycleStatus,
   ComplianceStatus,
+  DocumentType,
   QuantityUnit,
   SaleEligibility,
   TransactionStatus,
@@ -187,6 +188,24 @@ describe("ownership and custody move independently", () => {
       contextFor(ActorId.DISTRIBUTION_MANAGER),
     );
     expect(result.isAccepted).toBe(false);
+  });
+
+  it("refuses to book a receipt into an organization other than the acting organization", async () => {
+    const ledger = await runUpTo("inTransit");
+    const result = await ledger.submitCommand(
+      commands.receiveBatch({
+        receivingOrganizationId: OrganizationId.RETAILER,
+      }),
+      contextFor(ActorId.PROCESSING_MANAGER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.RECEIVER_AUTHORIZED,
+    );
+    expect((await ledger.getAsset(GREEN_COFFEE_BATCH_ID))?.currentCustodianId).toBe(
+      OrganizationId.LOGISTICS_PROVIDER,
+    );
   });
 });
 
@@ -417,6 +436,174 @@ describe("certificates and documents", () => {
     expect(result.isAccepted).toBe(false);
     expect(result.validation.failures.map((f) => f.ruleId)).toContain(
       ValidationRuleId.CERTIFICATE_NOT_EXPIRED,
+    );
+  });
+
+  it("rejects a certificate whose anchor belongs to another asset", async () => {
+    const ledger = createDriver();
+    const firstCreated = await ledger.submitCommand(
+      commands.createBatch(),
+      contextFor(ActorId.PRODUCER_MANAGER),
+    );
+    expect(firstCreated.isAccepted).toBe(true);
+    const secondAssetId = "BAT_GREEN_COFFEE_002";
+    const secondCreated = await ledger.submitCommand(
+      commands.createBatch({
+        assetId: secondAssetId,
+        scenarioTimestamp: new Date(
+          Date.parse(SCENARIO_TIMELINE.batchCreated) + 1_000,
+        ).toISOString(),
+      }),
+      contextFor(ActorId.PRODUCER_MANAGER),
+    );
+    expect(secondCreated.isAccepted).toBe(true);
+    const anchored = await ledger.submitCommand(
+      commands.anchorCertificate(),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+    expect(anchored.isAccepted).toBe(true);
+
+    const result = await ledger.submitCommand(
+      commands.issueCertificate({ assetId: secondAssetId }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+    );
+    expect((await ledger.getAsset(secondAssetId))?.certificateIds).toEqual([]);
+    expect((await ledger.getAsset(secondAssetId))?.complianceStatus).toBe(
+      ComplianceStatus.PENDING_CERTIFICATION,
+    );
+  });
+
+  it("rejects a certificate that points to a non-certificate document", async () => {
+    const ledger = await runUpTo("created");
+    const documentAnchorId = "DOC_MANIFEST_AS_CERTIFICATE";
+    const anchored = await ledger.submitCommand(
+      commands.anchorCertificate({
+        documentAnchorId,
+        documentType: DocumentType.SHIPPING_MANIFEST,
+        metadata: {
+          kind: DocumentType.SHIPPING_MANIFEST,
+          declaredQuantity: {
+            kind: "QUANTITY",
+            amount: 100,
+            unit: QuantityUnit.KG,
+          },
+        },
+      }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+    expect(anchored.isAccepted).toBe(true);
+
+    const result = await ledger.submitCommand(
+      commands.issueCertificate({ documentAnchorId }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+    );
+  });
+
+  it("rejects a certificate whose declared issuer differs from its anchor", async () => {
+    const ledger = await runUpTo("created");
+    const anchored = await ledger.submitCommand(
+      commands.anchorCertificate(),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+    expect(anchored.isAccepted).toBe(true);
+
+    const result = await ledger.submitCommand(
+      commands.issueCertificate({
+        issuerOrganizationId: OrganizationId.COFFEE_PROCESSOR,
+        initiatedByActorId: ActorId.PROCESSING_MANAGER,
+      }),
+      contextFor(ActorId.PROCESSING_MANAGER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+    );
+  });
+
+  it("rejects reuse of a document-anchor identifier without replacing the original", async () => {
+    const ledger = await runUpTo("created");
+    const first = await ledger.submitCommand(
+      commands.anchorCertificate(),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+    expect(first.isAccepted).toBe(true);
+    const replacementHash = "a".repeat(64);
+
+    const duplicate = await ledger.submitCommand(
+      commands.anchorCertificate({
+        fileName: "replacement.pdf",
+        contentHash: replacementHash,
+        scenarioTimestamp: new Date(
+          Date.parse(SCENARIO_TIMELINE.certificateIssued) + 1_000,
+        ).toISOString(),
+      }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+
+    expect(duplicate.isAccepted).toBe(false);
+    expect(duplicate.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.DOCUMENT_ANCHOR_VALID,
+    );
+    expect(
+      ledger.getState().documentAnchorsById.DOC_QUALITY_CERTIFICATE_001,
+    ).toMatchObject({
+      fileName: "quality-certificate-001.pdf",
+    });
+    expect(
+      (await ledger.getAsset(GREEN_COFFEE_BATCH_ID))?.documentAnchorIds,
+    ).toEqual(["DOC_QUALITY_CERTIFICATE_001"]);
+  });
+
+  it("rejects a document transaction dated before the asset was created", async () => {
+    const ledger = await runUpTo("created");
+    const beforeCreation = new Date(
+      Date.parse(SCENARIO_TIMELINE.batchCreated) - 60_000,
+    ).toISOString();
+
+    const result = await ledger.submitCommand(
+      commands.anchorCertificate({
+        issuedAt: beforeCreation,
+        scenarioTimestamp: beforeCreation,
+      }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.TIMESTAMP_SEQUENCE_VALID,
+    );
+  });
+
+  it("includes a transformation when validating the output asset's chronology", async () => {
+    const ledger = await runUpTo("roasted");
+    const beforeTransformation = new Date(
+      Date.parse(SCENARIO_TIMELINE.batchRoasted) - 60_000,
+    ).toISOString();
+
+    const result = await ledger.submitCommand(
+      commands.anchorCertificate({
+        assetId: ROASTED_COFFEE_BATCH_ID,
+        documentAnchorId: "DOC_ROASTED_CERTIFICATE_001",
+        issuedAt: beforeTransformation,
+        scenarioTimestamp: beforeTransformation,
+      }),
+      contextFor(ActorId.CERTIFICATION_OFFICER),
+    );
+
+    expect(result.isAccepted).toBe(false);
+    expect(result.validation.failures.map((failure) => failure.ruleId)).toContain(
+      ValidationRuleId.TIMESTAMP_SEQUENCE_VALID,
     );
   });
 });

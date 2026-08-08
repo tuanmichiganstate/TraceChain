@@ -10,7 +10,11 @@
 import { LedgerEventType, TransactionStatus, TransactionType } from "../types/enums";
 import { ValidationRuleId } from "../types/rule-ids";
 import type { SupplyChainCommand } from "../commands/commands";
-import { ALL_TRANSACTION_TYPES, subjectAssetId } from "../commands/command-targets";
+import {
+  ALL_TRANSACTION_TYPES,
+  producedAssetId,
+  subjectAssetId,
+} from "../commands/command-targets";
 import type { LedgerTransaction } from "../types/models";
 import type { ValidationContext } from "./types";
 import { failed, notApplicable, passed, type ValidationRule } from "./types";
@@ -23,7 +27,10 @@ function committedHistoryFor(assetId: string, context: ValidationContext): Ledge
     .filter(
       (transaction) =>
         transaction.transactionStatus !== TransactionStatus.REJECTED &&
-        subjectAssetId(transaction.commandPayload as SupplyChainCommand) === assetId,
+        (subjectAssetId(transaction.commandPayload as SupplyChainCommand) ===
+          assetId ||
+          producedAssetId(transaction.commandPayload as SupplyChainCommand) ===
+            assetId),
     );
 }
 

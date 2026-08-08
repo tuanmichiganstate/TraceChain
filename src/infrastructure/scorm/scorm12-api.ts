@@ -136,15 +136,22 @@ export function discoverScorm12Api(rootWindow: Window | null = globalThis.window
  */
 export function formatSessionTime(milliseconds: number): string {
   const safeMilliseconds = Number.isFinite(milliseconds) && milliseconds > 0 ? milliseconds : 0;
-  const totalSeconds = safeMilliseconds / 1000;
+  const maximumHundredths = (((9999 * 60 + 59) * 60 + 59) * 100) + 99;
+  const totalHundredths = Math.min(
+    Math.round(safeMilliseconds / 10),
+    maximumHundredths,
+  );
 
-  const hours = Math.min(Math.floor(totalSeconds / 3600), 9999);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const hours = Math.floor(totalHundredths / 360_000);
+  const afterHours = totalHundredths % 360_000;
+  const minutes = Math.floor(afterHours / 6_000);
+  const afterMinutes = afterHours % 6_000;
+  const seconds = Math.floor(afterMinutes / 100);
+  const hundredths = afterMinutes % 100;
 
   const hoursText = String(hours).padStart(2, "0");
   const minutesText = String(minutes).padStart(2, "0");
-  const secondsText = seconds.toFixed(2).padStart(5, "0");
+  const secondsText = `${String(seconds).padStart(2, "0")}.${String(hundredths).padStart(2, "0")}`;
 
   return `${hoursText}:${minutesText}:${secondsText}`;
 }

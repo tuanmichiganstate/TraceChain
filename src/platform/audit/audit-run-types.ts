@@ -21,6 +21,8 @@ export interface AuditHostedRunStateV1 {
   readonly schemaVersion: "1.0.0";
   readonly runtimeKind: "audit-v1";
   readonly runId: string;
+  readonly startedAt: string;
+  readonly createdByUserId: string;
   readonly assignmentId: string;
   readonly learnerUserId: string;
   readonly packId: string;
